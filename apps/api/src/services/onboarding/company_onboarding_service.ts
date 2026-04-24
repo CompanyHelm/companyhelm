@@ -425,7 +425,7 @@ export class CompanyOnboardingService {
   }
 
   private isStaticSetupResolved(onboarding: CompanyOnboardingRecord): boolean {
-    const missionResolved = Boolean(onboarding.companyMission?.trim());
+    const missionResolved = Boolean(onboarding.companyMission?.trim() || onboarding.missionSkippedAt);
     return missionResolved
       && onboarding.githubSetupStatus !== "pending"
       && onboarding.llmSetupStatus !== "pending";

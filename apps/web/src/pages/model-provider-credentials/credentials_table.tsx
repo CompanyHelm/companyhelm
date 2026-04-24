@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { RefreshCcwIcon, StarIcon } from "lucide-react";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +111,10 @@ export function CredentialsTable(props: CredentialsTableProps) {
       </TableHeader>
       <TableBody>
         {props.credentials.map((credential) => {
+          const providerLabel = formatProviderLabel(credential.modelProvider, {
+            baseUrl: credential.baseUrl,
+            isManaged: credential.isManaged,
+          });
           const showRefreshFailure = hasCredentialRefreshFailure(credential);
 
           return (
@@ -155,11 +160,14 @@ export function CredentialsTable(props: CredentialsTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline">
-                  {formatProviderLabel(credential.modelProvider, {
-                    baseUrl: credential.baseUrl,
-                    isManaged: credential.isManaged,
-                  })}
+                <Badge className="gap-1.5" variant="outline">
+                  <ModelProviderIcon
+                    className="-ml-1 size-4 rounded-sm bg-transparent"
+                    imageClassName="size-3"
+                    label={providerLabel}
+                    providerId={credential.modelProvider}
+                  />
+                  <span>{providerLabel}</span>
                 </Badge>
               </TableCell>
               <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>

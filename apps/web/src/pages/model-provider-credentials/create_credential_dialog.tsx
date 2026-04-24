@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MarkdownContent } from "@/components/markdown_content";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -104,7 +105,15 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               <SelectContent>
                 {props.providers.map((provider) => (
                   <SelectItem key={provider.id} value={provider.id}>
-                    {provider.name}
+                    <span className="inline-flex items-center gap-2">
+                      <ModelProviderIcon
+                        className="size-5 rounded-sm"
+                        imageClassName="size-3.5"
+                        label={provider.name}
+                        providerId={provider.id}
+                      />
+                      {provider.name}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>

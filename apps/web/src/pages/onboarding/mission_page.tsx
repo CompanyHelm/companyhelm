@@ -4,7 +4,6 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { Button } from "@/components/ui/button";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
-  OnboardingNavigation,
   OnboardingPageSuspense,
   OnboardingStepFrame,
   navigateToOnboardingStep,
@@ -84,8 +83,9 @@ function MissionPageContent() {
         placeholder="Describe the business outcome you want, the immediate goals, constraints, and what CompanyHelm should help achieve first."
         value={controller.missionDraft}
       />
-      <OnboardingNavigation backStep="model-provider">
+      <div className="mt-8 flex flex-col items-center gap-4">
         <Button
+          className="h-12 px-6 text-base"
           disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
           onClick={() => {
             controller.clearErrorMessage();
@@ -100,12 +100,49 @@ function MissionPageContent() {
               });
             }).catch(() => undefined);
           }}
-          size="sm"
           type="button"
         >
-          Start CEO onboarding
+          Continue onboarding
         </Button>
-      </OnboardingNavigation>
+        <div className="relative flex h-9 w-full items-center justify-center">
+          <Button
+            className="absolute left-0"
+            onClick={() => {
+              navigateToOnboardingStep({
+                navigate,
+                organizationSlug,
+                step: "model-provider",
+              });
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Back
+          </Button>
+          <Button
+            disabled={controller.isUpdateCompanyOnboardingInFlight}
+            onClick={() => {
+              controller.clearErrorMessage();
+              void controller.updateOnboarding({
+                skipMission: true,
+              }).then(() => {
+                void navigate({
+                  params: {
+                    organizationSlug,
+                  },
+                  to: OrganizationPath.route("/onboarding"),
+                });
+              }).catch(() => undefined);
+            }}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Skip
+          </Button>
+        </div>
+      </div>
     </OnboardingStepFrame>
   );
 }

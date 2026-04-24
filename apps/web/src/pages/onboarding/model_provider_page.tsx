@@ -1,16 +1,36 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { KeyRoundIcon } from "lucide-react";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   OnboardingModelProviderDialog,
-  OnboardingNavigation,
   OnboardingPageSuspense,
   OnboardingStepFrame,
   navigateToOnboardingStep,
   useOnboardingFlowController,
 } from "./flow";
+
+const supportedLlmProviders = [
+  {
+    label: "OpenAI",
+    providerId: "openai",
+  },
+  {
+    label: "Anthropic",
+    providerId: "anthropic",
+  },
+  {
+    label: "Gemini",
+    providerId: "google-gemini-cli",
+  },
+  {
+    label: "OpenRouter",
+    providerId: "openrouter",
+  },
+] as const;
 
 export function ModelProviderPage() {
   return (
@@ -62,95 +82,87 @@ function ModelProviderPageContent() {
     <>
       <OnboardingStepFrame
         currentStep="model-provider"
-        description="Choose how this company will access LLMs before CompanyHelm provisions the CEO chat."
+        description="Add your own LLM provider for broader model support. If you skip, CompanyHelm will use its managed provider."
         errorMessage={controller.errorMessage}
-        helperText={controller.llmResolved
-          ? `LLM setup saved as ${controller.onboarding.llmSetupStatus.replace("_", " ")}.`
-          : "CompanyHelm-managed support is limited right now, so a third-party provider is the recommended default."}
+        helperText={controller.llmResolved ? `LLM setup saved as ${controller.onboarding.llmSetupStatus.replace("_", " ")}.` : ""}
         title="Model provider setup"
       >
-        <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-          <p>
-            CompanyHelm currently offers limited managed support. A third-party provider gives the CEO
-            and the first agent suggestions the broadest model coverage and the least friction.
+        <div className="mt-6 space-y-6">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            CompanyHelm-managed access currently has low token limits and higher prices.
+            Using your own provider is strongly recommended.
           </p>
-          <p>
-            The next step asks what you want CompanyHelm to achieve for the business. Those goals are
-            then passed directly into the CEO onboarding chat.
-          </p>
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Supported providers
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-6">
+              {supportedLlmProviders.map((provider) => (
+                <div
+                  className="flex w-20 flex-col items-center gap-2 text-center"
+                  key={provider.label}
+                >
+                  <ModelProviderIcon
+                    className="size-12 rounded-xl"
+                    imageClassName="size-7"
+                    label={provider.label}
+                    providerId={provider.providerId}
+                  />
+                  <span className="text-sm font-medium text-foreground">{provider.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <OnboardingNavigation backStep="github">
+        <div className="mt-8 flex flex-col items-center gap-4">
           <Button
+            className="h-12 px-6 text-base"
             disabled={controller.isAddModelProviderCredentialInFlight}
             onClick={() => {
               controller.setCredentialDialogOpen(true);
             }}
-            size="sm"
             type="button"
           >
-            Add third-party provider
+            <KeyRoundIcon className="mr-2 size-5" />
+            Add LLM provider
           </Button>
-          <Button
-            disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.hasThirdPartyCredential}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                llmSetupStatus: "third_party",
-              }).then(() => {
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              onClick={() => {
                 navigateToOnboardingStep({
                   navigate,
                   organizationSlug,
-                  step: "mission",
+                  step: "github",
                 });
-              }).catch(() => undefined);
-            }}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Use existing third-party provider
-          </Button>
-          <Button
-            disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.hasManagedCredential}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                llmSetupStatus: "company_managed",
-              }).then(() => {
-                navigateToOnboardingStep({
-                  navigate,
-                  organizationSlug,
-                  step: "mission",
-                });
-              }).catch(() => undefined);
-            }}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Use CompanyHelm-managed
-          </Button>
-          <Button
-            disabled={controller.isUpdateCompanyOnboardingInFlight}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                llmSetupStatus: "skipped",
-              }).then(() => {
-                navigateToOnboardingStep({
-                  navigate,
-                  organizationSlug,
-                  step: "mission",
-                });
-              }).catch(() => undefined);
-            }}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            Skip for now
-          </Button>
-        </OnboardingNavigation>
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Back
+            </Button>
+            <Button
+              disabled={controller.isUpdateCompanyOnboardingInFlight}
+              onClick={() => {
+                controller.clearErrorMessage();
+                void controller.updateOnboarding({
+                  llmSetupStatus: "skipped",
+                }).then(() => {
+                  navigateToOnboardingStep({
+                    navigate,
+                    organizationSlug,
+                    step: "mission",
+                  });
+                }).catch(() => undefined);
+              }}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              Skip
+            </Button>
+          </div>
+        </div>
       </OnboardingStepFrame>
       <OnboardingModelProviderDialog
         controller={controller}

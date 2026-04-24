@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { GithubIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
-  OnboardingNavigation,
   OnboardingPageSuspense,
   OnboardingStepFrame,
   onboardingPath,
@@ -51,21 +51,20 @@ function GithubPageContent() {
   return (
     <OnboardingStepFrame
       currentStep="github"
-      description="CompanyHelm uses GitHub to fetch and store code, plans, and custom skills. Not connecting to Github would prevent CompanyHelm from operating properly."
+      description="CompanyHelm uses GitHub to access code and store plans and custom skills. Without GitHub, CompanyHelm cannot operate effectively."
       errorMessage={controller.errorMessage}
       helperText={controller.hasGithubInstallation
         ? "A GitHub installation is already connected for this company."
         : ""}
       title="GitHub access"
     >
-      <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-        {controller.hasGithubInstallation ? (
-          <p className="text-foreground">GitHub is connected and ready for repo discovery.</p>
-        ) : null}
-      </div>
-      <OnboardingNavigation>
+      {controller.hasGithubInstallation ? (
+        <p className="text-sm leading-6 text-foreground">GitHub is connected and ready for repo discovery.</p>
+      ) : null}
+      <div className="mt-8 flex flex-col items-center gap-4">
         {controller.hasGithubInstallation ? (
           <Button
+            className="h-12 px-6 text-base"
             disabled={controller.isUpdateCompanyOnboardingInFlight}
             onClick={() => {
               controller.clearErrorMessage();
@@ -79,22 +78,23 @@ function GithubPageContent() {
                 });
               }).catch(() => undefined);
             }}
-            size="sm"
             type="button"
           >
+            <GithubIcon className="mr-2 size-5" />
             Continue with GitHub
           </Button>
         ) : (
           <Button
+            className="h-12 px-6 text-base"
             disabled={controller.isCreateGithubInstallationUrlInFlight}
             onClick={() => {
               controller.openGithubInstall(
                 OrganizationPath.href(organizationSlug, onboardingPath("github")),
               );
             }}
-            size="sm"
             type="button"
           >
+            <GithubIcon className="mr-2 size-5" />
             {controller.isCreateGithubInstallationUrlInFlight ? "Preparing..." : "Connect GitHub"}
           </Button>
         )}
@@ -114,11 +114,11 @@ function GithubPageContent() {
           }}
           size="sm"
           type="button"
-          variant="outline"
+          variant="ghost"
         >
-          Skip for now
+          Skip
         </Button>
-      </OnboardingNavigation>
+      </div>
     </OnboardingStepFrame>
   );
 }

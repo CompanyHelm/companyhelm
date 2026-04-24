@@ -369,3 +369,55 @@ test("CompanyOnboardingService starts the CEO workflow with mission and setup in
   }]);
   assert.equal(harness.getFinalizeCount(), 1);
 });
+
+test("CompanyOnboardingService starts the CEO workflow when mission is skipped", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness({
+    githubInstallations: [{ companyId: "company-1" }],
+    modelCredentials: [{
+      id: "credential-1",
+      isManaged: true,
+    }],
+    onboardingRows: [{
+      agentId: null,
+      companyMission: null,
+      companyId: "company-1",
+      completedAt: null,
+      createdAt: new Date("2026-04-22T10:00:00.000Z"),
+      githubCompletedAt: null,
+      githubSetupStatus: "skipped",
+      githubSkippedAt: new Date("2026-04-22T10:05:00.000Z"),
+      llmCompletedAt: null,
+      llmSetupStatus: "skipped",
+      llmSkippedAt: new Date("2026-04-22T10:06:00.000Z"),
+      missionSkippedAt: new Date("2026-04-22T10:07:00.000Z"),
+      sessionId: null,
+      skippedAt: null,
+      skippedByUserId: null,
+      startedAt: null,
+      status: "not_started",
+      updatedAt: new Date("2026-04-22T10:07:00.000Z"),
+      workflowRunId: null,
+    }],
+  });
+  const service = harness.buildService();
+
+  const onboarding = await service.ensureOnboarding(
+    harness.buildTransactionProvider() as never,
+    {
+      companyId: "company-1",
+      userId: "user-1",
+    },
+  );
+
+  assert.equal(onboarding.status, "in_progress");
+  assert.deepEqual(harness.listWorkflowCalls()[0]?.inputValues, [{
+    name: "companyMission",
+    value: "",
+  }, {
+    name: "githubSetupStatus",
+    value: "skipped",
+  }, {
+    name: "llmSetupStatus",
+    value: "skipped",
+  }]);
+});

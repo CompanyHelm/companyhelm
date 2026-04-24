@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { CompanyManagedLlmBudgetPanel } from "@/components/usage/company_managed_llm_budget_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
@@ -324,7 +325,15 @@ function ModelProviderCredentialDetailPageContent() {
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{providerLabel}</Badge>
+            <Badge className="gap-1.5" variant="outline">
+              <ModelProviderIcon
+                className="-ml-1 size-4 rounded-sm bg-transparent"
+                imageClassName="size-3"
+                label={providerLabel}
+                providerId={String(currentCredential?.modelProvider || "").trim()}
+              />
+              <span>{providerLabel}</span>
+            </Badge>
             <Badge variant="secondary">
               {formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
             </Badge>

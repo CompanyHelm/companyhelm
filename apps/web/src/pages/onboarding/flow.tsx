@@ -207,7 +207,7 @@ export function useOnboardingFlowController(options?: {
   const [missionDraft, setMissionDraft] = useState("");
   const ensureRequestKeyRef = useRef<string | null>(null);
   const onboarding = data.Me.company.onboarding;
-  const missionResolved = Boolean(onboarding.companyMission?.trim());
+  const missionResolved = Boolean(onboarding.companyMission?.trim() || onboarding.missionSkippedAt);
   const githubResolved = onboarding.githubSetupStatus !== "pending";
   const llmResolved = onboarding.llmSetupStatus !== "pending";
   const setupResolved = missionResolved && githubResolved && llmResolved;
