@@ -173,7 +173,7 @@ function DevSignInCard() {
 
   return (
     <DevAuthShell
-      description="Choose a dev user, then select which company to impersonate. If the user only has one company, CompanyHelm opens it directly."
+      description="Sign in by email or choose a dev user, then select which company to impersonate. If the user only has one company, CompanyHelm opens it directly."
       footer={(
         <span className="flex flex-wrap gap-3">
           <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Choose or add a dev user</Link>
@@ -195,14 +195,22 @@ function DevSignInCard() {
           {(errorMessage || authContext.devAuth.errorMessage) ? (
             <p className="text-sm text-destructive">{errorMessage || authContext.devAuth.errorMessage}</p>
           ) : null}
+          <p className="text-xs text-muted-foreground">
+            URL shortcut: add <code>?email=…</code> or <code>?userId=…</code> to the page URL to sign in directly.
+          </p>
           <Button className="w-full" disabled={submitting} size="lg" type="submit">
             {submitting ? "Loading user…" : "Continue by email"}
           </Button>
         </form>
         <div className="space-y-3 border-t border-border/70 pt-5">
-          <div>
-            <h3 className="text-sm font-medium text-foreground">Available dev users</h3>
-            <p className="text-xs text-muted-foreground">Pick a user first, then choose which company to open.</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Available dev users</h3>
+              <p className="text-xs text-muted-foreground">Pick a user first, then choose which company to open.</p>
+            </div>
+            <Button asChild size="sm" type="button">
+              <Link to="/sign-up">Add user</Link>
+            </Button>
           </div>
           <DevUserListCard
             emptyMessage="No dev users exist yet. Create one from the sign-up page."
