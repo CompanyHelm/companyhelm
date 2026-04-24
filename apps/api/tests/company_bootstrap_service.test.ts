@@ -295,6 +295,17 @@ class CompanyBootstrapServiceTestHarness {
                   return;
                 }
 
+                if (table === agents) {
+                  const agent = agentRows[0];
+                  if (agent) {
+                    agent.defaultComputeProviderDefinitionId = value.defaultComputeProviderDefinitionId as string;
+                    agent.defaultModelProviderCredentialModelId = value.defaultModelProviderCredentialModelId as string;
+                    agent.default_reasoning_level = value.default_reasoning_level as string | null;
+                    agent.updated_at = value.updated_at as Date;
+                  }
+                  return;
+                }
+
                 throw new Error("Unexpected update table.");
               },
             };
@@ -702,14 +713,15 @@ test("CompanyBootstrapService skips the CompanyHelm model provider when the Open
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
-test("CompanyBootstrapService seeds the CEO agent for newly created companies", async () => {
+test("CompanyBootstrapService creates the CEO onboarding assets lazily", async () => {
   const harness = new CompanyBootstrapServiceTestHarness();
 
-  await harness.buildService().ensureCompanyDefaults(
+  await harness.buildService().ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
+  await harness.buildService().ensureOnboardingAssets(
     harness.buildTransaction() as never,
-    "company-1",
     {
-      seedAgent: true,
+      companyId: "company-1",
+      llmSetupStatus: "third_party",
     },
   );
 
@@ -753,14 +765,10 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.match(workflowSteps[2]?.instructions_template ?? "", /3 to 5 agents/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /additional agents/);
 
-  const [onboarding] = harness.listCompanyOnboardings();
-  assert.equal(onboarding?.companyId, "company-1");
-  assert.equal(onboarding?.status, "not_started");
-  assert.equal(onboarding?.sessionId, null);
-  assert.equal(onboarding?.workflowRunId, null);
+  assert.deepEqual(harness.listCompanyOnboardings(), []);
 });
 
-test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
+test("CompanyBootstrapService does not duplicate onboarding assets when rerun", async () => {
   const now = new Date("2026-04-03T18:00:00.000Z");
   const harness = new CompanyBootstrapServiceTestHarness({
     agentSkillRows: expectedSystemSkillKeys.map((systemSkillKey) => ({
@@ -848,8 +856,8 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       companyId: "company-1",
       createdAt: now,
       defaultValue: "",
-      description: "Mission or goals captured during static onboarding. Empty means the user skipped it.",
-      isRequired: false,
+      description: "Business goals captured during static onboarding. This should guide the CEO's recommendations.",
+      isRequired: true,
       name: "companyMission",
       workflowDefinitionId: "workflow-1",
     }, {
@@ -871,7 +879,7 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
     }],
     workflowStepDefinitionRows: [{
       createdAt: now,
-      instructions_template: "Summarize mission and ask about configuring additional agents.",
+      instructions_template: "Reflect companyMission and ask about configuring additional agents.",
       name: "Frame the onboarding goals",
       ordinal: 1,
       stepId: "frame-onboarding-goals",
@@ -915,11 +923,12 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   });
   const service = harness.buildService();
 
-  await service.ensureCompanyDefaults(
+  await service.ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
+  await service.ensureOnboardingAssets(
     harness.buildTransaction() as never,
-    "company-1",
     {
-      seedAgent: true,
+      companyId: "company-1",
+      llmSetupStatus: "third_party",
     },
   );
 

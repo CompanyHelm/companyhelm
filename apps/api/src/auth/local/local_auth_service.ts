@@ -175,9 +175,7 @@ export class LocalAuthService {
         companyId: createdCompany.id,
         userId: createdUser.id,
       });
-      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id, {
-        seedAgent: true,
-      });
+      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 
       await insertableDatabase
         .insert(localAuthCredentials)

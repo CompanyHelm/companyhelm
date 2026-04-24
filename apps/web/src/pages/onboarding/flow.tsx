@@ -207,7 +207,7 @@ export function useOnboardingFlowController(options?: {
   const [missionDraft, setMissionDraft] = useState("");
   const ensureRequestKeyRef = useRef<string | null>(null);
   const onboarding = data.Me.company.onboarding;
-  const missionResolved = Boolean(onboarding.companyMission) || Boolean(onboarding.missionSkippedAt);
+  const missionResolved = Boolean(onboarding.companyMission?.trim());
   const githubResolved = onboarding.githubSetupStatus !== "pending";
   const llmResolved = onboarding.llmSetupStatus !== "pending";
   const setupResolved = missionResolved && githubResolved && llmResolved;
@@ -453,14 +453,14 @@ export function resolveCurrentStep(input: {
   llmResolved: boolean;
   missionResolved: boolean;
 }): OnboardingStepKey {
-  if (!input.missionResolved) {
-    return "mission";
-  }
   if (!input.githubResolved) {
     return "github";
   }
+  if (!input.llmResolved) {
+    return "model-provider";
+  }
 
-  return "model-provider";
+  return "mission";
 }
 
 export function onboardingPath(step: OnboardingStepKey): string {
@@ -497,7 +497,7 @@ export function OnboardingStepFrame(props: {
   helperText: string;
   title: string;
 }) {
-  const stepNumber = props.currentStep === "mission" ? 1 : (props.currentStep === "github" ? 2 : 3);
+  const stepNumber = props.currentStep === "github" ? 1 : (props.currentStep === "model-provider" ? 2 : 3);
   return (
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-center px-4 py-6">
       <section className="rounded-2xl border border-border/70 bg-card/85 p-6 shadow-sm">

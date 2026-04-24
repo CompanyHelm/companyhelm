@@ -40,16 +40,40 @@ function MissionPageContent() {
       });
       return;
     }
+    if (!controller.githubResolved) {
+      navigateToOnboardingStep({
+        navigate,
+        organizationSlug,
+        replace: true,
+        step: "github",
+      });
+      return;
+    }
+    if (!controller.llmResolved) {
+      navigateToOnboardingStep({
+        navigate,
+        organizationSlug,
+        replace: true,
+        step: "model-provider",
+      });
+    }
 
-  }, [controller.onboarding.status, controller.setupResolved, navigate, organizationSlug]);
+  }, [
+    controller.githubResolved,
+    controller.llmResolved,
+    controller.onboarding.status,
+    controller.setupResolved,
+    navigate,
+    organizationSlug,
+  ]);
 
   return (
     <OnboardingStepFrame
       currentStep="mission"
-      description="Capture the company mission and near-term goals so the CEO workflow starts with real context."
+      description="Tell CompanyHelm what you want it to achieve for the business before the CEO chat starts."
       errorMessage={controller.errorMessage}
-      helperText="This seeds the CEO's first recommendations about agent structure, repo review, and useful skills."
-      title="Company mission and goals"
+      helperText="These goals are passed directly into the CEO onboarding workflow as its starting context."
+      title="Business goals"
     >
       <textarea
         className="min-h-40 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
@@ -57,10 +81,10 @@ function MissionPageContent() {
           controller.setMissionDraft(event.target.value);
           controller.clearErrorMessage();
         }}
-        placeholder="Describe the mission, near-term goals, constraints, and what CompanyHelm should help with first."
+        placeholder="Describe the business outcome you want, the immediate goals, constraints, and what CompanyHelm should help achieve first."
         value={controller.missionDraft}
       />
-      <OnboardingNavigation>
+      <OnboardingNavigation backStep="model-provider">
         <Button
           disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
           onClick={() => {
@@ -68,37 +92,18 @@ function MissionPageContent() {
             void controller.updateOnboarding({
               companyMission: controller.missionDraft.trim(),
             }).then(() => {
-              navigateToOnboardingStep({
-                navigate,
-                organizationSlug,
-                step: "github",
+              void navigate({
+                params: {
+                  organizationSlug,
+                },
+                to: OrganizationPath.route("/onboarding"),
               });
             }).catch(() => undefined);
           }}
           size="sm"
           type="button"
         >
-          Save and continue
-        </Button>
-        <Button
-          disabled={controller.isUpdateCompanyOnboardingInFlight}
-          onClick={() => {
-            controller.clearErrorMessage();
-            void controller.updateOnboarding({
-              skipMission: true,
-            }).then(() => {
-              navigateToOnboardingStep({
-                navigate,
-                organizationSlug,
-                step: "github",
-              });
-            }).catch(() => undefined);
-          }}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Skip for now
+          Start CEO onboarding
         </Button>
       </OnboardingNavigation>
     </OnboardingStepFrame>

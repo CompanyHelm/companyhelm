@@ -171,9 +171,7 @@ export class DevAuthService {
         companyId: createdCompany.id,
         userId: user.id,
       });
-      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id, {
-        seedAgent: true,
-      });
+      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 
       const membershipCompanies = await this.findMembershipCompanies(transaction, user.id);
       return this.buildUserDetailDocument(user, membershipCompanies);

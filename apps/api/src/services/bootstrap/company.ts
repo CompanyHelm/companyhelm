@@ -41,6 +41,7 @@ type ComputeProviderDefinitionRecord = {
 
 type ModelProviderCredentialRecord = {
   id: string;
+  isDefault?: boolean;
   isManaged: boolean;
   modelProvider: string;
 };
@@ -49,6 +50,7 @@ type ModelProviderCredentialModelRecord = {
   id: string;
   isDefault: boolean;
   modelId: string;
+  modelProviderCredentialId?: string;
   reasoningLevels: string[] | null;
 };
 
@@ -110,8 +112,8 @@ export class CompanyBootstrapService {
   ].join("\n");
   private static readonly SEED_ONBOARDING_WORKFLOW_INPUTS = [{
     defaultValue: "",
-    description: "Mission or goals captured during static onboarding. Empty means the user skipped it.",
-    isRequired: false,
+    description: "Business goals captured during static onboarding. This should guide the CEO's recommendations.",
+    isRequired: true,
     name: "companyMission",
   }, {
     defaultValue: "pending",
@@ -128,8 +130,8 @@ export class CompanyBootstrapService {
     instructions: [
       "Welcome the user to CompanyHelm as their CEO and explicitly reference the static onboarding inputs.",
       "Summarize the current setup state using companyMission, githubSetupStatus, and llmSetupStatus.",
-      "If companyMission is non-empty, reflect it back in one or two sentences and ask one question: whether the user wants to configure additional agents now.",
-      "If companyMission is empty, ask the user for the short mission or near-term goal that should guide the first agent team before proposing any setup.",
+      "Reflect the companyMission back in one or two sentences as the business outcome CompanyHelm should optimize for.",
+      "Ask one question: whether the user wants to configure additional agents now.",
       "Explain that the next steps are repository inspection, skill options, and a concrete agent recommendation set.",
     ].join("\n"),
     name: "Frame the onboarding goals",
@@ -245,42 +247,37 @@ export class CompanyBootstrapService {
   async ensureCompanyDefaults(
     transaction: DatabaseTransactionInterface,
     companyId: string,
-    options: {
-      seedAgent?: boolean;
-    } = {},
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
-    let modelProviderCredential: ModelProviderCredentialRecord | null = null;
     if (this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
-      modelProviderCredential = await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+      await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
     }
     await this.ensureDefaultTaskStages(transaction, companyId);
-    if (options.seedAgent) {
-      await this.ensureCompanyOnboardingWorkflow(transaction, companyId);
-      await this.ensureCompanyOnboardingState(transaction, companyId);
-    }
-    if (options.seedAgent && modelProviderCredential) {
-      const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, companyId);
-      if (!computeProviderDefinition) {
-        throw new Error("Failed to resolve CompanyHelm compute provider definition for the seed agent.");
-      }
+  }
 
-      const seedAgent = await this.ensureCompanyHelmSeedAgent(
-        transaction,
-        companyId,
-        computeProviderDefinition.id,
-        modelProviderCredential.id,
-      );
-      await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, companyId, seedAgent.id);
-      return;
+  async ensureOnboardingAssets(
+    transaction: DatabaseTransactionInterface,
+    input: {
+      companyId: string;
+      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+    },
+  ): Promise<void> {
+    await this.ensureCompanyHelmComputeProviderDefinition(transaction, input.companyId);
+    await this.ensureCompanyOnboardingWorkflow(transaction, input.companyId);
+
+    const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, input.companyId);
+    if (!computeProviderDefinition) {
+      throw new Error("Failed to resolve CompanyHelm compute provider definition for the CEO agent.");
     }
 
-    if (options.seedAgent) {
-      const existingSeedAgent = await this.findCompanyHelmSeedAgent(transaction, companyId);
-      if (existingSeedAgent) {
-        await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, companyId, existingSeedAgent.id);
-      }
-    }
+    const modelSelection = await this.resolveOnboardingAgentModelSelection(transaction, input);
+    const seedAgent = await this.ensureCompanyHelmSeedAgent(
+      transaction,
+      input.companyId,
+      computeProviderDefinition.id,
+      modelSelection,
+    );
+    await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, input.companyId, seedAgent.id);
   }
 
   private async findCompanyByClerkOrganizationId(
@@ -591,20 +588,26 @@ export class CompanyBootstrapService {
     transaction: DatabaseTransactionInterface,
     companyId: string,
     computeProviderDefinitionId: string,
-    modelProviderCredentialId: string,
+    modelSelection: {
+      defaultModelProviderCredentialModelId: string;
+      defaultReasoningLevel: string | null;
+    },
   ): Promise<AgentRecord> {
     const existingAgent = await this.findCompanyHelmSeedAgent(transaction, companyId);
     if (existingAgent) {
+      await (transaction as BootstrapUpdatableDatabase)
+        .update(agents)
+        .set({
+          defaultComputeProviderDefinitionId: computeProviderDefinitionId,
+          defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
+          default_reasoning_level: modelSelection.defaultReasoningLevel,
+          updated_at: new Date(),
+        })
+        .where(and(
+          eq(agents.companyId, companyId),
+          eq(agents.id, existingAgent.id),
+        ));
       return existingAgent;
-    }
-
-    const defaultModel = await this.findCompanyHelmDefaultModel(
-      transaction,
-      companyId,
-      modelProviderCredentialId,
-    );
-    if (!defaultModel) {
-      throw new Error("Failed to resolve CompanyHelm default model for the seed agent.");
     }
 
     const now = new Date();
@@ -616,8 +619,8 @@ export class CompanyBootstrapService {
         created_at: now,
         defaultComputeProviderDefinitionId: computeProviderDefinitionId,
         defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
-        defaultModelProviderCredentialModelId: defaultModel.id,
-        default_reasoning_level: this.resolveCompanyHelmDefaultReasoningLevel(defaultModel.reasoningLevels ?? []),
+        defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
+        default_reasoning_level: modelSelection.defaultReasoningLevel,
         id: seedAgentId,
         name: CompanyBootstrapService.SEED_AGENT_NAME,
         system_prompt: null,
@@ -807,6 +810,135 @@ export class CompanyBootstrapService {
     }
 
     return reasoningLevels[0] ?? null;
+  }
+
+  private async resolveOnboardingAgentModelSelection(
+    transaction: DatabaseTransactionInterface,
+    input: {
+      companyId: string;
+      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+    },
+  ): Promise<{
+    defaultModelProviderCredentialModelId: string;
+    defaultReasoningLevel: string | null;
+  }> {
+    const credentials = await this.listModelProviderCredentials(transaction, input.companyId);
+    const preferredCredential = await this.resolvePreferredOnboardingCredential(transaction, input, credentials);
+    if (!preferredCredential) {
+      throw new Error("Company onboarding requires an active model provider credential.");
+    }
+
+    const preferredModel = await this.findPreferredCredentialModel(
+      transaction,
+      input.companyId,
+      preferredCredential.id,
+    );
+    if (preferredModel) {
+      return {
+        defaultModelProviderCredentialModelId: preferredModel.id,
+        defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
+      };
+    }
+
+    if (!preferredCredential.isManaged && this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
+      const fallbackManagedCredential = await this.ensureCompanyHelmLlmProviderCredential(transaction, input.companyId);
+      const fallbackManagedModel = await this.findPreferredCredentialModel(
+        transaction,
+        input.companyId,
+        fallbackManagedCredential.id,
+      );
+      if (fallbackManagedModel) {
+        return {
+          defaultModelProviderCredentialModelId: fallbackManagedModel.id,
+          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(fallbackManagedModel.reasoningLevels ?? []),
+        };
+      }
+    }
+
+    throw new Error("Company onboarding requires at least one synced model for the selected provider.");
+  }
+
+  private async resolvePreferredOnboardingCredential(
+    transaction: DatabaseTransactionInterface,
+    input: {
+      companyId: string;
+      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+    },
+    existingCredentials: ModelProviderCredentialRecord[],
+  ): Promise<ModelProviderCredentialRecord | null> {
+    const thirdPartyCredentials = existingCredentials.filter((credential) => !credential.isManaged);
+    const managedCredentials = existingCredentials.filter((credential) => credential.isManaged);
+
+    if (input.llmSetupStatus === "company_managed") {
+      return this.selectPreferredCredential(managedCredentials)
+        ?? this.selectPreferredCredential(thirdPartyCredentials);
+    }
+    if (input.llmSetupStatus === "third_party") {
+      return this.selectPreferredCredential(thirdPartyCredentials)
+        ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId);
+    }
+
+    return this.selectPreferredCredential(thirdPartyCredentials)
+      ?? this.selectPreferredCredential(managedCredentials)
+      ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId);
+  }
+
+  private selectPreferredCredential(
+    credentials: ModelProviderCredentialRecord[],
+  ): ModelProviderCredentialRecord | null {
+    return credentials.find((credential) => credential.isDefault) ?? credentials[0] ?? null;
+  }
+
+  private async ensureManagedCredentialForFallback(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<ModelProviderCredentialRecord | null> {
+    if (!this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
+      return null;
+    }
+
+    return this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+  }
+
+  private async listModelProviderCredentials(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<ModelProviderCredentialRecord[]> {
+    return transaction
+      .select({
+        id: modelProviderCredentials.id,
+        isDefault: modelProviderCredentials.isDefault,
+        isManaged: modelProviderCredentials.isManaged,
+        modelProvider: modelProviderCredentials.modelProvider,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.status, "active"),
+      ))
+      .limit(20) as Promise<ModelProviderCredentialRecord[]>;
+  }
+
+  private async findPreferredCredentialModel(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+    credentialId: string,
+  ): Promise<ModelProviderCredentialModelRecord | null> {
+    const models = await (transaction
+      .select({
+        id: modelProviderCredentialModels.id,
+        isDefault: modelProviderCredentialModels.isDefault,
+        modelId: modelProviderCredentialModels.modelId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+      )) as unknown as Promise<ModelProviderCredentialModelRecord[]>);
+
+    return models.find((model) => model.isDefault) ?? models[0] ?? null;
   }
 
   private async ensureDefaultTaskStages(

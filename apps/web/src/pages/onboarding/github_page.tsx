@@ -41,17 +41,7 @@ function GithubPageContent() {
       });
       return;
     }
-    if (!controller.missionResolved) {
-      navigateToOnboardingStep({
-        navigate,
-        organizationSlug,
-        replace: true,
-        step: "mission",
-      });
-      return;
-    }
   }, [
-    controller.missionResolved,
     controller.onboarding.status,
     controller.setupResolved,
     navigate,
@@ -77,7 +67,7 @@ function GithubPageContent() {
           <p className="text-foreground">GitHub is connected and ready for repo discovery.</p>
         ) : null}
       </div>
-      <OnboardingNavigation backStep="mission">
+      <OnboardingNavigation>
         {controller.hasGithubInstallation ? (
           <Button
             disabled={controller.isUpdateCompanyOnboardingInFlight}

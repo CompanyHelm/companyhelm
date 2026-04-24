@@ -53,6 +53,16 @@ type CompanyOnboardingWorkflowService = {
   }>;
 };
 
+type CompanyOnboardingBootstrapService = {
+  ensureOnboardingAssets(
+    tx: AppRuntimeTransaction,
+    input: {
+      companyId: string;
+      llmSetupStatus: CompanyOnboardingLlmSetupStatus;
+    },
+  ): Promise<void>;
+};
+
 type CompanyOnboardingRow = CompanyOnboardingRecord;
 
 type AgentRow = {
@@ -89,6 +99,9 @@ export class CompanyOnboardingService {
     @inject(WorkflowService)
     private readonly workflowService: CompanyOnboardingWorkflowService =
       CompanyOnboardingService.createMissingWorkflowService(),
+    @inject(CompanyBootstrapService)
+    private readonly companyBootstrapService: CompanyOnboardingBootstrapService =
+      CompanyOnboardingService.createMissingBootstrapService(),
   ) {}
 
   async getOnboarding(
@@ -267,6 +280,10 @@ export class CompanyOnboardingService {
         throw new Error("Complete the onboarding setup steps before starting the CEO chat.");
       }
 
+      await this.companyBootstrapService.ensureOnboardingAssets(tx, {
+        companyId: input.companyId,
+        llmSetupStatus: existingOnboarding.llmSetupStatus,
+      });
       const agent = await this.requireSeedAgent(tx, input.companyId);
       const workflow = await this.requireSeedWorkflow(tx, input.companyId);
       const startedRun = await this.workflowService.startWorkflowRunInTransaction(tx, {
@@ -408,7 +425,7 @@ export class CompanyOnboardingService {
   }
 
   private isStaticSetupResolved(onboarding: CompanyOnboardingRecord): boolean {
-    const missionResolved = Boolean(onboarding.companyMission) || Boolean(onboarding.missionSkippedAt);
+    const missionResolved = Boolean(onboarding.companyMission?.trim());
     return missionResolved
       && onboarding.githubSetupStatus !== "pending"
       && onboarding.llmSetupStatus !== "pending";
@@ -500,6 +517,14 @@ export class CompanyOnboardingService {
       },
       async startWorkflowRunInTransaction() {
         throw new Error("Workflow service is not configured.");
+      },
+    };
+  }
+
+  private static createMissingBootstrapService(): CompanyOnboardingBootstrapService {
+    return {
+      async ensureOnboardingAssets() {
+        throw new Error("CompanyBootstrapService is required.");
       },
     };
   }

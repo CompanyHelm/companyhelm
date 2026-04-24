@@ -13,6 +13,17 @@ import {
   useOnboardingFlowController,
 } from "./flow";
 
+function resolveStepLabel(step: "github" | "mission" | "model-provider"): string {
+  if (step === "github") {
+    return "GitHub";
+  }
+  if (step === "model-provider") {
+    return "model provider";
+  }
+
+  return "business goals";
+}
+
 export function OnboardingPage() {
   return (
     <OnboardingPageSuspense>
@@ -99,13 +110,14 @@ function OnboardingPageContent() {
   }
 
   if (!controller.setupResolved) {
+    const activeStep = resolveCurrentStep({
+      githubResolved: controller.githubResolved,
+      llmResolved: controller.llmResolved,
+      missionResolved: controller.missionResolved,
+    });
     return (
       <OnboardingPageLoadingState
-        message={`Opening ${resolveCurrentStep({
-          githubResolved: controller.githubResolved,
-          llmResolved: controller.llmResolved,
-          missionResolved: controller.missionResolved,
-        }).replace("-", " ")} setup...`}
+        message={`Opening ${resolveStepLabel(activeStep)} setup...`}
       />
     );
   }

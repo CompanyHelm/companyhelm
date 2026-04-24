@@ -33,6 +33,10 @@ type OnboardingWorkflowCall = {
  * verify static step persistence, gating, and workflow-start side effects without Postgres.
  */
 class CompanyOnboardingServiceTestHarness {
+  private ensureOnboardingAssetsCalls: Array<{
+    companyId: string;
+    llmSetupStatus: CompanyOnboardingRow["llmSetupStatus"];
+  }> = [];
   private finalizeCount = 0;
   private readonly githubInstallations: Array<{ companyId: string }>;
   private readonly modelCredentials: ModelCredentialRow[];
@@ -50,25 +54,35 @@ class CompanyOnboardingServiceTestHarness {
   }
 
   buildService(): CompanyOnboardingService {
-    return new CompanyOnboardingService({
-      finalizeStartedWorkflowRun: async () => {
-        this.finalizeCount += 1;
-      },
-      startWorkflowRunInTransaction: async (_tx, input) => {
-        this.workflowCalls.push({
-          agentId: input.agentId,
-          companyId: input.companyId,
-          inputValues: input.inputValues,
-          startedByUserId: input.startedByUserId,
-          workflowDefinitionId: input.workflowDefinitionId,
-        });
+    return new CompanyOnboardingService(
+      {
+        finalizeStartedWorkflowRun: async () => {
+          this.finalizeCount += 1;
+        },
+        startWorkflowRunInTransaction: async (_tx, input) => {
+          this.workflowCalls.push({
+            agentId: input.agentId,
+            companyId: input.companyId,
+            inputValues: input.inputValues,
+            startedByUserId: input.startedByUserId,
+            workflowDefinitionId: input.workflowDefinitionId,
+          });
 
-        return {
-          queuedSessionId: "queued-session-1",
-          workflowRun: this.createWorkflowRun("run-1", "session-1"),
-        };
+          return {
+            queuedSessionId: "queued-session-1",
+            workflowRun: this.createWorkflowRun("run-1", "session-1"),
+          };
+        },
       },
-    });
+      {
+        ensureOnboardingAssets: async (_tx, input) => {
+          this.ensureOnboardingAssetsCalls.push({
+            companyId: input.companyId,
+            llmSetupStatus: input.llmSetupStatus,
+          });
+        },
+      },
+    );
   }
 
   buildTransactionProvider() {
@@ -189,6 +203,13 @@ class CompanyOnboardingServiceTestHarness {
 
   getFinalizeCount(): number {
     return this.finalizeCount;
+  }
+
+  listEnsureOnboardingAssetCalls(): Array<{
+    companyId: string;
+    llmSetupStatus: CompanyOnboardingRow["llmSetupStatus"];
+  }> {
+    return this.ensureOnboardingAssetsCalls;
   }
 
   loadOnboarding(): CompanyOnboardingRow | null {
@@ -326,6 +347,10 @@ test("CompanyOnboardingService starts the CEO workflow with mission and setup in
   assert.equal(onboarding.agentId, "agent-1");
   assert.equal(onboarding.sessionId, "session-1");
   assert.equal(onboarding.workflowRunId, "run-1");
+  assert.deepEqual(harness.listEnsureOnboardingAssetCalls(), [{
+    companyId: "company-1",
+    llmSetupStatus: "third_party",
+  }]);
   assert.deepEqual(harness.listWorkflowCalls(), [{
     agentId: "agent-1",
     companyId: "company-1",

@@ -41,15 +41,6 @@ function ModelProviderPageContent() {
       });
       return;
     }
-    if (!controller.missionResolved) {
-      navigateToOnboardingStep({
-        navigate,
-        organizationSlug,
-        replace: true,
-        step: "mission",
-      });
-      return;
-    }
     if (!controller.githubResolved) {
       navigateToOnboardingStep({
         navigate,
@@ -61,7 +52,6 @@ function ModelProviderPageContent() {
     }
   }, [
     controller.githubResolved,
-    controller.missionResolved,
     controller.onboarding.status,
     controller.setupResolved,
     navigate,
@@ -85,8 +75,8 @@ function ModelProviderPageContent() {
             and the first agent suggestions the broadest model coverage and the least friction.
           </p>
           <p>
-            After this step, CompanyHelm provisions the CEO chat. Its first workflow will ask about
-            additional agents, repo checkout, and patterns like BMAD or other public agent skill sets.
+            The next step asks what you want CompanyHelm to achieve for the business. Those goals are
+            then passed directly into the CEO onboarding chat.
           </p>
         </div>
         <OnboardingNavigation backStep="github">
@@ -107,11 +97,10 @@ function ModelProviderPageContent() {
               void controller.updateOnboarding({
                 llmSetupStatus: "third_party",
               }).then(() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/onboarding"),
+                navigateToOnboardingStep({
+                  navigate,
+                  organizationSlug,
+                  step: "mission",
                 });
               }).catch(() => undefined);
             }}
@@ -128,11 +117,10 @@ function ModelProviderPageContent() {
               void controller.updateOnboarding({
                 llmSetupStatus: "company_managed",
               }).then(() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/onboarding"),
+                navigateToOnboardingStep({
+                  navigate,
+                  organizationSlug,
+                  step: "mission",
                 });
               }).catch(() => undefined);
             }}
@@ -149,11 +137,10 @@ function ModelProviderPageContent() {
               void controller.updateOnboarding({
                 llmSetupStatus: "skipped",
               }).then(() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/onboarding"),
+                navigateToOnboardingStep({
+                  navigate,
+                  organizationSlug,
+                  step: "mission",
                 });
               }).catch(() => undefined);
             }}
@@ -168,11 +155,10 @@ function ModelProviderPageContent() {
       <OnboardingModelProviderDialog
         controller={controller}
         onCompleted={() => {
-          void navigate({
-            params: {
-              organizationSlug,
-            },
-            to: OrganizationPath.route("/onboarding"),
+          navigateToOnboardingStep({
+            navigate,
+            organizationSlug,
+            step: "mission",
           });
         }}
       />
