@@ -11,12 +11,15 @@ import {
   type DevSignUpInput,
 } from "@/auth/companyhelm_auth";
 import { DevAuthClient, type DevAuthUserSummaryDocument } from "@/auth/dev_auth_client";
-import type { LocalAuthSessionDocument } from "@/auth/local_auth_client";
+import { DevAuthSelectionStorage } from "@/auth/dev_auth_selection_storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OrganizationPath } from "@/lib/organization_path";
 
-const DEV_AUTH_STORAGE_KEY = "companyhelm.dev-auth.session-token";
+type DevAuthSessionState = {
+  company: DevAuthCompanyDocument;
+  userDetail: DevAuthUserDetailDocument;
+};
 
 function DevAuthShell(props: {
   children: ReactNode;
@@ -42,6 +45,7 @@ function DevAuthShell(props: {
 
 function DevUserListCard(props: {
   emptyMessage: string;
+  onSelectUser(userId: string): Promise<void>;
 }) {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<DevAuthUserSummaryDocument[]>([]);
@@ -99,8 +103,15 @@ function DevUserListCard(props: {
                 : "No active company yet"}
             </p>
           </div>
-          <Button asChild size="sm" type="button" variant="outline">
-            <Link search={{ userId: user.id }} to="/companies">Continue</Link>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void props.onSelectUser(user.id);
+            }}
+          >
+            Continue
           </Button>
         </div>
       ))}
@@ -110,9 +121,17 @@ function DevUserListCard(props: {
 
 function DevSignInCard() {
   const authContext = useDevAuthContext();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  async function handleSelectUser(userId: string): Promise<void> {
+    await authContext.devAuth.selectUser({
+      userId,
+    });
+    await navigate({ to: "/companies" });
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,9 +139,31 @@ function DevSignInCard() {
     setErrorMessage(null);
 
     try {
-      await authContext.devAuth.signIn({
+      const userDetail = await authContext.devAuth.loadUser({
         email,
       });
+      const onlyCompany = userDetail.companies.length === 1
+        ? userDetail.companies[0]
+        : null;
+      if (onlyCompany) {
+        await authContext.devAuth.signIn({
+          companyId: onlyCompany.id,
+          userId: userDetail.user.id,
+        });
+        await navigate({
+          params: {
+            organizationSlug: onlyCompany.slug,
+          },
+          to: OrganizationPath.route("/"),
+        });
+
+        return;
+      }
+
+      await authContext.devAuth.selectUser({
+        userId: userDetail.user.id,
+      });
+      await navigate({ to: "/companies" });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to sign in.");
     } finally {
@@ -132,7 +173,7 @@ function DevSignInCard() {
 
   return (
     <DevAuthShell
-      description="Use passwordless dev auth to jump into a user quickly, or browse the available dev users below."
+      description="Choose a dev user, then select which company to impersonate. If the user only has one company, CompanyHelm opens it directly."
       footer={(
         <span className="flex flex-wrap gap-3">
           <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Choose or add a dev user</Link>
@@ -154,11 +195,8 @@ function DevSignInCard() {
           {(errorMessage || authContext.devAuth.errorMessage) ? (
             <p className="text-sm text-destructive">{errorMessage || authContext.devAuth.errorMessage}</p>
           ) : null}
-          <p className="text-xs text-muted-foreground">
-            URL shortcut: add <code>?email=…</code> or <code>?userId=…</code> to the page URL to sign in directly.
-          </p>
           <Button className="w-full" disabled={submitting} size="lg" type="submit">
-            {submitting ? "Signing in…" : "Sign in by email"}
+            {submitting ? "Loading user…" : "Continue by email"}
           </Button>
         </form>
         <div className="space-y-3 border-t border-border/70 pt-5">
@@ -166,7 +204,10 @@ function DevSignInCard() {
             <h3 className="text-sm font-medium text-foreground">Available dev users</h3>
             <p className="text-xs text-muted-foreground">Pick a user first, then choose which company to open.</p>
           </div>
-          <DevUserListCard emptyMessage="No dev users exist yet. Create one from the sign-up page." />
+          <DevUserListCard
+            emptyMessage="No dev users exist yet. Create one from the sign-up page."
+            onSelectUser={handleSelectUser}
+          />
         </div>
       </div>
     </DevAuthShell>
@@ -183,6 +224,13 @@ function DevSignUpCard() {
   const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  async function handleSelectUser(userId: string): Promise<void> {
+    await authContext.devAuth.selectUser({
+      userId,
+    });
+    await navigate({ to: "/companies" });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -194,13 +242,10 @@ function DevSignUpCard() {
         firstName,
         lastName,
       });
-
-      void navigate({
-        search: {
-          userId: nextUser.user.id,
-        },
-        to: "/companies",
+      await authContext.devAuth.selectUser({
+        userId: nextUser.user.id,
       });
+      await navigate({ to: "/companies" });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to create the dev user.");
     } finally {
@@ -236,7 +281,10 @@ function DevSignUpCard() {
               {isCreateFormVisible ? "Hide form" : "Add user"}
             </Button>
           </div>
-          <DevUserListCard emptyMessage="No dev users exist yet. Add the first one below." />
+          <DevUserListCard
+            emptyMessage="No dev users exist yet. Add the first one below."
+            onSelectUser={handleSelectUser}
+          />
         </div>
         {isCreateFormVisible ? (
           <form className="space-y-4 border-t border-border/70 pt-5" onSubmit={(event) => void handleSubmit(event)}>
@@ -368,8 +416,7 @@ function DevCompaniesCard(props: {
         companyId: company.id,
         userId: selectedUser.user.id,
       });
-
-      void navigate({
+      await navigate({
         params: {
           organizationSlug: company.slug,
         },
@@ -421,7 +468,7 @@ function DevCompaniesCard(props: {
 
   return (
     <DevAuthShell
-      description="Open one of this user’s companies or create a new one before signing in."
+      description="Open one of this user’s companies or create a new one before entering the workspace."
       footer={(
         <span className="flex flex-wrap gap-3">
           <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Back to users</Link>
@@ -483,18 +530,6 @@ function DevCompaniesCard(props: {
   );
 }
 
-function resolveOrganization(
-  session: LocalAuthSessionDocument | null,
-): CompanyHelmOrganization | null {
-  if (!session) {
-    return null;
-  }
-
-  return session.organizations.find((organization) => organization.id === session.activeOrganizationId)
-    ?? session.organizations[0]
-    ?? null;
-}
-
 function resolveInitials(name: {
   firstName: string;
   lastName: string | null;
@@ -527,81 +562,59 @@ function useContextOrThrow() {
 }
 
 /**
- * Provides the shared CompanyHelm auth context from the passwordless dev auth endpoints and keeps
- * the active bearer token in local storage across page reloads.
+ * Provides the shared CompanyHelm auth context from the dev-only selection flow. Instead of JWTs,
+ * it restores the chosen user and company from local storage and emits the explicit dev headers on
+ * every GraphQL request.
  */
 export function CompanyHelmDevProvider(props: {
   children: ReactNode;
 }) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [session, setSession] = useState<LocalAuthSessionDocument | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [session, setSession] = useState<DevAuthSessionState | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
     const client = new DevAuthClient();
+    const storage = new DevAuthSelectionStorage();
 
-    async function loadSessionState() {
-      if (typeof window === "undefined") {
+    async function loadStoredSelection() {
+      const selection = storage.read();
+      if (!selection.userId || !selection.companyId) {
         if (!isCancelled) {
-          setIsLoaded(true);
-        }
-        return;
-      }
-
-      const url = new URL(window.location.href);
-      const userId = String(url.searchParams.get("userId") || "").trim();
-      const email = String(url.searchParams.get("email") || "").trim();
-
-      if (userId || email) {
-        try {
-          const nextSession = await client.signIn({
-            email: email || undefined,
-            userId: userId || undefined,
-          });
-          if (!isCancelled) {
-            window.localStorage.setItem(DEV_AUTH_STORAGE_KEY, nextSession.token);
-            setSession(nextSession);
-            setErrorMessage(null);
-          }
-        } catch (error) {
-          if (!isCancelled) {
-            window.localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
-            setSession(null);
-            setErrorMessage(error instanceof Error ? error.message : "Failed to sign in.");
-          }
-        } finally {
-          url.searchParams.delete("email");
-          url.searchParams.delete("userId");
-          window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
-          if (!isCancelled) {
-            setIsLoaded(true);
-          }
-        }
-        return;
-      }
-
-      const storedToken = window.localStorage.getItem(DEV_AUTH_STORAGE_KEY);
-      if (!storedToken) {
-        if (!isCancelled) {
-          setIsLoaded(true);
           setSession(null);
           setErrorMessage(null);
+          setIsLoaded(true);
         }
         return;
       }
 
       try {
-        const nextSession = await client.loadSession(storedToken);
+        const userDetail = await client.loadUser({
+          userId: selection.userId,
+        });
+        const company = userDetail.companies.find((entry) => entry.id === selection.companyId) ?? null;
+        if (!company) {
+          storage.clear();
+          if (!isCancelled) {
+            setSession(null);
+            setErrorMessage(null);
+          }
+          return;
+        }
+
         if (!isCancelled) {
-          window.localStorage.setItem(DEV_AUTH_STORAGE_KEY, nextSession.token);
-          setSession(nextSession);
+          setSession({
+            company,
+            userDetail,
+          });
           setErrorMessage(null);
         }
       } catch {
+        storage.clear();
         if (!isCancelled) {
-          window.localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
           setSession(null);
+          setErrorMessage(null);
         }
       } finally {
         if (!isCancelled) {
@@ -610,35 +623,38 @@ export function CompanyHelmDevProvider(props: {
       }
     }
 
-    void loadSessionState();
+    void loadStoredSelection();
 
     return () => {
       isCancelled = true;
     };
   }, []);
 
-  async function persistSession(nextSession: LocalAuthSessionDocument): Promise<void> {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(DEV_AUTH_STORAGE_KEY, nextSession.token);
-    }
-
-    setSession(nextSession);
+  async function selectUser(input: {
+    userId: string;
+  }): Promise<void> {
+    new DevAuthSelectionStorage().selectUser(input);
+    setSession(null);
     setErrorMessage(null);
     setIsLoaded(true);
   }
 
-  async function clearSession(): Promise<void> {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
+  async function signIn(input: DevSignInInput): Promise<void> {
+    const userDetail = await new DevAuthClient().loadUser({
+      userId: input.userId,
+    });
+    const company = userDetail.companies.find((entry) => entry.id === input.companyId) ?? null;
+    if (!company) {
+      throw new Error("This user is not assigned to the requested company.");
     }
 
-    setSession(null);
+    new DevAuthSelectionStorage().selectCompany(input);
+    setSession({
+      company,
+      userDetail,
+    });
+    setErrorMessage(null);
     setIsLoaded(true);
-  }
-
-  async function signIn(input: DevSignInInput): Promise<void> {
-    const nextSession = await new DevAuthClient().signIn(input);
-    await persistSession(nextSession);
   }
 
   async function signUp(input: DevSignUpInput): Promise<DevAuthUserDetailDocument> {
@@ -650,38 +666,48 @@ export function CompanyHelmDevProvider(props: {
   }
 
   async function loadUser(input: {
-    userId: string;
+    email?: string;
+    userId?: string;
   }): Promise<DevAuthUserDetailDocument> {
     return await new DevAuthClient().loadUser(input);
   }
 
   async function signOut(): Promise<void> {
-    const token = session?.token ?? (typeof window === "undefined" ? null : window.localStorage.getItem(DEV_AUTH_STORAGE_KEY));
-    await clearSession();
-
-    if (!token) {
-      return;
-    }
-
-    try {
-      await new DevAuthClient().signOut(token);
-    } catch {
-      return;
-    }
+    new DevAuthSelectionStorage().clear();
+    setSession(null);
+    setErrorMessage(null);
+    setIsLoaded(true);
   }
 
-  const activeOrganization = resolveOrganization(session);
+  const activeOrganization: CompanyHelmOrganization | null = session
+    ? {
+      id: session.company.id,
+      name: session.company.name,
+      slug: session.company.slug,
+    }
+    : null;
+
   const contextValue = useMemo(() => ({
     auth: {
-      getToken: async () => session?.token ?? null,
+      getRequestHeaders: async () => {
+        const headers: Record<string, string> = {};
+        if (session) {
+          headers["x-dev-company-id"] = session.company.id;
+          headers["x-dev-user-id"] = session.userDetail.user.id;
+        }
+
+        return headers;
+      },
+      getToken: async () => null,
       isLoaded,
       isSignedIn: session !== null,
-      userId: session?.user.id ?? null,
+      userId: session?.userDetail.user.id ?? null,
     },
     devAuth: {
       createCompany,
       errorMessage,
       loadUser,
+      selectUser,
       signIn,
       signOut,
       signUp,
@@ -696,15 +722,31 @@ export function CompanyHelmDevProvider(props: {
       setActive: async (input: {
         organization: string;
       }) => {
-        if (!activeOrganization || input.organization === activeOrganization.id) {
+        if (!session) {
           return;
         }
 
-        throw new Error("Dev auth sessions currently support one company at a time.");
+        if (input.organization === session.company.id) {
+          return;
+        }
+
+        const nextCompany = session.userDetail.companies.find((company) => company.id === input.organization) ?? null;
+        if (!nextCompany) {
+          throw new Error("Dev auth selection is not attached to that company.");
+        }
+
+        await signIn({
+          companyId: nextCompany.id,
+          userId: session.userDetail.user.id,
+        });
       },
       userMemberships: {
-        data: session?.organizations.map((organization) => ({
-          organization,
+        data: session?.userDetail.companies.map((company) => ({
+          organization: {
+            id: company.id,
+            name: company.name,
+            slug: company.slug,
+          },
         })) ?? [],
       },
     },
@@ -713,12 +755,12 @@ export function CompanyHelmDevProvider(props: {
       isLoaded,
       user: session
         ? {
-          firstName: session.user.firstName,
-          id: session.user.id,
-          isPlatformAdmin: session.user.isPlatformAdmin,
-          lastName: session.user.lastName,
+          firstName: session.userDetail.user.firstName,
+          id: session.userDetail.user.id,
+          isPlatformAdmin: undefined,
+          lastName: session.userDetail.user.lastName,
           primaryEmailAddress: {
-            emailAddress: session.user.email,
+            emailAddress: session.userDetail.user.email,
           },
         }
         : null,

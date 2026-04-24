@@ -23,7 +23,7 @@ export class DevAuthProvider extends AuthProvider {
     headers: AuthenticateBearerTokenHeaders = {},
   ): Promise<AuthSession> {
     void database;
-    void headers;
-    return this.devAuthService.authenticateBearerToken(token);
+    void token;
+    return this.devAuthService.authenticateHeaders(headers);
   }
 }

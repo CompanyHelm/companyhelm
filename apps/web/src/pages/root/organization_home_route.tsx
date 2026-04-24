@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { OrganizationList, useOrganizationList, useUser } from "@/components/auth/auth_provider";
+import { OrganizationList, useOrganizationList } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
 import { config } from "@/config";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -16,7 +16,6 @@ export function OrganizationHomeRoute() {
       pageSize: 100,
     },
   });
-  const user = useUser();
   const memberships = organizationListState.userMemberships.data;
   const homeDecision = organizationListState.isLoaded
     ? OrganizationHomeDecision.resolve({
@@ -79,11 +78,6 @@ export function OrganizationHomeRoute() {
               onClick={() => {
                 void navigate({
                   replace: true,
-                  search: user.user?.id
-                    ? {
-                      userId: user.user.id,
-                    }
-                    : {},
                   to: "/companies",
                 });
               }}

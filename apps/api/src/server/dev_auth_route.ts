@@ -1,17 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { inject, injectable } from "inversify";
 import { z } from "zod";
-import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
 import { DevAuthService } from "../auth/dev/dev_auth_service.ts";
 import { Config } from "../config/schema.ts";
-
-const DevAuthSignInRequestSchema = z.object({
-  companyId: z.string().optional(),
-  email: z.string().optional(),
-  userId: z.string().optional(),
-}).refine((value) => Boolean(value.email || value.userId), {
-  message: "Either email or userId is required.",
-});
 
 const DevAuthSignUpRequestSchema = z.object({
   email: z.string(),
@@ -20,17 +11,16 @@ const DevAuthSignUpRequestSchema = z.object({
 });
 
 const DevAuthUserRequestSchema = z.object({
-  userId: z.string(),
+  email: z.string().optional(),
+  userId: z.string().optional(),
+}).refine((value) => Boolean(value.email || value.userId), {
+  message: "Either email or userId is required.",
 });
 
 const DevAuthCreateCompanyRequestSchema = z.object({
   companyName: z.string(),
   userId: z.string(),
 });
-
-type DevAuthSignInRequest = FastifyRequest<{
-  Body: z.infer<typeof DevAuthSignInRequestSchema>;
-}>;
 
 type DevAuthSignUpRequest = FastifyRequest<{
   Body: z.infer<typeof DevAuthSignUpRequestSchema>;
@@ -45,8 +35,8 @@ type DevAuthCreateCompanyRequest = FastifyRequest<{
 }>;
 
 /**
- * Hosts the passwordless dev auth endpoints that the web app uses when runtime auth is set to
- * `dev`.
+ * Hosts the dev-only user and company management endpoints used by the web app when runtime auth
+ * is set to `dev`.
  */
 @injectable()
 export class DevAuthRoute {
@@ -73,9 +63,6 @@ export class DevAuthRoute {
     app.get(`${DevAuthRoute.BASE_PATH}/user`, async (request: DevAuthUserRequest, reply: FastifyReply) => {
       await this.handleLoadUser(request, reply);
     });
-    app.post(`${DevAuthRoute.BASE_PATH}/sign-in`, async (request: DevAuthSignInRequest, reply: FastifyReply) => {
-      await this.handleSignIn(request, reply);
-    });
     app.post(`${DevAuthRoute.BASE_PATH}/sign-up`, async (request: DevAuthSignUpRequest, reply: FastifyReply) => {
       await this.handleSignUp(request, reply);
     });
@@ -85,12 +72,6 @@ export class DevAuthRoute {
         await this.handleCreateCompany(request, reply);
       },
     );
-    app.get(`${DevAuthRoute.BASE_PATH}/session`, async (request: FastifyRequest, reply: FastifyReply) => {
-      await this.handleLoadSession(request, reply);
-    });
-    app.post(`${DevAuthRoute.BASE_PATH}/sign-out`, async (request: FastifyRequest, reply: FastifyReply) => {
-      await this.handleSignOut(request, reply);
-    });
   }
 
   private async handleListUsers(reply: FastifyReply): Promise<void> {
@@ -98,15 +79,6 @@ export class DevAuthRoute {
       await reply.send({
         users: await this.devAuthService.listUsers(),
       });
-    } catch (error) {
-      await this.replyWithError(reply, error);
-    }
-  }
-
-  private async handleSignIn(request: DevAuthSignInRequest, reply: FastifyReply): Promise<void> {
-    try {
-      const body = DevAuthSignInRequestSchema.parse(request.body);
-      await reply.send(await this.devAuthService.signIn(body));
     } catch (error) {
       await this.replyWithError(reply, error);
     }
@@ -137,36 +109,6 @@ export class DevAuthRoute {
     } catch (error) {
       await this.replyWithError(reply, error);
     }
-  }
-
-  private async handleLoadSession(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    try {
-      const token = this.requireBearerToken(request);
-      await reply.send(await this.devAuthService.loadSession(token));
-    } catch (error) {
-      await this.replyWithError(reply, error, 401);
-    }
-  }
-
-  private async handleSignOut(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    try {
-      const token = this.requireBearerToken(request);
-      await this.devAuthService.signOut(token);
-      await reply.send({
-        success: true,
-      });
-    } catch (error) {
-      await this.replyWithError(reply, error, 401);
-    }
-  }
-
-  private requireBearerToken(request: FastifyRequest): string {
-    const token = AuthProviderFactory.extractBearerToken(request.headers.authorization);
-    if (!token) {
-      throw new Error("Authorization header is required.");
-    }
-
-    return token;
   }
 
   private async replyWithError(

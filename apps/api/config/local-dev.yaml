@@ -2,7 +2,4 @@ include: "./local.yaml"
 
 auth:
   provider: "dev"
-  dev:
-    session_duration_hours: 168
-    session_issuer: "companyhelm.dev"
-    session_secret: "${DEV_AUTH_SESSION_SECRET}"
+  dev: {}

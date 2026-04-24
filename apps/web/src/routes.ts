@@ -92,10 +92,6 @@ type SettingsRouteSearch = {
   tab?: "tasks" | "AI" | "company";
 };
 
-type CompaniesRouteSearch = {
-  userId?: string;
-};
-
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -194,14 +190,6 @@ function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsR
 
   return {
     tab: search.tab === "tasks" ? "tasks" : undefined,
-  };
-}
-
-function validateCompaniesRouteSearch(search: Record<string, unknown>): CompaniesRouteSearch {
-  return {
-    userId: typeof search.userId === "string" && search.userId.trim().length > 0
-      ? search.userId.trim()
-      : undefined,
   };
 }
 
@@ -487,7 +475,6 @@ const signUpRoute = createRoute({
 const companiesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/companies",
-  validateSearch: validateCompaniesRouteSearch,
   component: CompaniesAuthRoute,
 });
 

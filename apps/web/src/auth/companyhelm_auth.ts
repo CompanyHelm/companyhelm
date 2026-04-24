@@ -23,6 +23,7 @@ export type CompanyHelmUser = {
 };
 
 export type CompanyHelmAuthState = {
+  getRequestHeaders: () => Promise<Record<string, string>>;
   getToken: () => Promise<string | null>;
   isLoaded: boolean;
   isSignedIn: boolean;
@@ -63,9 +64,8 @@ export type LocalSignUpInput = {
 };
 
 export type DevSignInInput = {
-  companyId?: string;
-  email?: string;
-  userId?: string;
+  companyId: string;
+  userId: string;
 };
 
 export type DevAuthCompanyDocument = {
@@ -106,8 +106,12 @@ export type CompanyHelmAuthContextValue = {
     createCompany(input: DevCreateCompanyInput): Promise<DevAuthUserDetailDocument>;
     errorMessage?: string | null;
     loadUser(input: {
-      userId: string;
+      email?: string;
+      userId?: string;
     }): Promise<DevAuthUserDetailDocument>;
+    selectUser(input: {
+      userId: string;
+    }): Promise<void>;
     signIn(input: DevSignInInput): Promise<void>;
     signOut(): Promise<void>;
     signUp(input: DevSignUpInput): Promise<DevAuthUserDetailDocument>;

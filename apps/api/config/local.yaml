@@ -12,6 +12,8 @@ cors:
   allowed_headers:
     - "content-type"
     - "authorization"
+    - "x-dev-user-id"
+    - "x-dev-company-id"
 graphql:
   endpoint: "/graphql"
   graphiql: true
@@ -86,10 +88,7 @@ auth:
   #   session_issuer: "companyhelm.local"
   #   session_secret: "${LOCAL_AUTH_SESSION_SECRET}"
   # To enable passwordless dev auth instead of Clerk, switch provider to "dev" and use:
-  # dev:
-  #   session_duration_hours: 168
-  #   session_issuer: "companyhelm.dev"
-  #   session_secret: "${DEV_AUTH_SESSION_SECRET}"
+  # dev: {}
 security:
   encryption:
     key: "companyhelm-local-encryption-key"

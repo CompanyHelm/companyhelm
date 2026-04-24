@@ -10,11 +10,7 @@ class DevAuthRouteTestHarness {
     return {
       auth: provider === "dev"
         ? {
-          dev: {
-            session_duration_hours: 168,
-            session_issuer: "companyhelm.dev",
-            session_secret: "dev-session-secret",
-          },
+          dev: {},
           provider: "dev",
         }
         : {
@@ -30,7 +26,7 @@ class DevAuthRouteTestHarness {
   }
 }
 
-test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async () => {
+test("DevAuthRoute exposes the dev user browser and user loading endpoints", async () => {
   const app = Fastify();
   const route = new DevAuthRoute(
     DevAuthRouteTestHarness.createConfig("dev"),
@@ -47,7 +43,8 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
         }];
       },
       async loadUser(input: {
-        userId: string;
+        email?: string;
+        userId?: string;
       }) {
         return {
           companies: [{
@@ -56,35 +53,9 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
             slug: "acme",
           }],
           user: {
-            email: "dev@example.com",
+            email: input.email || "dev@example.com",
             firstName: "Dev",
-            id: input.userId,
-            lastName: "User",
-          },
-        };
-      },
-      async signIn(input: {
-        companyId?: string;
-        email?: string;
-        userId?: string;
-      }) {
-        return {
-          activeOrganizationId: input.companyId || "company-1",
-          organizations: [{
-            id: input.companyId || "company-1",
-            name: input.companyId === "company-2" ? "Beta" : "Acme",
-            slug: input.companyId === "company-2" ? "beta" : "acme",
-          }],
-          token: input.companyId === "company-2"
-            ? "token-2"
-            : input.email === "dev@example.com"
-              ? "token-1"
-              : "token-3",
-          user: {
-            email: "dev@example.com",
-            firstName: "Dev",
-            id: "user-1",
-            isPlatformAdmin: false,
+            id: input.userId || "user-1",
             lastName: "User",
           },
         };
@@ -94,12 +65,6 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
       },
       async createCompany() {
         throw new Error("createCompany should not be called.");
-      },
-      async loadSession() {
-        throw new Error("loadSession should not be called.");
-      },
-      async signOut() {
-        throw new Error("signOut should not be called.");
       },
     } as never,
   );
@@ -116,13 +81,12 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
     },
     url: "/auth/dev/user",
   });
-  const signInResponse = await app.inject({
-    method: "POST",
-    payload: {
-      companyId: "company-2",
-      userId: "user-1",
+  const emailResponse = await app.inject({
+    method: "GET",
+    query: {
+      email: "dev@example.com",
     },
-    url: "/auth/dev/sign-in",
+    url: "/auth/dev/user",
   });
 
   assert.equal(usersResponse.statusCode, 200);
@@ -151,8 +115,8 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
       lastName: "User",
     },
   });
-  assert.equal(signInResponse.statusCode, 200);
-  assert.equal(JSON.parse(signInResponse.body).token, "token-2");
+  assert.equal(emailResponse.statusCode, 200);
+  assert.equal(JSON.parse(emailResponse.body).user.email, "dev@example.com");
 
   await app.close();
 });
@@ -164,9 +128,6 @@ test("DevAuthRoute exposes the user creation and company creation endpoints", as
     {
       async listUsers() {
         throw new Error("listUsers should not be called.");
-      },
-      async signIn() {
-        throw new Error("signIn should not be called.");
       },
       async loadUser() {
         throw new Error("loadUser should not be called.");
@@ -203,12 +164,6 @@ test("DevAuthRoute exposes the user creation and company creation endpoints", as
             lastName: "User",
           },
         };
-      },
-      async loadSession() {
-        throw new Error("loadSession should not be called.");
-      },
-      async signOut() {
-        throw new Error("signOut should not be called.");
       },
     } as never,
   );

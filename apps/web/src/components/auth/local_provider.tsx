@@ -313,6 +313,14 @@ export function CompanyHelmLocalProvider(props: {
     <CompanyHelmAuthContext.Provider
       value={{
         auth: {
+          getRequestHeaders: async () => {
+            const headers: Record<string, string> = {};
+            if (session?.token) {
+              headers.authorization = `Bearer ${session.token}`;
+            }
+
+            return headers;
+          },
           getToken: async () => session?.token ?? null,
           isLoaded,
           isSignedIn: session !== null,

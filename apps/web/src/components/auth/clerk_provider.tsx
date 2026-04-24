@@ -38,6 +38,15 @@ function ClerkAuthContextBridge(props: {
     <CompanyHelmAuthContext.Provider
       value={{
         auth: {
+          getRequestHeaders: async () => {
+            const token = await auth.getToken();
+            const headers: Record<string, string> = {};
+            if (token) {
+              headers.authorization = `Bearer ${token}`;
+            }
+
+            return headers;
+          },
           getToken: auth.getToken,
           isLoaded: auth.isLoaded,
           isSignedIn: auth.isSignedIn === true,

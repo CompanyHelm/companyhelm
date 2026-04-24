@@ -2,6 +2,7 @@ import type { FastifyRequest } from "fastify";
 import { inject, injectable } from "inversify";
 import { AuthProvider, type AuthRuntimeDatabase, type AuthSession } from "../auth/auth_provider.ts";
 import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
+import { DevAuthHeaders } from "../auth/dev/headers.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../db/app_runtime_transaction_provider.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
@@ -15,7 +16,8 @@ export type GraphqlRequestContext = {
 };
 
 /**
- * Resolves GraphQL request auth from the bearer token so downstream mutations can trust session data.
+ * Resolves GraphQL request auth from either the configured bearer token flow or the explicit dev
+ * impersonation headers so downstream resolvers can trust the company context.
  */
 @injectable()
 export class GraphqlRequestContextResolver {
@@ -36,7 +38,9 @@ export class GraphqlRequestContextResolver {
 
   async resolve(request: FastifyRequest): Promise<GraphqlRequestContext> {
     const token = AuthProviderFactory.extractBearerToken(request.headers.authorization);
-    if (!token) {
+    const headers = request.headers as Record<string, unknown>;
+    const hasDevAuthHeaders = this.authProvider.name === "dev" && DevAuthHeaders.hasAny(headers);
+    if (!token && !hasDevAuthHeaders) {
       return {
         authSession: null,
         app_runtime_transaction_provider: null,
@@ -46,8 +50,8 @@ export class GraphqlRequestContextResolver {
 
     const authSession = await this.authProvider.authenticateBearerToken(
       this.database,
-      token,
-      request.headers as Record<string, unknown>,
+      token ?? "",
+      headers,
     );
 
     return {

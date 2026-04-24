@@ -37,11 +37,7 @@ const LocalAuthSchema = z.object({
 
 const DevAuthSchema = z.object({
   provider: z.literal("dev"),
-  dev: z.object({
-    session_duration_hours: PositiveIntegerSchema.default(168),
-    session_issuer: NonEmptyStringSchema,
-    session_secret: NonEmptyStringSchema,
-  }),
+  dev: z.object({}).default({}),
 });
 
 export const ConfigDocument = z.object({

@@ -1,6 +1,5 @@
 import { config } from "@/config";
-import type { DevAuthUserDetailDocument, DevCreateCompanyInput, DevSignInInput, DevSignUpInput } from "./companyhelm_auth";
-import type { LocalAuthSessionDocument } from "./local_auth_client";
+import type { DevAuthUserDetailDocument, DevCreateCompanyInput, DevSignUpInput } from "./companyhelm_auth";
 
 export type DevAuthUserSummaryDocument = {
   email: string;
@@ -14,18 +13,9 @@ export type DevAuthUserSummaryDocument = {
 
 /**
  * Wraps the dev auth HTTP endpoints so the React provider can keep all request construction and
- * error parsing in one place.
+ * error parsing in one place while GraphQL auth itself stays header-based.
  */
 export class DevAuthClient {
-  async loadSession(token: string): Promise<LocalAuthSessionDocument> {
-    return this.request("/auth/dev/session", {
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-      method: "GET",
-    });
-  }
-
   async listUsers(): Promise<DevAuthUserSummaryDocument[]> {
     const response = await this.request<{
       users: DevAuthUserSummaryDocument[];
@@ -37,32 +27,19 @@ export class DevAuthClient {
   }
 
   async loadUser(input: {
-    userId: string;
+    email?: string;
+    userId?: string;
   }): Promise<DevAuthUserDetailDocument> {
     const url = new URL(this.resolveUrl("/auth/dev/user"));
-    url.searchParams.set("userId", input.userId);
-
-    const response = await fetch(url.toString(), {
-      method: "GET",
-    });
-    const payload = await response.json().catch(() => null) as {
-      error?: string;
-    } | null;
-
-    if (!response.ok) {
-      throw new Error(String(payload?.error || `Request failed with status ${response.status}.`));
+    if (input.email) {
+      url.searchParams.set("email", input.email);
+    }
+    if (input.userId) {
+      url.searchParams.set("userId", input.userId);
     }
 
-    return payload as DevAuthUserDetailDocument;
-  }
-
-  async signIn(input: DevSignInInput): Promise<LocalAuthSessionDocument> {
-    return this.request("/auth/dev/sign-in", {
-      body: JSON.stringify(input),
-      headers: {
-        "content-type": "application/json",
-      },
-      method: "POST",
+    return this.requestAbsolute(url.toString(), {
+      method: "GET",
     });
   }
 
@@ -86,20 +63,18 @@ export class DevAuthClient {
     });
   }
 
-  async signOut(token: string): Promise<void> {
-    await this.request("/auth/dev/sign-out", {
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-      method: "POST",
-    });
-  }
-
   private async request<TResponse>(
     path: string,
     init: RequestInit,
   ): Promise<TResponse> {
-    const response = await fetch(this.resolveUrl(path), init);
+    return this.requestAbsolute(this.resolveUrl(path), init);
+  }
+
+  private async requestAbsolute<TResponse>(
+    url: string,
+    init: RequestInit,
+  ): Promise<TResponse> {
+    const response = await fetch(url, init);
     const payload = await response.json().catch(() => null) as {
       error?: string;
     } | null;

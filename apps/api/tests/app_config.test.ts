@@ -514,18 +514,13 @@ test("AppConfig accepts dev auth settings", () => {
   const parsedDocument = ConfigDocument.parse({
     ...document,
     auth: {
-      dev: {
-        session_duration_hours: 72,
-        session_issuer: "companyhelm.dev",
-        session_secret: "companyhelm-dev-session-secret",
-      },
+      dev: {},
       provider: "dev",
     },
   });
 
   assert.equal(parsedDocument.auth.provider, "dev");
-  assert.equal(parsedDocument.auth.dev.session_duration_hours, 72);
-  assert.equal(parsedDocument.auth.dev.session_issuer, "companyhelm.dev");
+  assert.deepEqual(parsedDocument.auth.dev, {});
 });
 
 test("AppConfig explains how to provide missing environment variables", () => {

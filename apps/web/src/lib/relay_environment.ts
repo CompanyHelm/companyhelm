@@ -4,7 +4,7 @@ import { GraphqlSubscriptionConnectionStore } from "./graphql_subscription_conne
 import { GraphqlSubscriptionClient } from "./graphql_subscription_client";
 import { SessionTranscriptRetentionStore } from "./session_transcript_retention_store";
 
-type GetToken = () => Promise<string | null>;
+type GetRequestHeaders = () => Promise<Record<string, string>>;
 
 /**
  * Owns the Relay environment together with the live GraphQL subscription transport state that the
@@ -15,11 +15,11 @@ export class RelayEnvironment {
   readonly sessionTranscriptRetentionStore: SessionTranscriptRetentionStore;
   readonly subscriptionConnectionStore: GraphqlSubscriptionConnectionStore;
 
-  constructor(getToken: GetToken) {
+  constructor(getRequestHeaders: GetRequestHeaders) {
     this.subscriptionConnectionStore = new GraphqlSubscriptionConnectionStore();
     const subscriptionClient = new GraphqlSubscriptionClient(
       config.graphqlUrl,
-      getToken,
+      getRequestHeaders,
       this.subscriptionConnectionStore,
     );
 
@@ -30,12 +30,12 @@ export class RelayEnvironment {
             throw new Error("Missing GraphQL operation text.");
           }
 
-          const token = await getToken();
+          const headers = await getRequestHeaders();
           const response = await fetch(config.graphqlUrl, {
             method: "POST",
             headers: {
               "content-type": "application/json",
-              ...(token ? { authorization: `Bearer ${token}` } : {}),
+              ...headers,
             },
             body: JSON.stringify({
               query: parameters.text,

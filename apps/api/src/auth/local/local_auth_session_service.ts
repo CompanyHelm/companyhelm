@@ -16,11 +16,11 @@ export type LocalAuthTokenClaims = {
 @injectable()
 export class LocalAuthSessionService {
   private readonly config: Extract<Config["auth"], {
-    provider: "dev" | "local";
+    provider: "local";
   }> | null;
 
   constructor(@inject(Config) config: Config) {
-    this.config = config.auth.provider === "local" || config.auth.provider === "dev"
+    this.config = config.auth.provider === "local"
       ? config.auth
       : null;
   }
@@ -73,11 +73,9 @@ export class LocalAuthSessionService {
     session_secret: string;
   } {
     if (!this.config) {
-      throw new Error("CompanyHelm auth session service requires local or dev auth configuration.");
+      throw new Error("CompanyHelm auth session service requires local auth configuration.");
     }
 
-    return this.config.provider === "local"
-      ? this.config.local
-      : this.config.dev;
+    return this.config.local;
   }
 }

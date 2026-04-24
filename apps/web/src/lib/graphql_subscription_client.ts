@@ -2,7 +2,7 @@ import { createClient } from "graphql-ws";
 import { Observable } from "relay-runtime";
 import { GraphqlSubscriptionConnectionStore } from "./graphql_subscription_connection_store";
 
-type GetToken = () => Promise<string | null>;
+type GetRequestHeaders = () => Promise<Record<string, string>>;
 
 type GraphqlOperationParameters = {
   name: string;
@@ -24,10 +24,10 @@ export class GraphqlSubscriptionClient {
   private readonly client = createClient({
     url: () => this.resolveWebsocketUrl(),
     connectionParams: async () => {
-      const token = await this.getToken();
+      const headers = await this.getRequestHeaders();
 
       return {
-        headers: token ? { authorization: `Bearer ${token}` } : {},
+        headers,
       };
     },
     lazy: true,
@@ -57,7 +57,7 @@ export class GraphqlSubscriptionClient {
 
   constructor(
     private readonly graphqlUrl: string,
-    private readonly getToken: GetToken,
+    private readonly getRequestHeaders: GetRequestHeaders,
     private readonly connectionStore: GraphqlSubscriptionConnectionStore,
   ) {}
 

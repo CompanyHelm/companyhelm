@@ -19,10 +19,10 @@ const SessionTranscriptRetentionStoreContext = createContext<
 
 export function AppRelayEnvironmentProvider(props: AppRelayEnvironmentProviderProps) {
   const auth = useAuth();
-  const getTokenRef = useRef(auth.getToken);
-  getTokenRef.current = auth.getToken;
+  const getRequestHeadersRef = useRef(auth.getRequestHeaders);
+  getRequestHeadersRef.current = auth.getRequestHeaders;
   const relayEnvironment = useMemo(() => {
-    return new RelayEnvironment(async () => getTokenRef.current());
+    return new RelayEnvironment(async () => getRequestHeadersRef.current());
   }, []);
 
   useEffect(() => {

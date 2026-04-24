@@ -36,11 +36,7 @@ describe("ApiContainer auth provider selection", () => {
   it("uses the dev auth provider when dev auth is configured", () => {
     expect(ApiContainer.resolveAuthProviderClass({
       auth: {
-        dev: {
-          session_duration_hours: 168,
-          session_issuer: "companyhelm.dev",
-          session_secret: "dev-session-secret",
-        },
+        dev: {},
         provider: "dev",
       },
     } as never)).toBe(DevAuthProvider);

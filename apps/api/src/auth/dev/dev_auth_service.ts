@@ -1,13 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
-import { companies, companyMembers, localAuthSessions, users } from "../../db/schema.ts";
+import { companies, companyMembers, users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import type { AuthSession } from "../auth_provider.ts";
-import { LocalAuthService, type LocalAuthSessionDocument } from "../local/local_auth_service.ts";
-import { LocalAuthSessionService } from "../local/local_auth_session_service.ts";
+import { DevAuthHeaders } from "./headers.ts";
 
 type DevAuthUserRecord = {
   email: string;
@@ -22,6 +19,14 @@ type DevAuthCompanyRecord = {
   id: string;
   name: string;
   slug: string | null;
+};
+
+type DevAuthCompanyMembershipRecord = DevAuthCompanyRecord & {
+  user_email: string;
+  user_first_name: string;
+  user_id: string;
+  user_isPlatformAdmin: boolean;
+  user_last_name: string | null;
 };
 
 type InsertableDatabase = {
@@ -59,74 +64,21 @@ export type DevAuthUserDetailDocument = {
 };
 
 /**
- * Owns the dev-only passwordless auth workflow: browse users, impersonate one of them, create new
- * users with a fresh company, or attach an existing user to a newly created company.
+ * Owns the dev-only user and company picker workflow. It keeps dev auth deliberately lightweight:
+ * the browser selects a user and company, then the API trusts those explicit headers only while
+ * the runtime auth provider is `dev`.
  */
 @injectable()
 export class DevAuthService {
   private readonly companyBootstrapService: CompanyBootstrapService;
-  private readonly config: Extract<Config["auth"], {
-    provider: "dev";
-  }> | null;
   private readonly database: AppRuntimeDatabase;
-  private readonly localAuthService: LocalAuthService;
-  private readonly sessionService: LocalAuthSessionService;
 
   constructor(
-    @inject(Config) config: Config,
     @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
-    @inject(LocalAuthSessionService) sessionService: LocalAuthSessionService,
-    @inject(LocalAuthService) localAuthService: LocalAuthService,
     @inject(CompanyBootstrapService) companyBootstrapService: CompanyBootstrapService,
   ) {
     this.companyBootstrapService = companyBootstrapService;
-    this.config = config.auth.provider === "dev" ? config.auth : null;
     this.database = database;
-    this.localAuthService = localAuthService;
-    this.sessionService = sessionService;
-  }
-
-  async signIn(input: {
-    companyId?: string;
-    email?: string;
-    userId?: string;
-  }): Promise<LocalAuthSessionDocument> {
-    const db = this.database.getDatabase();
-    if (!db.transaction) {
-      throw new Error("Configured database does not support transactions.");
-    }
-
-    const normalizedInput = this.normalizeSignInInput(input);
-
-    return db.transaction(async (transaction) => {
-      const user = normalizedInput.userId
-        ? await this.findUserById(transaction, normalizedInput.userId)
-        : await this.findUserByEmail(transaction, normalizedInput.email ?? "");
-      if (!user) {
-        throw new Error("The requested dev auth user does not exist.");
-      }
-
-      const company = normalizedInput.companyId
-        ? await this.findMembershipCompanyById(transaction, {
-          companyId: normalizedInput.companyId,
-          userId: user.id,
-        })
-        : await this.findFirstMembershipCompany(transaction, user.id);
-      if (!company) {
-        throw new Error(normalizedInput.companyId
-          ? "This user is not assigned to the requested company."
-          : "This user has no active company. Create one before signing in.");
-      }
-
-      await this.database.applyCompanyContext(transaction as never, company.id);
-      await this.companyBootstrapService.ensureMembership(transaction as never, {
-        companyId: company.id,
-        userId: user.id,
-      });
-      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, company.id);
-
-      return this.createSessionDocument(transaction, user.id, company.id);
-    });
   }
 
   async signUp(input: {
@@ -230,25 +182,20 @@ export class DevAuthService {
   }
 
   async loadUser(input: {
-    userId: string;
+    email?: string;
+    userId?: string;
   }): Promise<DevAuthUserDetailDocument> {
+    const normalizedInput = this.normalizeUserLookup(input);
     const database = this.database.getDatabase();
-    const userId = this.normalizeRequiredIdentifier(input.userId, "User ID is required.");
-    const user = await this.findUserById(database, userId);
+    const user = normalizedInput.userId
+      ? await this.findUserById(database, normalizedInput.userId)
+      : await this.findUserByEmail(database, normalizedInput.email ?? "");
     if (!user) {
       throw new Error("The requested dev auth user does not exist.");
     }
 
     const membershipCompanies = await this.findMembershipCompanies(database, user.id);
     return this.buildUserDetailDocument(user, membershipCompanies);
-  }
-
-  async loadSession(token: string): Promise<LocalAuthSessionDocument> {
-    return this.localAuthService.loadSession(token);
-  }
-
-  async signOut(token: string): Promise<void> {
-    await this.localAuthService.signOut(token);
   }
 
   async listUsers(): Promise<DevAuthUserSummaryDocument[]> {
@@ -313,14 +260,27 @@ export class DevAuthService {
     return Array.from(summaries.values());
   }
 
-  async authenticateBearerToken(token: string): Promise<AuthSession> {
-    const session = await this.localAuthService.authenticateBearerToken(token);
+  async authenticateHeaders(headers: Record<string, unknown>): Promise<AuthSession> {
+    const selection = DevAuthHeaders.requireSelection(headers);
+    const membership = await this.findMembershipCompanyRecord(this.database.getDatabase(), selection);
+    if (!membership?.slug) {
+      throw new Error("The selected dev auth company is unavailable for that user.");
+    }
+
     return {
-      ...session,
+      company: {
+        id: membership.id,
+        name: membership.name,
+      },
+      token: `${selection.userId}:${selection.companyId}`,
       user: {
-        ...session.user,
+        email: membership.user_email,
+        firstName: membership.user_first_name,
+        id: membership.user_id,
+        isPlatformAdmin: membership.user_isPlatformAdmin,
+        lastName: membership.user_last_name,
         provider: "dev",
-        providerSubject: `dev:${session.user.id}`,
+        providerSubject: `dev:${membership.user_id}`,
       },
     };
   }
@@ -346,38 +306,6 @@ export class DevAuthService {
         lastName: user.last_name,
       },
     };
-  }
-
-  private async createSessionDocument(
-    transaction: unknown,
-    userId: string,
-    companyId: string,
-  ): Promise<LocalAuthSessionDocument> {
-    const config = this.requireDevConfig();
-    const sessionId = randomUUID();
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + (config.dev.session_duration_hours * 60 * 60 * 1000));
-    const insertableDatabase = transaction as InsertableDatabase;
-
-    await insertableDatabase
-      .insert(localAuthSessions)
-      .values({
-        companyId,
-        createdAt: now,
-        expiresAt,
-        id: sessionId,
-        updatedAt: now,
-        userId,
-      })
-      .returning();
-
-    const token = await this.sessionService.createSessionToken({
-      companyId,
-      sessionId,
-      userId,
-    });
-
-    return this.localAuthService.loadSession(token);
   }
 
   private async findUserByEmail(transaction: unknown, email: string): Promise<DevAuthUserRecord | null> {
@@ -430,13 +358,19 @@ export class DevAuthService {
     return user ?? null;
   }
 
-  private async findFirstMembershipCompany(transaction: unknown, userId: string): Promise<DevAuthCompanyRecord | null> {
+  private async findMembershipCompanyRecord(
+    transaction: unknown,
+    input: {
+      companyId: string;
+      userId: string;
+    },
+  ): Promise<DevAuthCompanyMembershipRecord | null> {
     const database = transaction as {
       select(selection: Record<string, unknown>): {
         from(table: unknown): {
           innerJoin(table: unknown, condition: unknown): {
-            where(condition: unknown): {
-              orderBy(...arguments_: unknown[]): {
+            innerJoin(table: unknown, condition: unknown): {
+              where(condition: unknown): {
                 limit(limit: number): Promise<unknown[]>;
               };
             };
@@ -450,52 +384,21 @@ export class DevAuthService {
         id: companies.id,
         name: companies.name,
         slug: companies.slug,
+        user_email: users.email,
+        user_first_name: users.first_name,
+        user_id: users.id,
+        user_isPlatformAdmin: users.isPlatformAdmin,
+        user_last_name: users.last_name,
       })
       .from(companyMembers)
       .innerJoin(companies, eq(companyMembers.companyId, companies.id))
-      .where(and(
-        eq(companyMembers.userId, userId),
-        eq(companies.deletionStatus, "active"),
-      ))
-      .orderBy(asc(companies.name))
-      .limit(1) as DevAuthCompanyRecord[];
-
-    return company ?? null;
-  }
-
-  private async findMembershipCompanyById(
-    transaction: unknown,
-    input: {
-      companyId: string;
-      userId: string;
-    },
-  ): Promise<DevAuthCompanyRecord | null> {
-    const database = transaction as {
-      select(selection: Record<string, unknown>): {
-        from(table: unknown): {
-          innerJoin(table: unknown, condition: unknown): {
-            where(condition: unknown): {
-              limit(limit: number): Promise<unknown[]>;
-            };
-          };
-        };
-      };
-    };
-    const [company] = await database
-      .select({
-        deletion_status: companies.deletionStatus,
-        id: companies.id,
-        name: companies.name,
-        slug: companies.slug,
-      })
-      .from(companyMembers)
-      .innerJoin(companies, eq(companyMembers.companyId, companies.id))
+      .innerJoin(users, eq(companyMembers.userId, users.id))
       .where(and(
         eq(companyMembers.companyId, input.companyId),
         eq(companyMembers.userId, input.userId),
         eq(companies.deletionStatus, "active"),
       ))
-      .limit(1) as DevAuthCompanyRecord[];
+      .limit(1) as DevAuthCompanyMembershipRecord[];
 
     return company ?? null;
   }
@@ -602,33 +505,6 @@ export class DevAuthService {
     return normalizedLastName || null;
   }
 
-  private normalizeSignInInput(input: {
-    companyId?: string;
-    email?: string;
-    userId?: string;
-  }): {
-    companyId?: string;
-    email?: string;
-    userId?: string;
-  } {
-    const companyId = String(input.companyId || "").trim();
-    const userId = String(input.userId || "").trim();
-    const email = input.email ? this.normalizeEmail(input.email) : "";
-    if (!userId && !email) {
-      throw new Error("Either userId or email is required.");
-    }
-
-    return userId
-      ? {
-        companyId: companyId || undefined,
-        userId,
-      }
-      : {
-        companyId: companyId || undefined,
-        email,
-      };
-  }
-
   private normalizeRequiredIdentifier(value: string, errorMessage: string): string {
     const normalizedValue = String(value || "").trim();
     if (!normalizedValue) {
@@ -638,13 +514,25 @@ export class DevAuthService {
     return normalizedValue;
   }
 
-  private requireDevConfig(): Extract<Config["auth"], {
-    provider: "dev";
-  }> {
-    if (!this.config) {
-      throw new Error("Dev auth service requires dev auth configuration.");
+  private normalizeUserLookup(input: {
+    email?: string;
+    userId?: string;
+  }): {
+    email?: string;
+    userId?: string;
+  } {
+    const userId = String(input.userId || "").trim();
+    const email = input.email ? this.normalizeEmail(input.email) : "";
+    if (!userId && !email) {
+      throw new Error("Either userId or email is required.");
     }
 
-    return this.config;
+    return userId
+      ? {
+        userId,
+      }
+      : {
+        email,
+      };
   }
 }

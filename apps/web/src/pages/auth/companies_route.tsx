@@ -1,20 +1,15 @@
 import { useEffect } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useAuth, useOrganization, useUser } from "@/components/auth/auth_provider";
+import { useNavigate } from "@tanstack/react-router";
+import { useAuth, useOrganization } from "@/components/auth/auth_provider";
+import { DevAuthSelectionStorage } from "@/auth/dev_auth_selection_storage";
 import { config } from "@/config";
 import { CompaniesPage } from "./companies_page";
-
-type CompaniesRouteSearch = {
-  userId?: string;
-};
 
 export function CompaniesRoute() {
   const auth = useAuth();
   const navigate = useNavigate();
   const organization = useOrganization();
-  const search = useSearch({ strict: false }) as CompaniesRouteSearch;
-  const user = useUser();
-  const selectedUserId = search.userId || user.user?.id || "";
+  const selectedUserId = new DevAuthSelectionStorage().read().userId || "";
 
   useEffect(() => {
     if (config.authProvider !== "dev") {
@@ -37,7 +32,6 @@ export function CompaniesRoute() {
     organization.isLoaded,
     organization.organization?.slug,
     selectedUserId,
-    user.user?.id,
   ]);
 
   if (config.authProvider !== "dev") {
