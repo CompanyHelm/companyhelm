@@ -1,6 +1,14 @@
 :4173 {
   root * /srv
 
+  handle_errors 404 {
+    @missingHashedAsset path /assets/*
+    handle @missingHashedAsset {
+      header Cache-Control "no-store, no-cache, must-revalidate"
+      respond "{err.status_code} {err.status_text}" {err.status_code}
+    }
+  }
+
   @runtimeConfig path /runtime-config.js
   handle @runtimeConfig {
     header Cache-Control "no-store, no-cache, must-revalidate"

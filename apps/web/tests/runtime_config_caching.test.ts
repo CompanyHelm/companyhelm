@@ -7,21 +7,26 @@ test("web server aligns cache policy between runtime config, app shell, and hash
   const repoRoot = resolve(import.meta.dirname, "..", "..", "..");
   const caddyfile = readFileSync(join(repoRoot, "docker", "web", "Caddyfile"), "utf8");
 
+  assert.match(caddyfile, /handle_errors 404\s*\{/);
+  assert.match(caddyfile, /@missingHashedAsset path \/assets\/\*/);
   assert.match(caddyfile, /@runtimeConfig path \/runtime-config\.js/);
   assert.match(caddyfile, /header Cache-Control "no-store, no-cache, must-revalidate"/);
   assert.match(caddyfile, /@hashedAssets path \/assets\/\*/);
   assert.match(caddyfile, /header Cache-Control "public, max-age=31536000, immutable"/);
   assert.match(caddyfile, /@staticFiles path_regexp staticFiles/);
 
+  const errorHandleIndex = caddyfile.indexOf("handle_errors 404");
   const runtimeConfigHandleIndex = caddyfile.indexOf("handle @runtimeConfig");
   const hashedAssetsHandleIndex = caddyfile.indexOf("handle @hashedAssets");
   const staticFilesHandleIndex = caddyfile.indexOf("handle @staticFiles");
   const appShellHandleIndex = caddyfile.lastIndexOf("handle {");
 
+  assert.notEqual(errorHandleIndex, -1);
   assert.notEqual(runtimeConfigHandleIndex, -1);
   assert.notEqual(hashedAssetsHandleIndex, -1);
   assert.notEqual(staticFilesHandleIndex, -1);
   assert.notEqual(appShellHandleIndex, -1);
+  assert.ok(errorHandleIndex < runtimeConfigHandleIndex);
   assert.ok(runtimeConfigHandleIndex < hashedAssetsHandleIndex);
   assert.ok(hashedAssetsHandleIndex < staticFilesHandleIndex);
   assert.ok(staticFilesHandleIndex < appShellHandleIndex);
