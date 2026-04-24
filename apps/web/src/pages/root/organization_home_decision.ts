@@ -18,7 +18,7 @@ export class OrganizationHomeDecision {
 
     if (input.memberships.length === 0 && input.authProvider === "dev") {
       return {
-        kind: "create-company" as const,
+        kind: "companies" as const,
       };
     }
 
