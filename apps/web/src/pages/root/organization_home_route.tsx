@@ -1,76 +1,76 @@
 import { useEffect } from "react";
-import { OrganizationList, useOrganization, useOrganizationList } from "@/components/auth/auth_provider";
+import { OrganizationList, useOrganizationList } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
 import { config } from "@/config";
 import { OrganizationPath } from "@/lib/organization_path";
+import { OrganizationHomeDecision } from "./organization_home_decision";
 
 /**
- * Redirects signed-in users onto their current organization URL and falls back to Clerk's
- * organization picker when the session has no active organization yet.
+ * Turns the ambiguous `/` URL into either a deterministic org URL or an explicit company picker.
  */
 export function OrganizationHomeRoute() {
   const navigate = useNavigate();
-  const organizationState = useOrganization();
   const organizationListState = useOrganizationList({
     userMemberships: {
       keepPreviousData: true,
       pageSize: 100,
     },
   });
+  const memberships = organizationListState.userMemberships.data;
+  const homeDecision = organizationListState.isLoaded
+    ? OrganizationHomeDecision.resolve({
+      authProvider: config.authProvider,
+      memberships,
+    })
+    : null;
+  const redirectOrganizationSlug = homeDecision?.kind === "redirect"
+    ? homeDecision.organizationSlug
+    : null;
 
   useEffect(() => {
-    if (!organizationState.isLoaded || !organizationListState.isLoaded) {
+    if (!redirectOrganizationSlug) {
       return;
     }
 
-    if (organizationState.organization?.slug) {
-      void navigate({
-        params: {
-          organizationSlug: organizationState.organization.slug,
-        },
-        replace: true,
-        to: OrganizationPath.route("/"),
-      });
-      return;
-    }
+    void navigate({
+      params: {
+        organizationSlug: redirectOrganizationSlug,
+      },
+      replace: true,
+      to: OrganizationPath.route("/"),
+    });
+  }, [navigate, redirectOrganizationSlug]);
 
-    const firstMembership = organizationListState.userMemberships.data?.[0] ?? null;
-    if (firstMembership && organizationListState.setActive) {
-      void organizationListState.setActive({
-        organization: firstMembership.organization.id,
-      });
-    }
-  }, [
-    navigate,
-    organizationListState,
-    organizationListState.isLoaded,
-    organizationListState.setActive,
-    organizationListState.userMemberships.data,
-    organizationState.isLoaded,
-    organizationState.organization?.slug,
-  ]);
-
-  if (!organizationState.isLoaded || !organizationListState.isLoaded) {
+  if (!organizationListState.isLoaded) {
     return null;
   }
 
-  if (organizationState.organization?.slug) {
+  if (redirectOrganizationSlug) {
     return null;
   }
 
-  const hasMemberships = organizationListState.userMemberships.data.length > 0;
+  const hasMemberships = memberships.length > 0;
+  const isCreateCompanyFlow = homeDecision?.kind === "create-company";
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
         <div className="mb-5 space-y-1">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">Choose a company</h1>
-          <p className="text-sm text-muted-foreground">
-            CompanyHelm uses the organization slug in the URL so each browser tab can stay pinned
-            to its own company context.
-          </p>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            {hasMemberships ? "Choose a company" : "Create a company"}
+          </h1>
+          {hasMemberships ? (
+            <p className="text-sm text-muted-foreground">
+              CompanyHelm uses the organization slug in the URL so each browser tab can stay pinned
+              to its own company context.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              CompanyHelm needs a company slug in the URL before it can open an org-scoped page.
+            </p>
+          )}
         </div>
-        {config.authProvider === "dev" && !hasMemberships ? (
+        {isCreateCompanyFlow ? (
           <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
             <p>This dev user does not belong to a company yet.</p>
             <button
