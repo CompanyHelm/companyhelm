@@ -101,50 +101,51 @@ function MissionPageContent() {
             Back
           </Button>
         )}
-        cta={(
-          <Button
-            className="h-12 px-6 text-base"
-            disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                companyMission: controller.missionDraft.trim(),
-              }).then(() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/onboarding"),
-                });
-              }).catch(() => undefined);
-            }}
-            type="button"
-          >
-            Continue onboarding
-          </Button>
-        )}
-        skipControl={(
-          <Button
-            disabled={controller.isUpdateCompanyOnboardingInFlight}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                skipMission: true,
-              }).then(() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/onboarding"),
-                });
-              }).catch(() => undefined);
-            }}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            Skip
-          </Button>
+        rightControls={(
+          <>
+            <Button
+              disabled={controller.isUpdateCompanyOnboardingInFlight}
+              onClick={() => {
+                controller.clearErrorMessage();
+                void controller.updateOnboarding({
+                  skipMission: true,
+                }).then(() => {
+                  void navigate({
+                    params: {
+                      organizationSlug,
+                    },
+                    to: OrganizationPath.route("/onboarding"),
+                  });
+                }).catch(() => undefined);
+              }}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              Skip
+            </Button>
+            <Button
+              disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
+              onClick={() => {
+                controller.clearErrorMessage();
+                void controller.updateOnboarding({
+                  companyMission: controller.missionDraft.trim(),
+                }).then(() => {
+                  void navigate({
+                    params: {
+                      organizationSlug,
+                    },
+                    to: OrganizationPath.route("/onboarding"),
+                  });
+                }).catch(() => undefined);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Continue
+            </Button>
+          </>
         )}
       />
     </OnboardingStepFrame>

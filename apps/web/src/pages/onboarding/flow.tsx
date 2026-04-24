@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CheckCircle2Icon, Loader2Icon } from "lucide-react";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { CreateCredentialDialog } from "@/pages/model-provider-credentials/create_credential_dialog";
@@ -614,7 +615,7 @@ export function OnboardingNavigation(props: {
 
 export function OnboardingStepActions(props: {
   backControl?: ReactNode;
-  cta: ReactNode;
+  cta?: ReactNode;
   hideBack?: boolean;
   rightControls?: ReactNode;
   skipControl?: ReactNode;
@@ -622,7 +623,10 @@ export function OnboardingStepActions(props: {
   return (
     <div className="mt-10 flex flex-col items-center">
       {props.cta}
-      <div className="relative mt-10 flex h-9 w-full items-center justify-center">
+      <div className={cn(
+        "relative flex h-9 w-full items-center justify-center",
+        props.cta ? "mt-10" : "mt-0",
+      )}>
         {props.hideBack ? null : (
           <div className="absolute left-4">
             {props.backControl ?? (

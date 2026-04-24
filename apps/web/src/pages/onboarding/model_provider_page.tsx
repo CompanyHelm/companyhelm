@@ -36,6 +36,10 @@ const supportedLlmProviders = [
     label: "NVIDIA",
     providerId: "nvidia",
   },
+  {
+    label: "Other",
+    providerId: "openai-compatible",
+  },
 ] as const;
 
 export function ModelProviderPage() {
