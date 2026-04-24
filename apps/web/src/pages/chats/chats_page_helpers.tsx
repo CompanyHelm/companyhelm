@@ -301,6 +301,46 @@ function parseJsonRecord(value: unknown): Record<string, unknown> | null {
   }
 }
 
+function isSerializedToolInvocationRecord(value: unknown): boolean {
+  const parsedRecord = parseJsonRecord(value);
+  if (!parsedRecord) {
+    return false;
+  }
+
+  const keys = Object.keys(parsedRecord);
+  return keys.length === 2
+    && typeof parsedRecord.id === "string"
+    && Object.hasOwn(parsedRecord, "input");
+}
+
+function extractSerializedToolInvocationJson(line: string): string | null {
+  const trimmedLine = line.trim();
+  const systemCommandMatch = /^to=system_command(?:\s+\S+)?=(\{.*\})$/u.exec(trimmedLine);
+  if (systemCommandMatch) {
+    return systemCommandMatch[1] ?? null;
+  }
+
+  const functionSuffixMatch = /^(\{.*\})\s+to=functions\.[A-Za-z0-9_.-]+$/u.exec(trimmedLine);
+  if (functionSuffixMatch) {
+    return functionSuffixMatch[1] ?? null;
+  }
+
+  return trimmedLine.startsWith("{") && trimmedLine.endsWith("}") ? trimmedLine : null;
+}
+
+function isSerializedToolInvocationLine(line: string): boolean {
+  const serializedJson = extractSerializedToolInvocationJson(line);
+  return serializedJson !== null && isSerializedToolInvocationRecord(serializedJson);
+}
+
+function removeSerializedToolInvocationLines(text: string): string {
+  return text
+    .split(/\r?\n/u)
+    .filter((line) => !isSerializedToolInvocationLine(line))
+    .join("\n")
+    .trim();
+}
+
 function isHttpUrl(value: string): boolean {
   try {
     const parsedUrl = new URL(value);
@@ -354,12 +394,15 @@ function resolveAssistantDisplayContents(
     if (content.type === "text" && contentMode === "thinking-only") {
       return [];
     }
-    if (content.text.trim().length === 0) {
+    const displayText = content.type === "text"
+      ? removeSerializedToolInvocationLines(content.text)
+      : content.text;
+    if (displayText.trim().length === 0) {
       return [];
     }
 
     return [{
-      text: content.text,
+      text: displayText,
       type: content.type,
     }];
   });
@@ -375,12 +418,16 @@ function resolveAssistantDisplayContents(
       type: "text",
     }];
   }
-  if (message.text.trim().length === 0) {
+  if (message.contents.length > 0) {
+    return [];
+  }
+  const displayText = removeSerializedToolInvocationLines(message.text);
+  if (displayText.trim().length === 0) {
     return [];
   }
 
   return [{
-    text: message.text,
+    text: displayText,
     type: "text",
   }];
 }

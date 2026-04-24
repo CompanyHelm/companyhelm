@@ -14,6 +14,9 @@ import type { flowCreateGithubInstallationUrlMutation } from "./__generated__/fl
 import type { flowEnsureCompanyOnboardingMutation } from "./__generated__/flowEnsureCompanyOnboardingMutation.graphql";
 import type { flowQuery } from "./__generated__/flowQuery.graphql";
 import type { flowUpdateCompanyOnboardingMutation } from "./__generated__/flowUpdateCompanyOnboardingMutation.graphql";
+import { OnboardingStepPresenter, type OnboardingStepKey } from "./steps";
+
+export type { OnboardingStepKey } from "./steps";
 
 const onboardingPageQueryNode = graphql`
   query flowQuery {
@@ -137,8 +140,6 @@ type CredentialStoreProxy = {
   getRoot(): StoreRootRecord;
   getRootField(name: string): StoreCredentialRecord | null;
 };
-
-export type OnboardingStepKey = "mission" | "github" | "model-provider";
 
 export interface OnboardingFlowController {
   credentialErrorMessage: string | null;
@@ -515,25 +516,11 @@ export function resolveCurrentStep(input: {
   llmResolved: boolean;
   missionResolved: boolean;
 }): OnboardingStepKey {
-  if (!input.githubResolved) {
-    return "github";
-  }
-  if (!input.llmResolved) {
-    return "model-provider";
-  }
-
-  return "mission";
+  return OnboardingStepPresenter.resolveCurrentStep(input);
 }
 
 export function onboardingPath(step: OnboardingStepKey): string {
-  switch (step) {
-    case "mission":
-      return "/onboarding/mission";
-    case "github":
-      return "/onboarding/github";
-    case "model-provider":
-      return "/onboarding/model-provider";
-  }
+  return OnboardingStepPresenter.path(step);
 }
 
 export function navigateToOnboardingStep(input: {
@@ -559,13 +546,19 @@ export function OnboardingStepFrame(props: {
   helperText: string;
   title: string;
 }) {
-  const stepNumber = props.currentStep === "github" ? 1 : (props.currentStep === "model-provider" ? 2 : 3);
+  const stepNumber = props.currentStep === "github"
+    ? 1
+    : props.currentStep === "model-provider"
+    ? 2
+    : props.currentStep === "mission"
+    ? 3
+    : 4;
   return (
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-center px-4 py-6">
       <section className="rounded-2xl border border-border/70 bg-card/85 p-6 shadow-sm">
         <div className="space-y-3">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Company setup · Step {stepNumber} of 3
+            Company setup · Step {stepNumber} of 4
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{props.title}</h1>
           <p className="text-sm leading-6 text-muted-foreground">{props.description}</p>

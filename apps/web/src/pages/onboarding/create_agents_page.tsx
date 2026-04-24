@@ -1,42 +1,44 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { ChatsPageContent } from "@/pages/chats/chats_page_content";
 import {
   OnboardingCompleteState,
   OnboardingPageLoadingState,
   OnboardingPageMessageState,
   OnboardingPageSuspense,
   OnboardingSkippedState,
-  onboardingPath,
   navigateToOnboardingStep,
   resolveCurrentStep,
   useOnboardingFlowController,
 } from "./flow";
 
-function resolveStepLabel(step: "github" | "mission" | "model-provider" | "create-agents"): string {
-  if (step === "github") {
-    return "GitHub";
-  }
-  if (step === "model-provider") {
-    return "model provider";
-  }
-  if (step === "create-agents") {
-    return "agent creation";
-  }
+/**
+ * Hosts the CEO onboarding chat as the fourth onboarding step, after static setup inputs have
+ * been resolved and the onboarding workflow has provisioned its dedicated agent session.
+ */
+export class CreateAgentsPagePresenter {
+  static resolveLoadingMessage(input: {
+    isEnsureCompanyOnboardingInFlight: boolean;
+    needsOnboardingStart: boolean;
+  }): string {
+    if (input.needsOnboardingStart || input.isEnsureCompanyOnboardingInFlight) {
+      return "Provisioning the CEO onboarding chat...";
+    }
 
-  return "business goals";
+    return "Opening the CEO onboarding chat...";
+  }
 }
 
-export function OnboardingPage() {
+export function CreateAgentsPage() {
   return (
     <OnboardingPageSuspense>
-      <OnboardingPageContent />
+      <CreateAgentsPageContent />
     </OnboardingPageSuspense>
   );
 }
 
-function OnboardingPageContent() {
+function CreateAgentsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const controller = useOnboardingFlowController({
@@ -45,22 +47,12 @@ function OnboardingPageContent() {
 
   useEffect(() => {
     if (
-      controller.setupResolved
-      || controller.errorMessage
+      controller.errorMessage
       || controller.onboarding.status === "completed"
       || controller.onboarding.status === "skipped"
+      || controller.onboarding.status === "in_progress"
+      || controller.setupResolved
     ) {
-      return;
-    }
-
-    if (controller.onboarding.status === "in_progress" && controller.onboarding.agentId && controller.onboarding.sessionId) {
-      void navigate({
-        params: {
-          organizationSlug,
-        },
-        replace: true,
-        to: OrganizationPath.route(onboardingPath("create-agents")),
-      });
       return;
     }
 
@@ -79,8 +71,6 @@ function OnboardingPageContent() {
     controller.githubResolved,
     controller.llmResolved,
     controller.missionResolved,
-    controller.onboarding.agentId,
-    controller.onboarding.sessionId,
     controller.onboarding.status,
     controller.setupResolved,
     navigate,
@@ -107,21 +97,30 @@ function OnboardingPageContent() {
   }
 
   if (controller.onboarding.status === "in_progress" && controller.onboarding.agentId && controller.onboarding.sessionId) {
-    return <OnboardingPageLoadingState message="Opening agent creation..." />;
-  }
-
-  if (!controller.setupResolved) {
-    const activeStep = resolveCurrentStep({
-      githubResolved: controller.githubResolved,
-      llmResolved: controller.llmResolved,
-      missionResolved: controller.missionResolved,
-    });
     return (
-      <OnboardingPageLoadingState
-        message={`Opening ${resolveStepLabel(activeStep)} setup...`}
+      <ChatsPageContent
+        canForkLatestSession={false}
+        headerSubtitle="CEO setup workflow"
+        headerTitle="Company onboarding"
+        routePath="/onboarding/create-agents"
+        selectedAgentId={controller.onboarding.agentId}
+        selectedSessionId={controller.onboarding.sessionId}
+        showChatList={false}
+        showSettingsButton={false}
       />
     );
   }
 
-  return <OnboardingPageLoadingState message="Provisioning the CEO onboarding chat..." />;
+  if (!controller.setupResolved) {
+    return <OnboardingPageLoadingState message="Opening setup..." />;
+  }
+
+  return (
+    <OnboardingPageLoadingState
+      message={CreateAgentsPagePresenter.resolveLoadingMessage({
+        isEnsureCompanyOnboardingInFlight: controller.isEnsureCompanyOnboardingInFlight,
+        needsOnboardingStart: controller.needsOnboardingStart,
+      })}
+    />
+  );
 }

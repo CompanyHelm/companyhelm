@@ -3,6 +3,8 @@ import { test } from "node:test";
 import {
   CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE,
   type ToolCallSummaryRecord,
+  hasVisibleMessage,
+  resolveAssistantContentDisplay,
   resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
   resolvePrincipalExecutionMessageDisplay,
@@ -265,6 +267,67 @@ test("resolvePrincipalExecutionMessageDisplay formats workflow execution user me
     summaryLabel: "Ship release",
     title: "Execute workflow",
   });
+});
+
+test("resolveAssistantContentDisplay hides standalone serialized tool invocation text", () => {
+  const message = {
+    contents: [{
+      text: "{\"id\":\"list_github_installations\",\"input\":{}}",
+      type: "text",
+    }],
+    errorMessage: null,
+    role: "assistant",
+    text: "{\"id\":\"list_github_installations\",\"input\":{}}",
+  } as unknown as SessionMessageRecord;
+
+  assert.deepEqual(resolveAssistantContentDisplay(message), []);
+  assert.equal(hasVisibleMessage(message), false);
+});
+
+test("resolveAssistantContentDisplay removes leaked system command lines from assistant prose", () => {
+  const message = {
+    contents: [{
+      text: [
+        "I'll start the workflow.",
+        "to=system_command 手机版天天中彩彩票={\"id\":\"workflow.execution.step.update\",\"input\":{\"workflowRunStepId\":\"step-1\",\"status\":\"running\"}}",
+        "The onboarding goals are framed.",
+        "to=system_command 天天彩={\"id\":\"workflow.execution.step.update\",\"input\":{\"workflowRunStepId\":\"step-1\",\"status\":\"done\"}}",
+      ].join("\n"),
+      type: "text",
+    }],
+    errorMessage: null,
+    role: "assistant",
+    text: "",
+  } as unknown as SessionMessageRecord;
+
+  assert.deepEqual(resolveAssistantContentDisplay(message), [{
+    text: "I'll start the workflow.\nThe onboarding goals are framed.",
+    type: "text",
+  }]);
+  assert.equal(hasVisibleMessage(message), true);
+});
+
+test("resolveAssistantContentDisplay keeps regular assistant text next to a tool call", () => {
+  const message = {
+    contents: [{
+      text: "I checked the connected repositories.",
+      type: "text",
+    }, {
+      arguments: {},
+      toolCallId: "tool-call-1",
+      toolName: "list_github_installations",
+      type: "toolCall",
+    }],
+    errorMessage: null,
+    role: "assistant",
+    text: "I checked the connected repositories.",
+  } as unknown as SessionMessageRecord;
+
+  assert.deepEqual(resolveAssistantContentDisplay(message), [{
+    text: "I checked the connected repositories.",
+    type: "text",
+  }]);
+  assert.equal(hasVisibleMessage(message), true);
 });
 
 test("thinking indicator gradient uses theme foreground colors so it stays visible in light mode", () => {
