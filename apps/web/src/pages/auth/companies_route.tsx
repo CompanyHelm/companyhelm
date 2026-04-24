@@ -50,5 +50,5 @@ export function CompaniesRoute() {
     return null;
   }
 
-  return <CompaniesPage userId={selectedUserId} />;
+  return <CompaniesPage />;
 }

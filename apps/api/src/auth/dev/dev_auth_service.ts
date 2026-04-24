@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import { AdminDatabase } from "../../db/admin_database.ts";
 import { companies, companyMembers, users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import type { AuthSession } from "../auth_provider.ts";
@@ -70,15 +70,15 @@ export type DevAuthUserDetailDocument = {
  */
 @injectable()
 export class DevAuthService {
+  private readonly adminDatabase: AdminDatabase;
   private readonly companyBootstrapService: CompanyBootstrapService;
-  private readonly database: AppRuntimeDatabase;
 
   constructor(
-    @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(CompanyBootstrapService) companyBootstrapService: CompanyBootstrapService,
   ) {
+    this.adminDatabase = adminDatabase;
     this.companyBootstrapService = companyBootstrapService;
-    this.database = database;
   }
 
   async signUp(input: {
@@ -86,7 +86,7 @@ export class DevAuthService {
     firstName: string;
     lastName?: string | null;
   }): Promise<DevAuthUserDetailDocument> {
-    const db = this.database.getDatabase();
+    const db = this.adminDatabase.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
@@ -133,7 +133,7 @@ export class DevAuthService {
     companyName: string;
     userId: string;
   }): Promise<DevAuthUserDetailDocument> {
-    const db = this.database.getDatabase();
+    const db = this.adminDatabase.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
@@ -167,7 +167,6 @@ export class DevAuthService {
         throw new Error("Failed to create the company.");
       }
 
-      await this.database.applyCompanyContext(transaction as never, createdCompany.id);
       await this.companyBootstrapService.ensureMembership(transaction as never, {
         companyId: createdCompany.id,
         userId: user.id,
@@ -186,7 +185,7 @@ export class DevAuthService {
     userId?: string;
   }): Promise<DevAuthUserDetailDocument> {
     const normalizedInput = this.normalizeUserLookup(input);
-    const database = this.database.getDatabase();
+    const database = this.adminDatabase.getDatabase();
     const user = normalizedInput.userId
       ? await this.findUserById(database, normalizedInput.userId)
       : await this.findUserByEmail(database, normalizedInput.email ?? "");
@@ -199,7 +198,7 @@ export class DevAuthService {
   }
 
   async listUsers(): Promise<DevAuthUserSummaryDocument[]> {
-    const database = this.database.getDatabase() as unknown as {
+    const database = this.adminDatabase.getDatabase() as unknown as {
       select(selection: Record<string, unknown>): {
         from(table: unknown): {
           leftJoin(table: unknown, condition: unknown): {
@@ -262,7 +261,7 @@ export class DevAuthService {
 
   async authenticateHeaders(headers: Record<string, unknown>): Promise<AuthSession> {
     const selection = DevAuthHeaders.requireSelection(headers);
-    const membership = await this.findMembershipCompanyRecord(this.database.getDatabase(), selection);
+    const membership = await this.findMembershipCompanyRecord(this.adminDatabase.getDatabase(), selection);
     if (!membership?.slug) {
       throw new Error("The selected dev auth company is unavailable for that user.");
     }

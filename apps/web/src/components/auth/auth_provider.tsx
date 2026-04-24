@@ -115,11 +115,9 @@ export function SignUp(props: {
     : <ClerkSignUp {...props} />;
 }
 
-export function Companies(props: {
-  userId: string;
-}) {
+export function Companies() {
   return config.authProvider === "dev"
-    ? <DevCompanies userId={props.userId} />
+    ? <DevCompanies />
     : null;
 }
 

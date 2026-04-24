@@ -365,11 +365,10 @@ function DevCompanyList(props: {
   );
 }
 
-function DevCompaniesCard(props: {
-  userId: string;
-}) {
+function DevCompaniesCard() {
   const authContext = useDevAuthContext();
   const navigate = useNavigate();
+  const selectedUserId = new DevAuthSelectionStorage().read().userId;
   const [companyName, setCompanyName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
@@ -382,12 +381,19 @@ function DevCompaniesCard(props: {
     let cancelled = false;
 
     async function loadUser() {
+      if (!selectedUserId) {
+        setSelectedUser(null);
+        setErrorMessage("Choose a dev user before selecting a company.");
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setErrorMessage(null);
 
       try {
         const nextUser = await authContext.devAuth.loadUser({
-          userId: props.userId,
+          userId: selectedUserId,
         });
         if (!cancelled) {
           setSelectedUser(nextUser);
@@ -409,7 +415,7 @@ function DevCompaniesCard(props: {
     return () => {
       cancelled = true;
     };
-  }, [authContext.devAuth, props.userId]);
+  }, [authContext.devAuth, selectedUserId]);
 
   async function handleSelectCompany(company: DevAuthCompanyDocument): Promise<void> {
     if (!selectedUser) {
@@ -835,10 +841,8 @@ export function DevSignUp() {
   return <DevSignUpCard />;
 }
 
-export function DevCompanies(props: {
-  userId: string;
-}) {
-  return <DevCompaniesCard userId={props.userId} />;
+export function DevCompanies() {
+  return <DevCompaniesCard />;
 }
 
 export function DevUserButton() {

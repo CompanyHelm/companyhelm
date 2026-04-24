@@ -1,10 +1,6 @@
 import { Companies } from "@/components/auth/auth_provider";
 
-interface CompaniesPageProps {
-  userId: string;
-}
-
-export function CompaniesPage(props: CompaniesPageProps) {
+export function CompaniesPage() {
   return (
     <main className="auth-shell">
       <section className="auth-shell__hero">
@@ -20,7 +16,7 @@ export function CompaniesPage(props: CompaniesPageProps) {
       </section>
 
       <section className="auth-shell__panel">
-        <Companies userId={props.userId} />
+        <Companies />
       </section>
     </main>
   );
