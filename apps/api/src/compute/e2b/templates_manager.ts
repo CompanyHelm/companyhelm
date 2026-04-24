@@ -57,6 +57,7 @@ export class E2bTemplatesManager {
    */
   private installCommonRuntimeTools(template: TemplateBuilder): TemplateBuilder {
     return template
+      .aptInstall("awscli")
       .aptInstall("gh")
       .aptInstall("ripgrep")
       .aptInstall("tmux")
