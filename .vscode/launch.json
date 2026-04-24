@@ -41,11 +41,37 @@
       "skipFiles": ["<node_internals>/**"]
     },
     {
+      "name": "API (local-dev)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "args": [
+        "watch",
+        "--include",
+        "src/graphql/schema/schema.graphql",
+        "src/main.ts",
+        "--config-path",
+        "${workspaceFolder}/apps/api/config/local-dev.yaml"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
       "name": "Web Dev Server",
       "type": "node-terminal",
       "request": "launch",
       "cwd": "${workspaceFolder}/apps/web",
       "command": "npm run dev"
+    },
+    {
+      "name": "Web Dev Server (local-dev)",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/web",
+      "command": "npm run dev -- --mode local-dev"
     },
     {
       "name": "Web (Brave)",
@@ -67,6 +93,11 @@
       "stopAll": true
     },
     {
+      "name": "Web + API (local-dev)",
+      "configurations": ["Web Dev Server (local-dev)", "API (local-dev)"],
+      "stopAll": true
+    },
+    {
       "name": "Full Stack (API + Web + Brave)",
       "configurations": ["API", "Web Dev Server", "Web (Brave)"],
       "stopAll": true
@@ -74,6 +105,11 @@
     {
       "name": "Full Stack (API dev + Web + Brave)",
       "configurations": ["API (dev)", "Web Dev Server", "Web (Brave)"],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack (API local-dev + Web + Brave)",
+      "configurations": ["API (local-dev)", "Web Dev Server (local-dev)", "Web (Brave)"],
       "stopAll": true
     }
   ]
