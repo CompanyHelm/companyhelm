@@ -514,7 +514,9 @@ export function OnboardingStepFrame(props: {
           </div>
         ) : null}
         <div className="mt-6">{props.children}</div>
-        <p className="mt-5 text-sm leading-6 text-muted-foreground">{props.helperText}</p>
+        {props.helperText ? (
+          <p className="mt-5 text-sm leading-6 text-muted-foreground">{props.helperText}</p>
+        ) : null}
       </section>
     </div>
   );

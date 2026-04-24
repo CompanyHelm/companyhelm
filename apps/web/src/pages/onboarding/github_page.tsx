@@ -51,18 +51,14 @@ function GithubPageContent() {
   return (
     <OnboardingStepFrame
       currentStep="github"
-      description="Connect GitHub now if you want the CEO to inspect repositories and propose agent ownership from the actual codebase."
+      description="CompanyHelm uses GitHub to fetch and store code, plans, and custom skills. Not connecting to Github would prevent CompanyHelm from operating properly."
       errorMessage={controller.errorMessage}
       helperText={controller.hasGithubInstallation
         ? "A GitHub installation is already connected for this company."
-        : "If you skip this now, the CEO will still ask whether it should pull repos later, but with less immediate context."}
+        : ""}
       title="GitHub access"
     >
       <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-        <p>
-          The first CEO workflow should ask about checking out repos and reviewing them before proposing
-          additional agents. Connecting GitHub here lets that happen immediately after onboarding.
-        </p>
         {controller.hasGithubInstallation ? (
           <p className="text-foreground">GitHub is connected and ready for repo discovery.</p>
         ) : null}
