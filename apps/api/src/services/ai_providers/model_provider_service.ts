@@ -86,9 +86,9 @@ export class ModelProviderService {
         name: "OpenAI Codex",
         type: ModelProviderAuthorizationType.Oauth,
         authorizationInstructionsMarkdown: [
-          "run this command",
+          "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
           "```",
-          "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json and paste below",
+          "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json",
           "```",
         ].join("\n"),
       },
@@ -100,9 +100,9 @@ export class ModelProviderService {
         name: "Google Gemini CLI",
         type: ModelProviderAuthorizationType.Oauth,
         authorizationInstructionsMarkdown: [
-          "run this command",
+          "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
           "```",
-          "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json and paste below",
+          "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json",
           "```",
         ].join("\n"),
       },

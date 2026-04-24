@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CheckIcon, CopyIcon } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
@@ -44,11 +45,22 @@ interface CreateCredentialDialogProps {
   suggestDefault: boolean;
 }
 
+function extractFirstFencedCodeBlock(value: string): string | null {
+  const match = /```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/.exec(value);
+  const command = match?.[1]?.trim();
+  return command || null;
+}
+
+function removeFirstFencedCodeBlock(value: string): string {
+  return value.replace(/```(?:[a-zA-Z0-9_-]+)?\n[\s\S]*?```/, "").trim();
+}
+
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [authFileContents, setAuthFileContents] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [isDefault, setIsDefault] = useState(false);
+  const [isInstructionCommandCopied, setIsInstructionCommandCopied] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [modelProvider, setModelProvider] = useState(props.providers[0]?.id ?? "");
@@ -56,6 +68,12 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const usesEditableBaseUrl = selectedProvider
     ? ModelProviderCredentialCatalog.usesEditableBaseUrl(selectedProvider)
     : false;
+  const instructionCommand = selectedProvider?.authorizationInstructionsMarkdown
+    ? extractFirstFencedCodeBlock(selectedProvider.authorizationInstructionsMarkdown)
+    : null;
+  const instructionDescription = selectedProvider?.authorizationInstructionsMarkdown
+    ? removeFirstFencedCodeBlock(selectedProvider.authorizationInstructionsMarkdown)
+    : "";
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -63,6 +81,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
       setApiKey("");
       setBaseUrl(props.providers[0]?.baseUrl ?? "");
       setIsDefault(props.suggestDefault);
+      setIsInstructionCommandCopied(false);
       setLocalErrorMessage(null);
       setName("");
       setModelProvider(props.providers[0]?.id ?? "");
@@ -94,6 +113,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 setAuthFileContents("");
                 setApiKey("");
                 setBaseUrl(nextProvider?.baseUrl ?? "");
+                setIsInstructionCommandCopied(false);
                 setLocalErrorMessage(null);
                 setModelProvider(value ?? "");
               }}
@@ -158,13 +178,46 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
           {selectedProvider?.authorizationInstructionsMarkdown ? (
             <div className="grid gap-2">
               <p className="text-xs font-medium text-foreground">Instructions</p>
-              <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs/relaxed text-muted-foreground">
-                <MarkdownContent
-                  content={selectedProvider.authorizationInstructionsMarkdown}
-                  tone="muted"
-                  variant="compact"
-                />
-              </div>
+              {selectedProvider.type === "oauth" && instructionCommand ? (
+                <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-3 text-xs/relaxed text-muted-foreground">
+                  <p>{instructionDescription}</p>
+                  <div className="mt-3 flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-3 py-2">
+                    <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[11px] text-foreground">
+                      {instructionCommand}
+                    </code>
+                    <Button
+                      className="shrink-0"
+                      onClick={async () => {
+                        setLocalErrorMessage(null);
+                        try {
+                          await navigator.clipboard.writeText(instructionCommand);
+                          setIsInstructionCommandCopied(true);
+                        } catch {
+                          setLocalErrorMessage("Failed to copy the command.");
+                        }
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {isInstructionCommandCopied ? (
+                        <CheckIcon className="mr-1.5 size-3.5" />
+                      ) : (
+                        <CopyIcon className="mr-1.5 size-3.5" />
+                      )}
+                      {isInstructionCommandCopied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs/relaxed text-muted-foreground">
+                  <MarkdownContent
+                    content={selectedProvider.authorizationInstructionsMarkdown}
+                    tone="muted"
+                    variant="compact"
+                  />
+                </div>
+              )}
             </div>
           ) : null}
 
