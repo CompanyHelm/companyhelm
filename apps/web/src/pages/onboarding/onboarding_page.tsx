@@ -45,8 +45,7 @@ function OnboardingPageContent() {
 
   useEffect(() => {
     if (
-      controller.setupResolved
-      || controller.errorMessage
+      controller.errorMessage
       || controller.onboarding.status === "completed"
       || controller.onboarding.status === "skipped"
     ) {

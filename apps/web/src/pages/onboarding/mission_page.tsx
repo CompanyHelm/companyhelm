@@ -110,11 +110,10 @@ function MissionPageContent() {
                 void controller.updateOnboarding({
                   skipMission: true,
                 }).then(() => {
-                  void navigate({
-                    params: {
-                      organizationSlug,
-                    },
-                    to: OrganizationPath.route("/onboarding"),
+                  navigateToOnboardingStep({
+                    navigate,
+                    organizationSlug,
+                    step: "create-agents",
                   });
                 }).catch(() => undefined);
               }}
@@ -131,11 +130,10 @@ function MissionPageContent() {
                 void controller.updateOnboarding({
                   companyMission: controller.missionDraft.trim(),
                 }).then(() => {
-                  void navigate({
-                    params: {
-                      organizationSlug,
-                    },
-                    to: OrganizationPath.route("/onboarding"),
+                  navigateToOnboardingStep({
+                    navigate,
+                    organizationSlug,
+                    step: "create-agents",
                   });
                 }).catch(() => undefined);
               }}
