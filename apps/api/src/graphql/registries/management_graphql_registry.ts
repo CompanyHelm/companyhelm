@@ -33,6 +33,7 @@ import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
+import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
 import { UpdateSecretGroupMutation } from "../mutations/update_secret_group.ts";
@@ -117,6 +118,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
+  private readonly updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly updateSecretGroupMutation: UpdateSecretGroupMutation;
   private readonly updateMcpServerMutation: UpdateMcpServerMutation;
@@ -242,6 +244,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation = new SkipCompanyOnboardingMutation(),
     @inject(PlatformAdminUsersQueryResolver)
     platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
+    @inject(UpdateCompanyOnboardingMutation)
+    updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation = new UpdateCompanyOnboardingMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -321,6 +325,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
     this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
+    this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSecretGroupMutation = updateSecretGroupMutation ?? new UpdateSecretGroupMutation(defaultSecretService);
@@ -358,6 +363,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
+        UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
         UpdateSecretGroup: this.updateSecretGroupMutation.execute,

@@ -7,7 +7,9 @@ import { GithubInstallationStateService } from "../../github/installation_state_
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type CreateGithubInstallationUrlMutationArguments = Record<string, never>;
+type CreateGithubInstallationUrlMutationArguments = {
+  returnPath?: string | null;
+};
 
 type GraphqlCreateGithubInstallationUrlPayload = {
   url: string;
@@ -56,7 +58,10 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
     const state = this.githubInstallationStateService.createState({
       companyId: context.authSession.company.id,
       organizationSlug,
-      returnPath: CreateGithubInstallationUrlMutation.createRepositoriesReturnPath(organizationSlug),
+      returnPath: CreateGithubInstallationUrlMutation.resolveReturnPath(
+        organizationSlug,
+        _arguments_.returnPath,
+      ),
       sourceSessionId: null,
       userId: context.authSession.user.id,
     });
@@ -66,7 +71,11 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
     };
   };
 
-  private static createRepositoriesReturnPath(organizationSlug: string): string {
+  private static resolveReturnPath(organizationSlug: string, returnPath?: string | null): string {
+    if (returnPath && returnPath.startsWith("/")) {
+      return returnPath;
+    }
+
     return `/orgs/${encodeURIComponent(organizationSlug)}/repositories`;
   }
 }

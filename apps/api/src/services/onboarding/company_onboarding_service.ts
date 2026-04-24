@@ -2,21 +2,33 @@ import { and, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
   agents,
+  companyGithubInstallations,
   companyOnboardings,
+  modelProviderCredentials,
   workflowDefinitions,
 } from "../../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { CompanyBootstrapService } from "../bootstrap/company.ts";
 import { WorkflowService } from "../workflows/service.ts";
-import type { WorkflowRunCreateInput, WorkflowRunRecord } from "../workflows/types.ts";
+import type { WorkflowRunCreateInput, WorkflowRunInputValue, WorkflowRunRecord } from "../workflows/types.ts";
 
 export type CompanyOnboardingStatus = "not_started" | "in_progress" | "completed" | "skipped";
+export type CompanyOnboardingSetupStatus = "pending" | "completed" | "skipped";
+export type CompanyOnboardingLlmSetupStatus = "pending" | "third_party" | "company_managed" | "skipped";
 
 export type CompanyOnboardingRecord = {
   agentId: string | null;
+  companyMission: string | null;
   companyId: string;
   completedAt: Date | null;
   createdAt: Date;
+  githubCompletedAt: Date | null;
+  githubSetupStatus: CompanyOnboardingSetupStatus;
+  githubSkippedAt: Date | null;
+  llmCompletedAt: Date | null;
+  llmSetupStatus: CompanyOnboardingLlmSetupStatus;
+  llmSkippedAt: Date | null;
+  missionSkippedAt: Date | null;
   sessionId: string | null;
   skippedAt: Date | null;
   skippedByUserId: string | null;
@@ -48,6 +60,10 @@ type AgentRow = {
 };
 
 type WorkflowRow = {
+  id: string;
+};
+
+type ExistenceRow = {
   id: string;
 };
 
@@ -98,9 +114,17 @@ export class CompanyOnboardingService {
       .insert(companyOnboardings)
       .values({
         agentId: null,
+        companyMission: null,
         companyId,
         completedAt: null,
         createdAt: now,
+        githubCompletedAt: null,
+        githubSetupStatus: "pending",
+        githubSkippedAt: null,
+        llmCompletedAt: null,
+        llmSetupStatus: "pending",
+        llmSkippedAt: null,
+        missionSkippedAt: null,
         sessionId: null,
         skippedAt: null,
         skippedByUserId: null,
@@ -117,6 +141,103 @@ export class CompanyOnboardingService {
     }
 
     return createdOnboarding;
+  }
+
+  async updateSetup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      companyMission?: string | null;
+      githubSetupStatus?: CompanyOnboardingSetupStatus | null;
+      llmSetupStatus?: CompanyOnboardingLlmSetupStatus | null;
+      skipMission?: boolean | null;
+    },
+  ): Promise<CompanyOnboardingRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      await this.acquireCompanyLock(tx, input.companyId);
+      const existingOnboarding = await this.ensureDefaultOnboardingInTransaction(tx, input.companyId);
+      if (existingOnboarding.status === "completed" || existingOnboarding.status === "skipped") {
+        return existingOnboarding;
+      }
+
+      const values: Record<string, unknown> = {
+        updatedAt: new Date(),
+      };
+      let hasChanges = false;
+
+      if (input.skipMission) {
+        values.companyMission = null;
+        values.missionSkippedAt = new Date();
+        hasChanges = true;
+      } else if (input.companyMission !== undefined) {
+        const companyMission = input.companyMission;
+        if (companyMission === null || !companyMission.trim()) {
+          throw new Error("Company mission is required unless the step is skipped.");
+        }
+
+        values.companyMission = companyMission;
+        values.missionSkippedAt = null;
+        hasChanges = true;
+      }
+
+      if (input.githubSetupStatus && input.githubSetupStatus !== "pending") {
+        if (input.githubSetupStatus === "completed") {
+          const hasLinkedGithubInstallation = await this.hasLinkedGithubInstallation(tx, input.companyId);
+          if (!hasLinkedGithubInstallation) {
+            throw new Error("Connect a GitHub installation before continuing.");
+          }
+
+          values.githubCompletedAt = new Date();
+          values.githubSetupStatus = "completed";
+          values.githubSkippedAt = null;
+        } else {
+          values.githubCompletedAt = null;
+          values.githubSetupStatus = "skipped";
+          values.githubSkippedAt = new Date();
+        }
+        hasChanges = true;
+      }
+
+      if (input.llmSetupStatus && input.llmSetupStatus !== "pending") {
+        if (input.llmSetupStatus === "third_party") {
+          const hasThirdPartyCredential = await this.hasThirdPartyCredential(tx, input.companyId);
+          if (!hasThirdPartyCredential) {
+            throw new Error("Add a third-party model provider credential before continuing.");
+          }
+        }
+        if (input.llmSetupStatus === "company_managed") {
+          const hasManagedCredential = await this.hasManagedCredential(tx, input.companyId);
+          if (!hasManagedCredential) {
+            throw new Error("CompanyHelm-managed model access is not configured for this company.");
+          }
+        }
+
+        if (input.llmSetupStatus === "skipped") {
+          values.llmCompletedAt = null;
+          values.llmSkippedAt = new Date();
+        } else {
+          values.llmCompletedAt = new Date();
+          values.llmSkippedAt = null;
+        }
+        values.llmSetupStatus = input.llmSetupStatus;
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
+        return existingOnboarding;
+      }
+
+      const [updatedOnboarding] = await tx
+        .update(companyOnboardings)
+        .set(values)
+        .where(eq(companyOnboardings.companyId, input.companyId))
+        .returning(this.selection()) as CompanyOnboardingRow[];
+      if (!updatedOnboarding) {
+        throw new Error("Failed to update company onboarding.");
+      }
+
+      return updatedOnboarding;
+    });
   }
 
   async ensureOnboarding(
@@ -142,13 +263,16 @@ export class CompanyOnboardingService {
         startedSessionId = existingOnboarding.sessionId;
         return existingOnboarding;
       }
+      if (!this.isStaticSetupResolved(existingOnboarding)) {
+        throw new Error("Complete the onboarding setup steps before starting the CEO chat.");
+      }
 
       const agent = await this.requireSeedAgent(tx, input.companyId);
       const workflow = await this.requireSeedWorkflow(tx, input.companyId);
       const startedRun = await this.workflowService.startWorkflowRunInTransaction(tx, {
         agentId: agent.id,
         companyId: input.companyId,
-        inputValues: [],
+        inputValues: this.createWorkflowInputValues(existingOnboarding),
         startedByUserId: input.userId,
         workflowDefinitionId: workflow.id,
       });
@@ -283,12 +407,82 @@ export class CompanyOnboardingService {
     return workflow;
   }
 
+  private isStaticSetupResolved(onboarding: CompanyOnboardingRecord): boolean {
+    const missionResolved = Boolean(onboarding.companyMission) || Boolean(onboarding.missionSkippedAt);
+    return missionResolved
+      && onboarding.githubSetupStatus !== "pending"
+      && onboarding.llmSetupStatus !== "pending";
+  }
+
+  private createWorkflowInputValues(onboarding: CompanyOnboardingRecord): WorkflowRunInputValue[] {
+    return [{
+      name: "companyMission",
+      value: onboarding.companyMission ?? "",
+    }, {
+      name: "githubSetupStatus",
+      value: onboarding.githubSetupStatus,
+    }, {
+      name: "llmSetupStatus",
+      value: onboarding.llmSetupStatus,
+    }];
+  }
+
+  private async hasLinkedGithubInstallation(tx: AppRuntimeTransaction, companyId: string): Promise<boolean> {
+    const [installation] = await tx
+      .select({
+        id: companyGithubInstallations.companyId,
+      })
+      .from(companyGithubInstallations)
+      .where(eq(companyGithubInstallations.companyId, companyId))
+      .limit(1) as ExistenceRow[];
+
+    return Boolean(installation);
+  }
+
+  private async hasThirdPartyCredential(tx: AppRuntimeTransaction, companyId: string): Promise<boolean> {
+    const [credential] = await tx
+      .select({
+        id: modelProviderCredentials.id,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isManaged, false),
+      ))
+      .limit(1) as ExistenceRow[];
+
+    return Boolean(credential);
+  }
+
+  private async hasManagedCredential(tx: AppRuntimeTransaction, companyId: string): Promise<boolean> {
+    const [credential] = await tx
+      .select({
+        id: modelProviderCredentials.id,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isManaged, true),
+      ))
+      .limit(1) as ExistenceRow[];
+
+    return Boolean(credential);
+  }
+
   private selection() {
     return {
       agentId: companyOnboardings.agentId,
+      companyMission: companyOnboardings.companyMission,
       companyId: companyOnboardings.companyId,
       completedAt: companyOnboardings.completedAt,
       createdAt: companyOnboardings.createdAt,
+      githubCompletedAt: companyOnboardings.githubCompletedAt,
+      githubSetupStatus: companyOnboardings.githubSetupStatus,
+      githubSkippedAt: companyOnboardings.githubSkippedAt,
+      llmCompletedAt: companyOnboardings.llmCompletedAt,
+      llmSetupStatus: companyOnboardings.llmSetupStatus,
+      llmSkippedAt: companyOnboardings.llmSkippedAt,
+      missionSkippedAt: companyOnboardings.missionSkippedAt,
       sessionId: companyOnboardings.sessionId,
       skippedAt: companyOnboardings.skippedAt,
       skippedByUserId: companyOnboardings.skippedByUserId,

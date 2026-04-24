@@ -9,6 +9,7 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
   taskStages,
+  workflowDefinitionInputs,
   workflowDefinitions,
   workflowStepDefinitions,
 } from "../src/db/schema.ts";
@@ -106,6 +107,16 @@ type WorkflowDefinitionRow = {
   updatedAt: Date;
 };
 
+type WorkflowDefinitionInputRow = {
+  companyId: string;
+  createdAt: Date;
+  defaultValue: string | null;
+  description: string | null;
+  isRequired: boolean;
+  name: string;
+  workflowDefinitionId: string;
+};
+
 type WorkflowStepDefinitionRow = {
   createdAt: Date;
   instructions_template: string | null;
@@ -117,9 +128,17 @@ type WorkflowStepDefinitionRow = {
 
 type CompanyOnboardingRow = {
   agentId: string | null;
+  companyMission: string | null;
   companyId: string;
   completedAt: Date | null;
   createdAt: Date;
+  githubCompletedAt: Date | null;
+  githubSetupStatus: "pending" | "completed" | "skipped";
+  githubSkippedAt: Date | null;
+  llmCompletedAt: Date | null;
+  llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+  llmSkippedAt: Date | null;
+  missionSkippedAt: Date | null;
   sessionId: string | null;
   skippedAt: Date | null;
   skippedByUserId: string | null;
@@ -143,6 +162,7 @@ class CompanyBootstrapServiceTestHarness {
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly taskStageRows: TaskStageRow[];
   private readonly workflowDefinitionRows: WorkflowDefinitionRow[];
+  private readonly workflowDefinitionInputRows: WorkflowDefinitionInputRow[];
   private readonly workflowStepDefinitionRows: WorkflowStepDefinitionRow[];
 
   constructor(params?: {
@@ -155,6 +175,7 @@ class CompanyBootstrapServiceTestHarness {
     modelRows?: ModelProviderCredentialModelRow[];
     taskStageRows?: TaskStageRow[];
     workflowDefinitionRows?: WorkflowDefinitionRow[];
+    workflowDefinitionInputRows?: WorkflowDefinitionInputRow[];
     workflowStepDefinitionRows?: WorkflowStepDefinitionRow[];
   }) {
     this.agentSkillRows = [...(params?.agentSkillRows ?? [])];
@@ -168,6 +189,7 @@ class CompanyBootstrapServiceTestHarness {
     this.modelRows = [...(params?.modelRows ?? [])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
     this.workflowDefinitionRows = [...(params?.workflowDefinitionRows ?? [])];
+    this.workflowDefinitionInputRows = [...(params?.workflowDefinitionInputRows ?? [])];
     this.workflowStepDefinitionRows = [...(params?.workflowStepDefinitionRows ?? [])];
   }
 
@@ -211,6 +233,7 @@ class CompanyBootstrapServiceTestHarness {
     const modelRows = this.modelRows;
     const taskStageRows = this.taskStageRows;
     const workflowDefinitionRows = this.workflowDefinitionRows;
+    const workflowDefinitionInputRows = this.workflowDefinitionInputRows;
     const workflowStepDefinitionRows = this.workflowStepDefinitionRows;
     let modelCredentialSelectCount = 0;
 
@@ -261,9 +284,36 @@ class CompanyBootstrapServiceTestHarness {
                   }
                 }
 
+                if (table === workflowDefinitions) {
+                  const workflow = workflowDefinitionRows[0];
+                  if (workflow) {
+                    workflow.description = value.description as string | null;
+                    workflow.instructions_template = value.instructions_template as string | null;
+                    workflow.isEnabled = Boolean(value.isEnabled);
+                    workflow.updatedAt = value.updatedAt as Date;
+                  }
+                  return;
+                }
+
                 throw new Error("Unexpected update table.");
               },
             };
+          },
+        };
+      },
+      delete(table: unknown) {
+        return {
+          async where() {
+            if (table === workflowDefinitionInputs) {
+              workflowDefinitionInputRows.splice(0, workflowDefinitionInputRows.length);
+              return;
+            }
+            if (table === workflowStepDefinitions) {
+              workflowStepDefinitionRows.splice(0, workflowStepDefinitionRows.length);
+              return;
+            }
+
+            throw new Error("Unexpected delete table.");
           },
         };
       },
@@ -440,6 +490,23 @@ class CompanyBootstrapServiceTestHarness {
               return {};
             }
 
+            if (table === workflowDefinitionInputs) {
+              const values = Array.isArray(value) ? value : [value];
+              for (const inputValue of values) {
+                workflowDefinitionInputRows.push({
+                  companyId: inputValue.companyId as string,
+                  createdAt: inputValue.createdAt as Date,
+                  defaultValue: inputValue.defaultValue as string | null,
+                  description: inputValue.description as string | null,
+                  isRequired: Boolean(inputValue.isRequired),
+                  name: inputValue.name as string,
+                  workflowDefinitionId: inputValue.workflowDefinitionId as string,
+                });
+              }
+
+              return {};
+            }
+
             if (table === companyOnboardings) {
               if (Array.isArray(value)) {
                 throw new Error("Unexpected company onboarding batch insert.");
@@ -450,9 +517,17 @@ class CompanyBootstrapServiceTestHarness {
                   if (!companyOnboardingRows.some((row) => row.companyId === value.companyId)) {
                     companyOnboardingRows.push({
                       agentId: value.agentId as string | null,
+                      companyMission: value.companyMission as string | null,
                       companyId: value.companyId as string,
                       completedAt: value.completedAt as Date | null,
                       createdAt: value.createdAt as Date,
+                      githubCompletedAt: value.githubCompletedAt as Date | null,
+                      githubSetupStatus: value.githubSetupStatus as CompanyOnboardingRow["githubSetupStatus"],
+                      githubSkippedAt: value.githubSkippedAt as Date | null,
+                      llmCompletedAt: value.llmCompletedAt as Date | null,
+                      llmSetupStatus: value.llmSetupStatus as CompanyOnboardingRow["llmSetupStatus"],
+                      llmSkippedAt: value.llmSkippedAt as Date | null,
+                      missionSkippedAt: value.missionSkippedAt as Date | null,
                       sessionId: value.sessionId as string | null,
                       skippedAt: value.skippedAt as Date | null,
                       skippedByUserId: value.skippedByUserId as string | null,
@@ -570,6 +645,10 @@ class CompanyBootstrapServiceTestHarness {
     return this.workflowDefinitionRows;
   }
 
+  listWorkflowInputs(): WorkflowDefinitionInputRow[] {
+    return this.workflowDefinitionInputRows;
+  }
+
   listWorkflowSteps(): WorkflowStepDefinitionRow[] {
     return [...this.workflowStepDefinitionRows].sort((left, right) => left.ordinal - right.ordinal);
   }
@@ -653,21 +732,26 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.equal(workflow?.companyId, "company-1");
   assert.equal(workflow?.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME);
   assert.equal(workflow?.isEnabled, true);
-  assert.match(workflow?.description ?? "", /GitHub setup/);
+  assert.match(workflow?.description ?? "", /repository discovery/);
+
+  const workflowInputs = harness.listWorkflowInputs();
+  assert.deepEqual(workflowInputs.map((input) => input.name), [
+    "companyMission",
+    "githubSetupStatus",
+    "llmSetupStatus",
+  ]);
 
   const workflowSteps = harness.listWorkflowSteps();
   assert.deepEqual(workflowSteps.map((step) => step.name), [
-    "Capture company intent",
-    "Connect GitHub",
-    "Propose starter agents",
+    "Frame the onboarding goals",
+    "Inspect repos and skill options",
+    "Recommend the first agent team",
   ]);
-  assert.match(workflowSteps[0]?.instructions_template ?? "", /artifact\.markdown\.create/);
-  assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
-  assert.match(workflowSteps[1]?.instructions_template ?? "", /Connect GitHub card/);
-  assert.doesNotMatch(workflowSteps[1]?.instructions_template ?? "", /Show the returned installationUrl/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /skill\.github\.import/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /public repositories/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /plain git clone/);
+  assert.match(workflowSteps[0]?.instructions_template ?? "", /companyMission/);
+  assert.match(workflowSteps[1]?.instructions_template ?? "", /bmad-code-org\/BMAD-METHOD/);
+  assert.match(workflowSteps[1]?.instructions_template ?? "", /skill\.github\.import/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /3 to 5 agents/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /additional agents/);
 
   const [onboarding] = harness.listCompanyOnboardings();
   assert.equal(onboarding?.companyId, "company-1");
@@ -753,47 +837,73 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       createdAt: now,
       createdByAgentId: null,
       createdByUserId: null,
-      description: "Guides a new company through mission capture, GitHub setup, codebase discovery, and first agent recommendations.",
+      description: "Guides a new company through repository discovery, skill options, and first agent recommendations.",
       id: "workflow-1",
       instructions_template: "Run this workflow in the CEO onboarding chat for newly created companies.",
       isEnabled: true,
       name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
       updatedAt: now,
     }],
+    workflowDefinitionInputRows: [{
+      companyId: "company-1",
+      createdAt: now,
+      defaultValue: "",
+      description: "Mission or goals captured during static onboarding. Empty means the user skipped it.",
+      isRequired: false,
+      name: "companyMission",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      companyId: "company-1",
+      createdAt: now,
+      defaultValue: "pending",
+      description: "Whether GitHub was connected, skipped, or left pending during static onboarding.",
+      isRequired: true,
+      name: "githubSetupStatus",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      companyId: "company-1",
+      createdAt: now,
+      defaultValue: "pending",
+      description: "Whether LLM provider setup was completed with third-party credentials, CompanyHelm-managed access, or skipped.",
+      isRequired: true,
+      name: "llmSetupStatus",
+      workflowDefinitionId: "workflow-1",
+    }],
     workflowStepDefinitionRows: [{
       createdAt: now,
-      instructions_template: "Ask for mission.",
-      name: "Capture company intent",
+      instructions_template: "Summarize mission and ask about configuring additional agents.",
+      name: "Frame the onboarding goals",
       ordinal: 1,
-      stepId: "capture-company-intent",
+      stepId: "frame-onboarding-goals",
       workflowDefinitionId: "workflow-1",
     }, {
       createdAt: now,
-      instructions_template: "Connect GitHub.",
-      name: "Connect GitHub",
+      instructions_template: "Inspect repos and public skill references including bmad-code-org/BMAD-METHOD.",
+      name: "Inspect repos and skill options",
       ordinal: 2,
-      stepId: "connect-github",
+      stepId: "inspect-repos-and-skills",
       workflowDefinitionId: "workflow-1",
     }, {
       createdAt: now,
-      instructions_template: "Map stack.",
-      name: "Map the tech stack",
+      instructions_template: "Recommend the first agent team.",
+      name: "Recommend the first agent team",
       ordinal: 3,
-      stepId: "map-tech-stack",
-      workflowDefinitionId: "workflow-1",
-    }, {
-      createdAt: now,
-      instructions_template: "Propose agents.",
-      name: "Propose starter agents",
-      ordinal: 4,
       stepId: "propose-starter-agents",
       workflowDefinitionId: "workflow-1",
     }],
     companyOnboardingRows: [{
       agentId: null,
+      companyMission: null,
       companyId: "company-1",
       completedAt: null,
       createdAt: now,
+      githubCompletedAt: null,
+      githubSetupStatus: "pending",
+      githubSkippedAt: null,
+      llmCompletedAt: null,
+      llmSetupStatus: "pending",
+      llmSkippedAt: null,
+      missionSkippedAt: null,
       sessionId: null,
       skippedAt: null,
       skippedByUserId: null,
@@ -819,7 +929,8 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
   assert.equal(harness.listWorkflowDefinitions().length, 1);
-  assert.equal(harness.listWorkflowSteps().length, 4);
+  assert.equal(harness.listWorkflowInputs().length, 3);
+  assert.equal(harness.listWorkflowSteps().length, 3);
   assert.equal(harness.listCompanyOnboardings().length, 1);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

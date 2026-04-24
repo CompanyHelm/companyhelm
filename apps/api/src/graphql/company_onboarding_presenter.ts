@@ -3,10 +3,18 @@ import type { CompanyOnboardingRecord } from "../services/onboarding/company_onb
 
 export type GraphqlCompanyOnboardingRecord = {
   agentId: string | null;
+  companyMission: string | null;
   companyId: string;
   completedAt: string | null;
   createdAt: string;
+  githubCompletedAt: string | null;
+  githubSetupStatus: string;
+  githubSkippedAt: string | null;
   id: string;
+  llmCompletedAt: string | null;
+  llmSetupStatus: string;
+  llmSkippedAt: string | null;
+  missionSkippedAt: string | null;
   sessionId: string | null;
   skippedAt: string | null;
   skippedByUserId: string | null;
@@ -26,10 +34,18 @@ export class CompanyOnboardingPresenter {
   serialize(record: CompanyOnboardingRecord): GraphqlCompanyOnboardingRecord {
     return {
       agentId: record.agentId,
+      companyMission: record.companyMission,
       companyId: record.companyId,
       completedAt: record.completedAt?.toISOString() ?? null,
       createdAt: record.createdAt.toISOString(),
+      githubCompletedAt: record.githubCompletedAt?.toISOString() ?? null,
+      githubSetupStatus: record.githubSetupStatus,
+      githubSkippedAt: record.githubSkippedAt?.toISOString() ?? null,
       id: record.companyId,
+      llmCompletedAt: record.llmCompletedAt?.toISOString() ?? null,
+      llmSetupStatus: record.llmSetupStatus,
+      llmSkippedAt: record.llmSkippedAt?.toISOString() ?? null,
+      missionSkippedAt: record.missionSkippedAt?.toISOString() ?? null,
       sessionId: record.sessionId,
       skippedAt: record.skippedAt?.toISOString() ?? null,
       skippedByUserId: record.skippedByUserId,

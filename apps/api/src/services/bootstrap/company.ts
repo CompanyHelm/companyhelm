@@ -12,6 +12,7 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
   taskStages,
+  workflowDefinitionInputs,
   workflowDefinitions,
   workflowStepDefinitions,
 } from "../../db/schema.ts";
@@ -80,6 +81,12 @@ type BootstrapUpdatableDatabase = DatabaseTransactionInterface & {
   };
 };
 
+type BootstrapMutableDatabase = BootstrapUpdatableDatabase & {
+  delete(table: unknown): {
+    where(condition: unknown): Promise<unknown>;
+  };
+};
+
 /**
  * Owns the company-side provisioning steps that must exist before company-scoped API features can
  * run. That includes the company row itself, membership links, and the idempotent default catalog
@@ -93,46 +100,62 @@ export class CompanyBootstrapService {
   static readonly SEED_ONBOARDING_WORKFLOW_NAME = "Company onboarding";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
   private static readonly SEED_ONBOARDING_WORKFLOW_DESCRIPTION =
-    "Guides a new company through mission capture, GitHub setup, codebase discovery, and first agent recommendations.";
+    "Guides a new company through repository discovery, skill options, and first agent recommendations.";
   private static readonly SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS = [
     "Run this workflow in the CEO onboarding chat for newly created companies.",
     "Keep the conversation focused and ask only one question at a time.",
     "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
-    "Do not create agents or import skills without user confirmation. Explain the user what you will do as next step before doing it.",
+    "Use the static onboarding inputs as ground truth for mission capture, GitHub setup, and model provider readiness.",
+    "Do not create agents or import skills without user confirmation. Explain to the user what you will do before doing it.",
   ].join("\n");
+  private static readonly SEED_ONBOARDING_WORKFLOW_INPUTS = [{
+    defaultValue: "",
+    description: "Mission or goals captured during static onboarding. Empty means the user skipped it.",
+    isRequired: false,
+    name: "companyMission",
+  }, {
+    defaultValue: "pending",
+    description: "Whether GitHub was connected, skipped, or left pending during static onboarding.",
+    isRequired: true,
+    name: "githubSetupStatus",
+  }, {
+    defaultValue: "pending",
+    description: "Whether LLM provider setup was completed with third-party credentials, CompanyHelm-managed access, or skipped.",
+    isRequired: true,
+    name: "llmSetupStatus",
+  }] as const;
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
-      "Welcome the user to CompanyHelm. \"Hi {user.name}, welcome to CompanyHelm! I am your virtual CEO my first task is to onboard you to CompanyHelm and help you achieve your goals faster and more efficiently.\"",
-      "Ask one quick question: \"What is this company's or business's mission or/and goals?\"",
-      "After the user answers, activate the Manage artifacts system skill.",
-      "Call system_command with id \"artifact.markdown.create\" and input that creates an active company-scoped markdown artifact named \"Company mission and goals\".",
-      "The artifact content should include short sections for Mission, Near-term goals, Constraints, and Open questions.",
-      "Keep the saved document concise. Do not ask follow-up questions unless the answer is too vague to preserve.",
+      "Welcome the user to CompanyHelm as their CEO and explicitly reference the static onboarding inputs.",
+      "Summarize the current setup state using companyMission, githubSetupStatus, and llmSetupStatus.",
+      "If companyMission is non-empty, reflect it back in one or two sentences and ask one question: whether the user wants to configure additional agents now.",
+      "If companyMission is empty, ask the user for the short mission or near-term goal that should guide the first agent team before proposing any setup.",
+      "Explain that the next steps are repository inspection, skill options, and a concrete agent recommendation set.",
     ].join("\n"),
-    name: "Capture company intent",
-    stepId: "capture-company-intent",
+    name: "Frame the onboarding goals",
+    stepId: "frame-onboarding-goals",
   }, {
     instructions: [
-      "Explain that GitHub is foundational for CompanyHelm because repository access lets agents clone code, understand the stack, make changes, open pull requests, and keep future agents grounded in real implementation context.",
-      "Ask whether the user has GitHub repositories for this company.",
-      "If yes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.start\".",
-      "Do not show or paste the returned installationUrl in chat because the chat UI renders a Connect GitHub card from the system command result.",
-      "Tell the user to click Connect in the card, then wait for the GitHub callback. No user confirmation is needed, the sytem will continue when the callback is received.",
-      "If the user says they do not use GitHub, explain that codebase discovery and pull request workflows will be limited, then ask whether to skip the GitHub-dependent steps.",
+      "Use githubSetupStatus to decide the next question.",
+      "If githubSetupStatus is completed, ask which connected repositories the CEO should inspect first and whether the user wants those repos pulled into the workspace for review.",
+      "If githubSetupStatus is skipped, explain the limitation clearly and ask whether the user wants to continue with goal-based agent planning only.",
+      "Ask specifically about importing or mirroring useful agent and skill patterns from public references such as msitarzewski/agency-agents, obra/superpowers, and bmad-code-org/BMAD-METHOD.",
+      "If the user wants skill help, activate the Manage skills system skill and inspect public repositories before proposing imports. Only call skill.github.import after you know the exact directories to import and the user approves it.",
+      "If the user wants repository access but GitHub is still not connected, explain that they should return to the static onboarding step or repositories page to connect it before the CEO can inspect private repos.",
     ].join("\n"),
-    name: "Connect GitHub",
-    stepId: "connect-github",
+    name: "Inspect repos and skill options",
+    stepId: "inspect-repos-and-skills",
   }, {
     instructions: [
-      "Git clone repos:",
-      "- https://github.com/msitarzewski/agency-agents.git",
-      "Treat agency-agents as public repositories: no need for github installation access.",
-      "Clone those public repositories directly with a plain git clone of the public HTTPS repository URL, then inspect their agent definitions, skills, prompts, setup docs, and examples.",
-      "Activate the Manage skills system skill. If the user approves importing Superpowers-style development skills, call system_command with id \"skill.github.import\" using repository \"obra/superpowers\", branchName \"main\", and selected skillDirectory values such as \"skills/using-superpowers\", \"skills/systematic-debugging\", \"skills/writing-plans\", \"skills/executing-plans\", \"skills/using-git-worktrees\", \"skills/test-driven-development\", and \"skills/verification-before-completion\".",
-      "Propose a small first team of 3 to 5 agents based on the mission and tech stack and based on the agency agents repository. For each proposed agent include name, responsibility, model/compute assumptions, useful skills, and the first task it should own.",
+      "Propose a small first team of 3 to 5 agents based on the company mission, repository context if available, and the user's stated priorities.",
+      "Give the user options, not just one answer. Include at least one conservative setup and one more ambitious setup.",
+      "Ask which additional agents the user wants to create now versus later, then tie the options to that answer.",
+      "For each proposed agent include name, responsibility, why it exists, model or compute assumptions, useful skills, and the first task it should own.",
+      "When repositories are available, tailor the recommendation to the actual stack and call out which repos the team should check out first.",
+      "Discuss whether Superpowers-style development skills, BMAD-style role specialization, or imported public skill packages would make those agents more effective.",
       "Ask for confirmation before creating agents. After approval, activate the Manage agents system skill and use agent.create plus agent.skill.attach or agent.skill_group.attach as needed.",
     ].join("\n"),
-    name: "Propose starter agents",
+    name: "Recommend the first agent team",
     stepId: "propose-starter-agents",
   }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
@@ -663,27 +686,62 @@ export class CompanyBootstrapService {
         eq(workflowDefinitions.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME),
       ))
       .limit(1) as Array<{ id: string }>;
-    if (existingWorkflow) {
-      return;
-    }
 
     const now = new Date();
-    const workflowDefinitionId = randomUUID();
+    const workflowDefinitionId = existingWorkflow?.id ?? randomUUID();
     const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    await insertableDatabase
-      .insert(workflowDefinitions)
-      .values({
-        companyId,
-        createdAt: now,
-        createdByAgentId: null,
-        createdByUserId: null,
-        description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
-        id: workflowDefinitionId,
-        instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
-        isEnabled: true,
-        name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
-        updatedAt: now,
-      });
+    const mutableDatabase = transaction as BootstrapMutableDatabase;
+    if (existingWorkflow) {
+      await mutableDatabase
+        .update(workflowDefinitions)
+        .set({
+          description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
+          instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
+          isEnabled: true,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(workflowDefinitions.companyId, companyId),
+          eq(workflowDefinitions.id, workflowDefinitionId),
+        ));
+      await mutableDatabase
+        .delete(workflowDefinitionInputs)
+        .where(and(
+          eq(workflowDefinitionInputs.companyId, companyId),
+          eq(workflowDefinitionInputs.workflowDefinitionId, workflowDefinitionId),
+        ));
+      await mutableDatabase
+        .delete(workflowStepDefinitions)
+        .where(eq(workflowStepDefinitions.workflowDefinitionId, workflowDefinitionId));
+    } else {
+      await insertableDatabase
+        .insert(workflowDefinitions)
+        .values({
+          companyId,
+          createdAt: now,
+          createdByAgentId: null,
+          createdByUserId: null,
+          description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
+          id: workflowDefinitionId,
+          instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
+          isEnabled: true,
+          name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
+          updatedAt: now,
+        });
+    }
+    for (const input of CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INPUTS) {
+      await insertableDatabase
+        .insert(workflowDefinitionInputs)
+        .values({
+          companyId,
+          createdAt: now,
+          defaultValue: input.defaultValue,
+          description: input.description,
+          isRequired: input.isRequired,
+          name: input.name,
+          workflowDefinitionId,
+        });
+    }
     for (const [index, step] of CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_STEPS.entries()) {
       await insertableDatabase
         .insert(workflowStepDefinitions)

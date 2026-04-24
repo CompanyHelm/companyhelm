@@ -25,6 +25,9 @@ import { McpOauthCallbackPage } from "./pages/mcp-servers/mcp_oauth_callback_pag
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { McpServersPage } from "./pages/mcp-servers/mcp_servers_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
+import { GithubPage } from "./pages/onboarding/github_page";
+import { MissionPage } from "./pages/onboarding/mission_page";
+import { ModelProviderPage } from "./pages/onboarding/model_provider_page";
 import { OnboardingPage } from "./pages/onboarding/onboarding_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
@@ -307,6 +310,24 @@ const onboardingRoute = createRoute({
   component: OnboardingPage,
 });
 
+const onboardingMissionRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/onboarding/mission"),
+  component: MissionPage,
+});
+
+const onboardingGithubRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/onboarding/github"),
+  component: GithubPage,
+});
+
+const onboardingModelProviderRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/onboarding/model-provider"),
+  component: ModelProviderPage,
+});
+
 const inboxRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/inbox"),
@@ -492,6 +513,9 @@ const routeTree = rootRoute.addChildren([
         computeProvidersRoute,
         chatsRoute,
         onboardingRoute,
+        onboardingMissionRoute,
+        onboardingGithubRoute,
+        onboardingModelProviderRoute,
         inboxRoute,
         usageRoute,
         conversationsRoute,

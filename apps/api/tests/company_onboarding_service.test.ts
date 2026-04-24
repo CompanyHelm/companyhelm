@@ -2,36 +2,50 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   agents,
+  companyGithubInstallations,
   companyOnboardings,
+  modelProviderCredentials,
   workflowDefinitions,
 } from "../src/db/schema.ts";
 import {
   type CompanyOnboardingRecord,
   CompanyOnboardingService,
 } from "../src/services/onboarding/company_onboarding_service.ts";
-import type { WorkflowRunRecord } from "../src/services/workflows/types.ts";
+import type { WorkflowRunInputValue, WorkflowRunRecord } from "../src/services/workflows/types.ts";
 
 type CompanyOnboardingRow = CompanyOnboardingRecord;
+
+type ModelCredentialRow = {
+  id: string;
+  isManaged: boolean;
+};
 
 type OnboardingWorkflowCall = {
   agentId: string;
   companyId: string;
+  inputValues: WorkflowRunInputValue[];
   startedByUserId: string | null | undefined;
   workflowDefinitionId: string;
 };
 
 /**
  * Provides a compact in-memory transaction provider for the onboarding state machine so tests can
- * verify idempotency and workflow-start side effects without standing up Postgres or Redis.
+ * verify static step persistence, gating, and workflow-start side effects without Postgres.
  */
 class CompanyOnboardingServiceTestHarness {
   private finalizeCount = 0;
+  private readonly githubInstallations: Array<{ companyId: string }>;
+  private readonly modelCredentials: ModelCredentialRow[];
   private readonly onboardingRows: CompanyOnboardingRow[];
   private readonly workflowCalls: OnboardingWorkflowCall[] = [];
 
   constructor(params: {
+    githubInstallations?: Array<{ companyId: string }>;
+    modelCredentials?: ModelCredentialRow[];
     onboardingRows?: CompanyOnboardingRow[];
   } = {}) {
+    this.githubInstallations = [...(params.githubInstallations ?? [])];
+    this.modelCredentials = [...(params.modelCredentials ?? [])];
     this.onboardingRows = [...(params.onboardingRows ?? [])];
   }
 
@@ -44,12 +58,13 @@ class CompanyOnboardingServiceTestHarness {
         this.workflowCalls.push({
           agentId: input.agentId,
           companyId: input.companyId,
+          inputValues: input.inputValues,
           startedByUserId: input.startedByUserId,
           workflowDefinitionId: input.workflowDefinitionId,
         });
 
         return {
-          queuedSessionId: "session-1",
+          queuedSessionId: "queued-session-1",
           workflowRun: this.createWorkflowRun("run-1", "session-1"),
         };
       },
@@ -57,6 +72,8 @@ class CompanyOnboardingServiceTestHarness {
   }
 
   buildTransactionProvider() {
+    const githubInstallations = this.githubInstallations;
+    const modelCredentials = this.modelCredentials;
     const onboardingRows = this.onboardingRows;
 
     return {
@@ -77,9 +94,17 @@ class CompanyOnboardingServiceTestHarness {
                     if (!onboardingRows.some((row) => row.companyId === value.companyId)) {
                       onboardingRows.push({
                         agentId: value.agentId as string | null,
+                        companyMission: value.companyMission as string | null,
                         companyId: value.companyId as string,
                         completedAt: value.completedAt as Date | null,
                         createdAt: value.createdAt as Date,
+                        githubCompletedAt: value.githubCompletedAt as Date | null,
+                        githubSetupStatus: value.githubSetupStatus as CompanyOnboardingRow["githubSetupStatus"],
+                        githubSkippedAt: value.githubSkippedAt as Date | null,
+                        llmCompletedAt: value.llmCompletedAt as Date | null,
+                        llmSetupStatus: value.llmSetupStatus as CompanyOnboardingRow["llmSetupStatus"],
+                        llmSkippedAt: value.llmSkippedAt as Date | null,
+                        missionSkippedAt: value.missionSkippedAt as Date | null,
                         sessionId: value.sessionId as string | null,
                         skippedAt: value.skippedAt as Date | null,
                         skippedByUserId: value.skippedByUserId as string | null,
@@ -104,18 +129,30 @@ class CompanyOnboardingServiceTestHarness {
             return {
               from(table: unknown) {
                 return {
-                  async where() {
+                  where() {
                     if (table === companyOnboardings) {
-                      return [...onboardingRows];
+                      return Promise.resolve([...onboardingRows]);
                     }
                     if (table === agents) {
-                      return [{ id: "agent-1" }];
+                      return Promise.resolve([{ id: "agent-1" }]);
                     }
                     if (table === workflowDefinitions) {
-                      return [{ id: "workflow-1" }];
+                      return Promise.resolve([{ id: "workflow-1" }]);
                     }
+                    return {
+                      async limit() {
+                        if (table === companyGithubInstallations) {
+                          return githubInstallations.length > 0 ? [{ id: "company-1" }] : [];
+                        }
+                        if (table === modelProviderCredentials) {
+                          return modelCredentials.slice(0, 1).map((credential) => ({
+                            id: credential.id,
+                          }));
+                        }
 
-                    throw new Error("Unexpected select table.");
+                        return [];
+                      },
+                    };
                   },
                 };
               },
@@ -150,16 +187,16 @@ class CompanyOnboardingServiceTestHarness {
     };
   }
 
-  listWorkflowCalls(): OnboardingWorkflowCall[] {
-    return this.workflowCalls;
+  getFinalizeCount(): number {
+    return this.finalizeCount;
   }
 
   loadOnboarding(): CompanyOnboardingRow | null {
     return this.onboardingRows[0] ?? null;
   }
 
-  getFinalizeCount(): number {
-    return this.finalizeCount;
+  listWorkflowCalls(): OnboardingWorkflowCall[] {
+    return this.workflowCalls;
   }
 
   private createWorkflowRun(id: string, sessionId: string): WorkflowRunRecord {
@@ -182,8 +219,99 @@ class CompanyOnboardingServiceTestHarness {
   }
 }
 
-test("CompanyOnboardingService starts onboarding once and stores the CEO workflow chat", async () => {
+test("CompanyOnboardingService creates a default onboarding row with pending setup steps", async () => {
   const harness = new CompanyOnboardingServiceTestHarness();
+  const service = harness.buildService();
+
+  const onboarding = await service.getOnboarding(
+    harness.buildTransactionProvider() as never,
+    "company-1",
+  );
+
+  assert.equal(onboarding.companyId, "company-1");
+  assert.equal(onboarding.status, "not_started");
+  assert.equal(onboarding.companyMission, null);
+  assert.equal(onboarding.githubSetupStatus, "pending");
+  assert.equal(onboarding.llmSetupStatus, "pending");
+  assert.equal(onboarding.agentId, null);
+});
+
+test("CompanyOnboardingService saves static setup choices before the CEO chat starts", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness({
+    githubInstallations: [{ companyId: "company-1" }],
+    modelCredentials: [{ id: "credential-1", isManaged: false }],
+  });
+  const service = harness.buildService();
+
+  await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
+  await service.updateSetup(harness.buildTransactionProvider() as never, {
+    companyId: "company-1",
+    companyMission: "Ship AI operators for agency teams.",
+  });
+  await service.updateSetup(harness.buildTransactionProvider() as never, {
+    companyId: "company-1",
+    githubSetupStatus: "completed",
+  });
+  const onboarding = await service.updateSetup(harness.buildTransactionProvider() as never, {
+    companyId: "company-1",
+    llmSetupStatus: "third_party",
+  });
+
+  assert.equal(onboarding.companyMission, "Ship AI operators for agency teams.");
+  assert.equal(onboarding.githubSetupStatus, "completed");
+  assert.equal(onboarding.llmSetupStatus, "third_party");
+  assert.ok(onboarding.githubCompletedAt instanceof Date);
+  assert.ok(onboarding.llmCompletedAt instanceof Date);
+});
+
+test("CompanyOnboardingService blocks CEO provisioning until the static steps are resolved", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness();
+  const service = harness.buildService();
+
+  await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
+
+  await assert.rejects(
+    service.ensureOnboarding(
+      harness.buildTransactionProvider() as never,
+      {
+        companyId: "company-1",
+        userId: "user-1",
+      },
+    ),
+    /Complete the onboarding setup steps before starting the CEO chat/,
+  );
+  assert.equal(harness.listWorkflowCalls().length, 0);
+});
+
+test("CompanyOnboardingService starts the CEO workflow with mission and setup input values", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness({
+    githubInstallations: [{ companyId: "company-1" }],
+    modelCredentials: [{
+      id: "credential-1",
+      isManaged: false,
+    }],
+    onboardingRows: [{
+      agentId: null,
+      companyMission: "Help agencies deploy repo-aware delivery agents.",
+      companyId: "company-1",
+      completedAt: null,
+      createdAt: new Date("2026-04-22T10:00:00.000Z"),
+      githubCompletedAt: new Date("2026-04-22T10:05:00.000Z"),
+      githubSetupStatus: "completed",
+      githubSkippedAt: null,
+      llmCompletedAt: new Date("2026-04-22T10:06:00.000Z"),
+      llmSetupStatus: "third_party",
+      llmSkippedAt: null,
+      missionSkippedAt: null,
+      sessionId: null,
+      skippedAt: null,
+      skippedByUserId: null,
+      startedAt: null,
+      status: "not_started",
+      updatedAt: new Date("2026-04-22T10:06:00.000Z"),
+      workflowRunId: null,
+    }],
+  });
   const service = harness.buildService();
 
   const onboarding = await service.ensureOnboarding(
@@ -201,90 +329,18 @@ test("CompanyOnboardingService starts onboarding once and stores the CEO workflo
   assert.deepEqual(harness.listWorkflowCalls(), [{
     agentId: "agent-1",
     companyId: "company-1",
+    inputValues: [{
+      name: "companyMission",
+      value: "Help agencies deploy repo-aware delivery agents.",
+    }, {
+      name: "githubSetupStatus",
+      value: "completed",
+    }, {
+      name: "llmSetupStatus",
+      value: "third_party",
+    }],
     startedByUserId: "user-1",
     workflowDefinitionId: "workflow-1",
   }]);
   assert.equal(harness.getFinalizeCount(), 1);
-});
-
-test("CompanyOnboardingService creates and returns a not-started onboarding row when one does not exist", async () => {
-  const harness = new CompanyOnboardingServiceTestHarness();
-  const service = harness.buildService();
-
-  const onboarding = await service.getOnboarding(
-    harness.buildTransactionProvider() as never,
-    "company-1",
-  );
-
-  assert.equal(onboarding.companyId, "company-1");
-  assert.equal(onboarding.status, "not_started");
-  assert.equal(onboarding.agentId, null);
-  assert.equal(onboarding.sessionId, null);
-  assert.equal(onboarding.workflowRunId, null);
-  assert.equal(harness.loadOnboarding()?.status, "not_started");
-});
-
-test("CompanyOnboardingService returns an existing in-progress onboarding without starting another run", async () => {
-  const now = new Date("2026-04-22T10:00:00.000Z");
-  const harness = new CompanyOnboardingServiceTestHarness({
-    onboardingRows: [{
-      agentId: "agent-1",
-      companyId: "company-1",
-      completedAt: null,
-      createdAt: now,
-      sessionId: "session-1",
-      skippedAt: null,
-      skippedByUserId: null,
-      startedAt: now,
-      status: "in_progress",
-      updatedAt: now,
-      workflowRunId: "run-1",
-    }],
-  });
-  const service = harness.buildService();
-
-  const onboarding = await service.ensureOnboarding(
-    harness.buildTransactionProvider() as never,
-    {
-      companyId: "company-1",
-      userId: "user-1",
-    },
-  );
-
-  assert.equal(onboarding.sessionId, "session-1");
-  assert.deepEqual(harness.listWorkflowCalls(), []);
-  assert.equal(harness.getFinalizeCount(), 1);
-});
-
-test("CompanyOnboardingService records skipped onboarding as company-level state", async () => {
-  const now = new Date("2026-04-22T10:00:00.000Z");
-  const harness = new CompanyOnboardingServiceTestHarness({
-    onboardingRows: [{
-      agentId: "agent-1",
-      companyId: "company-1",
-      completedAt: null,
-      createdAt: now,
-      sessionId: "session-1",
-      skippedAt: null,
-      skippedByUserId: null,
-      startedAt: now,
-      status: "in_progress",
-      updatedAt: now,
-      workflowRunId: "run-1",
-    }],
-  });
-  const service = harness.buildService();
-
-  const onboarding = await service.skipOnboarding(
-    harness.buildTransactionProvider() as never,
-    {
-      companyId: "company-1",
-      userId: "user-1",
-    },
-  );
-
-  assert.equal(onboarding.status, "skipped");
-  assert.equal(onboarding.skippedByUserId, "user-1");
-  assert.ok(onboarding.skippedAt instanceof Date);
-  assert.equal(harness.loadOnboarding()?.status, "skipped");
 });

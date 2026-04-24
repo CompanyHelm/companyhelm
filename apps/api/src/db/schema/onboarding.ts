@@ -2,6 +2,7 @@ import {
   index,
   pgEnum,
   pgTable,
+  text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -18,12 +19,33 @@ export const companyOnboardingStatusEnum = pgEnum("company_onboarding_status", [
   "skipped",
 ]);
 
+export const companyOnboardingSetupStatusEnum = pgEnum("company_onboarding_setup_status", [
+  "pending",
+  "completed",
+  "skipped",
+]);
+
+export const companyOnboardingLlmSetupStatusEnum = pgEnum("company_onboarding_llm_setup_status", [
+  "pending",
+  "third_party",
+  "company_managed",
+  "skipped",
+]);
+
 export const companyOnboardings = pgTable("company_onboardings", {
   companyId: uuid("company_id")
     .primaryKey()
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   status: companyOnboardingStatusEnum("status").notNull().default("not_started"),
+  companyMission: text("company_mission"),
+  missionSkippedAt: timestamp("mission_skipped_at", { withTimezone: true }),
+  githubSetupStatus: companyOnboardingSetupStatusEnum("github_setup_status").notNull().default("pending"),
+  githubCompletedAt: timestamp("github_completed_at", { withTimezone: true }),
+  githubSkippedAt: timestamp("github_skipped_at", { withTimezone: true }),
+  llmSetupStatus: companyOnboardingLlmSetupStatusEnum("llm_setup_status").notNull().default("pending"),
+  llmCompletedAt: timestamp("llm_completed_at", { withTimezone: true }),
+  llmSkippedAt: timestamp("llm_skipped_at", { withTimezone: true }),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "set null" }),
   sessionId: uuid("session_id")

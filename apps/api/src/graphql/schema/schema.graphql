@@ -67,7 +67,7 @@ type Query {
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
-  CreateGithubInstallationUrl: CreateGithubInstallationUrlPayload!
+  CreateGithubInstallationUrl(returnPath: String): CreateGithubInstallationUrlPayload!
   CreateGithubRepositoryProvisioning(
     input: CreateGithubRepositoryProvisioningInput!
   ): GithubRepositoryProvisioning!
@@ -81,6 +81,7 @@ type Mutation {
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   EnsureCompanyOnboarding: CompanyOnboarding!
+  UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
@@ -238,10 +239,31 @@ enum CompanyOnboardingStatus {
   skipped
 }
 
+enum CompanyOnboardingSetupStatus {
+  pending
+  completed
+  skipped
+}
+
+enum CompanyOnboardingLlmSetupStatus {
+  pending
+  third_party
+  company_managed
+  skipped
+}
+
 type CompanyOnboarding {
   id: ID!
   companyId: ID!
   status: CompanyOnboardingStatus!
+  companyMission: String
+  missionSkippedAt: String
+  githubSetupStatus: CompanyOnboardingSetupStatus!
+  githubCompletedAt: String
+  githubSkippedAt: String
+  llmSetupStatus: CompanyOnboardingLlmSetupStatus!
+  llmCompletedAt: String
+  llmSkippedAt: String
   agentId: ID
   sessionId: ID
   workflowRunId: ID
@@ -1124,6 +1146,13 @@ input UpdateAgentInput {
 
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
+}
+
+input UpdateCompanyOnboardingInput {
+  companyMission: String
+  githubSetupStatus: CompanyOnboardingSetupStatus
+  llmSetupStatus: CompanyOnboardingLlmSetupStatus
+  skipMission: Boolean
 }
 
 input DeleteCompanyInput {
