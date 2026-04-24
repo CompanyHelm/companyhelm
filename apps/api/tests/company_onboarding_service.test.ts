@@ -207,6 +207,23 @@ test("CompanyOnboardingService starts onboarding once and stores the CEO workflo
   assert.equal(harness.getFinalizeCount(), 1);
 });
 
+test("CompanyOnboardingService creates and returns a not-started onboarding row when one does not exist", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness();
+  const service = harness.buildService();
+
+  const onboarding = await service.getOnboarding(
+    harness.buildTransactionProvider() as never,
+    "company-1",
+  );
+
+  assert.equal(onboarding.companyId, "company-1");
+  assert.equal(onboarding.status, "not_started");
+  assert.equal(onboarding.agentId, null);
+  assert.equal(onboarding.sessionId, null);
+  assert.equal(onboarding.workflowRunId, null);
+  assert.equal(harness.loadOnboarding()?.status, "not_started");
+});
+
 test("CompanyOnboardingService returns an existing in-progress onboarding without starting another run", async () => {
   const now = new Date("2026-04-22T10:00:00.000Z");
   const harness = new CompanyOnboardingServiceTestHarness({
