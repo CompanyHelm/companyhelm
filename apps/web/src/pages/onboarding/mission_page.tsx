@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   OnboardingPageSuspense,
+  OnboardingStepActions,
   OnboardingStepFrame,
   navigateToOnboardingStep,
   useOnboardingFlowController,
@@ -71,7 +72,7 @@ function MissionPageContent() {
       currentStep="mission"
       description="Tell CompanyHelm what you want it to achieve for the business before the CEO chat starts."
       errorMessage={controller.errorMessage}
-      helperText="These goals are passed directly into the CEO onboarding workflow as its starting context."
+      helperText=""
       title="Business goals"
     >
       <textarea
@@ -83,30 +84,9 @@ function MissionPageContent() {
         placeholder="Describe the business outcome you want, the immediate goals, constraints, and what CompanyHelm should help achieve first."
         value={controller.missionDraft}
       />
-      <div className="mt-8 flex flex-col items-center gap-4">
-        <Button
-          className="h-12 px-6 text-base"
-          disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
-          onClick={() => {
-            controller.clearErrorMessage();
-            void controller.updateOnboarding({
-              companyMission: controller.missionDraft.trim(),
-            }).then(() => {
-              void navigate({
-                params: {
-                  organizationSlug,
-                },
-                to: OrganizationPath.route("/onboarding"),
-              });
-            }).catch(() => undefined);
-          }}
-          type="button"
-        >
-          Continue onboarding
-        </Button>
-        <div className="relative flex h-9 w-full items-center justify-center">
+      <OnboardingStepActions
+        backControl={(
           <Button
-            className="absolute left-0"
             onClick={() => {
               navigateToOnboardingStep({
                 navigate,
@@ -120,6 +100,30 @@ function MissionPageContent() {
           >
             Back
           </Button>
+        )}
+        cta={(
+          <Button
+            className="h-12 px-6 text-base"
+            disabled={controller.isUpdateCompanyOnboardingInFlight || !controller.missionDraft.trim()}
+            onClick={() => {
+              controller.clearErrorMessage();
+              void controller.updateOnboarding({
+                companyMission: controller.missionDraft.trim(),
+              }).then(() => {
+                void navigate({
+                  params: {
+                    organizationSlug,
+                  },
+                  to: OrganizationPath.route("/onboarding"),
+                });
+              }).catch(() => undefined);
+            }}
+            type="button"
+          >
+            Continue onboarding
+          </Button>
+        )}
+        skipControl={(
           <Button
             disabled={controller.isUpdateCompanyOnboardingInFlight}
             onClick={() => {
@@ -141,8 +145,8 @@ function MissionPageContent() {
           >
             Skip
           </Button>
-        </div>
-      </div>
+        )}
+      />
     </OnboardingStepFrame>
   );
 }

@@ -6,6 +6,7 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   OnboardingPageSuspense,
+  OnboardingStepActions,
   OnboardingStepFrame,
   onboardingPath,
   navigateToOnboardingStep,
@@ -53,16 +54,14 @@ function GithubPageContent() {
       currentStep="github"
       description="CompanyHelm uses GitHub to access code and store plans and custom skills. Without GitHub, CompanyHelm cannot operate effectively."
       errorMessage={controller.errorMessage}
-      helperText={controller.hasGithubInstallation
-        ? "A GitHub installation is already connected for this company."
-        : ""}
+      helperText=""
       title="GitHub access"
     >
       {controller.hasGithubInstallation ? (
         <p className="text-sm leading-6 text-foreground">GitHub is connected and ready for repo discovery.</p>
       ) : null}
-      <div className="mt-8 flex flex-col items-center gap-4">
-        {controller.hasGithubInstallation ? (
+      <OnboardingStepActions
+        cta={controller.hasGithubInstallation ? (
           <Button
             className="h-12 px-6 text-base"
             disabled={controller.isUpdateCompanyOnboardingInFlight}
@@ -98,27 +97,29 @@ function GithubPageContent() {
             {controller.isCreateGithubInstallationUrlInFlight ? "Preparing..." : "Connect GitHub"}
           </Button>
         )}
-        <Button
-          disabled={controller.isUpdateCompanyOnboardingInFlight}
-          onClick={() => {
-            controller.clearErrorMessage();
-            void controller.updateOnboarding({
-              githubSetupStatus: "skipped",
-            }).then(() => {
-              navigateToOnboardingStep({
-                navigate,
-                organizationSlug,
-                step: "model-provider",
-              });
-            }).catch(() => undefined);
-          }}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          Skip
-        </Button>
-      </div>
+        skipControl={(
+          <Button
+            disabled={controller.isUpdateCompanyOnboardingInFlight}
+            onClick={() => {
+              controller.clearErrorMessage();
+              void controller.updateOnboarding({
+                githubSetupStatus: "skipped",
+              }).then(() => {
+                navigateToOnboardingStep({
+                  navigate,
+                  organizationSlug,
+                  step: "model-provider",
+                });
+              }).catch(() => undefined);
+            }}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Skip
+          </Button>
+        )}
+      />
     </OnboardingStepFrame>
   );
 }

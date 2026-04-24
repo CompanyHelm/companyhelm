@@ -551,6 +551,28 @@ export function OnboardingNavigation(props: {
   );
 }
 
+export function OnboardingStepActions(props: {
+  backControl?: ReactNode;
+  cta: ReactNode;
+  skipControl: ReactNode;
+}) {
+  return (
+    <div className="mt-10 flex flex-col items-center">
+      {props.cta}
+      <div className="relative mt-10 flex h-9 w-full items-center justify-center">
+        <div className="absolute left-0">
+          {props.backControl ?? (
+            <Button disabled size="sm" type="button" variant="outline">
+              Back
+            </Button>
+          )}
+        </div>
+        {props.skipControl}
+      </div>
+    </div>
+  );
+}
+
 export function OnboardingModelProviderDialog(props: {
   controller: OnboardingFlowController;
   onCompleted(): void;

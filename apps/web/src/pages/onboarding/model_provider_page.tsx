@@ -8,6 +8,7 @@ import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug"
 import {
   OnboardingModelProviderDialog,
   OnboardingPageSuspense,
+  OnboardingStepActions,
   OnboardingStepFrame,
   navigateToOnboardingStep,
   useOnboardingFlowController,
@@ -84,11 +85,11 @@ function ModelProviderPageContent() {
         currentStep="model-provider"
         description="Add your own LLM provider for broader model support. If you skip, CompanyHelm will use its managed provider."
         errorMessage={controller.errorMessage}
-        helperText={controller.llmResolved ? `LLM setup saved as ${controller.onboarding.llmSetupStatus.replace("_", " ")}.` : ""}
+        helperText=""
         title="Model provider setup"
       >
         <div className="mt-6 space-y-6">
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-900 dark:text-amber-200">
             CompanyHelm-managed access currently has low token limits and higher prices.
             Using your own provider is strongly recommended.
           </p>
@@ -114,19 +115,8 @@ function ModelProviderPageContent() {
             </div>
           </div>
         </div>
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <Button
-            className="h-12 px-6 text-base"
-            disabled={controller.isAddModelProviderCredentialInFlight}
-            onClick={() => {
-              controller.setCredentialDialogOpen(true);
-            }}
-            type="button"
-          >
-            <KeyRoundIcon className="mr-2 size-5" />
-            Add LLM provider
-          </Button>
-          <div className="flex flex-wrap justify-center gap-2">
+        <OnboardingStepActions
+          backControl={(
             <Button
               onClick={() => {
                 navigateToOnboardingStep({
@@ -141,6 +131,21 @@ function ModelProviderPageContent() {
             >
               Back
             </Button>
+          )}
+          cta={(
+            <Button
+              className="h-12 px-6 text-base"
+              disabled={controller.isAddModelProviderCredentialInFlight}
+              onClick={() => {
+                controller.setCredentialDialogOpen(true);
+              }}
+              type="button"
+            >
+              <KeyRoundIcon className="mr-2 size-5" />
+              Add LLM provider
+            </Button>
+          )}
+          skipControl={(
             <Button
               disabled={controller.isUpdateCompanyOnboardingInFlight}
               onClick={() => {
@@ -161,8 +166,8 @@ function ModelProviderPageContent() {
             >
               Skip
             </Button>
-          </div>
-        </div>
+          )}
+        />
       </OnboardingStepFrame>
       <OnboardingModelProviderDialog
         controller={controller}
