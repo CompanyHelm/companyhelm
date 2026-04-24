@@ -5,11 +5,13 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
 type GithubInstallationRecord = {
+  accountLogin: string | null;
   installationId: number;
   createdAt: Date;
 };
 
 type GraphqlGithubInstallationRecord = {
+  accountLogin: string | null;
   id: string;
   installationId: string;
   createdAt: string;
@@ -43,6 +45,7 @@ export class GithubInstallationsQueryResolver extends Resolver<GraphqlGithubInst
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const installations = await selectableDatabase
         .select({
+          accountLogin: companyGithubInstallations.accountLogin,
           installationId: companyGithubInstallations.installationId,
           createdAt: companyGithubInstallations.createdAt,
         })
@@ -51,6 +54,7 @@ export class GithubInstallationsQueryResolver extends Resolver<GraphqlGithubInst
         .orderBy(asc(companyGithubInstallations.installationId));
 
       return installations.map((installation) => ({
+        accountLogin: installation.accountLogin,
         id: String(installation.installationId),
         installationId: String(installation.installationId),
         createdAt: installation.createdAt.toISOString(),

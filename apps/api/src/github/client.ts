@@ -32,6 +32,10 @@ export type GithubInstallationRepository = {
   archived: boolean;
 };
 
+export type GithubInstallationAccount = {
+  login: string;
+};
+
 export type GithubRepositoryBranch = {
   commitSha: string;
   isDefault: boolean;
@@ -157,6 +161,29 @@ export class GithubClient {
     );
 
     return this.buildInstallationRepositories(githubRepositories);
+  }
+
+  async getInstallationAccount(
+    installationIdValue: string | number | bigint,
+  ): Promise<GithubInstallationAccount> {
+    const installationId = GithubClient.validateInstallationId(installationIdValue);
+    const payload = await this.fetchAppJson<Record<string, unknown>>({
+      errorLabel: `Failed to read GitHub installation ${installationId}`,
+      url: `${GITHUB_API_URL}/app/installations/${installationId}`,
+    });
+    const account = payload.account;
+    if (!account || typeof account !== "object") {
+      throw new Error(`GitHub installation ${installationId} response is missing account.`);
+    }
+
+    const login = GithubClient.normalizeTextValue((account as Record<string, unknown>).login);
+    if (!login) {
+      throw new Error(`GitHub installation ${installationId} response is missing account login.`);
+    }
+
+    return {
+      login,
+    };
   }
 
   async listSkillDirectories(input: {
@@ -471,6 +498,32 @@ export class GithubClient {
       token,
       GithubClient.normalizeTextValue(payload.expires_at) || null,
     );
+  }
+
+  private async fetchAppJson<T>(input: {
+    errorLabel: string;
+    url: string;
+  }): Promise<T> {
+    const response = await this.fetchImpl(input.url, {
+      method: "GET",
+      headers: {
+        Accept: GITHUB_ACCEPT_HEADER,
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        Authorization: `Bearer ${this.getOrCreateGithubAppJwt()}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new GithubApiError(
+        `${input.errorLabel}: ${GithubClient.githubApiErrorMessage(
+          await GithubClient.readResponseBody(response),
+          response.status,
+        )}`,
+        response.status,
+      );
+    }
+
+    return await response.json() as T;
   }
 
   private async fetchInstallationRepositories(

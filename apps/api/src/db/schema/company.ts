@@ -165,6 +165,7 @@ export const companyGithubInstallations = pgTable("company_github_installations"
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
+  accountLogin: text("account_login"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("company_github_installations_company_id_idx").on(table.companyId),

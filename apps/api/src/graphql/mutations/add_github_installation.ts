@@ -23,6 +23,7 @@ type AddGithubInstallationMutationArguments = {
 };
 
 type GithubInstallationRecord = {
+  accountLogin: string | null;
   installationId: number;
   createdAt: Date;
 };
@@ -42,6 +43,7 @@ type GithubRepositoryRecord = {
 };
 
 type GraphqlGithubInstallationRecord = {
+  accountLogin: string | null;
   id: string;
   installationId: string;
   createdAt: string;
@@ -144,6 +146,7 @@ export class AddGithubInstallationMutation extends Mutation<
 
       const [existingInstallation] = await (database
         .select({
+          accountLogin: companyGithubInstallations.accountLogin,
           installationId: companyGithubInstallations.installationId,
           createdAt: companyGithubInstallations.createdAt,
         })
@@ -171,6 +174,7 @@ export class AddGithubInstallationMutation extends Mutation<
       }
 
       const githubInstallationRepositories = await this.githubClient.getInstallationRepositories(installationId);
+      const githubInstallationAccount = await this.githubClient.getInstallationAccount(installationId);
       const now = new Date();
       const repositoryInsertValues = githubInstallationRepositories.map((repository) =>
         AddGithubInstallationMutation.createRepositoryInsertValue({
@@ -185,11 +189,13 @@ export class AddGithubInstallationMutation extends Mutation<
         const [createdInstallation] = await (database
           .insert(companyGithubInstallations)
           .values({
+            accountLogin: githubInstallationAccount.login,
             installationId,
             companyId: installationTarget.companyId,
             createdAt: now,
           })
           .returning({
+            accountLogin: companyGithubInstallations.accountLogin,
             installationId: companyGithubInstallations.installationId,
             createdAt: companyGithubInstallations.createdAt,
           })) as GithubInstallationRecord[];
@@ -355,6 +361,7 @@ export class AddGithubInstallationMutation extends Mutation<
 
   private static serializeInstallation(record: GithubInstallationRecord): GraphqlGithubInstallationRecord {
     return {
+      accountLogin: record.accountLogin,
       id: String(record.installationId),
       installationId: String(record.installationId),
       createdAt: record.createdAt.toISOString(),

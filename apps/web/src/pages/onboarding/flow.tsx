@@ -39,7 +39,9 @@ const onboardingPageQueryNode = graphql`
       }
     }
     GithubInstallations {
+      accountLogin
       id
+      installationId
     }
     ModelProviders {
       id
@@ -126,6 +128,11 @@ export type OnboardingStepKey = "mission" | "github" | "model-provider";
 export interface OnboardingFlowController {
   credentialErrorMessage: string | null;
   errorMessage: string | null;
+  githubInstallations: Array<{
+    accountLogin: string | null | undefined;
+    id: string;
+    installationId: string;
+  }>;
   githubResolved: boolean;
   hasGithubInstallation: boolean;
   hasManagedCredential: boolean;
@@ -212,6 +219,11 @@ export function useOnboardingFlowController(options?: {
   const llmResolved = onboarding.llmSetupStatus !== "pending";
   const setupResolved = missionResolved && githubResolved && llmResolved;
   const hasGithubInstallation = data.GithubInstallations.length > 0;
+  const githubInstallations = data.GithubInstallations.map((installation) => ({
+    accountLogin: installation.accountLogin,
+    id: installation.id,
+    installationId: installation.installationId,
+  }));
   const hasManagedCredential = data.ModelProviderCredentials.some((credential) => credential.isManaged);
   const hasThirdPartyCredential = data.ModelProviderCredentials.some((credential) => !credential.isManaged);
   const thirdPartyProviders = useMemo(() => {
@@ -418,6 +430,7 @@ export function useOnboardingFlowController(options?: {
   return {
     credentialErrorMessage,
     errorMessage,
+    githubInstallations,
     githubResolved,
     hasGithubInstallation,
     hasManagedCredential,
@@ -554,20 +567,28 @@ export function OnboardingNavigation(props: {
 export function OnboardingStepActions(props: {
   backControl?: ReactNode;
   cta: ReactNode;
-  skipControl: ReactNode;
+  hideBack?: boolean;
+  rightControls?: ReactNode;
+  skipControl?: ReactNode;
 }) {
   return (
     <div className="mt-10 flex flex-col items-center">
       {props.cta}
       <div className="relative mt-10 flex h-9 w-full items-center justify-center">
-        <div className="absolute left-0">
-          {props.backControl ?? (
-            <Button disabled size="sm" type="button" variant="outline">
-              Back
-            </Button>
-          )}
-        </div>
-        {props.skipControl}
+        {props.hideBack ? null : (
+          <div className="absolute left-4">
+            {props.backControl ?? (
+              <Button disabled size="sm" type="button" variant="outline">
+                Back
+              </Button>
+            )}
+          </div>
+        )}
+        {props.rightControls ? (
+          <div className="absolute right-4 flex items-center gap-3">
+            {props.rightControls}
+          </div>
+        ) : props.skipControl}
       </div>
     </div>
   );

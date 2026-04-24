@@ -52,37 +52,30 @@ function GithubPageContent() {
   return (
     <OnboardingStepFrame
       currentStep="github"
-      description="CompanyHelm uses GitHub to access code and store plans and custom skills. Without GitHub, CompanyHelm cannot operate effectively."
+      description="CompanyHelm uses GitHub to access code and store plans and custom skills."
       errorMessage={controller.errorMessage}
       helperText=""
       title="GitHub access"
     >
       {controller.hasGithubInstallation ? (
-        <p className="text-sm leading-6 text-foreground">GitHub is connected and ready for repo discovery.</p>
-      ) : null}
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
+          <p className="font-medium">Github is connected</p>
+          <ul className="mt-2 grid gap-1">
+            {controller.githubInstallations.map((installation) => (
+              <li className="flex items-center gap-2" key={installation.id}>
+                <GithubIcon className="size-4" />
+                <span>{installation.accountLogin ?? `Installation ${installation.installationId}`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-900 dark:text-amber-200">
+          Without GitHub, CompanyHelm cannot operate effectively.
+        </p>
+      )}
       <OnboardingStepActions
-        cta={controller.hasGithubInstallation ? (
-          <Button
-            className="h-12 px-6 text-base"
-            disabled={controller.isUpdateCompanyOnboardingInFlight}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                githubSetupStatus: "completed",
-              }).then(() => {
-                navigateToOnboardingStep({
-                  navigate,
-                  organizationSlug,
-                  step: "model-provider",
-                });
-              }).catch(() => undefined);
-            }}
-            type="button"
-          >
-            <GithubIcon className="mr-2 size-5" />
-            Continue with GitHub
-          </Button>
-        ) : (
+        cta={(
           <Button
             className="h-12 px-6 text-base"
             disabled={controller.isCreateGithubInstallationUrlInFlight}
@@ -94,30 +87,55 @@ function GithubPageContent() {
             type="button"
           >
             <GithubIcon className="mr-2 size-5" />
-            {controller.isCreateGithubInstallationUrlInFlight ? "Preparing..." : "Connect GitHub"}
+            {controller.isCreateGithubInstallationUrlInFlight ? "Preparing..." : "Connect Github"}
           </Button>
         )}
-        skipControl={(
-          <Button
-            disabled={controller.isUpdateCompanyOnboardingInFlight}
-            onClick={() => {
-              controller.clearErrorMessage();
-              void controller.updateOnboarding({
-                githubSetupStatus: "skipped",
-              }).then(() => {
-                navigateToOnboardingStep({
-                  navigate,
-                  organizationSlug,
-                  step: "model-provider",
-                });
-              }).catch(() => undefined);
-            }}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            Skip
-          </Button>
+        hideBack
+        rightControls={(
+          <>
+            {controller.hasGithubInstallation ? null : (
+              <Button
+                disabled={controller.isUpdateCompanyOnboardingInFlight}
+                onClick={() => {
+                  controller.clearErrorMessage();
+                  void controller.updateOnboarding({
+                    githubSetupStatus: "skipped",
+                  }).then(() => {
+                    navigateToOnboardingStep({
+                      navigate,
+                      organizationSlug,
+                      step: "model-provider",
+                    });
+                  }).catch(() => undefined);
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Skip
+              </Button>
+            )}
+            <Button
+              disabled={!controller.hasGithubInstallation || controller.isUpdateCompanyOnboardingInFlight}
+              onClick={() => {
+                controller.clearErrorMessage();
+                void controller.updateOnboarding({
+                  githubSetupStatus: "completed",
+                }).then(() => {
+                  navigateToOnboardingStep({
+                    navigate,
+                    organizationSlug,
+                    step: "model-provider",
+                  });
+                }).catch(() => undefined);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Continue
+            </Button>
+          </>
         )}
       />
     </OnboardingStepFrame>

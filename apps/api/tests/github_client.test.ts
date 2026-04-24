@@ -54,6 +54,31 @@ test("GithubClient parses GitHub installation callback search params", () => {
   );
 });
 
+test("GithubClient reads the GitHub installation account login", async () => {
+  const requests: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    requests.push(url);
+    if (url.endsWith("/app/installations/110600868")) {
+      return createJsonResponse({
+        account: {
+          login: "acme",
+        },
+      });
+    }
+
+    throw new Error(`Unexpected GitHub request: ${url}`);
+  };
+  const client = createGithubClient(fetchImpl);
+
+  const account = await client.getInstallationAccount(110600868);
+
+  assert.deepEqual(account, {
+    login: "acme",
+  });
+  assert.deepEqual(requests, ["https://api.github.com/app/installations/110600868"]);
+});
+
 test("GithubClient generates a GitHub App JWT with the expected claims", () => {
   const result = GithubClient.generateAppJwt({
     clientId: "Iv-test-local",

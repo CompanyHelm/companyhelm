@@ -304,6 +304,7 @@ type GithubAppConfig {
 }
 
 type GithubInstallation {
+  accountLogin: String
   id: ID!
   installationId: ID!
   createdAt: String!

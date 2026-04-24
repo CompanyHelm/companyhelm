@@ -227,6 +227,9 @@ test("DeleteGithubRepositoryProvisioningMutation unpins a repository provisionin
 
 test("AddGithubInstallationMutation links an installation and seeds repositories", async () => {
   const githubClient = {
+    getInstallationAccount: vi.fn().mockResolvedValue({
+      login: "acme",
+    }),
     getInstallationRepositories: vi.fn().mockResolvedValue([
       {
         externalId: "1",
@@ -287,6 +290,7 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
             return {
               async returning() {
                 return [{
+                  accountLogin: "acme",
                   installationId: 110600868,
                   createdAt,
                 }];
@@ -348,8 +352,10 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
   );
 
   assert.equal(appRuntimeDatabase.withCompanyContext.mock.calls[0]?.[0], "company-123");
+  assert.deepEqual(githubClient.getInstallationAccount.mock.calls, [[110600868]]);
   assert.deepEqual(githubClient.getInstallationRepositories.mock.calls, [[110600868]]);
   assert.equal(insertedValues.length, 2);
+  assert.equal((insertedValues[0] as Record<string, unknown>)?.accountLogin, "acme");
   assert.equal((insertedValues[0] as Record<string, unknown>)?.installationId, 110600868);
   assert.equal((insertedValues[0] as Record<string, unknown>)?.companyId, "company-123");
   assert.ok((insertedValues[0] as Record<string, unknown>)?.createdAt instanceof Date);
@@ -360,6 +366,7 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
   assert.equal(insertedRepositories[0]?.externalId, "1");
   assert.equal(insertedRepositories[0]?.fullName, "acme/repo-one");
   assert.deepEqual(payload.githubInstallation, {
+    accountLogin: "acme",
     id: "110600868",
     installationId: "110600868",
     createdAt: "2026-03-26T18:00:00.000Z",
@@ -380,6 +387,9 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
 
 test("AddGithubInstallationMutation uses the signed callback state to target the original company", async () => {
   const githubClient = {
+    getInstallationAccount: vi.fn().mockResolvedValue({
+      login: "target-org",
+    }),
     getInstallationRepositories: vi.fn().mockResolvedValue([
       {
         externalId: "1",
@@ -451,6 +461,7 @@ test("AddGithubInstallationMutation uses the signed callback state to target the
             return {
               async returning() {
                 return [{
+                  accountLogin: "target-org",
                   installationId: 110600868,
                   createdAt,
                 }];
@@ -504,7 +515,9 @@ test("AddGithubInstallationMutation uses the signed callback state to target the
   assert.equal(appRuntimeDatabase.withCompanyContext.mock.calls.length, 1);
   assert.equal(appRuntimeDatabase.withCompanyContext.mock.calls[0]?.[0], "company-target");
   assert.equal(typeof appRuntimeDatabase.withCompanyContext.mock.calls[0]?.[1], "function");
+  assert.deepEqual(githubClient.getInstallationAccount.mock.calls, [[110600868]]);
   assert.deepEqual(githubClient.getInstallationRepositories.mock.calls, [[110600868]]);
+  assert.equal((insertedValues[0] as Record<string, unknown>)?.accountLogin, "target-org");
   assert.equal((insertedValues[0] as Record<string, unknown>)?.companyId, "company-target");
   assert.equal((insertedValues[1] as Array<Record<string, unknown>>)[0]?.companyId, "company-target");
   assert.equal(payload.organizationSlug, "target-org");
@@ -553,6 +566,9 @@ test("AddGithubInstallationMutation rejects callback states minted for a differe
 
 test("AddGithubInstallationMutation rejects installations already linked elsewhere", async () => {
   const githubClient = {
+    getInstallationAccount: vi.fn().mockResolvedValue({
+      login: "acme",
+    }),
     getInstallationRepositories: vi.fn().mockResolvedValue([]),
   };
   const duplicateKeyError = Object.assign(new Error("duplicate key"), {

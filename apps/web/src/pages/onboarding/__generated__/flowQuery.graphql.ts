@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<00e2c39abf73e9559e7d4f3d5ffd89fc>>
+ * @generated SignedSource<<6beb5203aaec7feabaa260a996d80f23>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,9 @@ export type CompanyOnboardingStatus = "completed" | "in_progress" | "not_started
 export type flowQuery$variables = Record<PropertyKey, never>;
 export type flowQuery$data = {
   readonly GithubInstallations: ReadonlyArray<{
+    readonly accountLogin: string | null | undefined;
     readonly id: string;
+    readonly installationId: string;
   }>;
   readonly Me: {
     readonly company: {
@@ -215,7 +217,21 @@ v2 = [
     "name": "GithubInstallations",
     "plural": true,
     "selections": [
-      (v0/*: any*/)
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "accountLogin",
+        "storageKey": null
+      },
+      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "installationId",
+        "storageKey": null
+      }
     ],
     "storageKey": null
   },
@@ -299,16 +315,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "b1b3d9488541b38b77cb3aab4c070375",
+    "cacheID": "02bcf3e40c832fbc14681d8b3f4ffa18",
     "id": null,
     "metadata": {},
     "name": "flowQuery",
     "operationKind": "query",
-    "text": "query flowQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        companyMission\n        missionSkippedAt\n        githubSetupStatus\n        githubCompletedAt\n        githubSkippedAt\n        llmSetupStatus\n        llmCompletedAt\n        llmSkippedAt\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n  GithubInstallations {\n    id\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n    isManaged\n  }\n}\n"
+    "text": "query flowQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        companyMission\n        missionSkippedAt\n        githubSetupStatus\n        githubCompletedAt\n        githubSkippedAt\n        llmSetupStatus\n        llmCompletedAt\n        llmSkippedAt\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n  GithubInstallations {\n    accountLogin\n    id\n    installationId\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n    isManaged\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "af476638682e9b20a55fb8e9572f9aae";
+(node as any).hash = "a6902aec1cfab2b9cdc15ecefc35be7b";
 
 export default node;
