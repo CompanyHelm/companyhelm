@@ -30,6 +30,13 @@ export class ModelRegistry {
   private readonly models: ModelProviderModel[] = [
     new ModelProviderModel({
       provider: "openai",
+      modelId: "gpt-5.5",
+      name: "GPT-5.5",
+      description: "Frontier agentic coding model with expanded context support.",
+      reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+    }),
+    new ModelProviderModel({
+      provider: "openai",
       modelId: "gpt-5.4",
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",

@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/providers/shell_interface.ts";

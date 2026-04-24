@@ -19,14 +19,18 @@ export class AgentListAvailableSecretsTool {
     return {
       description:
         "List all reusable company secrets that can be attached to this chat session. Returns only the name, description, and env variable name, never the secret values.",
-      execute: async () => {
+      execute: async (_toolCallId, _params, _signal?, _onUpdate?, _ctx?) => {
+        void [_toolCallId, _params, _signal, _onUpdate, _ctx];
         const secrets = await this.secretToolService.listAvailableSecrets();
         return {
           content: [{
             text: AgentSecretResultFormatter.formatAvailableSecrets(secrets),
             type: "text",
           }],
-          details: undefined,
+          details: {
+            secrets,
+            type: "available_secrets",
+          },
         };
       },
       label: "list_available_secrets",

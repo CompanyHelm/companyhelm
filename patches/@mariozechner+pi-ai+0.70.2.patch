@@ -1,0 +1,32 @@
+diff --git a/node_modules/@mariozechner/pi-ai/dist/utils/validation.js b/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
+index 9ba1a5f..a9cb0fd 100644
+--- a/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
++++ b/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
+@@ -218,16 +218,24 @@ function getValidator(schema) {
+     return validator;
+ }
+ function formatValidationPath(error) {
++    const basePath = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
+     if (error.keyword === "required") {
+         const requiredProperties = error.params.requiredProperties;
+         const requiredProperty = requiredProperties?.[0];
+         if (requiredProperty) {
+-            const basePath = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
+             return basePath ? `${basePath}.${requiredProperty}` : requiredProperty;
+         }
+     }
+-    const path = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
+-    return path || "root";
++    if (error.keyword === "additionalProperties") {
++        const additionalProperties = error.params.additionalProperties;
++        const additionalProperty = Array.isArray(additionalProperties)
++            ? additionalProperties[0]
++            : additionalProperties;
++        if (typeof additionalProperty === "string" && additionalProperty.length > 0) {
++            return basePath ? `${basePath}.${additionalProperty}` : additionalProperty;
++        }
++    }
++    return basePath || "root";
+ }
+ /**
+  * Finds a tool by name and validates the tool call arguments against its TypeBox schema

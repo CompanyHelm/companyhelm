@@ -1,9 +1,9 @@
 import {
   Type,
-  type ObjectOptions,
+  type TObjectOptions,
   type TObject,
   type TProperties,
-} from "@sinclair/typebox";
+} from "typebox";
 
 /**
  * Builds strict TypeBox object schemas for agent tools. Tool-call payloads should reject unknown
@@ -11,7 +11,7 @@ import {
  * silently accepting unsupported inputs.
  */
 export class AgentToolParameterSchema {
-  static object<T extends TProperties>(properties: T, options?: ObjectOptions): TObject<T> {
+  static object<T extends TProperties>(properties: T, options?: TObjectOptions): TObject<T> {
     return Type.Object(properties, {
       ...options,
       additionalProperties: false,

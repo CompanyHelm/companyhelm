@@ -18,7 +18,8 @@ export class AgentPtyListTool {
   createDefinition(): ToolDefinition<typeof AgentPtyListTool.parameters> {
     return {
       description: "List the tmux-backed PTYs currently available inside the environment.",
-      execute: async () => {
+      execute: async (_toolCallId, _params, _signal?, _onUpdate?, _ctx?) => {
+        void [_toolCallId, _params, _signal, _onUpdate, _ctx];
         const environment = await this.promptScope.getEnvironment();
         const ptys = await environment.listPtys();
         return {
@@ -26,7 +27,10 @@ export class AgentPtyListTool {
             text: AgentTerminalResultFormatter.formatPtyList(ptys),
             type: "text",
           }],
-          details: undefined,
+          details: {
+            ptys,
+            type: "pty_list",
+          },
         };
       },
       label: "pty_list",

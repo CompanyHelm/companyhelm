@@ -203,6 +203,7 @@ test("ModelService fetchModels uses the dedicated openai-codex adapter", async (
     assert.equal(fetchCallCount, 0);
     assert.equal(models[0]?.provider, "openai-codex");
     assert.ok(models.some((model) => model.modelId === "gpt-5.4"));
+    assert.ok(models.some((model) => model.modelId === "gpt-5.5"));
   } finally {
     globalThis.fetch = originalFetch;
   }

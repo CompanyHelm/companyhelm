@@ -2,6 +2,11 @@ import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
 import { ModelProviderModel } from "./model_provider_model.ts";
 import { ModelRegistry } from "./model_registry.ts";
+import type { ModelService } from "./model_service.ts";
+
+type WarningLogger = {
+  warn(payload: Record<string, unknown>, message: string): void;
+};
 
 /**
  * Centralizes the CompanyHelm-managed LLM credential identity and the config-backed OpenAI API
@@ -15,6 +20,7 @@ export class CompanyHelmLlmProviderService {
   static readonly ENCRYPTED_API_KEY_SENTINEL = "companyhelm-managed-openai-api-key";
   static readonly PROVIDER_ID = "companyhelm";
   static readonly RUNTIME_PROVIDER_ID = "openai";
+  private availableSeedModels: ModelProviderModel[] | null = null;
   private readonly config: Config;
   private readonly modelRegistry: ModelRegistry;
 
@@ -56,7 +62,44 @@ export class CompanyHelmLlmProviderService {
   }
 
   getSeedModels(): ModelProviderModel[] {
-    return this.modelRegistry.getModelsForProvider(this.getModelProvider());
+    return this.availableSeedModels ?? this.modelRegistry.getModelsForProvider(this.getModelProvider());
+  }
+
+  async refreshAvailableSeedModels(
+    modelService: Pick<ModelService, "fetchModels">,
+    logger: WarningLogger,
+  ): Promise<ModelProviderModel[]> {
+    const configuredModels = this.modelRegistry.getModelsForProvider(this.getModelProvider());
+    if (!this.hasRuntimeApiKey()) {
+      this.availableSeedModels = configuredModels;
+      return configuredModels;
+    }
+
+    try {
+      const availableModels = await modelService.fetchModels(this.getModelProvider(), this.getRuntimeApiKey());
+      const availableModelIds = new Set(availableModels.map((model) => model.modelId));
+      const missingModelIds = configuredModels
+        .filter((model) => !availableModelIds.has(model.modelId))
+        .map((model) => model.modelId);
+      if (missingModelIds.length > 0) {
+        logger.warn({
+          missingModelIds,
+          provider: this.getModelProvider(),
+          runtimeProvider: this.getRuntimeModelProvider(),
+        }, "filtered unavailable CompanyHelm-managed models from the startup catalog");
+      }
+
+      this.availableSeedModels = availableModels;
+      return availableModels;
+    } catch (error) {
+      logger.warn({
+        error,
+        provider: this.getModelProvider(),
+        runtimeProvider: this.getRuntimeModelProvider(),
+      }, "failed to validate CompanyHelm-managed models against the runtime API; keeping configured catalog");
+      this.availableSeedModels = configuredModels;
+      return configuredModels;
+    }
   }
 
   getDefaultModelId(): string | null {

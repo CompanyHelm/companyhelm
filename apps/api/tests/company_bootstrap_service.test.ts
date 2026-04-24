@@ -15,6 +15,7 @@ import {
 } from "../src/db/schema.ts";
 import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
+import { ModelProviderModel } from "../src/services/ai_providers/model_provider_model.ts";
 import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 import { CompanyHelmComputeProviderService } from "../src/services/compute_provider_definitions/companyhelm_service.ts";
 
@@ -158,6 +159,7 @@ class CompanyBootstrapServiceTestHarness {
   private readonly baseDefinitions: BaseDefinitionRow[];
   private readonly companyOnboardingRows: CompanyOnboardingRow[];
   private readonly companyHelmOpenAiApiKey: string | null;
+  private readonly managedAvailableModelIds: string[] | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly taskStageRows: TaskStageRow[];
@@ -171,6 +173,7 @@ class CompanyBootstrapServiceTestHarness {
     baseDefinitions?: BaseDefinitionRow[];
     companyOnboardingRows?: CompanyOnboardingRow[];
     companyHelmOpenAiApiKey?: string | null;
+    managedAvailableModelIds?: string[] | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     taskStageRows?: TaskStageRow[];
@@ -185,6 +188,7 @@ class CompanyBootstrapServiceTestHarness {
     this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
       ? "sk-local-api-key"
       : params.companyHelmOpenAiApiKey;
+    this.managedAvailableModelIds = params?.managedAvailableModelIds ?? null;
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
@@ -193,7 +197,7 @@ class CompanyBootstrapServiceTestHarness {
     this.workflowStepDefinitionRows = [...(params?.workflowStepDefinitionRows ?? [])];
   }
 
-  buildService(): CompanyBootstrapService {
+  async buildService(): Promise<CompanyBootstrapService> {
     const companyHelmConfig: {
       e2b: {
         api_key: string;
@@ -217,10 +221,24 @@ class CompanyBootstrapServiceTestHarness {
         ...companyHelmConfig,
       },
     } as Config;
+    const managedAvailableModelIds = this.managedAvailableModelIds;
+
+    const llmProviderService = new CompanyHelmLlmProviderService(config, new ModelRegistry());
+    if (this.managedAvailableModelIds) {
+      await llmProviderService.refreshAvailableSeedModels({
+        async fetchModels() {
+          return new ModelRegistry()
+            .getModelsForProvider("openai")
+            .filter((model): model is ModelProviderModel => Boolean(managedAvailableModelIds?.includes(model.modelId)));
+        },
+      } as never, {
+        warn() {},
+      });
+    }
 
     return new CompanyBootstrapService(
       new CompanyHelmComputeProviderService(config),
-      new CompanyHelmLlmProviderService(config, new ModelRegistry()),
+      llmProviderService,
     );
   }
 
@@ -675,7 +693,7 @@ class CompanyBootstrapServiceTestHarness {
 
 test("CompanyBootstrapService seeds the CompanyHelm definition and default task stages", async () => {
   const harness = new CompanyBootstrapServiceTestHarness();
-  const service = harness.buildService();
+  const service = await harness.buildService();
 
   await service.ensureCompanyDefaults(
     harness.buildTransaction() as never,
@@ -701,7 +719,7 @@ test("CompanyBootstrapService skips the CompanyHelm model provider when the Open
     companyHelmOpenAiApiKey: null,
   });
 
-  await harness.buildService().ensureCompanyDefaults(
+  await (await harness.buildService()).ensureCompanyDefaults(
     harness.buildTransaction() as never,
     "company-1",
   );
@@ -716,8 +734,8 @@ test("CompanyBootstrapService skips the CompanyHelm model provider when the Open
 test("CompanyBootstrapService creates the CEO onboarding assets lazily", async () => {
   const harness = new CompanyBootstrapServiceTestHarness();
 
-  await harness.buildService().ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
-  await harness.buildService().ensureOnboardingAssets(
+  await (await harness.buildService()).ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
+  await (await harness.buildService()).ensureOnboardingAssets(
     harness.buildTransaction() as never,
     {
       companyId: "company-1",
@@ -921,7 +939,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       workflowRunId: null,
     }],
   });
-  const service = harness.buildService();
+  const service = await harness.buildService();
 
   await service.ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
   await service.ensureOnboardingAssets(
