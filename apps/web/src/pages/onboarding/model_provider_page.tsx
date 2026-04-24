@@ -4,6 +4,7 @@ import { KeyRoundIcon } from "lucide-react";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
+import { cn } from "@/lib/utils";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { formatProviderLabel } from "@/pages/model-provider-credentials/provider_label";
 import {
@@ -37,7 +38,7 @@ const supportedLlmProviders = [
     providerId: "nvidia",
   },
   {
-    label: "Other",
+    label: "Any OpenAI Compatible Provider",
     providerId: "openai-compatible",
   },
 ] as const;
@@ -133,8 +134,11 @@ function ModelProviderPageContent() {
             <div className="mt-4 flex flex-wrap justify-center gap-6">
               {supportedLlmProviders.map((provider) => (
                 <div
-                  className="flex w-20 flex-col items-center gap-2 text-center"
-                  key={provider.label}
+                  className={cn(
+                    "flex flex-col items-center gap-2 text-center",
+                    provider.providerId === "openai-compatible" ? "w-40" : "w-20",
+                  )}
+                  key={provider.providerId}
                 >
                   <ModelProviderIcon
                     className="size-12 rounded-xl"
