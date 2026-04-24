@@ -25,9 +25,9 @@ export type GraphqlCompanyOnboardingRecord = {
 };
 
 /**
- * Converts company onboarding state into the GraphQL shape used by the app shell. The record id is
- * intentionally the company id so Relay can normalize updates from queries and mutations into the
- * same company-scoped onboarding object.
+ * Converts company onboarding state into the GraphQL shape used by the app shell. The onboarding
+ * object is keyed by a type-qualified company id because Relay requires ids to be globally unique
+ * across GraphQL object types, while `companyId` preserves the raw company relationship.
  */
 @injectable()
 export class CompanyOnboardingPresenter {
@@ -41,7 +41,7 @@ export class CompanyOnboardingPresenter {
       githubCompletedAt: record.githubCompletedAt?.toISOString() ?? null,
       githubSetupStatus: record.githubSetupStatus,
       githubSkippedAt: record.githubSkippedAt?.toISOString() ?? null,
-      id: record.companyId,
+      id: `CompanyOnboarding:${record.companyId}`,
       llmCompletedAt: record.llmCompletedAt?.toISOString() ?? null,
       llmSetupStatus: record.llmSetupStatus,
       llmSkippedAt: record.llmSkippedAt?.toISOString() ?? null,
