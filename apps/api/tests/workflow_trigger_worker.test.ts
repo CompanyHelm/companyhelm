@@ -82,7 +82,7 @@ test("WorkflowTriggerWorker starts scheduled workflow jobs under the job company
         username: "redis-user",
       },
       workers: {
-        routine_triggers: {
+        workflow_triggers: {
           concurrency: 3,
         },
       },

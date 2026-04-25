@@ -40,10 +40,10 @@ workers:
     concurrency: 2
   github_webhooks:
     concurrency: 10
-  routine_triggers:
-    concurrency: 10
   session_process:
     concurrency: 100
+  workflow_triggers:
+    concurrency: 10
 agent_tools:
   read_image:
     max_source_bytes: 26214400

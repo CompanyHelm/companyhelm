@@ -52,22 +52,20 @@ export function ApplicationHeader(props: {
         ? "Usage"
         : normalizedPathname.startsWith("/conversations")
           ? "Agent Conversations"
-          : normalizedPathname.startsWith("/routines")
-            ? "Routines"
-            : normalizedPathname.startsWith("/repositories")
-              ? "Repositories"
-              : normalizedPathname.startsWith("/knowledge-base")
-                ? "Knowledge Base"
-                : normalizedPathname.startsWith("/inbox")
-                  ? "Inbox"
-                  : normalizedPathname.startsWith("/tasks")
-                    ? "Tasks"
-                    : normalizedPathname.startsWith("/flags")
-                      ? "Feature Flags"
-                      : normalizedPathname.startsWith("/settings")
-                        ? "Settings"
-                        : normalizedPathname.startsWith("/agents")
-                          ? "Agents"
+          : normalizedPathname.startsWith("/repositories")
+            ? "Repositories"
+            : normalizedPathname.startsWith("/knowledge-base")
+              ? "Knowledge Base"
+              : normalizedPathname.startsWith("/inbox")
+                ? "Inbox"
+                : normalizedPathname.startsWith("/tasks")
+                  ? "Tasks"
+                  : normalizedPathname.startsWith("/flags")
+                    ? "Feature Flags"
+                    : normalizedPathname.startsWith("/settings")
+                      ? "Settings"
+                      : normalizedPathname.startsWith("/agents")
+                        ? "Agents"
                           : normalizedPathname.startsWith("/workflows")
                             ? "Workflows"
                             : "Dashboard";

@@ -79,10 +79,10 @@ export const ConfigDocument = z.object({
   workers: z.object({
     company_deletions: DefaultWorkerConcurrencySchema,
     github_webhooks: DefaultWorkerConcurrencySchema,
-    routine_triggers: DefaultWorkerConcurrencySchema,
     session_process: z.object({
       concurrency: PositiveIntegerSchema,
     }),
+    workflow_triggers: DefaultWorkerConcurrencySchema,
   }),
   agent_tools: z.object({
     read_image: z.object({

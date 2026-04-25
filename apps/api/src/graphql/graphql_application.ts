@@ -138,7 +138,6 @@ import { ArtifactGraphqlRegistry } from "./registries/artifact_graphql_registry.
 import { ConversationGraphqlRegistry } from "./registries/conversation_graphql_registry.ts";
 import { EnvironmentGraphqlRegistry } from "./registries/environment_graphql_registry.ts";
 import { ManagementGraphqlRegistry } from "./registries/management_graphql_registry.ts";
-import { RoutineGraphqlRegistry } from "./registries/routine_graphql_registry.ts";
 import { TaskGraphqlRegistry } from "./registries/task_graphql_registry.ts";
 import { WorkflowGraphqlRegistry } from "./registries/workflow_graphql_registry.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -452,7 +451,6 @@ export class GraphqlApplication {
       taskRunsQueryResolver,
       executeTaskMutation,
     );
-    const routineGraphqlRegistry = new RoutineGraphqlRegistry();
     const workflowGraphqlRegistry = new WorkflowGraphqlRegistry();
 
     return new GraphqlApplication(
@@ -464,7 +462,6 @@ export class GraphqlApplication {
         conversationGraphqlRegistry,
         environmentGraphqlRegistry,
         managementGraphqlRegistry,
-        routineGraphqlRegistry,
         taskGraphqlRegistry,
         workflowGraphqlRegistry,
       ),

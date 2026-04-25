@@ -33,7 +33,6 @@ import { ModelProviderPage } from "./pages/onboarding/model_provider_page";
 import { OnboardingPage } from "./pages/onboarding/onboarding_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
-import { RoutinesPage } from "./pages/routines/routines_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
 import { SecretGroupsPage } from "./pages/secret-groups/secret_groups_page";
 import { SkillGroupsPage } from "./pages/skill-groups/skill_groups_page";
@@ -361,12 +360,6 @@ const conversationsRoute = createRoute({
   component: ConversationsPage,
 });
 
-const routinesRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/routines"),
-  component: RoutinesPage,
-});
-
 const workflowsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/workflows"),
@@ -535,7 +528,6 @@ const routeTree = rootRoute.addChildren([
         inboxRoute,
         usageRoute,
         conversationsRoute,
-        routinesRoute,
         workflowsRoute,
         workflowDetailRoute,
         workflowRunRoute,

@@ -81,7 +81,7 @@ export class WorkflowTriggerWorker {
       },
       {
         connection: this.connection,
-        concurrency: this.config.workers.routine_triggers.concurrency,
+        concurrency: this.config.workers.workflow_triggers.concurrency,
       },
     );
     this.worker.on("error", (error) => {

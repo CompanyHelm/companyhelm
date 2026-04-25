@@ -9,7 +9,7 @@ import { AgentGithubResultFormatter } from "./result_formatter.ts";
 
 /**
  * Opens one pull request through the GitHub CLI with an installation token injected only into the
- * create command. The tool keeps routine PR opening on a structured path while `gh_exec` remains
+ * create command. The tool keeps PR opening on a structured path while `gh_exec` remains
  * available for long-tail GitHub CLI operations.
  */
 export class AgentGithubCreatePullRequestTool {

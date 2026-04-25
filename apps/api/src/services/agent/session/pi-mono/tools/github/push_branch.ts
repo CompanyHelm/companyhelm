@@ -9,7 +9,7 @@ import { AgentGithubResultFormatter } from "./result_formatter.ts";
 
 /**
  * Pushes one local branch to GitHub with a fresh installation token injected only into the single
- * push command. This keeps routine branch publication on the standard git path without persisting
+ * push command. This keeps branch publication on the standard git path without persisting
  * credentials into the repository config or remote URL.
  */
 export class AgentGithubPushBranchTool {
@@ -98,7 +98,7 @@ export class AgentGithubPushBranchTool {
         "Call list_github_installations first if you do not already know the installation id to target.",
         "Pass repository in owner/name form and workingDirectory as the local checkout path.",
         "The tool injects a fresh installation token only into the one push command and does not persist credentials into git config.",
-        "Prefer push_github_branch over ad hoc authenticated git push command strings for routine PR workflows.",
+        "Prefer push_github_branch over ad hoc authenticated git push command strings for PR workflows.",
       ],
       promptSnippet: "Push a local git branch to GitHub with installation-token auth",
     };

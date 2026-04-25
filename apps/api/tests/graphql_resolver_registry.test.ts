@@ -9,6 +9,7 @@ import { EnvironmentGraphqlRegistry } from "../src/graphql/registries/environmen
 import { GraphqlResolverRegistry } from "../src/graphql/registries/graphql_resolver_registry.ts";
 import { ManagementGraphqlRegistry } from "../src/graphql/registries/management_graphql_registry.ts";
 import { TaskGraphqlRegistry } from "../src/graphql/registries/task_graphql_registry.ts";
+import { WorkflowGraphqlRegistry } from "../src/graphql/registries/workflow_graphql_registry.ts";
 
 class GraphqlResolverRegistryTestHarness {
   static createContainer(): Container {
@@ -56,6 +57,13 @@ class GraphqlResolverRegistryTestHarness {
         },
       }),
     } as unknown as TaskGraphqlRegistry);
+    container.bind(WorkflowGraphqlRegistry).toConstantValue({
+      createResolvers: () => ({
+        Query: {
+          Workflows: "workflow-query",
+        },
+      }),
+    } as unknown as WorkflowGraphqlRegistry);
     container.bind(GraphqlResolverRegistry).toSelf();
 
     return container;
@@ -76,6 +84,7 @@ test("GraphqlResolverRegistry resolves from explicit constructor injections", ()
       Agent: "agent-query",
       Environments: "environment-query",
       Me: "management-query",
+      Workflows: "workflow-query",
     },
     Subscription: {
       SessionUpdated: "conversation-subscription",

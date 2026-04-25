@@ -18,7 +18,6 @@ import {
   UsersIcon,
   WorkflowIcon,
   WrenchIcon,
-  CalendarClockIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -145,11 +144,6 @@ export class ApplicationNavigationCatalog {
       },
       {
         items: [
-          {
-            icon: CalendarClockIcon,
-            label: "Routines",
-            to: "/routines",
-          },
           {
             icon: WorkflowIcon,
             label: "Workflows",

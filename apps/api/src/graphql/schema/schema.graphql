@@ -51,9 +51,6 @@ type Query {
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
-  Routine(id: ID!): Routine!
-  RoutineRuns(routineId: ID!): [RoutineRun!]!
-  Routines: [Routine!]!
   Workflow(id: ID!): Workflow!
   WorkflowRun(id: ID!): WorkflowRun!
   WorkflowRuns(workflowDefinitionId: ID): [WorkflowRun!]!
@@ -150,12 +147,8 @@ type Mutation {
   ): RefreshGithubInstallationRepositoriesPayload!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
-  CreateRoutine(input: CreateRoutineInput!): Routine!
-  CreateRoutineCronTrigger(input: CreateRoutineCronTriggerInput!): RoutineCronTrigger!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskStage(input: CreateTaskStageInput!): TaskStage!
-  DeleteRoutine(input: DeleteRoutineInput!): Routine!
-  DeleteRoutineTrigger(input: DeleteRoutineTriggerInput!): RoutineCronTrigger!
   DeleteTaskStage(input: DeleteTaskStageInput!): TaskStage!
   DeleteTask(input: DeleteTaskInput!): Task!
   ExecuteTask(input: ExecuteTaskInput!): TaskRun!
@@ -175,7 +168,6 @@ type Mutation {
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
-  TriggerRoutine(input: TriggerRoutineInput!): RoutineRun!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
   CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
   DeleteWorkflow(input: DeleteWorkflowInput!): Workflow!
@@ -183,8 +175,6 @@ type Mutation {
   StartWorkflowRun(input: StartWorkflowRunInput!): WorkflowRun!
   UpdateWorkflowCronTrigger(input: UpdateWorkflowCronTriggerInput!): WorkflowCronTrigger!
   UpdateWorkflow(input: UpdateWorkflowInput!): Workflow!
-  UpdateRoutine(input: UpdateRoutineInput!): Routine!
-  UpdateRoutineCronTrigger(input: UpdateRoutineCronTriggerInput!): RoutineCronTrigger!
   UpdateTask(input: UpdateTaskInput!): Task!
   UpdateArtifact(input: UpdateArtifactInput!): Artifact!
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
@@ -984,47 +974,6 @@ type TaskStage {
   updatedAt: String!
 }
 
-type Routine {
-  id: ID!
-  name: String!
-  instructions: String!
-  assignedAgentId: ID!
-  assignedAgentName: String!
-  sessionId: ID
-  enabled: Boolean!
-  overlapPolicy: String!
-  triggers: [RoutineCronTrigger!]!
-  lastRun: RoutineRun
-  createdAt: String!
-  updatedAt: String!
-}
-
-type RoutineCronTrigger {
-  id: ID!
-  routineId: ID!
-  type: String!
-  enabled: Boolean!
-  cronPattern: String!
-  timezone: String!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type RoutineRun {
-  id: ID!
-  routineId: ID!
-  triggerId: ID
-  source: String!
-  status: String!
-  sessionId: ID
-  bullmqJobId: String
-  errorMessage: String
-  startedAt: String
-  finishedAt: String
-  createdAt: String!
-  updatedAt: String!
-}
-
 type Workflow {
   id: ID!
   name: String!
@@ -1631,47 +1580,6 @@ input CreateTaskInput {
   taskStageId: ID
   assignedUserId: ID
   assignedAgentId: ID
-}
-
-input CreateRoutineInput {
-  name: String!
-  instructions: String!
-  assignedAgentId: ID!
-  enabled: Boolean
-}
-
-input UpdateRoutineInput {
-  id: ID!
-  name: String
-  instructions: String
-  assignedAgentId: ID
-  enabled: Boolean
-}
-
-input DeleteRoutineInput {
-  id: ID!
-}
-
-input CreateRoutineCronTriggerInput {
-  routineId: ID!
-  cronPattern: String!
-  timezone: String!
-  enabled: Boolean
-}
-
-input UpdateRoutineCronTriggerInput {
-  id: ID!
-  cronPattern: String
-  timezone: String
-  enabled: Boolean
-}
-
-input DeleteRoutineTriggerInput {
-  id: ID!
-}
-
-input TriggerRoutineInput {
-  id: ID!
 }
 
 input CreateWorkflowInput {

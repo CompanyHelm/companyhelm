@@ -4,7 +4,7 @@
 
 **Goal:** Add cron scheduling to workflow definitions so workflows can run automatically with a configured agent and launch input values.
 
-**Architecture:** Workflow cron triggers live beside workflow definitions and use the same BullMQ scheduler pattern as routines. Scheduled fires create normal workflow runs with `source = scheduled` and `trigger_id` set, so existing run detail and step tracking remain the execution surface.
+**Architecture:** Workflow cron triggers live beside workflow definitions and use BullMQ job schedulers. Scheduled fires create normal workflow runs with `source = scheduled` and `trigger_id` set, so existing run detail and step tracking remain the execution surface.
 
 **Tech Stack:** TypeScript, Drizzle, Mercurius GraphQL, BullMQ, Redis, React Relay, Tailwind/shadcn components.
 
@@ -33,7 +33,7 @@ Add workflow trigger, workflow cron trigger, and workflow trigger input value ta
 - Test: `apps/api/tests/workflow_trigger_queue.test.ts`
 - Test: `apps/api/tests/workflow_trigger_worker.test.ts`
 
-Mirror the existing routine scheduling infrastructure. Scheduled workflow runs load trigger configuration, validate the workflow and trigger state, skip if an existing run for the trigger is still running, and start a normal workflow run with the stored agent and input values.
+Scheduled workflow runs load trigger configuration, validate the workflow and trigger state, skip if an existing run for the trigger is still running, and start a normal workflow run with the stored agent and input values.
 
 ### Task 3: GraphQL
 

@@ -11,14 +11,12 @@ import { GithubWebhookQueueService } from "../github/webhooks/queue.ts";
 import { CompanyDeletionDispatcher } from "../services/company_deletions/dispatcher.ts";
 import { CompanyDeletionQueueService } from "../services/company_deletions/queue.ts";
 import { QueuePolicyValidator } from "../services/redis/queue_policy_validator.ts";
-import { RoutineSchedulerSyncService } from "../services/routines/scheduler_sync.ts";
 import { WorkflowTriggerQueueService } from "../services/workflows/queue.ts";
 import { WorkflowSchedulerSyncService } from "../services/workflows/scheduler_sync.ts";
 import { CompanyDeletionSweepWorker } from "../workers/company_deletion_sweep.ts";
 import { CompanyDeletionWorker } from "../workers/company_deletions.ts";
 import { GithubWebhookWorker } from "../workers/github_webhooks.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
-import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
 import { SkillRepositoryUpdateWorker } from "../workers/skill_repository_updates.ts";
 import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
@@ -49,8 +47,6 @@ export class ApiServer {
   private readonly logger: ApiLogger;
   private readonly environmentTerminalWebsocketRoute: EnvironmentTerminalWebsocketRoute;
   private readonly queuePolicyValidator: QueuePolicyValidator;
-  private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
-  private readonly routineTriggerWorker: RoutineTriggerWorker;
   private readonly sessionProcessWorker: SessionProcessWorker;
   private readonly skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker;
   private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
@@ -70,8 +66,6 @@ export class ApiServer {
     @inject(QueuePolicyValidator) queuePolicyValidator: QueuePolicyValidator,
     @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
     @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
-    @inject(RoutineSchedulerSyncService) routineSchedulerSyncService: RoutineSchedulerSyncService,
-    @inject(RoutineTriggerWorker) routineTriggerWorker: RoutineTriggerWorker,
     @inject(WorkflowSchedulerSyncService)
     workflowSchedulerSyncService: WorkflowSchedulerSyncService = {
       async syncEnabledCronTriggers() {},
@@ -153,8 +147,6 @@ export class ApiServer {
     this.environmentTerminalWebsocketRoute = environmentTerminalWebsocketRoute;
     this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
-    this.routineSchedulerSyncService = routineSchedulerSyncService;
-    this.routineTriggerWorker = routineTriggerWorker;
     this.sessionProcessWorker = sessionProcessWorker;
     this.skillRepositoryUpdateWorker = skillRepositoryUpdateWorker;
     this.workflowSchedulerSyncService = workflowSchedulerSyncService;
@@ -199,12 +191,10 @@ export class ApiServer {
       port: this.config.port,
     });
 
-    await this.routineSchedulerSyncService.syncEnabledCronTriggers();
     await this.workflowSchedulerSyncService.syncEnabledCronTriggers();
     this.llmOauthRefreshWorker.start();
     this.githubWebhookWorker.start();
     this.sessionProcessWorker.start();
-    this.routineTriggerWorker.start();
     this.workflowTriggerWorker.start();
     this.skillRepositoryUpdateWorker.start();
     this.companyDeletionWorker.start();
@@ -246,7 +236,6 @@ export class ApiServer {
       this.llmOauthRefreshWorker.stop();
       await this.githubWebhookWorker.stop();
       await this.sessionProcessWorker.stop();
-      await this.routineTriggerWorker.stop();
       await this.workflowTriggerWorker.stop();
       this.skillRepositoryUpdateWorker.stop();
       this.companyDeletionSweepWorker.stop();

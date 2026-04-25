@@ -67,9 +67,6 @@ test("ApiServer does not expose a default root endpoint", async () => {
     stop: async () => {},
   } as never, {
     syncEnabledCronTriggers: async () => {},
-  } as never, {
-    start: () => {},
-    stop: async () => {},
   } as never);
 
   await server.start();
@@ -111,9 +108,6 @@ test("ApiServer exposes a health endpoint", async () => {
     stop: async () => {},
   } as never, {
     syncEnabledCronTriggers: async () => {},
-  } as never, {
-    start: () => {},
-    stop: async () => {},
   } as never);
 
   await server.start();
@@ -156,9 +150,6 @@ test("ApiServer health endpoint reports draining state", async () => {
     stop: async () => {},
   } as never, {
     syncEnabledCronTriggers: async () => {},
-  } as never, {
-    start: () => {},
-    stop: async () => {},
   } as never);
 
   await server.start();
@@ -180,7 +171,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   const githubQueueClose = vi.fn(async () => {});
   const githubWorkerStop = vi.fn(async () => {});
   const llmOauthStop = vi.fn();
-  const routineStop = vi.fn(async () => {});
   const sessionStop = vi.fn(async () => {});
   const workflowQueueClose = vi.fn(async () => {});
   const workflowStop = vi.fn(async () => {});
@@ -212,11 +202,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   } as never, {
     syncEnabledCronTriggers: async () => {},
   } as never, {
-    start: () => {},
-    stop: routineStop,
-  } as never, {
-    syncEnabledCronTriggers: async () => {},
-  } as never, {
     close: workflowQueueClose,
   } as never, {
     start: () => {},
@@ -238,7 +223,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   assert.equal(llmOauthStop.mock.calls.length, 1);
   assert.equal(githubWorkerStop.mock.calls.length, 1);
   assert.equal(sessionStop.mock.calls.length, 1);
-  assert.equal(routineStop.mock.calls.length, 1);
   assert.equal(workflowStop.mock.calls.length, 1);
   assert.equal(workflowQueueClose.mock.calls.length, 1);
   assert.equal(githubQueueClose.mock.calls.length, 1);
@@ -252,13 +236,6 @@ test("ApiServer fails startup before listening when the Redis queue policy is un
     stop: () => {},
   };
   const sessionProcessWorker = {
-    start: () => {},
-    stop: async () => {},
-  };
-  const routineSchedulerSyncService = {
-    syncEnabledCronTriggers: async () => {},
-  };
-  const routineTriggerWorker = {
     start: () => {},
     stop: async () => {},
   };
@@ -285,9 +262,7 @@ test("ApiServer fails startup before listening when the Redis queue policy is un
     },
   } as never,
     llmOauthRefreshWorker as never,
-    sessionProcessWorker as never,
-    routineSchedulerSyncService as never,
-    routineTriggerWorker as never);
+    sessionProcessWorker as never);
 
   await assert.rejects(
     () => server.start(),

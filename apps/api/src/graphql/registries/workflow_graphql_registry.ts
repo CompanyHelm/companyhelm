@@ -15,7 +15,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 
 /**
  * Groups workflow definition and run GraphQL entrypoints behind one registry so workflow management
- * can evolve independently from routine and task execution surfaces.
+ * can evolve independently from task execution surfaces.
  */
 @injectable()
 export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {

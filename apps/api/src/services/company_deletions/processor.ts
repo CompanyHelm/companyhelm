@@ -6,7 +6,6 @@ import { AppRuntimeTransactionProvider } from "../../db/app_runtime_transaction_
 import { ApiLogger } from "../../log/api_logger.ts";
 import { AgentComputeProviderRegistry } from "../environments/providers/provider_registry.ts";
 import type { AgentEnvironmentRecord } from "../environments/providers/provider_interface.ts";
-import { RoutineSchedulerSyncService } from "../routines/scheduler_sync.ts";
 import { WorkflowSchedulerSyncService } from "../workflows/scheduler_sync.ts";
 import { ClerkOrganizationDeletionService } from "./clerk_organization_deletion.ts";
 import { CompanyDeletionRequestService } from "./request_service.ts";
@@ -28,7 +27,6 @@ export class CompanyDeletionProcessor {
   private readonly logger: PinoLogger;
   private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly requestService: CompanyDeletionRequestService;
-  private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
   private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
 
   constructor(
@@ -38,7 +36,6 @@ export class CompanyDeletionProcessor {
     @inject(ClerkOrganizationDeletionService)
     clerkOrganizationDeletionService: ClerkOrganizationDeletionService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
-    @inject(RoutineSchedulerSyncService) routineSchedulerSyncService: RoutineSchedulerSyncService,
     @inject(WorkflowSchedulerSyncService) workflowSchedulerSyncService: WorkflowSchedulerSyncService,
     @inject(ApiLogger) logger: ApiLogger,
   ) {
@@ -50,7 +47,6 @@ export class CompanyDeletionProcessor {
     });
     this.providerRegistry = providerRegistry;
     this.requestService = requestService;
-    this.routineSchedulerSyncService = routineSchedulerSyncService;
     this.workflowSchedulerSyncService = workflowSchedulerSyncService;
   }
 
@@ -64,7 +60,6 @@ export class CompanyDeletionProcessor {
     }
 
     try {
-      await this.removeRoutineSchedules(request.companyId);
       await this.removeWorkflowSchedules(request.companyId);
       await this.deleteProviderEnvironments(request.companyId);
       await this.clerkOrganizationDeletionService.deleteOrganization(request.clerkOrganizationId);
@@ -85,18 +80,6 @@ export class CompanyDeletionProcessor {
         requestId: request.id,
       }, "company deletion request failed");
       throw error;
-    }
-  }
-
-  private async removeRoutineSchedules(companyId: string): Promise<void> {
-    const sql = this.adminDatabase.getSqlClient();
-    const triggerRows = await sql<TriggerIdRow[]>`
-      SELECT id
-      FROM routine_triggers
-      WHERE company_id = ${companyId}
-    `;
-    for (const triggerRow of triggerRows) {
-      await this.routineSchedulerSyncService.removeCronTrigger(triggerRow.id);
     }
   }
 

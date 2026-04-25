@@ -16,7 +16,7 @@ Current lifecycle entry points:
 
 - `apps/api/src/main.ts` constructs the container and calls `ApiServer.start()`, but does not register `SIGTERM` or `SIGINT` handlers.
 - `apps/api/src/server/api_server.ts` registers a Fastify `onClose` hook that stops workers and closes databases, but only runs if `app.close()` is called.
-- `apps/api/src/workers/session_process.ts`, `github_webhooks.ts`, `routine_triggers.ts`, and `workflow_triggers.ts` each call `worker.close()` directly and do not emit drain-progress logs.
+- `apps/api/src/workers/session_process.ts`, `github_webhooks.ts`, and `workflow_triggers.ts` each call `worker.close()` directly and do not emit drain-progress logs.
 - BullMQ `Worker.close(false)` waits for jobs currently owned by that worker instance to finish before resolving. Do not use `Queue.getActiveCount()` for drain progress because it reports queue-global active jobs across every ECS task, not this draining process.
 
 Implementation constraints:
@@ -282,12 +282,11 @@ git commit -m "feat(api): add bullmq worker drain logging"
 
 - Modify: `apps/api/src/workers/session_process.ts`
 - Modify: `apps/api/src/workers/github_webhooks.ts`
-- Modify: `apps/api/src/workers/routine_triggers.ts`
 - Modify: `apps/api/src/workers/workflow_triggers.ts`
 - Modify tests:
   - `apps/api/tests/session_process_worker.test.ts`
   - `apps/api/tests/workflow_trigger_worker.test.ts`
-  - Add equivalent assertions to existing GitHub/routine worker tests if present; otherwise add focused tests for those workers.
+  - Add equivalent assertions to existing GitHub worker tests if present; otherwise add focused tests for that worker.
 
 **Step 1: Write failing tests for session worker drain behavior**
 
@@ -372,7 +371,6 @@ Use worker names:
 
 - `session_process`
 - `github_webhooks`
-- `routine_triggers`
 - `workflow_triggers`
 
 **Step 4: Run focused worker tests**
@@ -410,7 +408,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies", async () =>
   const databaseClose = vi.fn(async () => {});
   const adminDatabaseClose = vi.fn(async () => {});
   const sessionStop = vi.fn(async () => {});
-  const routineStop = vi.fn(async () => {});
   const workflowStop = vi.fn(async () => {});
   const githubStop = vi.fn(async () => {});
   const workflowQueueClose = vi.fn(async () => {});
@@ -427,8 +424,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies", async () =>
     { start: () => {}, stop: () => {} } as never,
     { start: () => {}, stop: sessionStop } as never,
     { syncEnabledCronTriggers: async () => {} } as never,
-    { start: () => {}, stop: routineStop } as never,
-    { syncEnabledCronTriggers: async () => {} } as never,
     { close: workflowQueueClose } as never,
     { start: () => {}, stop: workflowStop } as never,
     { register: () => {} } as never,
@@ -441,7 +436,6 @@ test("ApiServer stop is idempotent and closes runtime dependencies", async () =>
   await Promise.all([server.stop(), server.stop()]);
 
   assert.equal(sessionStop.mock.calls.length, 1);
-  assert.equal(routineStop.mock.calls.length, 1);
   assert.equal(workflowStop.mock.calls.length, 1);
   assert.equal(githubStop.mock.calls.length, 1);
   assert.equal(workflowQueueClose.mock.calls.length, 1);
@@ -502,7 +496,6 @@ private async closeRuntimeDependencies(): Promise<void> {
   this.llmOauthRefreshWorker.stop();
   await this.githubWebhookWorker.stop();
   await this.sessionProcessWorker.stop();
-  await this.routineTriggerWorker.stop();
   await this.workflowTriggerWorker.stop();
   await this.workflowTriggerQueueService.close();
   await this.githubWebhookQueueService.close();

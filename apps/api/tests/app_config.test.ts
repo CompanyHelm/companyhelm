@@ -258,10 +258,10 @@ workers:
     concurrency: 5
   github_webhooks:
     concurrency: 3
-  routine_triggers:
-    concurrency: 2
   session_process:
     concurrency: 4
+  workflow_triggers:
+    concurrency: 2
 agent_tools:
   read_image:
     max_source_bytes: 26214400
@@ -349,11 +349,11 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     github_webhooks: {
       concurrency: 3,
     },
-    routine_triggers: {
-      concurrency: 2,
-    },
     session_process: {
       concurrency: 4,
+    },
+    workflow_triggers: {
+      concurrency: 2,
     },
   });
   assert.deepEqual(document.agent_tools.read_image, {
@@ -395,11 +395,11 @@ test("AppConfig allows local override files to include local.yaml", () => {
     github_webhooks: {
       concurrency: 3,
     },
-    routine_triggers: {
-      concurrency: 2,
-    },
     session_process: {
       concurrency: 11,
+    },
+    workflow_triggers: {
+      concurrency: 2,
     },
   });
   assert.equal(document.github.app_client_id, "client-id");
@@ -498,11 +498,11 @@ test("AppConfig defaults newer worker queue concurrency when deployment config l
     github_webhooks: {
       concurrency: 10,
     },
-    routine_triggers: {
-      concurrency: 10,
-    },
     session_process: {
       concurrency: 4,
+    },
+    workflow_triggers: {
+      concurrency: 10,
     },
   });
 });
