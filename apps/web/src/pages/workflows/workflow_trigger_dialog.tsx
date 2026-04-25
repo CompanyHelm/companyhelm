@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BotIcon, ClockIcon } from "lucide-react";
+import { BotIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WorkflowSchedule } from "./workflow_schedule";
+import { WorkflowScheduleBuilder } from "./workflow_schedule_builder";
 import type { WorkflowCronTriggerRecord, WorkflowRecord } from "./workflow_types";
 
 export type WorkflowTriggerAgentRecord = {
@@ -67,7 +69,7 @@ export function WorkflowTriggerDialog(props: WorkflowTriggerDialogProps) {
     }
 
     setAgentId(props.trigger?.agentId ?? props.agents[0]?.id ?? "");
-    setCronPattern(props.trigger?.cronPattern ?? "0 9 * * 1-5");
+    setCronPattern(props.trigger?.cronPattern ?? WorkflowSchedule.createDefaultCronPattern());
     setEnabledValue(props.trigger?.enabled === false ? "disabled" : "enabled");
     setTimezone(props.trigger?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC");
     const triggerValues = new Map(props.trigger?.inputValues.map((inputValue) => [
@@ -136,36 +138,12 @@ export function WorkflowTriggerDialog(props: WorkflowTriggerDialogProps) {
             </Select>
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-cron">
-              Cron pattern
-            </label>
-            <div className="flex items-center gap-2">
-              <ClockIcon className="size-4 text-muted-foreground" />
-              <Input
-                id="workflow-trigger-cron"
-                onChange={(event) => {
-                  setCronPattern(event.target.value);
-                }}
-                placeholder="0 9 * * 1-5"
-                value={cronPattern}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-timezone">
-              Timezone
-            </label>
-            <Input
-              id="workflow-trigger-timezone"
-              onChange={(event) => {
-                setTimezone(event.target.value);
-              }}
-              placeholder="America/Los_Angeles"
-              value={timezone}
-            />
-          </div>
+          <WorkflowScheduleBuilder
+            cronPattern={cronPattern}
+            onCronPatternChange={setCronPattern}
+            onTimezoneChange={setTimezone}
+            timezone={timezone}
+          />
 
           <div className="grid gap-2">
             <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-enabled">

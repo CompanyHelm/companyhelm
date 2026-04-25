@@ -30,6 +30,7 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
 import { RunWorkflowDialog } from "./run_workflow_dialog";
+import { WorkflowSchedule } from "./workflow_schedule";
 import { WorkflowTriggerDialog, type WorkflowTriggerDraft } from "./workflow_trigger_dialog";
 import type { WorkflowCronTriggerRecord, WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_types";
 import type { workflowDetailPageCreateCronTriggerMutation } from "./__generated__/workflowDetailPageCreateCronTriggerMutation.graphql";
@@ -679,53 +680,57 @@ function WorkflowOverviewTab(props: {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {props.workflow.triggers.map((trigger) => (
-                <TableRow key={trigger.id}>
-                  <TableCell>
-                    <div className="grid gap-1">
-                      <span className="font-mono text-sm text-foreground">{trigger.cronPattern}</span>
-                      <span className="text-xs text-muted-foreground">{trigger.timezone}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{trigger.agentName}</TableCell>
-                  <TableCell>
-                    <Badge variant={trigger.enabled ? "positive" : "outline"}>
-                      {trigger.enabled ? "enabled" : "disabled"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDateTime(trigger.updatedAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        aria-label={`Edit schedule ${trigger.cronPattern}`}
-                        disabled={props.isTriggerSaving}
-                        onClick={() => {
-                          props.onEditSchedule(trigger);
-                        }}
-                        size="icon-sm"
-                        title={`Edit schedule ${trigger.cronPattern}`}
-                        type="button"
-                        variant="ghost"
-                      >
-                        <PencilIcon />
-                      </Button>
-                      <Button
-                        aria-label={`Delete schedule ${trigger.cronPattern}`}
-                        disabled={props.isTriggerSaving}
-                        onClick={() => {
-                          void props.onDeleteSchedule(trigger.id);
-                        }}
-                        size="icon-sm"
-                        title={`Delete schedule ${trigger.cronPattern}`}
-                        type="button"
-                        variant="ghost"
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {props.workflow.triggers.map((trigger) => {
+                const scheduleSummary = WorkflowSchedule.formatSummary(trigger.cronPattern, trigger.timezone);
+
+                return (
+                  <TableRow key={trigger.id}>
+                    <TableCell>
+                      <div className="grid gap-1">
+                        <span className="text-sm text-foreground">{scheduleSummary}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{trigger.cronPattern}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{trigger.agentName}</TableCell>
+                    <TableCell>
+                      <Badge variant={trigger.enabled ? "positive" : "outline"}>
+                        {trigger.enabled ? "enabled" : "disabled"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDateTime(trigger.updatedAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          aria-label={`Edit schedule ${scheduleSummary}`}
+                          disabled={props.isTriggerSaving}
+                          onClick={() => {
+                            props.onEditSchedule(trigger);
+                          }}
+                          size="icon-sm"
+                          title={`Edit schedule ${scheduleSummary}`}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <PencilIcon />
+                        </Button>
+                        <Button
+                          aria-label={`Delete schedule ${scheduleSummary}`}
+                          disabled={props.isTriggerSaving}
+                          onClick={() => {
+                            void props.onDeleteSchedule(trigger.id);
+                          }}
+                          size="icon-sm"
+                          title={`Delete schedule ${scheduleSummary}`}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
