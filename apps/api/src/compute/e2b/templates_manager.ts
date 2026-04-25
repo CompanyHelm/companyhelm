@@ -11,6 +11,7 @@ export class E2bTemplatesManager {
   private static readonly NVM_INSTALL_VERSION = "v0.40.3";
   private static readonly NVM_DIRECTORY = "/usr/local/nvm";
   private static readonly PLAYWRIGHT_CLI_PACKAGE = "@playwright/cli@latest";
+  private static readonly RUNTIME_USER = "user";
 
   builds(): E2bTemplateBuild[] {
     const desktopTemplate = this.installCommonRuntimeTools(
@@ -63,7 +64,12 @@ export class E2bTemplatesManager {
       .aptInstall("tmux")
       .runCmd(this.buildGitIdentityCommand())
       .runCmd("curl -fsSL https://get.docker.com | sudo sh")
+      .runCmd(this.buildDockerGroupCommand())
       .runCmd(this.buildNvmInstallCommand());
+  }
+
+  private buildDockerGroupCommand(): string {
+    return `sudo usermod -aG docker ${E2bTemplatesManager.RUNTIME_USER}`;
   }
 
   private buildGitIdentityCommand(): string {
