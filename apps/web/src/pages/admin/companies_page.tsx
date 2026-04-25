@@ -62,6 +62,10 @@ function formatDeletionStatusLabel(status: string): string {
   return status === "deletion_requested" ? "Deletion requested" : "Active";
 }
 
+function formatCompanyCount(count: number): string {
+  return count === 1 ? "1 company" : `${count} companies`;
+}
+
 /**
  * Renders the global CompanyHelm company directory for platform admins with server-side search so
  * the pagination controls always reflect the filtered company set rather than the current page.
@@ -112,8 +116,8 @@ function AdminCompaniesPageContent() {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Platform companies</h1>
         <p className="text-sm text-muted-foreground">
           {hasSearch
-            ? `${companyPage.totalCount} companies matching “${search}”.`
-            : `${companyPage.totalCount} companies total across CompanyHelm.`} Page {companyPage.page} of {companyPage.totalPages}.
+            ? `${formatCompanyCount(companyPage.totalCount)} matching “${search}”.`
+            : `${formatCompanyCount(companyPage.totalCount)} total across CompanyHelm.`} Page {companyPage.page} of {companyPage.totalPages}.
         </p>
       </header>
 
