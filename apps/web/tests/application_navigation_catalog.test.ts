@@ -64,3 +64,31 @@ test("keeps every sidebar destination unique across groups", () => {
 
   assert.equal(new Set(destinations).size, destinations.length);
 });
+
+test("adds platform admin destinations only for platform admins", () => {
+  const nonAdminGroups = ApplicationNavigationCatalog.buildMainGroups({
+    isComputeProvidersEnabled: true,
+  });
+  const adminGroups = ApplicationNavigationCatalog.buildMainGroups({
+    isComputeProvidersEnabled: true,
+    isPlatformAdmin: true,
+  });
+
+  assert.equal(nonAdminGroups.some((group) => group.label === "Platform"), false);
+  assert.deepEqual(
+    adminGroups.find((group) => group.label === "Platform")?.items.map((item) => ({
+      label: item.label,
+      to: item.to,
+    })),
+    [{
+      label: "Admin",
+      to: "/admin",
+    }, {
+      label: "Users",
+      to: "/admin/users",
+    }, {
+      label: "Companies",
+      to: "/admin/companies",
+    }],
+  );
+});

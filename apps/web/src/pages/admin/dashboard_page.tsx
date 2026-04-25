@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import { ArrowRightIcon, Building2Icon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,12 +31,12 @@ function AdminDashboardPageContent() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">Admin dashboard</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Internal CompanyHelm controls live here. Start with the global user directory.
+            Internal CompanyHelm controls live here. Review global users and companies.
           </p>
         </div>
       </header>
 
-      <div className="grid gap-4 md:max-w-xl">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="border border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -54,6 +54,28 @@ function AdminDashboardPageContent() {
             <Button asChild size="sm">
               <Link params={{ organizationSlug }} to={OrganizationPath.route("/admin/users")}>
                 Open users
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+        <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2Icon className="size-4" />
+              Companies
+            </CardTitle>
+            <CardDescription>
+              Review every CompanyHelm company, search by identity fields, and page through the directory.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            This view shows plan, membership, Clerk organization, and deletion status metadata.
+          </CardContent>
+          <CardFooter>
+            <Button asChild size="sm">
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/admin/companies")}>
+                Open companies
                 <ArrowRightIcon className="size-4" />
               </Link>
             </Button>

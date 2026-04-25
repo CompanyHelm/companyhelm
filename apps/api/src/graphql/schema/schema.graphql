@@ -21,6 +21,7 @@ type Query {
   InboxHumanQuestions: [InboxHumanQuestion!]!
   CompanyManagedLlmBudget: CompanyManagedLlmBudget!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
+  PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String): PlatformAdminCompanyPage!
   PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -231,6 +232,11 @@ type AuthenticatedCompany {
 enum CompanySubscriptionPlan {
   free
   pro
+}
+
+enum CompanyDeletionStatus {
+  active
+  deletion_requested
 }
 
 enum CompanyOnboardingStatus {
@@ -499,6 +505,25 @@ type PlatformAdminUser {
 
 type PlatformAdminUserPage {
   nodes: [PlatformAdminUser!]!
+  page: Int!
+  pageSize: Int!
+  totalCount: Int!
+  totalPages: Int!
+}
+
+type PlatformAdminCompany {
+  id: ID!
+  name: String!
+  slug: String
+  plan: CompanySubscriptionPlan!
+  deletionStatus: CompanyDeletionStatus!
+  clerkOrganizationId: String
+  memberCount: Int!
+  deletionRequestedAt: String
+}
+
+type PlatformAdminCompanyPage {
+  nodes: [PlatformAdminCompany!]!
   page: Int!
   pageSize: Int!
   totalCount: Int!
