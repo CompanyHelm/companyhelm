@@ -223,10 +223,10 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
     ? null
     : resolveToolExecutionDuration(message);
   const statusLabel = normalizedStatus === "running"
-    ? "Running"
+    ? "running"
     : message.isError
-    ? "Error"
-    : "Success";
+    ? "error"
+    : "success";
   const visibleContents = message.contents.filter((content) => {
     if (resolveTerminalStructuredContent(content)) {
       return true;
@@ -248,31 +248,39 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
 
   return (
-    <div className="min-w-0 w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
+    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0 transition-colors hover:bg-muted/20">
+      <div className="flex min-h-[22px] items-center justify-between gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {isCommandToolCall ? (
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 font-mono text-xs font-semibold text-foreground">
+            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[10px] font-medium text-muted-foreground">
               $
             </span>
           ) : (
-            <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
+              <WrenchIcon className="size-2.5" />
+            </span>
           )}
-          <div className="flex min-w-0 items-baseline gap-2">
+          <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-[14px]">
             <span
               className={isCommandToolCall
-                ? "truncate font-mono text-sm text-foreground"
-                : "truncate text-sm font-medium text-foreground"}
+                ? "min-w-0 truncate font-mono font-medium text-foreground"
+                : "min-w-0 truncate font-medium text-foreground"}
               title={collapsedSummary}
             >
               {collapsedSummary}
             </span>
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            <span
+              className={cn(
+                "shrink-0 text-[10px] font-medium text-muted-foreground/80",
+                normalizedStatus === "running" ? "text-muted-foreground" : null,
+                message.isError ? "text-destructive" : null,
+              )}
+            >
               {statusLabel}
             </span>
             {executionDurationLabel ? (
               <span
-                className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70"
+                className="shrink-0 text-[10px] font-medium text-muted-foreground/70"
                 title={`Execution time: ${executionDurationLabel}`}
               >
                 {executionDurationLabel}
@@ -282,20 +290,20 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
         </div>
         <button
           aria-expanded={isExpanded}
-          className="inline-flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+          className="inline-flex shrink-0 items-center rounded p-0 text-muted-foreground/70 opacity-70 transition hover:bg-muted/40 hover:text-foreground hover:opacity-100 group-hover:opacity-100"
           onClick={() => setIsExpanded((value) => !value)}
           type="button"
         >
-          <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <ChevronRightIcon className={`size-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         </button>
       </div>
       {isExpanded ? (
-        <div className="mt-3 grid gap-3">
-          <div className="overflow-hidden rounded-xl border border-border/60 bg-background/60">
-            <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="mt-1.5 grid gap-1.5 pl-6">
+          <div className="overflow-hidden rounded-lg border border-border/50 bg-background/60">
+            <div className="border-b border-border/50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Arguments
             </div>
-            <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+            <pre className="whitespace-pre-wrap break-words px-2.5 py-1.5 font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
               {defaultArgumentsText}
             </pre>
           </div>
@@ -308,11 +316,11 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
               return (
                 <div
                   key={`${message.id}-content-${contentIndex}`}
-                  className="overflow-hidden rounded-xl border border-border/60 bg-background/60"
+                  className="overflow-hidden rounded-lg border border-border/50 bg-background/60"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-1.5">
                     <code className="text-xs font-medium text-foreground">{terminalStructuredContent.command}</code>
-                    <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                       {terminalStructuredContent.completed
                         ? terminalStructuredContent.exitCode === null
                           ? "Completed"
@@ -320,7 +328,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                         : "Running"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-1.5 text-[11px] text-muted-foreground">
                     {commandToolArguments?.workingDirectory ? <span>cwd: {commandToolArguments.workingDirectory}</span> : null}
                     {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
                     {!commandToolArguments?.workingDirectory && terminalStructuredContent.cwd
@@ -328,7 +336,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                       : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
-                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
                     {terminalOutputText.length > 0
                       ? terminalOutputText
                       : terminalStructuredContent.completed
@@ -355,21 +363,21 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
               return (
                 <div
                   key={`${message.id}-content-${contentIndex}`}
-                  className="overflow-hidden rounded-xl border border-border/60 bg-background/60"
+                  className="overflow-hidden rounded-lg border border-border/50 bg-background/60"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-1.5">
                     <code className="text-xs font-medium text-foreground">{commandToolArguments.command}</code>
-                    <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                       {normalizedStatus === "running" ? "Running" : message.isError ? "Error" : "Completed"}
                     </span>
                   </div>
                   {(commandToolArguments.workingDirectory || commandToolYieldTimeMs !== null) ? (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-1.5 text-[11px] text-muted-foreground">
                       {commandToolArguments.workingDirectory ? <span>cwd: {commandToolArguments.workingDirectory}</span> : null}
                       {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
                     </div>
                   ) : null}
-                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
                     {commandOutputText.length > 0
                       ? commandOutputText
                       : normalizedStatus === "running"
@@ -1057,7 +1065,7 @@ function ChatTranscriptPaneComponent({
                     }}
                   />
                   {hasHiddenMessages && isExpanded ? (
-                    <>
+                    <div className="grid gap-1">
                       {turn.hiddenMessages.map((message) => (
                         <TranscriptMessageRow
                           assistantContentMode="all"
@@ -1078,7 +1086,7 @@ function ChatTranscriptPaneComponent({
                           toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                         />
                       ))}
-                    </>
+                    </div>
                   ) : null}
                   {inlineMessagesAfterWorkedFor.map((message) => (
                     <TranscriptMessageRow
