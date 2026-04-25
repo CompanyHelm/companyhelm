@@ -9,6 +9,7 @@ import {
   resolveGithubInstallationStartToolResult,
   resolvePrincipalExecutionMessageDisplay,
   resolveSessionTitleOverride,
+  shouldEnableDraftTextareaManualResize,
   shouldHydrateComposerSelection,
 } from "../src/pages/chats/chats_page_helpers";
 import type { SessionMessageRecord } from "../src/pages/chats/chats_page_data";
@@ -54,6 +55,14 @@ test("shouldHydrateComposerSelection returns true when the chat target changes",
     ),
     true,
   );
+});
+
+test("shouldEnableDraftTextareaManualResize disables the drag handle on mobile", () => {
+  assert.equal(shouldEnableDraftTextareaManualResize(true), false);
+});
+
+test("shouldEnableDraftTextareaManualResize keeps the drag handle on desktop", () => {
+  assert.equal(shouldEnableDraftTextareaManualResize(false), true);
 });
 
 test("shouldHydrateComposerSelection returns false for streaming updates on the same chat target", () => {

@@ -189,6 +189,7 @@ function ChatPerformanceHarness() {
                 composerModelOptionId={modelOptions[0].id}
                 composerModelOptions={modelOptions}
                 composerReasoningLevel="high"
+                canManuallyResizeDraftTextarea={true}
                 deletingQueuedMessageId={null}
                 draftImageFileInputRef={draftImageFileInputRef}
                 draftImages={draftImages}
