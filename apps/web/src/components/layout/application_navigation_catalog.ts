@@ -1,6 +1,7 @@
 import {
   BotIcon,
   BookOpenIcon,
+  Building2Icon,
   ChartPieIcon,
   FolderGit2Icon,
   InboxIcon,
@@ -188,6 +189,11 @@ export class ApplicationNavigationCatalog {
               icon: UsersIcon,
               label: "Users",
               to: "/admin/users",
+            },
+            {
+              icon: Building2Icon,
+              label: "Companies",
+              to: "/admin/companies",
             },
           ],
           label: "Platform",
