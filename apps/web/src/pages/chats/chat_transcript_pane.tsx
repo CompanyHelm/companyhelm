@@ -248,19 +248,19 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
 
   return (
-    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted/20">
-      <div className="flex min-h-7 items-center justify-between gap-1.5">
+    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0 transition-colors hover:bg-muted/20">
+      <div className="flex min-h-[22px] items-center justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
           {isCommandToolCall ? (
-            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[11px] font-medium text-muted-foreground">
+            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[10px] font-medium text-muted-foreground">
               $
             </span>
           ) : (
-            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
-              <WrenchIcon className="size-3" />
+            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
+              <WrenchIcon className="size-2.5" />
             </span>
           )}
-          <div className="flex min-w-0 items-baseline gap-1.5 text-xs leading-4">
+          <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-[14px]">
             <span
               className={isCommandToolCall
                 ? "min-w-0 truncate font-mono font-medium text-foreground"
@@ -271,7 +271,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             <span
               className={cn(
-                "shrink-0 text-[11px] font-medium text-muted-foreground/80",
+                "shrink-0 text-[10px] font-medium text-muted-foreground/80",
                 normalizedStatus === "running" ? "text-muted-foreground" : null,
                 message.isError ? "text-destructive" : null,
               )}
@@ -280,7 +280,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             {executionDurationLabel ? (
               <span
-                className="shrink-0 text-[11px] font-medium text-muted-foreground/70"
+                className="shrink-0 text-[10px] font-medium text-muted-foreground/70"
                 title={`Execution time: ${executionDurationLabel}`}
               >
                 {executionDurationLabel}
@@ -290,11 +290,11 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
         </div>
         <button
           aria-expanded={isExpanded}
-          className="inline-flex shrink-0 items-center rounded-md p-0.5 text-muted-foreground/70 opacity-70 transition hover:bg-muted/40 hover:text-foreground hover:opacity-100 group-hover:opacity-100"
+          className="inline-flex shrink-0 items-center rounded p-0 text-muted-foreground/70 opacity-70 transition hover:bg-muted/40 hover:text-foreground hover:opacity-100 group-hover:opacity-100"
           onClick={() => setIsExpanded((value) => !value)}
           type="button"
         >
-          <ChevronRightIcon className={`size-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <ChevronRightIcon className={`size-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         </button>
       </div>
       {isExpanded ? (
