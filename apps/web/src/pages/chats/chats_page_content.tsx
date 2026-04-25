@@ -98,6 +98,7 @@ import {
   resolveComposerReasoningLevel,
   resolveDraftTextareaHeightBounds,
   resolveSessionTitle,
+  shouldEnableDraftTextareaManualResize,
   shouldHydrateComposerSelection,
   upsertRootLinkedRecord,
 } from "./chats_page_helpers";
@@ -2280,6 +2281,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             composerModelOptionId={composerModelOptionId}
             composerModelOptions={composerModelOptions}
             composerReasoningLevel={composerReasoningLevel}
+            canManuallyResizeDraftTextarea={shouldEnableDraftTextareaManualResize(isMobile)}
             deletingQueuedMessageId={deletingQueuedMessageId}
             draftImageFileInputRef={draftImageFileInputRef}
             draftImages={draftImages}

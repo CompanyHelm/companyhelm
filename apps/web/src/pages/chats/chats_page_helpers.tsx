@@ -148,6 +148,10 @@ export function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement):
   };
 }
 
+export function shouldEnableDraftTextareaManualResize(isMobile: boolean): boolean {
+  return !isMobile;
+}
+
 export function clampChatListWidth(width: number): number {
   return Math.min(CHAT_LIST_MAX_WIDTH, Math.max(CHAT_LIST_MIN_WIDTH, width));
 }

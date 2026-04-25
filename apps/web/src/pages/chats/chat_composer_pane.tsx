@@ -339,6 +339,7 @@ export function ChatComposerPane({
   shouldShowInterruptComposerAction,
   draftImageFileInputRef,
   draftTextareaRef,
+  canManuallyResizeDraftTextarea,
   hasDraftInput,
   onDraftMessageChange,
   onDraftImageInputChange,
@@ -382,6 +383,7 @@ export function ChatComposerPane({
   shouldShowInterruptComposerAction: boolean;
   draftImageFileInputRef: RefObject<HTMLInputElement>;
   draftTextareaRef: RefObject<HTMLTextAreaElement>;
+  canManuallyResizeDraftTextarea: boolean;
   hasDraftInput: boolean;
   onDraftMessageChange: (value: string) => void;
   onDraftImageInputChange: (event: ReactChangeEvent<HTMLInputElement>) => void;
@@ -409,12 +411,14 @@ export function ChatComposerPane({
 }) {
   return (
     <div className="relative shrink-0 px-1 pt-1 pb-0 md:px-2 md:pt-1 md:pb-0">
-      <button
-        aria-label="Resize message input"
-        className="absolute inset-x-0 -top-2 z-10 h-4 cursor-move bg-transparent"
-        onPointerDown={onStartDraftTextareaResize}
-        type="button"
-      />
+      {canManuallyResizeDraftTextarea ? (
+        <button
+          aria-label="Resize message input"
+          className="absolute inset-x-0 -top-2 z-10 h-4 cursor-move bg-transparent"
+          onPointerDown={onStartDraftTextareaResize}
+          type="button"
+        />
+      ) : null}
       <div
         className={`relative overflow-hidden rounded-[1.1rem] bg-input/20 transition focus-within:bg-input/25 ${
           isComposerDragActive
