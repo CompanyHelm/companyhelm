@@ -248,22 +248,22 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
 
   return (
-    <div className="group min-w-0 w-full max-w-3xl rounded-lg px-2 py-1 transition-colors hover:bg-muted/20">
-      <div className="flex min-h-8 items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
+    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted/20">
+      <div className="flex min-h-7 items-center justify-between gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {isCommandToolCall ? (
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/30 font-mono text-xs font-medium text-muted-foreground">
+            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[11px] font-medium text-muted-foreground">
               $
             </span>
           ) : (
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted/30 text-muted-foreground">
-              <WrenchIcon className="size-3.5" />
+            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
+              <WrenchIcon className="size-3" />
             </span>
           )}
-          <div className="flex min-w-0 items-baseline gap-2 text-sm leading-5">
+          <div className="flex min-w-0 items-baseline gap-1.5 text-xs leading-4">
             <span
               className={isCommandToolCall
-                ? "min-w-0 truncate font-mono text-[13px] font-medium text-foreground"
+                ? "min-w-0 truncate font-mono font-medium text-foreground"
                 : "min-w-0 truncate font-medium text-foreground"}
               title={collapsedSummary}
             >
@@ -271,7 +271,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             <span
               className={cn(
-                "shrink-0 text-xs font-medium text-muted-foreground/80",
+                "shrink-0 text-[11px] font-medium text-muted-foreground/80",
                 normalizedStatus === "running" ? "text-muted-foreground" : null,
                 message.isError ? "text-destructive" : null,
               )}
@@ -280,7 +280,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             {executionDurationLabel ? (
               <span
-                className="shrink-0 text-xs font-medium text-muted-foreground/70"
+                className="shrink-0 text-[11px] font-medium text-muted-foreground/70"
                 title={`Execution time: ${executionDurationLabel}`}
               >
                 {executionDurationLabel}
@@ -294,16 +294,16 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
           onClick={() => setIsExpanded((value) => !value)}
           type="button"
         >
-          <ChevronRightIcon className={`size-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <ChevronRightIcon className={`size-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         </button>
       </div>
       {isExpanded ? (
-        <div className="mt-2 grid gap-2 pl-7">
+        <div className="mt-1.5 grid gap-1.5 pl-6">
           <div className="overflow-hidden rounded-lg border border-border/50 bg-background/60">
-            <div className="border-b border-border/50 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="border-b border-border/50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Arguments
             </div>
-            <pre className="whitespace-pre-wrap break-words px-3 py-2 font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
+            <pre className="whitespace-pre-wrap break-words px-2.5 py-1.5 font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
               {defaultArgumentsText}
             </pre>
           </div>
@@ -1065,7 +1065,7 @@ function ChatTranscriptPaneComponent({
                     }}
                   />
                   {hasHiddenMessages && isExpanded ? (
-                    <>
+                    <div className="grid gap-1">
                       {turn.hiddenMessages.map((message) => (
                         <TranscriptMessageRow
                           assistantContentMode="all"
@@ -1086,7 +1086,7 @@ function ChatTranscriptPaneComponent({
                           toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                         />
                       ))}
-                    </>
+                    </div>
                   ) : null}
                   {inlineMessagesAfterWorkedFor.map((message) => (
                     <TranscriptMessageRow
