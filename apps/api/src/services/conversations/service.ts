@@ -5,9 +5,11 @@ import { SessionManagerService } from "../agent/session/session_manager_service.
 import { AgentConversationCommandService } from "./command_service.ts";
 import { ConversationDeliveryPlanner } from "./delivery_planner.ts";
 import { AgentConversationQueryService } from "./query_service.ts";
+import type { AgentConversationReplyPolicy } from "./reply_policy_resolver.ts";
 
 export type AgentConversationSendMessageInput = {
   companyId: string;
+  replyPolicy?: AgentConversationReplyPolicy | null;
   sourceAgentId: string;
   sourceSessionId: string;
   targetAgentId?: string | null;

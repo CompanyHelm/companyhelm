@@ -2,6 +2,12 @@ Agent-to-agent message
 Source agent name: {{ sourceAgentName }}
 Source agent id: {{ sourceAgentId }}
 Reply target session id: {{ sourceSessionId }}
-Reply using send_agent_message with targetSessionId set to the reply target session id.
+{% if replyPolicy == "required" %}
+Reply is required. Use send_agent_message with targetSessionId set to the reply target session id.
+{% elif replyPolicy == "if_needed" %}
+Reply only if you have substantive new information, a blocking question, or a specifically requested deliverable. Do not reply with acknowledgements, thanks, or closure-only messages. If you do reply, use send_agent_message with targetSessionId set to the reply target session id.
+{% else %}
+No reply is expected. Do not use send_agent_message to acknowledge, thank, or close the loop unless you discover critical new information.
+{% endif %}
 
 {{ text }}

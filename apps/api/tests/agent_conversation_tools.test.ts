@@ -30,6 +30,7 @@ test("AgentSendAgentMessageTool returns the resolved delivery metadata", async (
   } as never);
 
   const result = await tool.createDefinition().execute("tool-call-1", {
+    replyPolicy: "required",
     targetAgentId: "agent-2",
     text: "Can you review the migration?",
   });
