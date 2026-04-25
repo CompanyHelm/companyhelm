@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import nunjucks from "nunjucks";
 
 type AgentConversationMessageTemplateInput = {
+  replyPolicy: "none" | "if_needed" | "required";
   sourceAgentId: string;
   sourceAgentName: string;
   sourceSessionId: string;

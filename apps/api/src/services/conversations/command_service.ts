@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Logger as PinoLogger } from "pino";
 import { type AppRuntimeTransaction, type TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import { agentConversationMessages, agentConversations } from "../../db/schema.ts";
+import { agentConversationMessages, agentConversationParticipants, agentConversations } from "../../db/schema.ts";
 import { ApiLogger } from "../../log/api_logger.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
 import {
@@ -10,6 +10,7 @@ import {
   type ConversationDeliveryPlan,
   type ConversationResolution,
 } from "./delivery_planner.ts";
+import { AgentConversationLoopGuard } from "./loop_guard.ts";
 import type {
   AgentConversationDeleteInput,
   AgentConversationSendMessageInput,
@@ -22,6 +23,7 @@ import type {
  */
 export class AgentConversationCommandService {
   private readonly deliveryPlanner: ConversationDeliveryPlanner;
+  private readonly loopGuard: AgentConversationLoopGuard;
   private readonly logger: PinoLogger;
   private readonly sessionManagerService: SessionManagerService;
 
@@ -31,6 +33,7 @@ export class AgentConversationCommandService {
     deliveryPlanner: ConversationDeliveryPlanner,
   ) {
     this.deliveryPlanner = deliveryPlanner;
+    this.loopGuard = new AgentConversationLoopGuard();
     this.logger = logger.child({
       component: "agent_conversation_service",
     });
@@ -62,6 +65,7 @@ export class AgentConversationCommandService {
         delivery.targetAgentId,
         delivery.targetSessionId,
       );
+      await this.preventAcknowledgementLoop(tx, input, persistedConversation.conversationId);
       return this.persistMessage(tx, input, delivery, persistedConversation);
     });
 
@@ -149,6 +153,37 @@ export class AgentConversationCommandService {
       targetAgentId: delivery.targetAgentId,
       targetSessionId: delivery.targetSessionId,
     };
+  }
+
+  private async preventAcknowledgementLoop(
+    tx: AppRuntimeTransaction,
+    input: AgentConversationSendMessageInput,
+    conversationId: string,
+  ): Promise<void> {
+    const recentMessages = await tx
+      .select({
+        authorSessionId: agentConversationParticipants.sessionId,
+        text: agentConversationMessages.text,
+      })
+      .from(agentConversationMessages)
+      .innerJoin(
+        agentConversationParticipants,
+        eq(agentConversationParticipants.id, agentConversationMessages.authorParticipantId),
+      )
+      .where(and(
+        eq(agentConversationMessages.companyId, input.companyId),
+        eq(agentConversationMessages.conversationId, conversationId),
+      ))
+      .orderBy(desc(agentConversationMessages.createdAt))
+      .limit(6) as Array<{ authorSessionId: string; text: string }>;
+
+    if (!this.loopGuard.shouldBlockLowInformationReply(input.sourceSessionId, input.text, recentMessages)) {
+      return;
+    }
+
+    throw new Error(
+      "Acknowledgement-only agent reply suppressed because the conversation appears to be looping. Send another agent message only when you have substantive new information or a blocking question.",
+    );
   }
 
   private validateInput(input: AgentConversationSendMessageInput): void {

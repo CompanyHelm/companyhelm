@@ -10,6 +10,7 @@ import {
 } from "../../db/schema.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
 import type { AgentConversationSendMessageInput } from "./service.ts";
+import { AgentConversationReplyPolicyResolver } from "./reply_policy_resolver.ts";
 
 type AgentRow = {
   id: string;
@@ -52,10 +53,12 @@ export type ConversationResolution = {
  */
 export class ConversationDeliveryPlanner {
   private readonly deliveryPrompt: AgentConversationMessageTemplate;
+  private readonly replyPolicyResolver: AgentConversationReplyPolicyResolver;
   private readonly sessionManagerService: SessionManagerService;
 
   constructor(sessionManagerService: SessionManagerService) {
     this.deliveryPrompt = new AgentConversationMessageTemplate();
+    this.replyPolicyResolver = new AgentConversationReplyPolicyResolver();
     this.sessionManagerService = sessionManagerService;
   }
 
@@ -64,7 +67,9 @@ export class ConversationDeliveryPlanner {
     input: AgentConversationSendMessageInput,
     sourceAgent: AgentRow,
   ): Promise<ConversationDeliveryPlan> {
+    const replyPolicy = this.replyPolicyResolver.resolve(input.replyPolicy);
     const deliveryText = this.deliveryPrompt.render({
+      replyPolicy,
       sourceAgentId: input.sourceAgentId,
       sourceAgentName: sourceAgent.name,
       sourceSessionId: input.sourceSessionId,
