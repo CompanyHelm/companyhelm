@@ -12,7 +12,10 @@
     "lint": "eslint src scripts tests",
     "test": "npm run audit:rls && npm run check && vitest run",
     "typecheck": "npm exec -- tsc -p tsconfig.json",
-    "check": "npm run lint && npm run typecheck"
+    "check": "npm run lint && npm run typecheck",
+    "dev:local": "tsx watch --include src/graphql/schema/schema.graphql src/main.ts --config-path ./config/local-dev.yaml",
+    "dev:e2b": "tsx watch --include src/graphql/schema/schema.graphql src/main.ts --config-path ./config/local-e2b.yaml",
+    "seed:local-dev": "tsx scripts/seed_local_dev.ts --config-path ./config/local-dev.yaml"
   },
   "devDependencies": {
     "@types/nunjucks": "^3.2.6",

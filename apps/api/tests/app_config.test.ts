@@ -598,3 +598,107 @@ include: "./local.yaml"
     /Config include cycle detected:/,
   );
 });
+
+test("AppConfig local dev overrides Clerk auth without requiring Clerk variables", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const configDirectoryPath = dirname(fixture.configPath);
+  const overrideConfigPath = join(configDirectoryPath, "local-dev.yaml");
+  const originalClerkSecret = process.env[fixture.clerkSecretKeyVariableName];
+  const originalClerkPublishable = process.env[fixture.clerkPublishableKeyVariableName];
+  const originalClerkJwks = process.env[fixture.clerkJwksUrlVariableName];
+
+  writeFileSync(
+    overrideConfigPath,
+    `
+include: "./local.yaml"
+publicUrl: "http://localhost:4000"
+webPublicUrl: "http://localhost:5173"
+auth:
+  provider: "dev"
+  clerk: null
+  dev: {}
+`.trimStart(),
+    "utf8",
+  );
+  delete process.env[fixture.clerkSecretKeyVariableName];
+  delete process.env[fixture.clerkPublishableKeyVariableName];
+  delete process.env[fixture.clerkJwksUrlVariableName];
+
+  try {
+    const document = ConfigLoader.load(overrideConfigPath, ConfigDocument);
+
+    assert.equal(document.auth.provider, "dev");
+    assert.equal(document.publicUrl, "http://localhost:4000");
+    assert.equal(document.webPublicUrl, "http://localhost:5173");
+  } finally {
+    if (originalClerkSecret) {
+      process.env[fixture.clerkSecretKeyVariableName] = originalClerkSecret;
+    }
+    if (originalClerkPublishable) {
+      process.env[fixture.clerkPublishableKeyVariableName] = originalClerkPublishable;
+    }
+    if (originalClerkJwks) {
+      process.env[fixture.clerkJwksUrlVariableName] = originalClerkJwks;
+    }
+  }
+});
+
+test("AppConfig local e2b injects forwarded origins into public URLs and CORS", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const configDirectoryPath = dirname(fixture.configPath);
+  const localDevConfigPath = join(configDirectoryPath, "local-dev.yaml");
+  const localE2bConfigPath = join(configDirectoryPath, "local-e2b.yaml");
+  const apiUrlVariableName = "COMPANYHELM_TEST_E2B_API_PUBLIC_URL";
+  const webUrlVariableName = "COMPANYHELM_TEST_E2B_WEB_PUBLIC_URL";
+  process.env[apiUrlVariableName] = "https://4000-example.e2b.app";
+  process.env[webUrlVariableName] = "https://5173-example.e2b.app";
+
+  writeFileSync(
+    localDevConfigPath,
+    `
+include: "./local.yaml"
+publicUrl: "http://localhost:4000"
+webPublicUrl: "http://localhost:5173"
+auth:
+  provider: "dev"
+  clerk: null
+  dev: {}
+`.trimStart(),
+    "utf8",
+  );
+  writeFileSync(
+    localE2bConfigPath,
+    `
+include: "./local-dev.yaml"
+publicUrl: "\${${apiUrlVariableName}}"
+webPublicUrl: "\${${webUrlVariableName}}"
+cors:
+  origin:
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5173"
+    - "\${${webUrlVariableName}}"
+  credentials: true
+  methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+  allowed_headers:
+    - "content-type"
+    - "authorization"
+    - "x-dev-user-id"
+    - "x-dev-company-id"
+`.trimStart(),
+    "utf8",
+  );
+
+  const document = ConfigLoader.load(localE2bConfigPath, ConfigDocument);
+
+  assert.equal(document.auth.provider, "dev");
+  assert.equal(document.publicUrl, "https://4000-example.e2b.app");
+  assert.equal(document.webPublicUrl, "https://5173-example.e2b.app");
+  assert.deepEqual(document.cors.origin, [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "https://5173-example.e2b.app",
+  ]);
+});

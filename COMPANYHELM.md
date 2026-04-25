@@ -4,6 +4,9 @@ This file explains how to run CompanyHelm locally without CORS issues, and how t
 
 ## The short version
 
+- Preferred one-command local dev auth setup: `npm run local-dev`.
+- Preferred one-command E2B setup after exposing ports: `COMPANYHELM_API_PUBLIC_URL=<api-url> COMPANYHELM_WEB_PUBLIC_URL=<web-url> npm run local-e2b`.
+- Both commands seed `andrea.local@companyhelm.dev`, `CompanyHelm Local`, and a `CEO` agent using the CompanyHelm provider.
 - For a normal local setup, keep everything on localhost:
   - web: `http://localhost:5173`
   - api: `http://localhost:4000`
@@ -96,6 +99,9 @@ From the API point of view, this is a different origin, so the API will reject b
 There is also a second issue: if the forwarded web app still points at `http://localhost:4000/graphql`, that `localhost` resolves in the remote browser context, not on your laptop. In that case you must expose the API too and point the web app at the forwarded API URL.
 
 ## Correct setup when you want forwarded URLs
+
+The easiest E2B path is now `npm run local-e2b` after retrieving the API and web forwarded URLs with `get_e2b_port_url`. The command uses `apps/api/config/local-e2b.yaml` so forwarded CORS is injected by environment variables instead of editing `local.yaml` manually.
+
 
 If you want to open the app through a forwarded URL, do all of the following.
 

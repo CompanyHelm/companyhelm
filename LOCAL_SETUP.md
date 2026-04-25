@@ -175,3 +175,32 @@ Run migrations explicitly when you need to apply Drizzle migrations outside API 
 ```bash
 npm run db:migrate
 ```
+
+## One-command dev-auth boot
+
+For day-to-day local development, prefer the dev-auth boot command:
+
+```bash
+npm run local-dev
+```
+
+This command starts Postgres, Redis, and pgAdmin when they are not already reachable, runs the local seed, then starts the API and web app. It uses `apps/api/config/local-dev.yaml` and `apps/web/.env.local-dev`, so Clerk is not required for this path. The local seed creates the deterministic dev user `andrea.local@companyhelm.dev`, the `CompanyHelm Local` company, and the `CEO` agent backed by the CompanyHelm-managed model provider.
+
+The command still expects the product integrations that power normal agent work:
+
+- `EXA_API_KEY`
+- `E2B_API_KEY`
+- `GITHUB_APP_CLIENT_ID`
+- `GITHUB_APP_PRIVATE_KEY_PEM`
+- `GITHUB_APP_URL`
+- `COMPANYHELM_OPENAI_API_KEY` or `OPENAI_API_KEY`
+
+For the CompanyHelm E2B runtime, expose both ports first and inject the forwarded URLs:
+
+```bash
+COMPANYHELM_API_PUBLIC_URL=https://4000-<sandbox>.e2b.app \
+COMPANYHELM_WEB_PUBLIC_URL=https://5173-<sandbox>.e2b.app \
+npm run local-e2b
+```
+
+`local-e2b` uses `apps/api/config/local-e2b.yaml`, injects the forwarded web origin into CORS, and starts Vite on `0.0.0.0:5173` with a strict port so the forwarded web URL always points at the actual app.

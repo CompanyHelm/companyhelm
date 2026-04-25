@@ -25,7 +25,10 @@
     "postinstall": "patch-package",
     "test:api": "npm run test -w @companyhelm/api",
     "test:web": "npm run test -w @companyhelm/web",
-    "test:all": "npm run test:api && npm run test:web"
+    "test:all": "npm run test:api && npm run test:web",
+    "local-dev": "tsx scripts/local/dev.ts",
+    "local-e2b": "tsx scripts/local/e2b.ts",
+    "seed:local-dev": "npm run seed:local-dev -w @companyhelm/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
