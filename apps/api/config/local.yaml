@@ -67,10 +67,20 @@ companyhelm:
   llm:
     openai_api_key: "${?COMPANYHELM_OPENAI_API_KEY}"
 github:
+  # OAuth client id for the GitHub App. The frontend uses this when starting the app
+  # installation flow, so it must match the app whose installation URL is configured below.
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
+  # PEM private key for signing GitHub App JWTs. GitHub uses those JWTs to issue
+  # installation access tokens for repository discovery and webhook follow-up work.
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
+  # Base GitHub App URL used to build installation links. The API appends
+  # /installations/new when needed and carries encrypted CompanyHelm state through the flow.
   app_link: "${GITHUB_APP_URL}"
+  # Shared secret GitHub sends with webhooks. Keep this optional locally because the API can
+  # boot without webhook verification until a tunnel-backed GitHub App is configured.
   webhook_secret: "${?GITHUB_WEBHOOK_SECRET}"
+  # Identifier embedded in encrypted GitHub installation callback state. It is separate from
+  # the raw encryption key so rotated state payloads can be rejected or migrated intentionally.
   key_id: "companyhelm-local-github-state-key"
 auth:
   provider: "clerk"
