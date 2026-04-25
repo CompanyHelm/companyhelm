@@ -61,7 +61,7 @@ export type SessionPromptImageInput = {
 export type SessionMessagePrincipalMetadata = {
   principalAgentId?: string | null;
   principalSessionId?: string | null;
-  principalType?: "agent_message" | "task" | "user" | "workflow";
+  principalType?: "agent_message" | "github_webhook" | "task" | "user" | "workflow";
   taskRunId?: string | null;
   workflowRunId?: string | null;
 };

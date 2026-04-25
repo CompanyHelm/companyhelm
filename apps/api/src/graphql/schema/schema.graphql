@@ -784,6 +784,9 @@ type SessionQueuedMessage {
   images: [SessionQueuedMessageImage!]!
   shouldSteer: Boolean!
   status: String!
+  principalType: String!
+  principalAgentId: ID
+  principalSessionId: ID
   claimedAt: String
   dispatchedAt: String
   createdAt: String!

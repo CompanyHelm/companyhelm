@@ -23,7 +23,13 @@ import { companySecrets, companies, users } from "./company.ts";
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
-export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal_type", ["user", "task", "workflow", "agent_message"]);
+export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal_type", [
+  "user",
+  "task",
+  "workflow",
+  "agent_message",
+  "github_webhook",
+]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", [
   "company",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<13ba55481effe6ca23740db5050509da>>
+ * @generated SignedSource<<3fc588a77502f0f4339bbcfba3a8a512>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,9 @@ export type chatsPageDataQueuedMessagesQuery$data = {
       readonly id: string;
       readonly mimeType: string;
     }>;
+    readonly principalAgentId: string | null | undefined;
+    readonly principalSessionId: string | null | undefined;
+    readonly principalType: string;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
     readonly status: string;
@@ -122,6 +125,27 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "principalType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -154,16 +178,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "1d052d7ec256529af8c42147e22e537e",
+    "cacheID": "331d0047b45cfac81f6bcb8f83e9f551",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQueuedMessagesQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageDataQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    principalType\n    principalAgentId\n    principalSessionId\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b52093cada07ec1242081fc4ad24c88b";
+(node as any).hash = "1f8987a35546f135527c533ab3b3246c";
 
 export default node;

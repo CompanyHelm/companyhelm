@@ -82,6 +82,23 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
       ].join("\n"),
       type: "text",
     }],
+    details: {
+      installations: [{
+        createdAt: new Date("2026-03-29T12:00:00.000Z"),
+        installationId: 110600868,
+        repositories: [{
+          archived: false,
+          defaultBranch: "main",
+          fullName: "acme/repo-one",
+          htmlUrl: "https://github.com/acme/repo-one",
+          installationId: 110600868,
+          isPrivate: true,
+          name: "repo-one",
+          workspacePath: "~/workspace/repo-one",
+        }],
+      }],
+      type: "github_installations",
+    },
   });
 });
 
@@ -288,8 +305,21 @@ test("AgentGithubPushBranchTool turns shell timeouts into tool errors", async ()
 });
 
 test("AgentGithubCreatePullRequestTool creates a PR through gh with installation token auth", async () => {
-  const executeBashCommand = vi.fn(async (_input: TestBashCommandInput) => {
-    void _input;
+  const trackedPullRequests: Array<Record<string, unknown>> = [];
+  const executeBashCommand = vi.fn(async (input: TestBashCommandInput) => {
+    if (input.command?.includes("'pr' 'view'")) {
+      return {
+        exitCode: 0,
+        output: JSON.stringify({
+          databaseId: 123456789,
+          number: 123,
+          state: "OPEN",
+          title: "Add GitHub workflow tools",
+          url: "https://github.com/CompanyHelm/companyhelm/pull/123",
+        }),
+      };
+    }
+
     return {
       exitCode: 0,
       output: "https://github.com/CompanyHelm/companyhelm/pull/123\n",
@@ -304,6 +334,25 @@ test("AgentGithubCreatePullRequestTool creates a PR through gh with installation
   } as never, {
     async getInstallationAccessToken() {
       return "ghs_installation_token";
+    },
+  } as never, {
+    normalizeGithubState(value: string) {
+      return value.toLowerCase();
+    },
+    async trackCreatedPullRequest(_transactionProvider: unknown, input: Record<string, unknown>) {
+      trackedPullRequests.push(input);
+      return {
+        id: "github-pr-1",
+      };
+    },
+  } as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    sessionId: "session-1",
+    transactionProvider: {
+      async transaction() {
+        throw new Error("transaction should be owned by the mocked service");
+      },
     },
   } as never);
   const definition = tool.createDefinition() as unknown as {
@@ -329,6 +378,28 @@ test("AgentGithubCreatePullRequestTool creates a PR through gh with installation
     timeoutSeconds: 120,
     workingDirectory: "~/workspace/companyhelm",
   });
+  assert.deepEqual(executeBashCommand.mock.calls[1]?.[0], {
+    command: "'gh' 'pr' 'view' '--repo' 'CompanyHelm/companyhelm' 'https://github.com/CompanyHelm/companyhelm/pull/123' '--json' 'databaseId,number,state,title,url' '--jq' '. | @json'",
+    environment: {
+      GH_PROMPT_DISABLED: "1",
+      GH_TOKEN: "ghs_installation_token",
+    },
+    timeoutSeconds: 120,
+    workingDirectory: "~/workspace/companyhelm",
+  });
+  assert.deepEqual(trackedPullRequests, [{
+    companyId: "company-1",
+    createdByAgentId: "agent-1",
+    createdBySessionId: "session-1",
+    externalId: "123456789",
+    installationId: 110600868,
+    number: 123,
+    ownerSessionId: "session-1",
+    repositoryFullName: "CompanyHelm/companyhelm",
+    state: "open",
+    title: "Add GitHub workflow tools",
+    url: "https://github.com/CompanyHelm/companyhelm/pull/123",
+  }]);
   assert.deepEqual(result, {
     content: [{
       text: "https://github.com/CompanyHelm/companyhelm/pull/123",
@@ -341,6 +412,8 @@ test("AgentGithubCreatePullRequestTool creates a PR through gh with installation
       exitCode: 0,
       headBranch: "ceo/workflow-tools",
       installationId: 110600868,
+      pullRequestNumber: 123,
+      pullRequestTrackingId: "github-pr-1",
       pullRequestUrl: "https://github.com/CompanyHelm/companyhelm/pull/123",
       repository: "CompanyHelm/companyhelm",
       timeoutSeconds: 120,

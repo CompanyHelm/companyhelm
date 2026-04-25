@@ -211,16 +211,20 @@ export class SessionPromptService {
     shouldSteer: boolean,
     principalMetadata?: SessionMessagePrincipalMetadata,
   ): Promise<void> {
+    const enqueueInput: Parameters<SessionQueuedMessageService["enqueueInTransaction"]>[1] = {
+      companyId,
+      images: preparedPrompt.queuedImages,
+      sessionId,
+      shouldSteer,
+      text: userMessage,
+    };
+    if (principalMetadata) {
+      enqueueInput.principalMetadata = principalMetadata;
+    }
+
     await this.sessionQueuedMessageService.enqueueInTransaction(
       insertableDatabase as unknown as SelectableDatabase & InsertableDatabase & UpdatableDatabase,
-      {
-        companyId,
-        images: preparedPrompt.queuedImages,
-        principalMetadata,
-        sessionId,
-        shouldSteer,
-        text: userMessage,
-      },
+      enqueueInput,
     );
   }
 

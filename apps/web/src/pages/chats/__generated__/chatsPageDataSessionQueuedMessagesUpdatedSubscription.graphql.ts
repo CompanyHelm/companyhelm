@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<75049f13ac607cc64f77d5a1c540650a>>
+ * @generated SignedSource<<d0ffdf867b2c1cc3b512fb2ec6a5bd01>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,9 @@ export type chatsPageDataSessionQueuedMessagesUpdatedSubscription$data = {
       readonly id: string;
       readonly mimeType: string;
     }>;
+    readonly principalAgentId: string | null | undefined;
+    readonly principalSessionId: string | null | undefined;
+    readonly principalType: string;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
     readonly status: string;
@@ -122,6 +125,27 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "principalType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -154,16 +178,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "751c86b4f92df736e3d82e9fcf61a8c4",
+    "cacheID": "938aefd6a08d415909fab20653d861d6",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionQueuedMessagesUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionQueuedMessagesUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionQueuedMessagesUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionQueuedMessagesUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionQueuedMessagesUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    principalType\n    principalAgentId\n    principalSessionId\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b17c03a2459405b51f1483215d52f8f6";
+(node as any).hash = "6f80df888b9d47b16fdfe0f847cb6234";
 
 export default node;

@@ -1,11 +1,21 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
+import { GithubPullRequestService } from "../../../../../../github/pull_requests/service.ts";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/providers/shell_interface.ts";
 import { GithubClient } from "../../../../../../github/client.ts";
 import { AgentGithubInstallationService } from "./installation_service.ts";
 import { AgentGithubResultFormatter } from "./result_formatter.ts";
+
+type CreatedPullRequestDetails = {
+  databaseId: number;
+  number: number;
+  state: string;
+  title: string;
+  url: string;
+};
 
 /**
  * Opens one pull request through the GitHub CLI with an installation token injected only into the
@@ -47,13 +57,38 @@ export class AgentGithubCreatePullRequestTool {
 
   private readonly promptScope: AgentEnvironmentPromptScope;
   private readonly installationService: AgentGithubInstallationService;
+  private readonly pullRequestContext: {
+    agentId: string;
+    companyId: string;
+    sessionId: string;
+    transactionProvider: TransactionProviderInterface;
+  };
+  private readonly pullRequestService: GithubPullRequestService;
 
   constructor(
     promptScope: AgentEnvironmentPromptScope,
     installationService: AgentGithubInstallationService,
+    pullRequestService: GithubPullRequestService = new GithubPullRequestService(),
+    pullRequestContext: {
+      agentId: string;
+      companyId: string;
+      sessionId: string;
+      transactionProvider: TransactionProviderInterface;
+    } = {
+      agentId: "",
+      companyId: "",
+      sessionId: "",
+      transactionProvider: {
+        async transaction<T>(): Promise<T> {
+          throw new Error("Transaction provider is required to track GitHub pull requests.");
+        },
+      },
+    },
   ) {
     this.promptScope = promptScope;
     this.installationService = installationService;
+    this.pullRequestService = pullRequestService;
+    this.pullRequestContext = pullRequestContext;
   }
 
   createDefinition(): ToolDefinition<typeof AgentGithubCreatePullRequestTool.parameters> {
@@ -96,7 +131,35 @@ export class AgentGithubCreatePullRequestTool {
           throw error;
         }
 
+        const installationId = GithubClient.validateInstallationId(params.installationId);
         const pullRequestUrl = AgentGithubCreatePullRequestTool.extractPullRequestUrl(result.output);
+        const createdPullRequestDetails = pullRequestUrl
+          ? await this.loadCreatedPullRequestDetails({
+            pullRequestUrl,
+            repository,
+            timeoutSeconds,
+            token,
+            workingDirectory: params.workingDirectory,
+          })
+          : null;
+        const trackedPullRequest = createdPullRequestDetails
+          ? await this.pullRequestService.trackCreatedPullRequest(
+            this.pullRequestContext.transactionProvider,
+            {
+              companyId: this.pullRequestContext.companyId,
+              createdByAgentId: this.pullRequestContext.agentId,
+              createdBySessionId: this.pullRequestContext.sessionId,
+              externalId: String(createdPullRequestDetails.databaseId),
+              installationId,
+              number: createdPullRequestDetails.number,
+              ownerSessionId: this.pullRequestContext.sessionId,
+              repositoryFullName: repository,
+              state: this.pullRequestService.normalizeGithubState(createdPullRequestDetails.state),
+              title: createdPullRequestDetails.title,
+              url: createdPullRequestDetails.url,
+            },
+          )
+          : null;
 
         return {
           content: [{
@@ -116,7 +179,9 @@ export class AgentGithubCreatePullRequestTool {
             cwd: params.workingDirectory ?? null,
             exitCode: result.exitCode,
             headBranch,
-            installationId: GithubClient.validateInstallationId(params.installationId),
+            installationId,
+            pullRequestNumber: createdPullRequestDetails?.number ?? null,
+            pullRequestTrackingId: trackedPullRequest?.id ?? null,
             pullRequestUrl,
             repository,
             timeoutSeconds,
@@ -135,6 +200,27 @@ export class AgentGithubCreatePullRequestTool {
       ],
       promptSnippet: "Create a GitHub pull request with a linked installation token",
     };
+  }
+
+  private async loadCreatedPullRequestDetails(input: {
+    pullRequestUrl: string;
+    repository: string;
+    timeoutSeconds: number;
+    token: string;
+    workingDirectory?: string;
+  }): Promise<CreatedPullRequestDetails> {
+    const environment = await this.promptScope.getEnvironment();
+    const result = await environment.executeBashCommand({
+      command: AgentGithubCreatePullRequestTool.buildViewPullRequestCommand(input.repository, input.pullRequestUrl),
+      environment: {
+        GH_PROMPT_DISABLED: "1",
+        GH_TOKEN: input.token,
+      },
+      timeoutSeconds: input.timeoutSeconds,
+      workingDirectory: input.workingDirectory,
+    });
+
+    return AgentGithubCreatePullRequestTool.parsePullRequestDetails(result.output);
   }
 
   private static normalizeRepository(repository: string): string {
@@ -220,9 +306,57 @@ export class AgentGithubCreatePullRequestTool {
     ].join("; ");
   }
 
+  private static buildViewPullRequestCommand(repository: string, pullRequestUrl: string): string {
+    return [
+      "gh",
+      "pr",
+      "view",
+      "--repo",
+      repository,
+      pullRequestUrl,
+      "--json",
+      "databaseId,number,state,title,url",
+      "--jq",
+      ". | @json",
+    ].map((argument) => AgentGithubCreatePullRequestTool.shellQuote(argument)).join(" ");
+  }
+
   private static extractPullRequestUrl(output: string): string | null {
     const match = output.match(/https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/\d+/u);
     return match?.[0] ?? null;
+  }
+
+  private static parsePullRequestDetails(output: string): CreatedPullRequestDetails {
+    const parsedOutput = JSON.parse(output.trim()) as unknown;
+    if (!parsedOutput || typeof parsedOutput !== "object" || Array.isArray(parsedOutput)) {
+      throw new Error("GitHub pull request details response must be an object.");
+    }
+
+    const payload = parsedOutput as Record<string, unknown>;
+    return {
+      databaseId: AgentGithubCreatePullRequestTool.readPositiveInteger(payload.databaseId, "databaseId"),
+      number: AgentGithubCreatePullRequestTool.readPositiveInteger(payload.number, "number"),
+      state: AgentGithubCreatePullRequestTool.readRequiredString(payload.state, "state"),
+      title: AgentGithubCreatePullRequestTool.readRequiredString(payload.title, "title"),
+      url: AgentGithubCreatePullRequestTool.readRequiredString(payload.url, "url"),
+    };
+  }
+
+  private static readPositiveInteger(value: unknown, label: string): number {
+    const numericValue = Number(value);
+    if (!Number.isSafeInteger(numericValue) || numericValue <= 0) {
+      throw new Error(`GitHub pull request ${label} must be a positive integer.`);
+    }
+
+    return numericValue;
+  }
+
+  private static readRequiredString(value: unknown, label: string): string {
+    if (typeof value !== "string" || value.length === 0) {
+      throw new Error(`GitHub pull request ${label} is required.`);
+    }
+
+    return value;
   }
 
   private static shellQuote(value: string): string {

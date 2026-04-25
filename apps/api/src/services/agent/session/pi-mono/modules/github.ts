@@ -1,4 +1,5 @@
 import { GithubClient } from "../../../../../github/client.ts";
+import { GithubPullRequestService } from "../../../../../github/pull_requests/service.ts";
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentGithubInstallationService } from "../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../tools/github/provider.ts";
@@ -11,10 +12,15 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
  */
 export class GithubSessionModule extends AgentSessionModuleInterface {
   private readonly githubClient: GithubClient;
+  private readonly githubPullRequestService: GithubPullRequestService;
 
-  constructor(githubClient: GithubClient) {
+  constructor(
+    githubClient: GithubClient,
+    githubPullRequestService: GithubPullRequestService = new GithubPullRequestService(),
+  ) {
     super();
     this.githubClient = githubClient;
+    this.githubPullRequestService = githubPullRequestService;
   }
 
   getName(): string {
@@ -30,6 +36,13 @@ export class GithubSessionModule extends AgentSessionModuleInterface {
           context.companyId,
           this.githubClient,
         ),
+        this.githubPullRequestService,
+        {
+          agentId: context.agentId,
+          companyId: context.companyId,
+          sessionId: context.sessionId,
+          transactionProvider: context.transactionProvider,
+        },
       ),
     ];
   }

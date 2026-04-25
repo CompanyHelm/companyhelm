@@ -100,17 +100,7 @@ class SessionQueuedMessagesQueryTestHarness {
                 from() {
                   return {
                     async where() {
-                      return [{
-                        claimedAt: new Date("2026-03-31T08:00:30.000Z"),
-                        companyId: "company-123",
-                        createdAt: new Date("2026-03-31T08:00:00.000Z"),
-                        dispatchedAt: null,
-                        id: "queued-1",
-                        sessionId: "session-1",
-                        shouldSteer: false,
-                        status: "pending",
-                        updatedAt: new Date("2026-03-31T08:01:00.000Z"),
-                      }];
+                      return [];
                     },
                   };
                 },
@@ -118,6 +108,45 @@ class SessionQueuedMessagesQueryTestHarness {
             }
 
             if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        claimedAt: new Date("2026-03-31T08:00:30.000Z"),
+                        companyId: "company-123",
+                        createdAt: new Date("2026-03-31T08:00:00.000Z"),
+                        dispatchedAt: null,
+                        id: "queued-1",
+                        principalAgentId: null,
+                        principalSessionId: null,
+                        principalType: "user",
+                        sessionId: "session-1",
+                        shouldSteer: false,
+                        status: "pending",
+                        taskRunId: null,
+                        updatedAt: new Date("2026-03-31T08:01:00.000Z"),
+                        workflowRunId: null,
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {

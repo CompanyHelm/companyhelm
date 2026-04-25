@@ -9,18 +9,16 @@ const scheduleModes: Array<{ label: string; value: WorkflowScheduleMode }> = [
   { label: "Daily", value: "daily" },
   { label: "Weekly", value: "weekly" },
   { label: "Monthly", value: "monthly" },
-  { label: "Custom", value: "advanced" },
 ];
 
 interface WorkflowScheduleBuilderProps {
   cronPattern: string;
   timezone: string;
   onCronPatternChange(cronPattern: string): void;
-  onTimezoneChange(timezone: string): void;
 }
 
-function formatTimeInput(hour: number, minute: number): string {
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+function formatMinute(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 function parseIntegerInput(value: string, fallback: number): number {
@@ -28,16 +26,22 @@ function parseIntegerInput(value: string, fallback: number): number {
   return Number.isFinite(parsedValue) ? parsedValue : fallback;
 }
 
-function parseTimeInput(value: string): { hour: number; minute: number } | null {
-  const match = /^(\d{2}):(\d{2})$/u.exec(value);
-  if (!match) {
-    return null;
+function toDisplayHour(hour: number): number {
+  const displayHour = hour % 12;
+  return displayHour === 0 ? 12 : displayHour;
+}
+
+function toPeriod(hour: number): "AM" | "PM" {
+  return hour < 12 ? "AM" : "PM";
+}
+
+function toCronHour(displayHour: number, period: "AM" | "PM"): number {
+  const boundedHour = Math.min(Math.max(Math.trunc(displayHour), 1), 12);
+  if (period === "AM") {
+    return boundedHour === 12 ? 0 : boundedHour;
   }
 
-  return {
-    hour: Number.parseInt(match[1], 10),
-    minute: Number.parseInt(match[2], 10),
-  };
+  return boundedHour === 12 ? 12 : boundedHour + 12;
 }
 
 /**
@@ -56,6 +60,13 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
     props.onCronPatternChange(WorkflowSchedule.toCronPattern(nextDraft));
   }
 
+  function saveTime(displayHour: number, minute: number, period: "AM" | "PM"): void {
+    saveDraft({
+      hour: toCronHour(displayHour, period),
+      minute,
+    });
+  }
+
   return (
     <div className="grid gap-4 rounded-lg border border-border/60 bg-muted/10 p-3">
       <div className="grid gap-2">
@@ -64,7 +75,7 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
         </label>
         <div
           aria-label="Schedule frequency"
-          className="grid grid-cols-2 gap-1 rounded-md border border-border/60 bg-background/40 p-1 sm:grid-cols-5"
+          className="grid grid-cols-2 gap-1 rounded-md border border-border/60 bg-background/40 p-1 sm:grid-cols-4"
           id="workflow-trigger-schedule-mode"
           role="radiogroup"
         >
@@ -91,21 +102,9 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
       </div>
 
       {draft.mode === "advanced" ? (
-        <div className="grid gap-2">
-          <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-cron">
-            Cron expression
-          </label>
-          <div className="flex items-center gap-2">
-            <ClockIcon className="size-4 text-muted-foreground" />
-            <Input
-              id="workflow-trigger-cron"
-              onChange={(event) => {
-                props.onCronPatternChange(event.target.value);
-              }}
-              placeholder="0 9 * * 1-5"
-              value={props.cronPattern}
-            />
-          </div>
+        <div className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground">
+          <ClockIcon className="mt-0.5 size-4 shrink-0" />
+          <span>Choose a frequency above to replace this saved custom schedule.</span>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -127,20 +126,62 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
             </div>
           ) : (
             <div className="grid gap-2">
-              <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-time">
+              <span className="text-sm font-medium text-foreground">
                 Time
-              </label>
-              <Input
-                id="workflow-trigger-time"
-                onChange={(event) => {
-                  const time = parseTimeInput(event.target.value);
-                  if (time) {
-                    saveDraft(time);
-                  }
-                }}
-                type="time"
-                value={formatTimeInput(draft.hour, draft.minute)}
-              />
+              </span>
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+                <div className="grid gap-1">
+                  <label className="sr-only" htmlFor="workflow-trigger-hour">
+                    Hour
+                  </label>
+                  <Input
+                    aria-label="Hour"
+                    id="workflow-trigger-hour"
+                    max={12}
+                    min={1}
+                    onChange={(event) => {
+                      saveTime(parseIntegerInput(event.target.value, toDisplayHour(draft.hour)), draft.minute, toPeriod(draft.hour));
+                    }}
+                    type="number"
+                    value={toDisplayHour(draft.hour)}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <label className="sr-only" htmlFor="workflow-trigger-minute-at-time">
+                    Minute
+                  </label>
+                  <Input
+                    aria-label="Minute"
+                    id="workflow-trigger-minute-at-time"
+                    max={59}
+                    min={0}
+                    onChange={(event) => {
+                      saveTime(toDisplayHour(draft.hour), parseIntegerInput(event.target.value, draft.minute), toPeriod(draft.hour));
+                    }}
+                    type="number"
+                    value={formatMinute(draft.minute)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-1 rounded-md border border-border/60 bg-background/40 p-0.5">
+                  {(["AM", "PM"] as const).map((period) => (
+                    <button
+                      aria-pressed={toPeriod(draft.hour) === period}
+                      className={cn(
+                        "h-6 rounded-sm px-2 text-xs font-medium text-muted-foreground outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                        toPeriod(draft.hour) === period && "bg-primary text-primary-foreground shadow-sm",
+                        toPeriod(draft.hour) !== period && "hover:bg-muted hover:text-foreground",
+                      )}
+                      key={period}
+                      onClick={() => {
+                        saveTime(toDisplayHour(draft.hour), draft.minute, period);
+                      }}
+                      type="button"
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -187,7 +228,7 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
                   }}
                   title={weekday.label}
                   type="button"
-                  variant={isSelected ? "secondary" : "outline"}
+                  variant={isSelected ? "default" : "outline"}
                 >
                   {weekday.shortLabel}
                 </Button>
@@ -196,26 +237,6 @@ export function WorkflowScheduleBuilder(props: WorkflowScheduleBuilderProps) {
           </div>
         </div>
       ) : null}
-
-      <div className="grid gap-2">
-        <label className="text-sm font-medium text-foreground" htmlFor="workflow-trigger-timezone">
-          Timezone
-        </label>
-        <Input
-          id="workflow-trigger-timezone"
-          list="workflow-trigger-timezone-options"
-          onChange={(event) => {
-            props.onTimezoneChange(event.target.value);
-          }}
-          placeholder="America/Los_Angeles"
-          value={props.timezone}
-        />
-        <datalist id="workflow-trigger-timezone-options">
-          {WorkflowSchedule.getTimezones().map((timezone) => (
-            <option key={timezone} value={timezone} />
-          ))}
-        </datalist>
-      </div>
 
       <div className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground">
         <CalendarDaysIcon className="mt-0.5 size-4 shrink-0" />

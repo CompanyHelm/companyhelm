@@ -18,7 +18,7 @@ type QueuedMessageRow = {
   id: string;
   principalAgentId: string | null;
   principalSessionId: string | null;
-  principalType: "agent_message" | "task" | "user" | "workflow";
+  principalType: "agent_message" | "github_webhook" | "task" | "user" | "workflow";
   sessionId: string;
   shouldSteer: boolean;
   status: SessionQueuedMessageStatus;
@@ -57,7 +57,7 @@ export type QueuedSessionMessageRecord = {
   images: QueuedSessionMessageImageRecord[];
   principalAgentId: string | null;
   principalSessionId: string | null;
-  principalType: "agent_message" | "task" | "user" | "workflow";
+  principalType: "agent_message" | "github_webhook" | "task" | "user" | "workflow";
   sessionId: string;
   shouldSteer: boolean;
   status: SessionQueuedMessageStatus;

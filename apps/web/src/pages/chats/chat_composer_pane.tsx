@@ -162,6 +162,11 @@ function ChatsQueuedMessagesComposerListItem({
   const [isPreviewOverflowing, setIsPreviewOverflowing] = useState(false);
   const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
   const previewText = resolveQueuedMessagePreview(queuedMessage.text);
+  const queueLabel = queuedMessage.principalType === "github_webhook"
+    ? "GitHub"
+    : queuedMessage.shouldSteer
+    ? "Steer"
+    : "Queue";
   const hasHiddenQueuedMessageText = queuedMessage.text !== previewText;
   const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
   const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
@@ -197,7 +202,7 @@ function ChatsQueuedMessagesComposerListItem({
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {queuedMessage.shouldSteer ? "Steer" : "Queue"}
+            {queueLabel}
           </span>
         </div>
         {previewText.trim().length > 0 ? (

@@ -688,7 +688,6 @@ function WorkflowOverviewTab(props: {
                     <TableCell>
                       <div className="grid gap-1">
                         <span className="text-sm text-foreground">{scheduleSummary}</span>
-                        <span className="font-mono text-xs text-muted-foreground">{trigger.cronPattern}</span>
                       </div>
                     </TableCell>
                     <TableCell>{trigger.agentName}</TableCell>

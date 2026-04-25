@@ -2,6 +2,7 @@ export * from "./company.ts";
 export * from "./auth.ts";
 export * from "./agents.ts";
 export * from "./sessions.ts";
+export * from "./github.ts";
 export * from "./conversations.ts";
 export * from "./tasks.ts";
 export * from "./artifacts.ts";

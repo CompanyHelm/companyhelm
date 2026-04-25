@@ -25,34 +25,17 @@ const weekdayCatalog: WorkflowScheduleWeekday[] = [
   { label: "Sunday", shortLabel: "Sun", value: "0" },
 ];
 
-const timezoneCatalog = [
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Toronto",
-  "America/Vancouver",
-  "Europe/London",
-  "Europe/Berlin",
-  "Europe/Paris",
-  "Asia/Kolkata",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "UTC",
-];
-
 /**
  * Translates between the cron string persisted by the API and the schedule concepts people edit in
  * the workflow UI. Unsupported expressions deliberately remain editable through advanced mode.
  */
 export class WorkflowSchedule {
-  static getTimezones(): string[] {
-    return timezoneCatalog;
-  }
-
   static getWeekdays(): WorkflowScheduleWeekday[] {
     return weekdayCatalog;
+  }
+
+  static getBrowserTimezone(): string {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
   }
 
   static createDefaultCronPattern(): string {
@@ -184,7 +167,7 @@ export class WorkflowSchedule {
       return `Runs monthly on day ${draft.dayOfMonth} at ${this.formatTime(draft.hour, draft.minute)} ${timezoneLabel}`;
     }
 
-    return `Runs on custom cron ${draft.cronPattern || "not set"} ${timezoneLabel}`;
+    return `Runs on a custom schedule ${timezoneLabel}`;
   }
 
   static setDraftMode(draft: WorkflowScheduleDraft, mode: WorkflowScheduleMode): WorkflowScheduleDraft {

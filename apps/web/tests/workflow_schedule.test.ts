@@ -22,6 +22,10 @@ test("WorkflowSchedule keeps unsupported cron expressions in advanced mode", () 
 
   assert.equal(draft.mode, "advanced");
   assert.equal(WorkflowSchedule.toCronPattern(draft), "*/10 9-17 * * 1-5");
+  assert.equal(
+    WorkflowSchedule.formatSummary(draft.cronPattern, "UTC"),
+    "Runs on a custom schedule UTC",
+  );
 });
 
 test("WorkflowSchedule summarizes common schedules in readable language", () => {

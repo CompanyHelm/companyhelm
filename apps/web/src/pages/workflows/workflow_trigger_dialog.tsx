@@ -71,7 +71,7 @@ export function WorkflowTriggerDialog(props: WorkflowTriggerDialogProps) {
     setAgentId(props.trigger?.agentId ?? props.agents[0]?.id ?? "");
     setCronPattern(props.trigger?.cronPattern ?? WorkflowSchedule.createDefaultCronPattern());
     setEnabledValue(props.trigger?.enabled === false ? "disabled" : "enabled");
-    setTimezone(props.trigger?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC");
+    setTimezone(WorkflowSchedule.getBrowserTimezone());
     const triggerValues = new Map(props.trigger?.inputValues.map((inputValue) => [
       inputValue.name,
       inputValue.value,
@@ -141,7 +141,6 @@ export function WorkflowTriggerDialog(props: WorkflowTriggerDialogProps) {
           <WorkflowScheduleBuilder
             cronPattern={cronPattern}
             onCronPatternChange={setCronPattern}
-            onTimezoneChange={setTimezone}
             timezone={timezone}
           />
 

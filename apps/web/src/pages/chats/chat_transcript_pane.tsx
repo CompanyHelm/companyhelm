@@ -469,7 +469,11 @@ const PrincipalExecutionTranscriptMessage = memo(function PrincipalExecutionTran
     return null;
   }
 
-  const Icon = display.executionType === "task" ? ListTodoIcon : GitForkIcon;
+  const Icon = display.executionType === "task"
+    ? ListTodoIcon
+    : display.executionType === "github_webhook"
+    ? GithubIcon
+    : GitForkIcon;
   const rawInstructions = message.text.trim();
 
   return (

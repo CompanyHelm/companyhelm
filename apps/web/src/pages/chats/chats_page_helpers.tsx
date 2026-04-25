@@ -83,7 +83,7 @@ export type AssistantContentMode = "all" | "text-only" | "thinking-only";
 
 export type PrincipalExecutionMessageDisplayRecord = {
   detailLabel: string | null;
-  executionType: "task" | "workflow";
+  executionType: "github_webhook" | "task" | "workflow";
   statusLabel: string | null;
   summaryLabel: string;
   title: string;
@@ -744,7 +744,22 @@ function resolvePrincipalExecutionMessageDisplayRecord(
     };
   }
 
+  if (message.principalType === "github_webhook") {
+    return {
+      detailLabel: null,
+      executionType: "github_webhook",
+      statusLabel: null,
+      summaryLabel: resolveFirstLine(message.text) ?? "Pull request activity",
+      title: "GitHub activity",
+    };
+  }
+
   return null;
+}
+
+function resolveFirstLine(value: string): string | null {
+  const firstLine = value.split("\n").find((line) => line.trim().length > 0)?.trim();
+  return firstLine && firstLine.length > 0 ? firstLine : null;
 }
 
 function formatTurnDuration(milliseconds: number): string {

@@ -172,6 +172,9 @@ export const chatsPageQueuedMessagesQueryNode = graphql`
       }
       shouldSteer
       status
+      principalType
+      principalAgentId
+      principalSessionId
       createdAt
       updatedAt
     }
@@ -587,6 +590,9 @@ export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
       }
       shouldSteer
       status
+      principalType
+      principalAgentId
+      principalSessionId
       createdAt
       updatedAt
     }

@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { inject, injectable } from "inversify";
 import type { Sql } from "postgres";
 import { AdminDatabase } from "../../db/admin_database.ts";
+import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import { AppRuntimeTransactionProvider } from "../../db/app_runtime_transaction_provider.ts";
+import { SessionManagerService } from "../../services/agent/session/session_manager_service.ts";
+import { GithubPullRequestService, type GithubPullRequestRecord } from "../pull_requests/service.ts";
 import type { GithubWebhookJobPayload } from "./queue.ts";
 
 type GithubRepositoryPayload = {
@@ -28,9 +32,21 @@ type GithubWebhookPayload = Record<string, unknown>;
 @injectable()
 export class GithubWebhookProcessor {
   private readonly adminDatabase: AdminDatabase;
+  private readonly appRuntimeDatabase: AppRuntimeDatabase | null;
+  private readonly pullRequestService: GithubPullRequestService;
+  private readonly sessionManagerService: SessionManagerService | null;
 
-  constructor(@inject(AdminDatabase) adminDatabase: AdminDatabase) {
+  constructor(
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
+    @inject(AppRuntimeDatabase) appRuntimeDatabase: AppRuntimeDatabase | null = null,
+    @inject(GithubPullRequestService)
+    pullRequestService: GithubPullRequestService = new GithubPullRequestService(),
+    @inject(SessionManagerService) sessionManagerService: SessionManagerService | null = null,
+  ) {
     this.adminDatabase = adminDatabase;
+    this.appRuntimeDatabase = appRuntimeDatabase;
+    this.pullRequestService = pullRequestService;
+    this.sessionManagerService = sessionManagerService;
   }
 
   async process(job: GithubWebhookJobPayload): Promise<void> {
@@ -49,6 +65,26 @@ export class GithubWebhookProcessor {
 
     if (job.eventName === "repository") {
       await this.processRepositoryEvent(action, payload);
+      return;
+    }
+
+    if (job.eventName === "pull_request") {
+      await this.processPullRequestEvent(action, payload);
+      return;
+    }
+
+    if (job.eventName === "pull_request_review") {
+      await this.processPullRequestReviewEvent(action, payload);
+      return;
+    }
+
+    if (job.eventName === "pull_request_review_comment") {
+      await this.processPullRequestReviewCommentEvent(action, payload);
+      return;
+    }
+
+    if (job.eventName === "issue_comment") {
+      await this.processIssueCommentEvent(action, payload);
     }
   }
 
@@ -108,6 +144,163 @@ export class GithubWebhookProcessor {
 
       await this.upsertRepository(sql, companyId, installationId, repository);
     });
+  }
+
+  private async processPullRequestEvent(
+    action: string | null,
+    payload: GithubWebhookPayload,
+  ): Promise<void> {
+    const installationId = this.readInstallationId(payload);
+    const repository = this.readRepository(payload.repository);
+    const pullRequest = this.readPullRequest(payload.pull_request);
+
+    await this.withLinkedInstallation(installationId, async (companyId) => {
+      const trackedPullRequest = await this.pullRequestService.updateTrackedPullRequestFromWebhook(
+        this.createTransactionProvider(companyId),
+        {
+          companyId,
+          externalId: pullRequest.externalId,
+          installationId,
+          number: pullRequest.number,
+          repositoryExternalId: repository.externalId,
+          state: pullRequest.state,
+          title: pullRequest.title,
+          url: pullRequest.url,
+        },
+      );
+      if (!trackedPullRequest) {
+        return;
+      }
+
+      await this.routePullRequestActivity(companyId, trackedPullRequest, [
+        `GitHub pull request activity on ${repository.fullName}#${pullRequest.number}`,
+        "",
+        `Event: pull_request ${action ?? "updated"}`,
+        `State: ${pullRequest.state}`,
+        `URL: ${pullRequest.url}`,
+        "",
+        `Title: ${pullRequest.title}`,
+      ].join("\n"));
+    });
+  }
+
+  private async processPullRequestReviewEvent(
+    action: string | null,
+    payload: GithubWebhookPayload,
+  ): Promise<void> {
+    const installationId = this.readInstallationId(payload);
+    const repository = this.readRepository(payload.repository);
+    const pullRequest = this.readPullRequest(payload.pull_request);
+    const review = this.readObject(payload.review, "GitHub pull request review is required.");
+
+    await this.routeTrackedPullRequestActivity(installationId, repository, pullRequest.number, [
+      `GitHub pull request activity on ${repository.fullName}#${pullRequest.number}`,
+      "",
+      `Event: review ${action ?? "submitted"}`,
+      `Author: ${this.readActorLogin(review.user) ?? "unknown"}`,
+      `Review state: ${this.readOptionalString(review.state) ?? "unknown"}`,
+      `URL: ${this.readOptionalString(review.html_url) ?? pullRequest.url}`,
+      "",
+      this.formatSummary(this.readOptionalString(review.body)),
+    ].join("\n"));
+  }
+
+  private async processPullRequestReviewCommentEvent(
+    action: string | null,
+    payload: GithubWebhookPayload,
+  ): Promise<void> {
+    const installationId = this.readInstallationId(payload);
+    const repository = this.readRepository(payload.repository);
+    const pullRequest = this.readPullRequest(payload.pull_request);
+    const comment = this.readObject(payload.comment, "GitHub pull request review comment is required.");
+
+    await this.routeTrackedPullRequestActivity(installationId, repository, pullRequest.number, [
+      `GitHub pull request activity on ${repository.fullName}#${pullRequest.number}`,
+      "",
+      `Event: review_comment ${action ?? "updated"}`,
+      `Author: ${this.readActorLogin(comment.user) ?? "unknown"}`,
+      `URL: ${this.readOptionalString(comment.html_url) ?? pullRequest.url}`,
+      "",
+      this.formatSummary(this.readOptionalString(comment.body)),
+    ].join("\n"));
+  }
+
+  private async processIssueCommentEvent(
+    action: string | null,
+    payload: GithubWebhookPayload,
+  ): Promise<void> {
+    const issue = this.readObject(payload.issue, "GitHub issue payload is required.");
+    if (!issue.pull_request) {
+      return;
+    }
+
+    const installationId = this.readInstallationId(payload);
+    const repository = this.readRepository(payload.repository);
+    const pullRequestNumber = this.readPositiveInteger(issue.number, "GitHub pull request number is required.");
+    const comment = this.readObject(payload.comment, "GitHub issue comment is required.");
+
+    await this.routeTrackedPullRequestActivity(installationId, repository, pullRequestNumber, [
+      `GitHub pull request activity on ${repository.fullName}#${pullRequestNumber}`,
+      "",
+      `Event: issue_comment ${action ?? "updated"}`,
+      `Author: ${this.readActorLogin(comment.user) ?? "unknown"}`,
+      `URL: ${this.readOptionalString(comment.html_url) ?? this.readOptionalString(issue.html_url) ?? repository.htmlUrl ?? ""}`,
+      "",
+      this.formatSummary(this.readOptionalString(comment.body)),
+    ].join("\n"));
+  }
+
+  private async routeTrackedPullRequestActivity(
+    installationId: number,
+    repository: GithubRepositoryPayload,
+    pullRequestNumber: number,
+    message: string,
+  ): Promise<void> {
+    await this.withLinkedInstallation(installationId, async (companyId) => {
+      const trackedPullRequest = await this.pullRequestService.findTrackedPullRequestFromWebhook(
+        this.createTransactionProvider(companyId),
+        {
+          companyId,
+          installationId,
+          number: pullRequestNumber,
+          repositoryExternalId: repository.externalId,
+        },
+      );
+      if (!trackedPullRequest) {
+        return;
+      }
+
+      await this.routePullRequestActivity(companyId, trackedPullRequest, message);
+    });
+  }
+
+  private async routePullRequestActivity(
+    companyId: string,
+    pullRequest: GithubPullRequestRecord,
+    message: string,
+  ): Promise<void> {
+    if (!pullRequest.ownerSessionId) {
+      return;
+    }
+
+    const transactionProvider = this.createTransactionProvider(companyId);
+    await transactionProvider.transaction(async (tx) => {
+      await this.requireSessionManagerService().queuePromptInTransaction(
+        tx,
+        tx,
+        tx,
+        companyId,
+        pullRequest.ownerSessionId as string,
+        message,
+        {
+          principalMetadata: {
+            principalType: "github_webhook",
+          },
+          shouldSteer: true,
+        },
+      );
+    });
+    await this.requireSessionManagerService().notifyQueuedSessionMessage(companyId, pullRequest.ownerSessionId, true);
   }
 
   private async withLinkedInstallation(
@@ -224,6 +417,61 @@ export class GithubWebhookProcessor {
       isPrivate: Boolean(repository.private),
       name: this.readRequiredString(repository.name, "GitHub repository name is required."),
     };
+  }
+
+  private readPullRequest(value: unknown): {
+    externalId: string;
+    number: number;
+    state: "closed" | "merged" | "open";
+    title: string;
+    url: string;
+  } {
+    const pullRequest = this.readObject(value, "GitHub pull request is required.");
+    const state = pullRequest.merged
+      ? "merged"
+      : this.pullRequestService.normalizeGithubState(
+        this.readRequiredString(pullRequest.state, "GitHub pull request state is required."),
+      );
+
+    return {
+      externalId: String(this.readPositiveInteger(pullRequest.id, "GitHub pull request id is required.")),
+      number: this.readPositiveInteger(pullRequest.number, "GitHub pull request number is required."),
+      state,
+      title: this.readRequiredString(pullRequest.title, "GitHub pull request title is required."),
+      url: this.readRequiredString(pullRequest.html_url, "GitHub pull request URL is required."),
+    };
+  }
+
+  private readActorLogin(value: unknown): string | null {
+    const user = value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null;
+
+    return user ? this.readOptionalString(user.login) : null;
+  }
+
+  private formatSummary(value: string | null): string {
+    if (!value) {
+      return "Summary: No body provided.";
+    }
+
+    return `Summary:\n${value.slice(0, 4_000)}`;
+  }
+
+  private createTransactionProvider(companyId: string): AppRuntimeTransactionProvider {
+    if (!this.appRuntimeDatabase) {
+      throw new Error("App runtime database is required to process GitHub pull request webhook activity.");
+    }
+
+    return new AppRuntimeTransactionProvider(this.appRuntimeDatabase, companyId);
+  }
+
+  private requireSessionManagerService(): SessionManagerService {
+    if (!this.sessionManagerService) {
+      throw new Error("Session manager service is required to route GitHub pull request webhook activity.");
+    }
+
+    return this.sessionManagerService;
   }
 
   private readObject(value: unknown, errorMessage: string): Record<string, unknown> {

@@ -147,6 +147,10 @@ Subscribe to the events this API currently processes:
 - `installation`
 - `installation_repositories`
 - `repository`
+- `pull_request`
+- `pull_request_review`
+- `pull_request_review_comment`
+- `issue_comment`
 
 4. Trigger or redeliver a webhook from GitHub.
 

@@ -13,6 +13,9 @@ export type SessionQueuedMessageGraphqlRecord = {
   dispatchedAt: string | null;
   id: string;
   images: SessionQueuedMessageImageGraphqlRecord[];
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: string;
   sessionId: string;
   shouldSteer: boolean;
   status: string;
@@ -34,6 +37,9 @@ export class SessionQueuedMessageGraphqlPresenter {
       dispatchedAt: record.dispatchedAt?.toISOString() ?? null,
       id: record.id,
       images: record.images.map((image) => this.serializeImage(image)),
+      principalAgentId: record.principalAgentId ?? null,
+      principalSessionId: record.principalSessionId ?? null,
+      principalType: record.principalType ?? "user",
       sessionId: record.sessionId,
       shouldSteer: record.shouldSteer,
       status: record.status,
