@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<85635c3ce7f2d9ee677a012d5dc07bd1>>
+ * @generated SignedSource<<b84708b69fdfdab393f49b1af0d1e5ac>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,13 @@ export type companiesPageQuery$data = {
       readonly clerkOrganizationId: string | null | undefined;
       readonly deletionRequestedAt: string | null | undefined;
       readonly deletionStatus: CompanyDeletionStatus;
+      readonly enhancedLogging: {
+        readonly components: ReadonlyArray<string>;
+        readonly enabled: boolean;
+        readonly expiresAt: string | null | undefined;
+        readonly sessionIds: ReadonlyArray<string>;
+        readonly ttlSeconds: number | null | undefined;
+      };
       readonly id: string;
       readonly memberCount: number;
       readonly name: string;
@@ -173,6 +180,52 @@ v1 = [
             "kind": "ScalarField",
             "name": "deletionRequestedAt",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "PlatformAdminCompanyEnhancedLogging",
+            "kind": "LinkedField",
+            "name": "enhancedLogging",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "enabled",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "expiresAt",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "ttlSeconds",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "components",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "sessionIds",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -199,16 +252,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "35a209a193da2a657eddaf8533bdbe0b",
+    "cacheID": "44a831d24877f9f53bdb8f531e18e91b",
     "id": null,
     "metadata": {},
     "name": "companiesPageQuery",
     "operationKind": "query",
-    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      deletionStatus\n      clerkOrganizationId\n      memberCount\n      deletionRequestedAt\n    }\n  }\n}\n"
+    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      deletionStatus\n      clerkOrganizationId\n      memberCount\n      deletionRequestedAt\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "146032959ac876385d17241e07f4eb59";
+(node as any).hash = "ec0941953414e99e986dcaf3a2a7cd5e";
 
 export default node;

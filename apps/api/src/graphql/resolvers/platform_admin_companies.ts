@@ -1,6 +1,10 @@
 import { asc, eq, sql } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { companies, companyMembers } from "../../db/schema.ts";
+import {
+  EnhancedLoggingAdminService,
+  type EnhancedLoggingAdminCompanyState,
+} from "../../log/enhanced_logging_admin_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type PlatformAdminCompaniesArguments = {
@@ -28,6 +32,7 @@ type GraphqlPlatformAdminCompany = {
   clerkOrganizationId: string | null;
   deletionRequestedAt: string | null;
   deletionStatus: "active" | "deletion_requested";
+  enhancedLogging: EnhancedLoggingAdminCompanyState;
   id: string;
   memberCount: number;
   name: string;
@@ -51,6 +56,15 @@ type GraphqlPlatformAdminCompanyPage = {
 export class PlatformAdminCompaniesQueryResolver {
   private static readonly MAX_PAGE_SIZE = 100;
 
+  private readonly enhancedLoggingAdminService: EnhancedLoggingAdminService;
+
+  constructor(
+    @inject(EnhancedLoggingAdminService)
+    enhancedLoggingAdminService: EnhancedLoggingAdminService = new EnhancedLoggingAdminService(),
+  ) {
+    this.enhancedLoggingAdminService = enhancedLoggingAdminService;
+  }
+
   execute = async (
     _root: unknown,
     arguments_: PlatformAdminCompaniesArguments,
@@ -71,7 +85,7 @@ export class PlatformAdminCompaniesQueryResolver {
     const offset = (page - 1) * pageSize;
     const searchCondition = this.buildSearchCondition(arguments_.search);
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
+    const companyPage = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const countRows = searchCondition
         ? await tx
           .select({
@@ -139,22 +153,28 @@ export class PlatformAdminCompaniesQueryResolver {
           .offset(offset) as PlatformAdminCompanyRow[];
 
       return {
-        nodes: companyRows.map((companyRow) => ({
-          clerkOrganizationId: companyRow.clerkOrganizationId,
-          deletionRequestedAt: companyRow.deletionRequestedAt?.toISOString() ?? null,
-          deletionStatus: companyRow.deletionStatus,
-          id: companyRow.id,
-          memberCount: companyRow.memberCount,
-          name: companyRow.name,
-          plan: companyRow.plan,
-          slug: companyRow.slug,
-        })),
+        nodes: companyRows,
         page,
         pageSize,
         totalCount,
         totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
       };
     });
+
+    return {
+      ...companyPage,
+      nodes: await Promise.all(companyPage.nodes.map(async (companyRow) => ({
+        clerkOrganizationId: companyRow.clerkOrganizationId,
+        deletionRequestedAt: companyRow.deletionRequestedAt?.toISOString() ?? null,
+        deletionStatus: companyRow.deletionStatus,
+        enhancedLogging: await this.enhancedLoggingAdminService.getCompanyState(companyRow.id),
+        id: companyRow.id,
+        memberCount: companyRow.memberCount,
+        name: companyRow.name,
+        plan: companyRow.plan,
+        slug: companyRow.slug,
+      }))),
+    };
   };
 
   private buildSearchCondition(search: string | null | undefined) {

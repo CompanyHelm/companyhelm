@@ -4,6 +4,24 @@ import type { GraphqlRequestContext } from "../src/graphql/graphql_request_conte
 import { PlatformAdminCompaniesQueryResolver } from "../src/graphql/resolvers/platform_admin_companies.ts";
 
 class PlatformAdminCompaniesQueryTestHarness {
+  readonly enhancedLoggingCompanyIds: string[] = [];
+
+  createResolver(): PlatformAdminCompaniesQueryResolver {
+    return new PlatformAdminCompaniesQueryResolver({
+      getCompanyState: async (companyId: string) => {
+        this.enhancedLoggingCompanyIds.push(companyId);
+
+        return {
+          components: ["session_process_cleanup"],
+          enabled: true,
+          expiresAt: "2026-04-26T12:00:00.000Z",
+          sessionIds: ["session-1"],
+          ttlSeconds: 3_600,
+        };
+      },
+    } as never);
+  }
+
   static createContext(isPlatformAdmin: boolean) {
     let selectCallCount = 0;
     const whereConditions: unknown[] = [];
@@ -102,14 +120,15 @@ class PlatformAdminCompaniesQueryTestHarness {
 }
 
 test("PlatformAdminCompanies query lists searchable paginated companies for platform admins", async () => {
-  const resolver = new PlatformAdminCompaniesQueryResolver();
-  const harness = PlatformAdminCompaniesQueryTestHarness.createContext(true);
+  const harness = new PlatformAdminCompaniesQueryTestHarness();
+  const resolver = harness.createResolver();
+  const contextHarness = PlatformAdminCompaniesQueryTestHarness.createContext(true);
 
   const result = await resolver.execute(null, {
     page: 1,
     pageSize: 25,
     search: "acme",
-  }, harness.context);
+  }, contextHarness.context);
 
   assert.deepEqual(result, {
     nodes: [{
@@ -121,13 +140,21 @@ test("PlatformAdminCompanies query lists searchable paginated companies for plat
       clerkOrganizationId: "org_clerk_123",
       memberCount: 3,
       deletionRequestedAt: null,
+      enhancedLogging: {
+        components: ["session_process_cleanup"],
+        enabled: true,
+        expiresAt: "2026-04-26T12:00:00.000Z",
+        sessionIds: ["session-1"],
+        ttlSeconds: 3_600,
+      },
     }],
     page: 1,
     pageSize: 25,
     totalCount: 1,
     totalPages: 1,
   });
-  assert.equal(harness.whereConditions.length, 2);
+  assert.equal(contextHarness.whereConditions.length, 2);
+  assert.deepEqual(harness.enhancedLoggingCompanyIds, ["company-1"]);
 });
 
 test("PlatformAdminCompanies query rejects non-platform-admin users", async () => {
