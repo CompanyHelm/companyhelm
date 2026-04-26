@@ -83,6 +83,9 @@ type Mutation {
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
+  UpdatePlatformAdminCompanyEnhancedLogging(
+    input: UpdatePlatformAdminCompanyEnhancedLoggingInput!
+  ): PlatformAdminCompanyEnhancedLogging!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
@@ -520,6 +523,15 @@ type PlatformAdminCompany {
   clerkOrganizationId: String
   memberCount: Int!
   deletionRequestedAt: String
+  enhancedLogging: PlatformAdminCompanyEnhancedLogging!
+}
+
+type PlatformAdminCompanyEnhancedLogging {
+  enabled: Boolean!
+  expiresAt: String
+  ttlSeconds: Int
+  components: [String!]!
+  sessionIds: [String!]!
 }
 
 type PlatformAdminCompanyPage {
@@ -1183,6 +1195,14 @@ input UpdateAgentInput {
 
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
+}
+
+input UpdatePlatformAdminCompanyEnhancedLoggingInput {
+  companyId: ID!
+  enabled: Boolean!
+  ttlSeconds: Int
+  components: [String!]
+  sessionIds: [String!]
 }
 
 input UpdateCompanyOnboardingInput {
