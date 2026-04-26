@@ -8,7 +8,18 @@ export class OrganizationHomeDecision {
   static resolve(input: {
     authProvider: CompanyHelmAuthProviderName;
     memberships: CompanyHelmOrganizationMembership[];
+    selectedOrganizationId?: string | null;
   }) {
+    const selectedMembership = input.selectedOrganizationId
+      ? input.memberships.find((membership) => membership.organization.id === input.selectedOrganizationId)
+      : null;
+    if (selectedMembership) {
+      return {
+        kind: "redirect" as const,
+        organizationSlug: selectedMembership.organization.slug,
+      };
+    }
+
     if (input.memberships.length === 1) {
       return {
         kind: "redirect" as const,
