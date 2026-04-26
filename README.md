@@ -112,41 +112,11 @@ A few notes:
 - The placeholder values in `apps/web/.env.example` are enough to boot the web shell locally.
 - Replace the placeholders with real secrets before using auth, GitHub install flows, or CompanyHelm-backed compute.
 
-### API runtime config
-
-The API image defaults to `apps/api/config/container.yaml`. That config expects these runtime environment variables:
-
-- `COMPANYHELM_API_PUBLIC_URL`
-- `COMPANYHELM_WEB_PUBLIC_URL`
-- `DATABASE_NAME`
-- `DATABASE_HOST`
-- `DATABASE_APP_RUNTIME_USERNAME`
-- `DATABASE_APP_RUNTIME_PASSWORD`
-- `DATABASE_ADMIN_USERNAME`
-- `DATABASE_ADMIN_PASSWORD`
-- `REDIS_HOST`
-- `EXA_API_KEY`
-- `GITHUB_APP_CLIENT_ID`
-- `GITHUB_APP_PRIVATE_KEY_PEM`
-- `GITHUB_APP_URL`
-- `CLERK_SECRET_KEY`
-- `CLERK_PUBLISHABLE_KEY`
-- `CLERK_JWKS_URL`
-- `COMPANYHELM_ENCRYPTION_KEY`
-- `COMPANYHELM_ENCRYPTION_KEY_ID`
-
-If you want to source the full API config from S3 instead, set `COMPANYHELM_CONFIG_S3_URI`.
-The entrypoint uses the `--config-path` argument as the destination path for that download.
-If you do not pass `--config-path`, the image defaults to `apps/api/config/container.yaml`.
-
 ### Web runtime config
 
 Local Vite development uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
 local environment. To show Clerk's terms/privacy consent during sign-up, also set
-`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`. The web Docker image
-uses the same `VITE_*` variables to generate `/runtime-config.js` at startup, so local `.env`
-files and deployed runtime YAML share the same schema. Amplitude runtime config follows the
-same pattern with `VITE_AMPLITUDE_ENABLED` and `VITE_AMPLITUDE_ID`.
+`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`.
 
 ## Common commands
 
