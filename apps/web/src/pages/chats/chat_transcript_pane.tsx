@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MutableRefObject, UIEvent } from "react";
+import type { MutableRefObject, TouchEvent as ReactTouchEvent, UIEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
@@ -56,6 +56,8 @@ AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
 export class ChatTranscriptTimestampPresenter {
   private static readonly TOP_TOOLTIP_CLEARANCE = 32;
   private static readonly LEFT_TOOLTIP_CLEARANCE = 180;
+  private static readonly MAX_TOUCH_TAP_TRAVEL = 8;
+  private static readonly POINTER_TAP_AUTO_HIDE_MILLISECONDS = 5000;
 
   static formatMessageTimestamp(timestamp: string): string {
     const value = new Date(timestamp);
@@ -127,10 +129,46 @@ export class ChatTranscriptTimestampPresenter {
       && triggerCenterY <= boundaryBottom;
   }
 
+
+  static resolvePointerTapTooltipSide(side: ChatTranscriptTimestampTooltipSide): ChatTranscriptTimestampTooltipSide {
+    return side === "left" ? "top" : side;
+  }
+
+  static resolvePointerTapAutoHideMilliseconds(): number {
+    return ChatTranscriptTimestampPresenter.POINTER_TAP_AUTO_HIDE_MILLISECONDS;
+  }
+
   /**
-   * Lets the tooltip stay uncontrolled while still rejecting opens that would immediately render
-   * outside the transcript-safe boundary. Close transitions must always be allowed so Base UI can
-   * clean up hover state during scroll, streaming transcript updates, and other layout changes.
+   * Treats touch and pen taps as a mobile timestamp request while preserving the existing
+   * mouse hover path and avoiding accidental opens during scroll gestures or control clicks.
+   */
+  static shouldOpenTooltipForPointerTap(options: {
+    boundary: ChatTranscriptTimestampTooltipBoundary | null;
+    pointerType: string;
+    side: ChatTranscriptTimestampTooltipSide;
+    targetIsInteractive: boolean;
+    travelDistance?: number;
+    triggerRect: DOMRectReadOnly | null;
+  }): boolean {
+    if (options.pointerType === "mouse" || options.pointerType.length === 0) {
+      return false;
+    }
+
+    if (options.targetIsInteractive) {
+      return false;
+    }
+
+    if ((options.travelDistance ?? 0) > ChatTranscriptTimestampPresenter.MAX_TOUCH_TAP_TRAVEL) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Lets the hover tooltip reject opens that would immediately render outside the
+   * transcript-safe boundary. Close transitions must always be allowed so Base UI can clean up
+   * hover state during scroll, streaming transcript updates, and other layout changes.
    */
   static shouldApplyOpenChange(options: {
     boundary: ChatTranscriptTimestampTooltipBoundary | null;
@@ -168,6 +206,19 @@ type ChatTranscriptTimestampTooltipBoundary = {
 };
 
 type ChatTranscriptTimestampTooltipSide = "left" | "top";
+
+type ChatTranscriptTimestampTouchTapStart = {
+  clientX: number;
+  clientY: number;
+};
+
+function isTimestampTooltipInteractiveTapTarget(target: EventTarget | null): boolean {
+  if (typeof Element === "undefined" || !(target instanceof Element)) {
+    return false;
+  }
+
+  return target.closest("a,button,input,textarea,select,[role='button'],[role='link'],[contenteditable='true']") !== null;
+}
 
 const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
   { action }: { action: GithubInstallationStartTurnActionRecord },
@@ -492,9 +543,70 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   const assistantDisplayContents = !isUserMessage && !isToolMessage
     ? resolveAssistantContentDisplay(message, { contentMode: assistantContentMode })
     : [];
-  const timestampTooltipSide = isUserMessage ? "left" : "top";
+  const defaultTimestampTooltipSide = isUserMessage ? "left" : "top";
   const timestampTooltipTriggerRef = useRef<HTMLDivElement | null>(null);
+  const timestampTouchTapStartRef = useRef<ChatTranscriptTimestampTouchTapStart | null>(null);
+  const [isPointerTapTimestampVisible, setIsPointerTapTimestampVisible] = useState(false);
+  const [pointerTapTimestampOpenVersion, setPointerTapTimestampOpenVersion] = useState(0);
+  const [pointerTapTimestampTooltipSide, setPointerTapTimestampTooltipSide] = useState<ChatTranscriptTimestampTooltipSide | null>(null);
+  const timestampTooltipSide = pointerTapTimestampTooltipSide ?? defaultTimestampTooltipSide;
   const timestampLabel = ChatTranscriptTimestampPresenter.formatMessageTimestamp(message.createdAt);
+
+  const handleTimestampTouchStart = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1 || isTimestampTooltipInteractiveTapTarget(event.target)) {
+      timestampTouchTapStartRef.current = null;
+      return;
+    }
+
+    timestampTouchTapStartRef.current = {
+      clientX: event.touches[0].clientX,
+      clientY: event.touches[0].clientY,
+    };
+  }, []);
+
+  const handleTimestampTouchEnd = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    const tapStart = timestampTouchTapStartRef.current;
+    timestampTouchTapStartRef.current = null;
+
+    if (!tapStart || event.changedTouches.length === 0) {
+      return;
+    }
+
+    const changedTouch = event.changedTouches[0];
+    const travelDistance = Math.hypot(changedTouch.clientX - tapStart.clientX, changedTouch.clientY - tapStart.clientY);
+    const pointerTapTooltipSide = ChatTranscriptTimestampPresenter.resolvePointerTapTooltipSide(defaultTimestampTooltipSide);
+    const shouldOpenTooltip = ChatTranscriptTimestampPresenter.shouldOpenTooltipForPointerTap({
+      boundary: timestampTooltipBoundary,
+      pointerType: "touch",
+      side: pointerTapTooltipSide,
+      targetIsInteractive: isTimestampTooltipInteractiveTapTarget(event.target),
+      travelDistance,
+      triggerRect: timestampTooltipTriggerRef.current?.getBoundingClientRect() ?? null,
+    });
+
+    if (shouldOpenTooltip) {
+      setPointerTapTimestampTooltipSide(pointerTapTooltipSide);
+      setIsPointerTapTimestampVisible(true);
+      setPointerTapTimestampOpenVersion((currentVersion) => currentVersion + 1);
+    }
+  }, [defaultTimestampTooltipSide, timestampTooltipBoundary]);
+
+  const handleTimestampTouchCancel = useCallback(() => {
+    timestampTouchTapStartRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!isPointerTapTimestampVisible) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsPointerTapTimestampVisible(false);
+      setPointerTapTimestampTooltipSide(null);
+    }, ChatTranscriptTimestampPresenter.resolvePointerTapAutoHideMilliseconds());
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isPointerTapTimestampVisible, pointerTapTimestampOpenVersion]);
 
   if (!hasVisibleMessage(message, { assistantContentMode })) {
     return null;
@@ -503,7 +615,10 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   return (
     <div
       data-transcript-message-id={message.id}
-      className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : useLeftGutter ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS : ""}`}
+      className={`relative min-w-0 w-full ${isUserMessage ? "flex justify-end" : useLeftGutter ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS : ""}`}
+      onTouchCancelCapture={handleTimestampTouchCancel}
+      onTouchEndCapture={handleTimestampTouchEnd}
+      onTouchStartCapture={handleTimestampTouchStart}
     >
       <TooltipProvider delay={500} timeout={0}>
         <Tooltip
@@ -587,6 +702,16 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
           ) : null}
         </Tooltip>
       </TooltipProvider>
+      {isPointerTapTimestampVisible && pointerTapTimestampTooltipSide ? (
+        <div
+          className={cn(
+            "pointer-events-none absolute z-50 rounded-sm border border-border/70 bg-popover px-2 py-0.5 text-[10px] font-medium leading-4 text-popover-foreground shadow-sm",
+            isUserMessage ? "right-0 -top-5" : "left-1/2 -top-5 -translate-x-1/2",
+          )}
+        >
+          <time dateTime={message.createdAt}>{timestampLabel}</time>
+        </div>
+      ) : null}
     </div>
   );
 });
