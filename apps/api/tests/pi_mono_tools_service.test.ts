@@ -341,6 +341,128 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
   assert.equal(dispose.mock.calls.length, 1);
 });
 
+test("AgentToolsService truncates oversized text tool output with an inline marker", async () => {
+  const oversizedText = "x".repeat(1_000_001);
+  const service = new AgentToolsService({
+    async dispose() {
+      return undefined;
+    },
+    async getEnvironment() {
+      throw new Error("tool execution should not acquire the prompt environment");
+    },
+  } as never, [{
+    createToolDefinitions() {
+      return [{
+        description: "Returns oversized text output.",
+        execute: async () => ({
+          content: [{
+            text: oversizedText,
+            type: "text",
+          }],
+          details: undefined,
+        }),
+        label: "Oversized",
+        name: "oversized_text",
+        parameters: {} as never,
+      }];
+    },
+  } as never]);
+
+  const [tool] = service.initializeTools();
+  const result = await tool.execute("tool-call-1", {} as never, undefined, undefined, {} as never);
+  const text = result.content[0]?.type === "text" ? result.content[0].text : null;
+
+  assert.ok(text);
+  assert.equal(text.length, 1_000_000);
+  assert.match(text, /^\[Tool output truncated: original length 1000001 characters; maximum is 1000000 characters\.\]\n\n/u);
+  assert.equal(text.endsWith("x"), true);
+});
+
+test("AgentToolsService leaves text tool output at the limit unchanged", async () => {
+  const limitedText = "x".repeat(1_000_000);
+  const service = new AgentToolsService({
+    async dispose() {
+      return undefined;
+    },
+    async getEnvironment() {
+      throw new Error("tool execution should not acquire the prompt environment");
+    },
+  } as never, [{
+    createToolDefinitions() {
+      return [{
+        description: "Returns text output at the limit.",
+        execute: async () => ({
+          content: [{
+            text: limitedText,
+            type: "text",
+          }],
+          details: undefined,
+        }),
+        label: "Limited",
+        name: "limited_text",
+        parameters: {} as never,
+      }];
+    },
+  } as never]);
+
+  const [tool] = service.initializeTools();
+  const result = await tool.execute("tool-call-1", {} as never, undefined, undefined, {} as never);
+  const text = result.content[0]?.type === "text" ? result.content[0].text : null;
+
+  assert.equal(text, limitedText);
+});
+
+test("AgentToolsService truncates streamed text tool updates", async () => {
+  const oversizedText = "x".repeat(1_000_001);
+  const streamedTexts: string[] = [];
+  const service = new AgentToolsService({
+    async dispose() {
+      return undefined;
+    },
+    async getEnvironment() {
+      throw new Error("tool execution should not acquire the prompt environment");
+    },
+  } as never, [{
+    createToolDefinitions() {
+      return [{
+        description: "Streams oversized text output.",
+        execute: async (_toolCallId: string, _params: unknown, _signal: AbortSignal | undefined, onUpdate) => {
+          onUpdate?.({
+            content: [{
+              text: oversizedText,
+              type: "text",
+            }],
+            details: undefined,
+          });
+
+          return {
+            content: [{
+              text: "done",
+              type: "text",
+            }],
+            details: undefined,
+          };
+        },
+        label: "Streaming oversized",
+        name: "streaming_oversized_text",
+        parameters: {} as never,
+      }];
+    },
+  } as never]);
+
+  const [tool] = service.initializeTools();
+  await tool.execute("tool-call-1", {} as never, undefined, (partialResult) => {
+    const text = partialResult.content[0]?.type === "text" ? partialResult.content[0].text : null;
+    if (text) {
+      streamedTexts.push(text);
+    }
+  }, {} as never);
+
+  assert.equal(streamedTexts.length, 1);
+  assert.equal(streamedTexts[0]?.length, 1_000_000);
+  assert.match(streamedTexts[0] ?? "", /^\[Tool output truncated: original length 1000001 characters; maximum is 1000000 characters\.\]\n\n/u);
+});
+
 test("AgentToolsService custom tools can be injected into a live PI Mono session", async () => {
   const authStorage = AuthStorage.inMemory();
   authStorage.setRuntimeApiKey("openai", "sk-test");
