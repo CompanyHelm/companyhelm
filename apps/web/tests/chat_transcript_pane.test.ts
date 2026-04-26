@@ -189,3 +189,83 @@ test("timestamp tooltip open changes are allowed when the trigger fits inside th
     true,
   );
 });
+
+test("timestamp tooltip touch taps are allowed when the row fits inside the boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldOpenTooltipForPointerTap({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      pointerType: "touch",
+      side: "top",
+      targetIsInteractive: false,
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    true,
+  );
+});
+
+test("timestamp tooltip mouse clicks do not replace desktop hover behavior", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldOpenTooltipForPointerTap({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      pointerType: "mouse",
+      side: "top",
+      targetIsInteractive: false,
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    false,
+  );
+});
+
+test("timestamp tooltip touch taps ignore controls inside tool messages", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldOpenTooltipForPointerTap({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      pointerType: "touch",
+      side: "top",
+      targetIsInteractive: true,
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    false,
+  );
+});
+
+test("timestamp tooltip touch taps use top placement when the desktop hover placement is left", () => {
+  assert.equal(ChatTranscriptTimestampPresenter.resolvePointerTapTooltipSide("left"), "top");
+});
+
+test("timestamp tooltip touch taps open even when desktop hover would be too close to the boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldOpenTooltipForPointerTap({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      pointerType: "touch",
+      side: "top",
+      targetIsInteractive: false,
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 250, width: 640 }),
+    }),
+    true,
+  );
+});
+
+test("timestamp tooltip touch taps auto hide after five seconds", () => {
+  assert.equal(ChatTranscriptTimestampPresenter.resolvePointerTapAutoHideMilliseconds(), 5000);
+});
