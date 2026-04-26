@@ -48,6 +48,61 @@ test("keeps `/` on the company picker when multiple memberships exist", () => {
   });
 });
 
+test("redirects `/` to the previously selected company when multiple memberships exist", () => {
+  const decision = OrganizationHomeDecision.resolve({
+    authProvider: "clerk",
+    memberships: [
+      {
+        organization: {
+          id: "org_1",
+          name: "Acme",
+          slug: "acme",
+        },
+      },
+      {
+        organization: {
+          id: "org_2",
+          name: "Bravo",
+          slug: "bravo",
+        },
+      },
+    ],
+    selectedOrganizationId: "org_2",
+  });
+
+  assert.deepEqual(decision, {
+    kind: "redirect",
+    organizationSlug: "bravo",
+  });
+});
+
+test("ignores a previously selected company that is no longer available", () => {
+  const decision = OrganizationHomeDecision.resolve({
+    authProvider: "clerk",
+    memberships: [
+      {
+        organization: {
+          id: "org_1",
+          name: "Acme",
+          slug: "acme",
+        },
+      },
+      {
+        organization: {
+          id: "org_2",
+          name: "Bravo",
+          slug: "bravo",
+        },
+      },
+    ],
+    selectedOrganizationId: "org_3",
+  });
+
+  assert.deepEqual(decision, {
+    kind: "organization-list",
+  });
+});
+
 test("sends dev users without memberships into company creation", () => {
   const decision = OrganizationHomeDecision.resolve({
     authProvider: "dev",
@@ -55,7 +110,7 @@ test("sends dev users without memberships into company creation", () => {
   });
 
   assert.deepEqual(decision, {
-    kind: "create-company",
+    kind: "companies",
   });
 });
 

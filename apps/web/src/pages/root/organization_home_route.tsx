@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { config } from "@/config";
 import { OrganizationPath } from "@/lib/organization_path";
 import { OrganizationHomeDecision } from "./organization_home_decision";
+import { SelectedOrganizationStorage } from "./selected_organization_storage";
 
 /**
  * Turns the ambiguous `/` URL into either a deterministic org URL or an explicit company picker.
@@ -21,6 +22,7 @@ export function OrganizationHomeRoute() {
     ? OrganizationHomeDecision.resolve({
       authProvider: config.authProvider,
       memberships,
+      selectedOrganizationId: SelectedOrganizationStorage.readOrganizationId(),
     })
     : null;
   const redirectOrganizationSlug = homeDecision?.kind === "redirect"

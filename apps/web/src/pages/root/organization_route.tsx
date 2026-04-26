@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { OrganizationList, useOrganization, useOrganizationList } from "@/components/auth/auth_provider";
 import { Outlet, useParams } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
+import { SelectedOrganizationStorage } from "./selected_organization_storage";
 
 /**
  * Keeps Clerk's active organization aligned with the slug embedded in the current URL so separate
@@ -37,6 +38,14 @@ export function OrganizationRoute() {
     setActivationErrorMessage(null);
     setPendingOrganizationId(null);
   }, [organizationSlug]);
+
+  useEffect(() => {
+    if (!isLoaded || activeOrganizationSlug !== organizationSlug || !matchingMembership) {
+      return;
+    }
+
+    SelectedOrganizationStorage.writeOrganizationId(matchingMembership.organization.id);
+  }, [activeOrganizationSlug, isLoaded, matchingMembership, organizationSlug]);
 
   useEffect(() => {
     if (!isLoaded || activeOrganizationSlug === organizationSlug || !matchingMembership || !organizationListState.setActive) {
