@@ -77,7 +77,7 @@ export class PlatformAdminUsersQueryResolver {
       const totalCount = countRow?.totalCount ?? 0;
       const membershipCounts = tx
         .select({
-          companyCount: sql<number>`count(*)::int`,
+          companyCount: sql<number>`count(*)::int`.as("company_count"),
           userId: companyMembers.userId,
         })
         .from(companyMembers)
