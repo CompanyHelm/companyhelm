@@ -141,18 +141,17 @@ export function ApplicationSidebar(props: {
               <SidebarMenu>
                 {group.items.map((item) => {
                   const ItemIcon = item.icon;
+                  const itemPathname = item.scope === "root" ? pathname : OrganizationPath.stripPrefix(pathname);
+                  const linkNode = item.scope === "root"
+                    ? <Link to={item.to} />
+                    : <Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />;
 
                   return (
                     <SidebarMenuItem key={item.to}>
                       <SidebarMenuButton
-                        isActive={isNavigationItemActive(pathname, item.to)}
+                        isActive={isNavigationItemActive(itemPathname, item.to)}
                         onClick={handleNavigationClick}
-                        render={
-                          <Link
-                            params={{ organizationSlug }}
-                            to={OrganizationPath.route(item.to)}
-                          />
-                        }
+                        render={linkNode}
                         tooltip={item.label}
                       >
                         <ItemIcon />

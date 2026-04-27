@@ -3,8 +3,6 @@ import { ArrowRightIcon, Building2Icon, ShieldCheckIcon, UsersIcon } from "lucid
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { OrganizationPath } from "@/lib/organization_path";
-import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
 /**
  * Serves as the entry point for CompanyHelm-only administration so platform controls do not bleed
@@ -19,8 +17,6 @@ export function AdminDashboardPage() {
 }
 
 function AdminDashboardPageContent() {
-  const organizationSlug = useCurrentOrganizationSlug();
-
   return (
     <main className="flex flex-1 flex-col gap-6">
       <header className="space-y-2">
@@ -52,7 +48,7 @@ function AdminDashboardPageContent() {
           </CardContent>
           <CardFooter>
             <Button asChild size="sm">
-              <Link params={{ organizationSlug }} to={OrganizationPath.route("/admin/users")}>
+              <Link to="/admin/users">
                 Open users
                 <ArrowRightIcon className="size-4" />
               </Link>
@@ -74,7 +70,7 @@ function AdminDashboardPageContent() {
           </CardContent>
           <CardFooter>
             <Button asChild size="sm">
-              <Link params={{ organizationSlug }} to={OrganizationPath.route("/admin/companies")}>
+              <Link to="/admin/companies">
                 Open companies
                 <ArrowRightIcon className="size-4" />
               </Link>

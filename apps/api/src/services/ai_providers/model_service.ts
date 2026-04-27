@@ -15,6 +15,7 @@ import { OpenAiCompatibleModelAdapter } from "../providers/models-adapters/opena
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 import { OpenRouterModelAdapter } from "../providers/models-adapters/openrouter_model_adapter.js";
 import { CompanyHelmLlmProviderService } from "./companyhelm_service.ts";
+import { OpenAiCompatibleDefaultModelService } from "./openai_compatible_default_model_service.ts";
 
 type StoredModelRecord = {
   id: string;
@@ -63,10 +64,16 @@ type DeletableDatabase = {
 @injectable()
 export class ModelService {
   private readonly modelRegistry: ModelRegistry;
+  private readonly openAiCompatibleDefaultModelService: OpenAiCompatibleDefaultModelService;
   private readonly providerAdapters: Map<string, ModelAdapterInterface>;
 
-  constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry) {
+  constructor(
+    @inject(ModelRegistry) modelRegistry: ModelRegistry,
+    @inject(OpenAiCompatibleDefaultModelService)
+    openAiCompatibleDefaultModelService: OpenAiCompatibleDefaultModelService = new OpenAiCompatibleDefaultModelService(),
+  ) {
     this.modelRegistry = modelRegistry;
+    this.openAiCompatibleDefaultModelService = openAiCompatibleDefaultModelService;
     this.providerAdapters = new Map<string, ModelAdapterInterface>([
       ["openai", new OpenAiModelAdapter(modelRegistry)],
       ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
@@ -140,6 +147,7 @@ export class ModelService {
       const existingDefaultModelId = existingModels.find((model) => model.isDefault)?.modelId ?? null;
       const fetchedModelIds = new Set(fetchedModels.map((model) => model.modelId));
       const providerDefaultModelId = this.resolveDefaultModelId(
+        input.baseUrl,
         input.modelProvider,
         fetchedModels.map((model) => model.modelId),
         existingDefaultModelId,
@@ -232,12 +240,22 @@ export class ModelService {
   }
 
   private resolveDefaultModelId(
+    baseUrl: string | null | undefined,
     modelProvider: string,
     fetchedModelIds: string[],
     existingDefaultModelId: string | null,
   ): string | null {
     if (existingDefaultModelId && fetchedModelIds.includes(existingDefaultModelId)) {
       return existingDefaultModelId;
+    }
+
+    const openAiCompatibleDefaultModelId = this.openAiCompatibleDefaultModelService.resolveDefaultModelId({
+      baseUrl,
+      modelIds: fetchedModelIds,
+      modelProvider,
+    });
+    if (openAiCompatibleDefaultModelId) {
+      return openAiCompatibleDefaultModelId;
     }
 
     const providerDefaultModelId = this.modelRegistry.getDefaultModelForProvider(modelProvider);

@@ -29,6 +29,7 @@ export type ApplicationNavigationGroupRecord = Readonly<{
 export type ApplicationNavigationItemRecord = Readonly<{
   icon: LucideIcon;
   label: string;
+  scope?: "organization" | "root";
   to: string;
 }>;
 
@@ -179,6 +180,7 @@ export class ApplicationNavigationCatalog {
             {
               icon: ShieldCheckIcon,
               label: "Admin",
+              scope: "root",
               to: "/admin",
             },
             {
@@ -189,11 +191,13 @@ export class ApplicationNavigationCatalog {
             {
               icon: UsersIcon,
               label: "Users",
+              scope: "root",
               to: "/admin/users",
             },
             {
               icon: Building2Icon,
               label: "Companies",
+              scope: "root",
               to: "/admin/companies",
             },
           ],

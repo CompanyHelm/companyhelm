@@ -8,6 +8,7 @@ import {
   ModelProviderService,
 } from "../../services/ai_providers/model_provider_service.js";
 import { ModelService, type ModelProviderModel } from "../../services/ai_providers/model_service.js";
+import { OpenAiCompatibleDefaultModelService } from "../../services/ai_providers/openai_compatible_default_model_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -94,16 +95,20 @@ export class AddModelProviderCredentialMutation extends Mutation<
 > {
   private readonly modelManager: ModelService;
   private readonly modelRegistry: ModelRegistry;
+  private readonly openAiCompatibleDefaultModelService: OpenAiCompatibleDefaultModelService;
   private readonly modelProviderService: ModelProviderService;
 
   constructor(
     @inject(ModelService) modelManager: ModelService,
     @inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry(),
     @inject(ModelProviderService) modelProviderService: ModelProviderService = new ModelProviderService(),
+    @inject(OpenAiCompatibleDefaultModelService)
+    openAiCompatibleDefaultModelService: OpenAiCompatibleDefaultModelService = new OpenAiCompatibleDefaultModelService(),
   ) {
     super();
     this.modelManager = modelManager;
     this.modelRegistry = modelRegistry;
+    this.openAiCompatibleDefaultModelService = openAiCompatibleDefaultModelService;
     this.modelProviderService = modelProviderService;
   }
 
@@ -144,6 +149,8 @@ export class AddModelProviderCredentialMutation extends Mutation<
     });
     const defaultModelId = AddModelProviderCredentialMutation.resolveDefaultModelId(
       this.modelRegistry,
+      this.openAiCompatibleDefaultModelService,
+      baseUrl,
       modelProvider,
       models,
     );
@@ -297,11 +304,23 @@ export class AddModelProviderCredentialMutation extends Mutation<
 
   private static resolveDefaultModelId(
     modelRegistry: ModelRegistry,
+    openAiCompatibleDefaultModelService: OpenAiCompatibleDefaultModelService,
+    baseUrl: string | null,
     modelProvider: string,
     models: ModelProviderModel[],
   ): string | null {
+    const modelIds = models.map((model) => model.modelId);
+    const openAiCompatibleDefaultModelId = openAiCompatibleDefaultModelService.resolveDefaultModelId({
+      baseUrl,
+      modelIds,
+      modelProvider,
+    });
+    if (openAiCompatibleDefaultModelId) {
+      return openAiCompatibleDefaultModelId;
+    }
+
     const providerDefaultModelId = modelRegistry.getDefaultModelForProvider(modelProvider);
-    if (providerDefaultModelId && models.some((model) => model.modelId === providerDefaultModelId)) {
+    if (providerDefaultModelId && modelIds.includes(providerDefaultModelId)) {
       return providerDefaultModelId;
     }
 

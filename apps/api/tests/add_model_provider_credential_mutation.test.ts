@@ -589,6 +589,13 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
         description: "OpenAI-compatible model: llama3.1:8b",
         reasoningSupported: false,
         reasoningLevels: null,
+      }, {
+        provider: "openai-compatible",
+        modelId: "nvidia/nemotron-3-super-120b-a12b",
+        name: "nvidia/nemotron-3-super-120b-a12b",
+        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        reasoningSupported: false,
+        reasoningLevels: null,
       }];
     },
   };
@@ -636,6 +643,7 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
           AddModelProviderCredential(input: $input) {
             id
             baseUrl
+            defaultModelId
             name
             modelProvider
           }
@@ -645,7 +653,7 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
         input: {
           modelProvider: "openai-compatible",
           apiKey: "ollama",
-          baseUrl: "http://localhost:11434/v1",
+          baseUrl: "https://integrate.api.nvidia.com/v1",
         },
       },
     },
@@ -655,16 +663,18 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
   const document = response.json();
   assert.deepEqual(document.data.AddModelProviderCredential, {
     id: "credential-1",
-    baseUrl: "http://localhost:11434/v1",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    defaultModelId: "nvidia/nemotron-3-super-120b-a12b",
     name: "OpenAI-compatible API",
     modelProvider: "openai-compatible",
   });
-  assert.equal(database.insertedValues[0]?.baseUrl, "http://localhost:11434/v1");
+  assert.equal(database.insertedValues[0]?.baseUrl, "https://integrate.api.nvidia.com/v1");
   assert.equal(database.insertedValues[1]?.modelId, "llama3.1:8b");
+  assert.equal(database.insertedValues[2]?.modelId, "nvidia/nemotron-3-super-120b-a12b");
   assert.deepEqual(modelManager.calls, [{
     provider: "openai-compatible",
     apiKey: "ollama",
-    baseUrl: "http://localhost:11434/v1",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
   }]);
 
   await app.close();

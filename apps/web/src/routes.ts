@@ -251,20 +251,20 @@ const organizationDashboardRoute = createRoute({
 });
 
 const adminDashboardRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/admin"),
+  getParentRoute: () => pageContainerRoute,
+  path: "/admin",
   component: AdminDashboardPage,
 });
 
 const adminUsersRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/admin/users"),
+  getParentRoute: () => pageContainerRoute,
+  path: "/admin/users",
   component: AdminUsersPage,
 });
 
 const adminCompaniesRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/admin/companies"),
+  getParentRoute: () => pageContainerRoute,
+  path: "/admin/companies",
   component: AdminCompaniesPage,
 });
 
@@ -510,11 +510,11 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
+      adminDashboardRoute,
+      adminUsersRoute,
+      adminCompaniesRoute,
       organizationRoute.addChildren([
         organizationDashboardRoute,
-        adminDashboardRoute,
-        adminUsersRoute,
-        adminCompaniesRoute,
         flagsRoute,
         agentsRoute,
         environmentsRoute,

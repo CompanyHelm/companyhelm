@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { modelProviderCredentialModels } from "../src/db/schema.ts";
 import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
 import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
 import { ModelProviderModel, ModelService } from "../src/services/ai_providers/model_service.js";
@@ -21,6 +22,29 @@ class RefreshingModelService extends ModelService {
         name: "GPT-5.4 Mini",
         description: "Smaller frontier agentic coding model.",
         reasoningLevels: ["low", "medium", "high", "xhigh"],
+      }),
+    ];
+  }
+}
+
+class NvidiaCompatibleRefreshingModelService extends ModelService {
+  async fetchModels(): Promise<ModelProviderModel[]> {
+    return [
+      new ModelProviderModel({
+        provider: "openai-compatible",
+        modelId: "meta/llama-3.1-70b-instruct",
+        name: "meta/llama-3.1-70b-instruct",
+        description: "OpenAI-compatible model: meta/llama-3.1-70b-instruct",
+        reasoningSupported: false,
+        reasoningLevels: null,
+      }),
+      new ModelProviderModel({
+        provider: "openai-compatible",
+        modelId: "nvidia/nemotron-3-super-120b-a12b",
+        name: "nvidia/nemotron-3-super-120b-a12b",
+        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        reasoningSupported: false,
+        reasoningLevels: null,
       }),
     ];
   }
@@ -148,6 +172,96 @@ class ModelServiceTestHarness {
       updatedIds,
     };
   }
+
+  static createNvidiaTransactionProviderMock() {
+    const currentModels: Array<{
+      description: string;
+      id: string;
+      isDefault: boolean;
+      modelProviderCredentialId: string;
+      modelId: string;
+      name: string;
+      reasoningSupported: boolean;
+      reasoningLevels: string[] | null;
+    }> = [];
+    const transactionProvider: TransactionProviderInterface = {
+      async transaction(transaction) {
+        return transaction({
+          select() {
+            return {
+              from(table: unknown) {
+                return {
+                  async where() {
+                    if (table === modelProviderCredentialModels) {
+                      return currentModels;
+                    }
+
+                    return [];
+                  },
+                };
+              },
+            };
+          },
+          update(table: unknown) {
+            return {
+              set(value: Record<string, unknown>) {
+                return {
+                  async where() {
+                    if (table !== modelProviderCredentialModels || !("isDefault" in value)) {
+                      return;
+                    }
+                    if (value.isDefault === false) {
+                      currentModels.forEach((model) => {
+                        model.isDefault = false;
+                      });
+                      return;
+                    }
+
+                    currentModels.forEach((model) => {
+                      model.isDefault = model.modelId === "nvidia/nemotron-3-super-120b-a12b";
+                    });
+                  },
+                };
+              },
+            };
+          },
+          insert(table: unknown) {
+            return {
+              async values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
+                if (table !== modelProviderCredentialModels) {
+                  return;
+                }
+
+                const values = Array.isArray(value) ? value : [value];
+                currentModels.push(...values.map((entry, index) => ({
+                  description: String(entry.description),
+                  id: `model-row-${index + 1}`,
+                  isDefault: Boolean(entry.isDefault),
+                  modelProviderCredentialId: String(entry.modelProviderCredentialId),
+                  modelId: String(entry.modelId),
+                  name: String(entry.name),
+                  reasoningSupported: Boolean(entry.reasoningSupported),
+                  reasoningLevels: (entry.reasoningLevels as string[] | null) ?? null,
+                })));
+              },
+            };
+          },
+          delete() {
+            return {
+              async where() {
+                return;
+              },
+            };
+          },
+        } as never);
+      },
+    };
+
+    return {
+      currentModels,
+      transactionProvider,
+    };
+  }
 }
 
 test("ModelService refreshStoredModels preserves ids and applies only the diff", async () => {
@@ -185,6 +299,31 @@ test("ModelService refreshStoredModels preserves ids and applies only the diff",
   assert.deepEqual(transactionProvider.updatedIds, ["existing-model-row"]);
   assert.deepEqual(transactionProvider.insertedIds, ["inserted-1"]);
   assert.deepEqual(transactionProvider.deletedIds, ["removed-model-row"]);
+});
+
+test("ModelService refreshStoredModels defaults NVIDIA OpenAI-compatible credentials to Nemotron when available", async () => {
+  const transactionProvider = ModelServiceTestHarness.createNvidiaTransactionProviderMock();
+  const modelService = new NvidiaCompatibleRefreshingModelService(new ModelRegistry());
+
+  const refreshedModels = await modelService.refreshStoredModels({
+    apiKey: "nvidia-api-key",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    companyId: "company-123",
+    modelProvider: "openai-compatible",
+    modelProviderCredentialId: "credential-1",
+    transactionProvider: transactionProvider.transactionProvider,
+  });
+
+  assert.deepEqual(refreshedModels.map((model) => ({
+    isDefault: model.isDefault,
+    modelId: model.modelId,
+  })), [{
+    isDefault: false,
+    modelId: "meta/llama-3.1-70b-instruct",
+  }, {
+    isDefault: true,
+    modelId: "nvidia/nemotron-3-super-120b-a12b",
+  }]);
 });
 
 test("ModelService fetchModels uses the dedicated openai-codex adapter", async () => {
