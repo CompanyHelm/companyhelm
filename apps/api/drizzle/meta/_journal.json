@@ -946,6 +946,13 @@
       "when": 1777095034172,
       "tag": "0135_github_pull_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1777291200000,
+      "tag": "0136_platform_model_provider_credentials",
+      "breakpoints": true
     }
   ]
 }

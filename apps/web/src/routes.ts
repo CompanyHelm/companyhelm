@@ -9,6 +9,8 @@ import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AdminCompaniesPage } from "./pages/admin/companies_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
+import { AdminLlmCredentialModelsPage } from "./pages/admin/llm_credential_models_page";
+import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
 import { CompaniesRoute } from "./pages/auth/companies_route";
 import { AuthenticationRoute } from "./pages/auth/route";
@@ -268,6 +270,24 @@ const adminCompaniesRoute = createRoute({
   component: AdminCompaniesPage,
 });
 
+const adminLlmCredentialsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/admin/llm-credentials",
+  component: Outlet,
+});
+
+const adminLlmCredentialsIndexRoute = createRoute({
+  getParentRoute: () => adminLlmCredentialsRoute,
+  path: "/",
+  component: AdminLlmCredentialsPage,
+});
+
+const adminLlmCredentialModelsRoute = createRoute({
+  getParentRoute: () => adminLlmCredentialsRoute,
+  path: "$platformCredentialId/models" as string,
+  component: AdminLlmCredentialModelsPage,
+});
+
 const flagsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/flags",
@@ -513,6 +533,10 @@ const routeTree = rootRoute.addChildren([
       adminDashboardRoute,
       adminUsersRoute,
       adminCompaniesRoute,
+      adminLlmCredentialsRoute.addChildren([
+        adminLlmCredentialsIndexRoute,
+        adminLlmCredentialModelsRoute,
+      ]),
       organizationRoute.addChildren([
         organizationDashboardRoute,
         flagsRoute,

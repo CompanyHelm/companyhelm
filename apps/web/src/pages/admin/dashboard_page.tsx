@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon, Building2Icon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import { ArrowRightIcon, Building2Icon, KeyRoundIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +27,12 @@ function AdminDashboardPageContent() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">Admin dashboard</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Internal CompanyHelm controls live here. Review global users and companies.
+            Internal CompanyHelm controls live here. Review global users, companies, and platform LLM credentials.
           </p>
         </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="border border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -72,6 +72,28 @@ function AdminDashboardPageContent() {
             <Button asChild size="sm">
               <Link to="/admin/companies">
                 Open companies
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+        <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRoundIcon className="size-4" />
+              LLM credentials
+            </CardTitle>
+            <CardDescription>
+              Create and refresh operator-owned model provider credentials for self-hosted deployments.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            These credentials are platform-admin only and are not exposed to company credential lists.
+          </CardContent>
+          <CardFooter>
+            <Button asChild size="sm">
+              <Link to="/admin/llm-credentials">
+                Open credentials
                 <ArrowRightIcon className="size-4" />
               </Link>
             </Button>

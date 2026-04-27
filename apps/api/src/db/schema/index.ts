@@ -11,3 +11,4 @@ export * from "./skills.ts";
 export * from "./mcp.ts";
 export * from "./workflows.ts";
 export * from "./onboarding.ts";
+export * from "./platform_ai.ts";

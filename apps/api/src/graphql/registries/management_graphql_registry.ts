@@ -8,8 +8,12 @@ import { SecretService } from "../../services/secrets/service.ts";
 import { SkillGithubPublicClient } from "../../services/skills/github/public_client.ts";
 import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 import { SkillService } from "../../services/skills/service.ts";
+import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
+import { ModelService } from "../../services/ai_providers/model_service.ts";
+import { PlatformModelProviderCredentialService } from "../../services/ai_providers/platform_model_provider_credential_service.ts";
 import { McpService } from "../../services/mcp/service.ts";
 import { AddGithubInstallationMutation } from "../mutations/add_github_installation.ts";
+import { AddPlatformModelProviderCredentialMutation } from "../mutations/add_platform_model_provider_credential.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateGithubRepositoryProvisioningMutation } from "../mutations/create_github_repository_provisioning.ts";
 import { CreateSecretMutation } from "../mutations/create_secret.ts";
@@ -22,6 +26,7 @@ import { CompleteMcpServerOauthMutation } from "../mutations/complete_mcp_server
 import { DeleteCompanyMutation } from "../mutations/delete_company.ts";
 import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
 import { DeleteGithubRepositoryProvisioningMutation } from "../mutations/delete_github_repository_provisioning.ts";
+import { DeletePlatformModelProviderCredentialMutation } from "../mutations/delete_platform_model_provider_credential.ts";
 import { DisconnectMcpServerOauthMutation } from "../mutations/disconnect_mcp_server_oauth.ts";
 import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
 import { DeleteSecretGroupMutation } from "../mutations/delete_secret_group.ts";
@@ -31,6 +36,10 @@ import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
 import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onboarding.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
+import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
+import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
+import { SetDefaultPlatformModelProviderCredentialMutation } from "../mutations/set_default_platform_model_provider_credential.ts";
+import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
 import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
@@ -56,6 +65,8 @@ import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregat
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
+import { PlatformModelProviderCredentialModelsQueryResolver } from "../resolvers/platform_model_provider_credential_models.ts";
+import { PlatformModelProviderCredentialsQueryResolver } from "../resolvers/platform_model_provider_credentials.ts";
 import { PlatformAdminUsersQueryResolver } from "../resolvers/platform_admin_users.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
 import { SecretGroupsQueryResolver } from "../resolvers/secret_groups.ts";
@@ -76,6 +87,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 @injectable()
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
+  private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
   private readonly companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver;
   private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
@@ -90,6 +102,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly createSkillGroupMutation: CreateSkillGroupMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteGithubRepositoryProvisioningMutation: DeleteGithubRepositoryProvisioningMutation;
+  private readonly deletePlatformModelProviderCredentialMutation: DeletePlatformModelProviderCredentialMutation;
   private readonly disconnectMcpServerOauthMutation: DisconnectMcpServerOauthMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly deleteSecretGroupMutation: DeleteSecretGroupMutation;
@@ -110,7 +123,11 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
+  private readonly refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation;
+  private readonly refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation;
   private readonly platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver;
+  private readonly platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver;
+  private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
   private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
@@ -120,6 +137,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
+  private readonly setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation;
+  private readonly setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation;
   private readonly updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation;
@@ -158,6 +177,14 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         new GithubClient({} as Config),
         new GithubInstallationStateService({} as Config),
         {} as never,
+      ),
+    @inject(AddPlatformModelProviderCredentialMutation)
+    addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation =
+      new AddPlatformModelProviderCredentialMutation(
+        new PlatformModelProviderCredentialService(
+          new ModelRegistry(),
+          new ModelService(new ModelRegistry()),
+        ),
       ),
     @inject(DeleteGithubInstallationMutation)
     deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
@@ -235,6 +262,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(DeleteGithubRepositoryProvisioningMutation)
     deleteGithubRepositoryProvisioningMutation: DeleteGithubRepositoryProvisioningMutation =
       new DeleteGithubRepositoryProvisioningMutation(),
+    @inject(DeletePlatformModelProviderCredentialMutation)
+    deletePlatformModelProviderCredentialMutation: DeletePlatformModelProviderCredentialMutation =
+      new DeletePlatformModelProviderCredentialMutation(),
     @inject(DeleteCompanyMutation)
     deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
     @inject(CompanyManagedLlmBudgetQueryResolver)
@@ -251,6 +281,29 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new PlatformAdminCompaniesQueryResolver(),
     @inject(PlatformAdminUsersQueryResolver)
     platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
+    @inject(PlatformModelProviderCredentialsQueryResolver)
+    platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver =
+      new PlatformModelProviderCredentialsQueryResolver(),
+    @inject(PlatformModelProviderCredentialModelsQueryResolver)
+    platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver =
+      new PlatformModelProviderCredentialModelsQueryResolver(),
+    @inject(RefreshPlatformModelProviderCredentialModelsMutation)
+    refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation =
+      new RefreshPlatformModelProviderCredentialModelsMutation(
+        new PlatformModelProviderCredentialService(
+          new ModelRegistry(),
+          new ModelService(new ModelRegistry()),
+        ),
+      ),
+    @inject(RefreshPlatformModelProviderCredentialTokenMutation)
+    refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation =
+      new RefreshPlatformModelProviderCredentialTokenMutation(),
+    @inject(SetDefaultPlatformModelProviderCredentialMutation)
+    setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation =
+      new SetDefaultPlatformModelProviderCredentialMutation(),
+    @inject(SetDefaultPlatformModelProviderCredentialModelMutation)
+    setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation =
+      new SetDefaultPlatformModelProviderCredentialModelMutation(),
     @inject(UpdateCompanyOnboardingMutation)
     updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation = new UpdateCompanyOnboardingMutation(),
     @inject(UpdatePlatformAdminCompanyEnhancedLoggingMutation)
@@ -272,6 +325,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     const defaultSkillGithubCatalog = new SkillGithubCatalog(new SkillGithubPublicClient(config), new GithubClient(config));
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
+    this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
     this.companyManagedLlmBudgetQueryResolver = companyManagedLlmBudgetQueryResolver;
     this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
@@ -291,6 +345,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteGithubRepositoryProvisioningMutation = deleteGithubRepositoryProvisioningMutation;
+    this.deletePlatformModelProviderCredentialMutation = deletePlatformModelProviderCredentialMutation;
     this.disconnectMcpServerOauthMutation = disconnectMcpServerOauthMutation
       ?? new DisconnectMcpServerOauthMutation(defaultMcpService);
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
@@ -316,8 +371,12 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
     this.platformAdminCompaniesQueryResolver = platformAdminCompaniesQueryResolver;
+    this.platformModelProviderCredentialModelsQueryResolver = platformModelProviderCredentialModelsQueryResolver;
+    this.platformModelProviderCredentialsQueryResolver = platformModelProviderCredentialsQueryResolver;
     this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
+    this.refreshPlatformModelProviderCredentialModelsMutation = refreshPlatformModelProviderCredentialModelsMutation;
+    this.refreshPlatformModelProviderCredentialTokenMutation = refreshPlatformModelProviderCredentialTokenMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.secretGroupsQueryResolver = secretGroupsQueryResolver ?? new SecretGroupsQueryResolver(defaultSecretService);
     this.mcpServersQueryResolver = mcpServersQueryResolver ?? new McpServersQueryResolver(defaultMcpService);
@@ -336,6 +395,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
     this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
+    this.setDefaultPlatformModelProviderCredentialMutation = setDefaultPlatformModelProviderCredentialMutation;
+    this.setDefaultPlatformModelProviderCredentialModelMutation = setDefaultPlatformModelProviderCredentialModelMutation;
     this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updatePlatformAdminCompanyEnhancedLoggingMutation = updatePlatformAdminCompanyEnhancedLoggingMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
@@ -352,6 +413,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     return {
       Mutation: {
         AddGithubInstallation: this.addGithubInstallationMutation.execute,
+        AddPlatformModelProviderCredential: this.addPlatformModelProviderCredentialMutation.execute,
         ConnectMcpServerOAuthClientCredentials: this.connectMcpServerOauthClientCredentialsMutation.execute,
         CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
         CreateSecret: this.createSecretMutation.execute,
@@ -364,6 +426,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         CreateSkillGroup: this.createSkillGroupMutation.execute,
         DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
         DeleteGithubRepositoryProvisioning: this.deleteGithubRepositoryProvisioningMutation.execute,
+        DeletePlatformModelProviderCredential: this.deletePlatformModelProviderCredentialMutation.execute,
         DisconnectMcpServerOAuth: this.disconnectMcpServerOauthMutation.execute,
         DeleteCompany: this.deleteCompanyMutation.execute,
         DeleteSecret: this.deleteSecretMutation.execute,
@@ -374,6 +437,10 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         EnsureCompanyOnboarding: this.ensureCompanyOnboardingMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
+        RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
+        RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
+        SetDefaultPlatformModelProviderCredential: this.setDefaultPlatformModelProviderCredentialMutation.execute,
+        SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
         UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
         UpdatePlatformAdminCompanyEnhancedLogging: this.updatePlatformAdminCompanyEnhancedLoggingMutation.execute,
@@ -399,6 +466,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,
+        PlatformModelProviderCredentials: this.platformModelProviderCredentialsQueryResolver.execute,
+        PlatformModelProviderCredentialModels: this.platformModelProviderCredentialModelsQueryResolver.execute,
         PlatformAdminUsers: this.platformAdminUsersQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,
         SecretGroups: this.secretGroupsQueryResolver.execute,

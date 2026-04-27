@@ -13,10 +13,17 @@ type QueryCall = {
   values: unknown[];
 };
 
+type AdminDatabaseMockInput = {
+  companyRows?: unknown[];
+  platformRows?: unknown[];
+};
+
 class LlmOauthRefreshWorkerTestHarness {
-  static createAdminDatabaseMock(rows: unknown[]) {
+  static createAdminDatabaseMock(input: AdminDatabaseMockInput) {
     const queryCalls: QueryCall[] = [];
     const updateCalls: QueryCall[] = [];
+    const companyRows = input.companyRows ?? [];
+    const platformRows = input.platformRows ?? [];
 
     const transactionSql = async (
       strings: TemplateStringsArray,
@@ -28,11 +35,18 @@ class LlmOauthRefreshWorkerTestHarness {
         values,
       });
 
-      if (query.includes("FOR UPDATE SKIP LOCKED")) {
-        return rows;
+      if (query.includes("FROM \"model_provider_credentials\"")) {
+        return companyRows;
       }
 
-      if (query.includes("UPDATE \"model_provider_credentials\"")) {
+      if (query.includes("FROM \"platform_model_provider_credentials\"")) {
+        return platformRows;
+      }
+
+      if (
+        query.includes("UPDATE \"model_provider_credentials\"")
+        || query.includes("UPDATE \"platform_model_provider_credentials\"")
+      ) {
         updateCalls.push({
           query,
           values,
@@ -119,13 +133,15 @@ class TestLlmOauthRefreshWorker extends LlmOauthRefreshWorker {
 
 test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshed tokens", async () => {
   const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
-  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([{
-    id: "credential-1",
-    modelProvider: "openai-codex",
-    encryptedApiKey: "old-access-token",
-    refreshToken: "old-refresh-token",
-    accessTokenExpiresAtMilliseconds: 1774254000000,
-  }]);
+  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock({
+    companyRows: [{
+      id: "credential-1",
+      modelProvider: "openai-codex",
+      encryptedApiKey: "old-access-token",
+      refreshToken: "old-refresh-token",
+      accessTokenExpiresAtMilliseconds: 1774254000000,
+    }],
+  });
   const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
   const worker = new TestLlmOauthRefreshWorker(adminDatabase, logger, {
     "credential-1": {
@@ -141,9 +157,16 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
     id: "credential-1",
     modelProvider: "openai-codex",
   }]);
-  assert.match(adminDatabase.queryCalls[0]?.query ?? "", /FOR UPDATE SKIP LOCKED/);
-  assert.equal(typeof adminDatabase.queryCalls[0]?.values[0], "string");
-  assert.equal(adminDatabase.queryCalls[0]?.values[1], 20);
+  const companySelectCall = adminDatabase.queryCalls.find((call) =>
+    call.query.includes("FROM \"model_provider_credentials\"")
+  );
+  const platformSelectCall = adminDatabase.queryCalls.find((call) =>
+    call.query.includes("FROM \"platform_model_provider_credentials\"")
+  );
+  assert.match(companySelectCall?.query ?? "", /FOR UPDATE SKIP LOCKED/);
+  assert.match(platformSelectCall?.query ?? "", /FOR UPDATE SKIP LOCKED/);
+  assert.equal(typeof companySelectCall?.values[0], "string");
+  assert.equal(companySelectCall?.values[1], 20);
   assert.equal(adminDatabase.updateCalls.length, 1);
   assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"status" = 'active'/);
   assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"error_message" = null/);
@@ -158,22 +181,24 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
 
 test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fails", async () => {
   const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
-  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([
-    {
-      id: "credential-1",
-      modelProvider: "openai-codex",
-      encryptedApiKey: "old-access-token-1",
-      refreshToken: "old-refresh-token-1",
-      accessTokenExpiresAtMilliseconds: 1774254000000,
-    },
-    {
-      id: "credential-2",
-      modelProvider: "openai-codex",
-      encryptedApiKey: "old-access-token-2",
-      refreshToken: "old-refresh-token-2",
-      accessTokenExpiresAtMilliseconds: 1774254300000,
-    },
-  ]);
+  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock({
+    companyRows: [
+      {
+        id: "credential-1",
+        modelProvider: "openai-codex",
+        encryptedApiKey: "old-access-token-1",
+        refreshToken: "old-refresh-token-1",
+        accessTokenExpiresAtMilliseconds: 1774254000000,
+      },
+      {
+        id: "credential-2",
+        modelProvider: "openai-codex",
+        encryptedApiKey: "old-access-token-2",
+        refreshToken: "old-refresh-token-2",
+        accessTokenExpiresAtMilliseconds: 1774254300000,
+      },
+    ],
+  });
   const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
   const worker = new TestLlmOauthRefreshWorker(
     adminDatabase,
@@ -212,6 +237,42 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
   });
   assert.deepEqual(loggedErrors[0]?.arguments_[0], {
     credentialId: "credential-1",
+    credentialScope: "company",
     error: "refresh failed for credential-1",
   });
+});
+
+test("LlmOauthRefreshWorker refreshes platform oauth credentials through the platform table", async () => {
+  const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
+  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock({
+    platformRows: [{
+      id: "platform-credential-1",
+      modelProvider: "google-gemini-cli",
+      encryptedApiKey: "{\"token\":\"old-access-token\",\"projectId\":\"project-1\"}",
+      refreshToken: "old-refresh-token",
+      accessTokenExpiresAtMilliseconds: 1774254000000,
+    }],
+  });
+  const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
+  const worker = new TestLlmOauthRefreshWorker(adminDatabase, logger, {
+    "platform-credential-1": {
+      access: "new-access-token",
+      refresh: "new-refresh-token",
+      expires: 1774257600000,
+    },
+  });
+
+  await worker.runNow();
+
+  assert.deepEqual(worker.refreshCalls, [{
+    id: "platform-credential-1",
+    modelProvider: "google-gemini-cli",
+  }]);
+  assert.equal(adminDatabase.updateCalls.length, 1);
+  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /UPDATE "platform_model_provider_credentials"/);
+  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"status" = 'active'/);
+  assert.equal(adminDatabase.updateCalls[0]?.values[0], "new-access-token");
+  assert.equal(adminDatabase.updateCalls[0]?.values[1], "new-refresh-token");
+  assert.equal(adminDatabase.updateCalls[0]?.values[5], "platform-credential-1");
+  assert.equal(loggedErrors.length, 0);
 });

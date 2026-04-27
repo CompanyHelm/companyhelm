@@ -22,6 +22,8 @@ type Query {
   CompanyManagedLlmBudget: CompanyManagedLlmBudget!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String): PlatformAdminCompanyPage!
+  PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
+  PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID!): [PlatformModelProviderCredentialModel!]!
   PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -86,6 +88,7 @@ type Mutation {
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
+  AddPlatformModelProviderCredential(input: AddPlatformModelProviderCredentialInput!): PlatformModelProviderCredential!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
   AttachSecretGroupToAgent(input: AttachSecretGroupToAgentInput!): SecretGroup!
   AttachSkillGroupToAgent(input: AttachSkillGroupToAgentInput!): SkillGroup!
@@ -116,6 +119,9 @@ type Mutation {
     input: DeleteGithubRepositoryProvisioningInput!
   ): DeleteGithubRepositoryProvisioningPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  DeletePlatformModelProviderCredential(
+    input: DeletePlatformModelProviderCredentialInput!
+  ): PlatformModelProviderCredential!
   DeleteSession(input: DeleteSessionInput!): Session!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
@@ -155,18 +161,30 @@ type Mutation {
   RefreshModelProviderCredentialToken(
     input: RefreshModelProviderCredentialTokenInput!
   ): ModelProviderCredential!
+  RefreshPlatformModelProviderCredentialToken(
+    input: RefreshPlatformModelProviderCredentialTokenInput!
+  ): PlatformModelProviderCredential!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
+  RefreshPlatformModelProviderCredentialModels(
+    input: RefreshPlatformModelProviderCredentialModelsInput!
+  ): [PlatformModelProviderCredentialModel!]!
   SetDefaultComputeProviderDefinition(
     input: SetDefaultComputeProviderDefinitionInput!
   ): ComputeProviderDefinition!
   SetDefaultModelProviderCredential(
     input: SetDefaultModelProviderCredentialInput!
   ): ModelProviderCredential!
+  SetDefaultPlatformModelProviderCredential(
+    input: SetDefaultPlatformModelProviderCredentialInput!
+  ): PlatformModelProviderCredential!
   SetDefaultModelProviderCredentialModel(
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
+  SetDefaultPlatformModelProviderCredentialModel(
+    input: SetDefaultPlatformModelProviderCredentialModelInput!
+  ): PlatformModelProviderCredentialModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
   CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
@@ -844,6 +862,24 @@ type ModelProviderCredential {
   updatedAt: String!
 }
 
+type PlatformModelProviderCredential {
+  id: ID!
+  baseUrl: String
+  createdByUserId: ID
+  isDefault: Boolean!
+  name: String!
+  modelProvider: String!
+  defaultModelId: String
+  defaultReasoningLevel: String
+  type: String!
+  status: String!
+  errorMessage: String
+  refreshToken: String
+  refreshedAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
 type Secret {
   id: ID!
   companyId: ID!
@@ -939,6 +975,19 @@ type ModelProviderCredentialModel {
   description: String!
   reasoningSupported: Boolean!
   reasoningLevels: [String!]!
+}
+
+type PlatformModelProviderCredentialModel {
+  id: ID!
+  isDefault: Boolean!
+  platformModelProviderCredentialId: ID!
+  modelId: String!
+  name: String!
+  description: String!
+  reasoningSupported: Boolean!
+  reasoningLevels: [String!]!
+  createdAt: String!
+  updatedAt: String!
 }
 
 type ModelProvider {
@@ -1109,6 +1158,17 @@ input AddModelProviderCredentialInput {
   refreshToken: String
 }
 
+input AddPlatformModelProviderCredentialInput {
+  accessToken: String
+  accessTokenExpiresAtMilliseconds: String
+  apiKey: String
+  baseUrl: String
+  isDefault: Boolean
+  name: String
+  modelProvider: String!
+  refreshToken: String
+}
+
 input AddGithubInstallationInput {
   installationId: ID!
   setupAction: String
@@ -1171,6 +1231,10 @@ input DeleteCompanyInput {
 input DeleteModelProviderCredentialInput {
   id: ID!
   replacementCredentialId: ID
+}
+
+input DeletePlatformModelProviderCredentialInput {
+  id: ID!
 }
 
 input DeleteAgentInput {
@@ -1509,8 +1573,16 @@ input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
 }
 
+input RefreshPlatformModelProviderCredentialModelsInput {
+  platformModelProviderCredentialId: ID!
+}
+
 input RefreshModelProviderCredentialTokenInput {
   modelProviderCredentialId: ID!
+}
+
+input RefreshPlatformModelProviderCredentialTokenInput {
+  platformModelProviderCredentialId: ID!
 }
 
 input SetDefaultComputeProviderDefinitionInput {
@@ -1521,7 +1593,15 @@ input SetDefaultModelProviderCredentialInput {
   id: ID!
 }
 
+input SetDefaultPlatformModelProviderCredentialInput {
+  id: ID!
+}
+
 input SetDefaultModelProviderCredentialModelInput {
+  id: ID!
+}
+
+input SetDefaultPlatformModelProviderCredentialModelInput {
   id: ID!
 }
 

@@ -21,6 +21,9 @@ import {
 } from "./provider_catalog";
 
 interface CreateCredentialDialogProps {
+  description?: string;
+  defaultCheckboxDescription?: string;
+  defaultCheckboxTitle?: string;
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
@@ -116,7 +119,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
         <DialogHeader>
           <DialogTitle>Create credentials</DialogTitle>
           <DialogDescription>
-            Add a provider API key for the currently active company.
+            {props.description ?? "Add a provider API key for the currently active company."}
           </DialogDescription>
         </DialogHeader>
 
@@ -173,9 +176,11 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               type="checkbox"
             />
             <div className="grid gap-1">
-              <span className="text-xs font-medium text-foreground">Default for new agents</span>
+              <span className="text-xs font-medium text-foreground">
+                {props.defaultCheckboxTitle ?? "Default for new agents"}
+              </span>
               <span className="text-xs text-muted-foreground">
-                Newly created agents will preselect this credential.
+                {props.defaultCheckboxDescription ?? "Newly created agents will preselect this credential."}
               </span>
             </div>
           </label>

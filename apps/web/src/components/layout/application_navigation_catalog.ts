@@ -200,6 +200,12 @@ export class ApplicationNavigationCatalog {
               scope: "root",
               to: "/admin/companies",
             },
+            {
+              icon: KeyRoundIcon,
+              label: "LLM credentials",
+              scope: "root",
+              to: "/admin/llm-credentials",
+            },
           ],
           label: "Platform",
         } satisfies ApplicationNavigationGroupRecord]
