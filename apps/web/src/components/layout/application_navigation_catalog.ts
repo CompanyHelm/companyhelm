@@ -184,11 +184,6 @@ export class ApplicationNavigationCatalog {
               to: "/admin",
             },
             {
-              icon: KeyRoundIcon,
-              label: "LLM Credentials",
-              to: "/model-provider-credentials",
-            },
-            {
               icon: UsersIcon,
               label: "Users",
               scope: "root",
