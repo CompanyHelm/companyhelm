@@ -299,19 +299,19 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
 
   return (
-    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0 transition-colors hover:bg-muted/20">
-      <div className="flex min-h-[22px] items-center justify-between gap-1.5">
+    <div className="group min-w-0 w-full max-w-3xl rounded-md px-1.5 py-0.5 transition-colors hover:bg-muted/20">
+      <div className="flex min-h-7 items-center justify-between gap-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
           {isCommandToolCall ? (
-            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 font-mono text-[11px] font-medium text-muted-foreground">
               $
             </span>
           ) : (
-            <span className="flex size-3.5 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
-              <WrenchIcon className="size-2.5" />
+            <span className="flex size-4 shrink-0 items-center justify-center rounded bg-muted/30 text-muted-foreground">
+              <WrenchIcon className="size-3" />
             </span>
           )}
-          <div className="flex min-w-0 items-baseline gap-1.5 text-[11px] leading-[14px]">
+          <div className="flex min-w-0 items-baseline gap-1.5 text-sm leading-5">
             <span
               className={isCommandToolCall
                 ? "min-w-0 truncate font-mono font-medium text-foreground"
@@ -322,7 +322,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             <span
               className={cn(
-                "shrink-0 text-[10px] font-medium text-muted-foreground/80",
+                "shrink-0 text-xs font-medium text-muted-foreground/80",
                 normalizedStatus === "running" ? "text-muted-foreground" : null,
                 message.isError ? "text-destructive" : null,
               )}
@@ -331,7 +331,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             </span>
             {executionDurationLabel ? (
               <span
-                className="shrink-0 text-[10px] font-medium text-muted-foreground/70"
+                className="shrink-0 text-xs font-medium text-muted-foreground/70"
                 title={`Execution time: ${executionDurationLabel}`}
               >
                 {executionDurationLabel}
@@ -345,7 +345,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
           onClick={() => setIsExpanded((value) => !value)}
           type="button"
         >
-          <ChevronRightIcon className={`size-2.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <ChevronRightIcon className={`size-3 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
         </button>
       </div>
       {isExpanded ? (
@@ -354,7 +354,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
             <div className="border-b border-border/50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Arguments
             </div>
-            <pre className="whitespace-pre-wrap break-words px-2.5 py-1.5 font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
+            <pre className="whitespace-pre-wrap break-words px-2.5 py-1.5 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
               {defaultArgumentsText}
             </pre>
           </div>
@@ -370,7 +370,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                   className="overflow-hidden rounded-lg border border-border/50 bg-background/60"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-1.5">
-                    <code className="text-xs font-medium text-foreground">{terminalStructuredContent.command}</code>
+                    <code className="text-[13px] font-medium text-foreground">{terminalStructuredContent.command}</code>
                     <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                       {terminalStructuredContent.completed
                         ? terminalStructuredContent.exitCode === null
@@ -387,7 +387,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                       : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
-                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {terminalOutputText.length > 0
                       ? terminalOutputText
                       : terminalStructuredContent.completed
@@ -417,7 +417,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                   className="overflow-hidden rounded-lg border border-border/50 bg-background/60"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-1.5">
-                    <code className="text-xs font-medium text-foreground">{commandToolArguments.command}</code>
+                    <code className="text-[13px] font-medium text-foreground">{commandToolArguments.command}</code>
                     <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                       {normalizedStatus === "running" ? "Running" : message.isError ? "Error" : "Completed"}
                     </span>
@@ -428,7 +428,7 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
                       {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
                     </div>
                   ) : null}
-                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/50 px-3 py-2 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {commandOutputText.length > 0
                       ? commandOutputText
                       : normalizedStatus === "running"
