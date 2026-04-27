@@ -70,11 +70,13 @@ export class ApplicationNavigationCatalog {
         label: "Skills",
         to: "/skills",
       },
-      {
-        icon: KeyRoundIcon,
-        label: "Model Credentials",
-        to: "/model-provider-credentials",
-      },
+      ...(input.isPlatformAdmin
+        ? []
+        : [{
+          icon: KeyRoundIcon,
+          label: "Model Credentials",
+          to: "/model-provider-credentials",
+        }]),
       {
         icon: LockKeyholeIcon,
         label: "Secrets",
@@ -178,6 +180,11 @@ export class ApplicationNavigationCatalog {
               icon: ShieldCheckIcon,
               label: "Admin",
               to: "/admin",
+            },
+            {
+              icon: KeyRoundIcon,
+              label: "LLM Credentials",
+              to: "/model-provider-credentials",
             },
             {
               icon: UsersIcon,

@@ -22,7 +22,7 @@ test("builds the approved sidebar group structure when compute providers are ena
         label: "Operate",
       },
       {
-        items: ["Routines", "Workflows"],
+        items: ["Workflows"],
         label: "Automation",
       },
       {
@@ -84,6 +84,9 @@ test("adds platform admin destinations only for platform admins", () => {
       label: "Admin",
       to: "/admin",
     }, {
+      label: "LLM Credentials",
+      to: "/model-provider-credentials",
+    }, {
       label: "Users",
       to: "/admin/users",
     }, {
@@ -91,4 +94,18 @@ test("adds platform admin destinations only for platform admins", () => {
       to: "/admin/companies",
     }],
   );
+  assert.equal(
+    adminGroups.find((group) => group.label === "Agent")?.items.some((item) => item.to === "/model-provider-credentials"),
+    false,
+  );
+});
+
+test("keeps platform admin sidebar destinations unique across groups", () => {
+  const groups = ApplicationNavigationCatalog.buildMainGroups({
+    isComputeProvidersEnabled: true,
+    isPlatformAdmin: true,
+  });
+  const destinations = groups.flatMap((group) => group.items.map((item) => item.to));
+
+  assert.equal(new Set(destinations).size, destinations.length);
 });
