@@ -1,5 +1,6 @@
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { injectable } from "inversify";
+import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
 import {
   platformModelProviderCredentialModels,
   platformModelProviderCredentials,
@@ -36,6 +37,7 @@ type DatabaseTransaction = {
   delete(table: unknown): {
     where(condition: unknown): Promise<unknown>;
   };
+  execute?(query: unknown): Promise<unknown>;
   insert(table: unknown): {
     values(value: Record<string, unknown>): Promise<unknown>;
   };
@@ -73,6 +75,7 @@ export class SetPlatformModelRoutesMutation extends Mutation<
       .filter((id) => id.trim().length > 0);
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformLlmCredentialAccess.enable(tx);
       const database = tx as unknown as DatabaseTransaction;
       const [platformModelRecord] = await database
         .select({

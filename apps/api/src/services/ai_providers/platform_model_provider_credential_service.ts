@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
 import { platformModelProviderCredentialModels, platformModelRoutes, platformModels } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { ModelRegistry } from "./model_registry.ts";
@@ -22,6 +23,7 @@ export type PlatformStoredModelRecord = {
 };
 
 type SelectableDatabase = {
+  execute?(query: unknown): Promise<unknown>;
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
@@ -82,6 +84,7 @@ export class PlatformModelProviderCredentialService {
     const now = new Date();
 
     return input.transactionProvider.transaction(async (tx) => {
+      await PlatformLlmCredentialAccess.enable(tx);
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const insertableDatabase = tx as unknown as InsertableDatabase;
       const updatableDatabase = tx as unknown as UpdatableDatabase;

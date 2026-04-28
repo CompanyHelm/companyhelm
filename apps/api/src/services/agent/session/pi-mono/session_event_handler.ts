@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
 import pino, { type Logger as PinoLogger } from "pino";
+import { PlatformLlmCredentialAccess } from "../../../../db/platform_llm_credential_access.ts";
 import {
   agentSessions,
   messageContents,
@@ -1260,6 +1261,7 @@ export class PiMonoSessionEventHandler {
 
     const attribution = await this.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as {
+        execute?(query: unknown): Promise<unknown>;
         select(selection: Record<string, unknown>): {
           from(table: unknown): {
             where(condition: unknown): Promise<Array<Record<string, unknown>>>;
@@ -1299,6 +1301,10 @@ export class PiMonoSessionEventHandler {
           platformModelProviderCredentialId: null,
           platformModelProviderCredentialModelId: null,
         };
+      }
+
+      if (currentModelCredentialSource === "platform") {
+        await PlatformLlmCredentialAccess.enable(selectableDatabase);
       }
 
       const [credentialModelRecord] = currentModelCredentialSource === "platform"

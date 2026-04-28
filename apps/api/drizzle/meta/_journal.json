@@ -995,6 +995,13 @@
       "when": 1777385000000,
       "tag": "0142_lucky_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1777386000000,
+      "tag": "0143_platform_llm_credential_access_policy",
+      "breakpoints": true
     }
   ]
 }

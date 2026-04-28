@@ -4,6 +4,7 @@ import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
+import { PlatformLlmCredentialAccess } from "../../../../db/platform_llm_credential_access.ts";
 import {
   agentSessions,
   agents,
@@ -74,6 +75,7 @@ type UserRow = {
 };
 
 type SelectableDatabase = {
+  execute?(query: unknown): Promise<unknown>;
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
@@ -625,15 +627,7 @@ export class SessionProcessExecutionService {
       }
 
       const [modelRow] = sessionRow.currentModelCredentialSource === "platform"
-        ? await selectableDatabase
-          .select({
-            modelId: platformModelProviderCredentialModels.modelId,
-            platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-            name: platformModelProviderCredentialModels.name,
-            reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
-          })
-          .from(platformModelProviderCredentialModels)
-          .where(eq(platformModelProviderCredentialModels.id, sessionRow.currentPlatformModelProviderCredentialModelId ?? "")) as ModelRow[]
+        ? await this.loadPlatformModelRow(selectableDatabase, sessionRow.currentPlatformModelProviderCredentialModelId ?? "")
         : await selectableDatabase
           .select({
             modelId: modelProviderCredentialModels.modelId,
@@ -651,14 +645,7 @@ export class SessionProcessExecutionService {
       }
 
       const [credentialRow] = sessionRow.currentModelCredentialSource === "platform"
-        ? await selectableDatabase
-          .select({
-            baseUrl: platformModelProviderCredentials.baseUrl,
-            encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
-            modelProvider: platformModelProviderCredentials.modelProvider,
-          })
-          .from(platformModelProviderCredentials)
-          .where(eq(platformModelProviderCredentials.id, modelRow.platformModelProviderCredentialId ?? "")) as CredentialRow[]
+        ? await this.loadPlatformCredentialRow(selectableDatabase, modelRow.platformModelProviderCredentialId ?? "")
         : await selectableDatabase
           .select({
             baseUrl: modelProviderCredentials.baseUrl,
@@ -711,6 +698,37 @@ export class SessionProcessExecutionService {
     }
 
     return userRow.firstName;
+  }
+
+  private async loadPlatformModelRow(
+    selectableDatabase: SelectableDatabase,
+    platformModelProviderCredentialModelId: string,
+  ): Promise<ModelRow[]> {
+    await PlatformLlmCredentialAccess.enable(selectableDatabase);
+    return selectableDatabase
+      .select({
+        modelId: platformModelProviderCredentialModels.modelId,
+        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+        name: platformModelProviderCredentialModels.name,
+        reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
+      })
+      .from(platformModelProviderCredentialModels)
+      .where(eq(platformModelProviderCredentialModels.id, platformModelProviderCredentialModelId)) as Promise<ModelRow[]>;
+  }
+
+  private async loadPlatformCredentialRow(
+    selectableDatabase: SelectableDatabase,
+    platformModelProviderCredentialId: string,
+  ): Promise<CredentialRow[]> {
+    await PlatformLlmCredentialAccess.enable(selectableDatabase);
+    return selectableDatabase
+      .select({
+        baseUrl: platformModelProviderCredentials.baseUrl,
+        encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
+        modelProvider: platformModelProviderCredentials.modelProvider,
+      })
+      .from(platformModelProviderCredentials)
+      .where(eq(platformModelProviderCredentials.id, platformModelProviderCredentialId)) as Promise<CredentialRow[]>;
   }
 
   private async isSessionProcessable(

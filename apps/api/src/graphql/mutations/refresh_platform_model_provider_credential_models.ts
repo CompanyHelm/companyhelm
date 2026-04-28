@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
 import { platformModelProviderCredentials } from "../../db/schema.ts";
 import { PlatformModelProviderCredentialService } from "../../services/ai_providers/platform_model_provider_credential_service.ts";
 import type {
@@ -60,6 +61,7 @@ export class RefreshPlatformModelProviderCredentialModelsMutation extends Mutati
     }
 
     const [credential] = await transactionProvider.transaction(async (tx) => {
+      await PlatformLlmCredentialAccess.enable(tx);
       return tx
         .select({
           id: platformModelProviderCredentials.id,

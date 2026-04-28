@@ -35,6 +35,10 @@ class LlmOauthRefreshWorkerTestHarness {
         values,
       });
 
+      if (query.includes("set_config('app.platform_llm_credential_access'")) {
+        return [];
+      }
+
       if (query.includes("FROM \"model_provider_credentials\"")) {
         return companyRows;
       }

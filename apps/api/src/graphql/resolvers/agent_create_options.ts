@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
 import {
   modelProviderCredentialModels,
   modelProviderCredentials,
@@ -75,6 +76,7 @@ type GraphqlAgentCreateProviderOption = {
 };
 
 type SelectableDatabase = {
+  execute?(query: unknown): Promise<unknown>;
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
@@ -110,6 +112,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformLlmCredentialAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
       const platformCredentialRecords = await selectableDatabase
         .select({

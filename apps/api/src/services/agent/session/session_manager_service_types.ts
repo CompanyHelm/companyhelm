@@ -105,6 +105,7 @@ export type SessionManagerQueuePromptOptions = {
 };
 
 export type SelectableDatabase = {
+  execute?(query: unknown): Promise<unknown>;
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
