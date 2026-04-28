@@ -68,6 +68,7 @@ import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregat
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
+import { PlatformCodexRateLimitsQueryResolver } from "../resolvers/platform_codex_rate_limits.ts";
 import { PlatformModelRoutesQueryResolver } from "../resolvers/platform_model_routes.ts";
 import { PlatformModelsQueryResolver } from "../resolvers/platform_models.ts";
 import { PlatformModelProviderCredentialModelsQueryResolver } from "../resolvers/platform_model_provider_credential_models.ts";
@@ -133,6 +134,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation;
   private readonly refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation;
   private readonly platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver;
+  private readonly platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver;
   private readonly platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver;
   private readonly platformModelsQueryResolver: PlatformModelsQueryResolver;
   private readonly platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver;
@@ -291,6 +293,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(PlatformAdminCompaniesQueryResolver)
     platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver =
       new PlatformAdminCompaniesQueryResolver(),
+    @inject(PlatformCodexRateLimitsQueryResolver)
+    platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver =
+      new PlatformCodexRateLimitsQueryResolver(),
     @inject(PlatformAdminUsersQueryResolver)
     platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
     @inject(PlatformModelsQueryResolver)
@@ -393,6 +398,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
     this.platformAdminCompaniesQueryResolver = platformAdminCompaniesQueryResolver;
+    this.platformCodexRateLimitsQueryResolver = platformCodexRateLimitsQueryResolver;
     this.platformModelRoutesQueryResolver = platformModelRoutesQueryResolver;
     this.platformModelsQueryResolver = platformModelsQueryResolver;
     this.platformModelProviderCredentialModelsQueryResolver = platformModelProviderCredentialModelsQueryResolver;
@@ -494,6 +500,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,
+        PlatformCodexRateLimits: this.platformCodexRateLimitsQueryResolver.execute,
         PlatformModels: this.platformModelsQueryResolver.execute,
         PlatformModelRoutes: this.platformModelRoutesQueryResolver.execute,
         PlatformModelProviderCredentials: this.platformModelProviderCredentialsQueryResolver.execute,

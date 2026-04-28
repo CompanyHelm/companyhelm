@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d81f6a0a9cee238a05e54f1fe32ca311>>
+ * @generated SignedSource<<ae9dcb6261c2ab35d852ae9d0173e194>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,18 +12,18 @@ import { ConcreteRequest } from 'relay-runtime';
 export type SetDefaultPlatformModelProviderCredentialModelInput = {
   id: string;
 };
-export type llmCredentialModelsPageSetDefaultMutation$variables = {
+export type llmCredentialDetailPageSetDefaultMutation$variables = {
   input: SetDefaultPlatformModelProviderCredentialModelInput;
 };
-export type llmCredentialModelsPageSetDefaultMutation$data = {
+export type llmCredentialDetailPageSetDefaultMutation$data = {
   readonly SetDefaultPlatformModelProviderCredentialModel: {
     readonly id: string;
     readonly isDefault: boolean;
   };
 };
-export type llmCredentialModelsPageSetDefaultMutation = {
-  response: llmCredentialModelsPageSetDefaultMutation$data;
-  variables: llmCredentialModelsPageSetDefaultMutation$variables;
+export type llmCredentialDetailPageSetDefaultMutation = {
+  response: llmCredentialDetailPageSetDefaultMutation$data;
+  variables: llmCredentialDetailPageSetDefaultMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -72,7 +72,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "llmCredentialModelsPageSetDefaultMutation",
+    "name": "llmCredentialDetailPageSetDefaultMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +81,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "llmCredentialModelsPageSetDefaultMutation",
+    "name": "llmCredentialDetailPageSetDefaultMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1087103218e83a172e2d8738e0d46a54",
+    "cacheID": "bceb9c90fad37f88597bc38a96e1d8d7",
     "id": null,
     "metadata": {},
-    "name": "llmCredentialModelsPageSetDefaultMutation",
+    "name": "llmCredentialDetailPageSetDefaultMutation",
     "operationKind": "mutation",
-    "text": "mutation llmCredentialModelsPageSetDefaultMutation(\n  $input: SetDefaultPlatformModelProviderCredentialModelInput!\n) {\n  SetDefaultPlatformModelProviderCredentialModel(input: $input) {\n    id\n    isDefault\n  }\n}\n"
+    "text": "mutation llmCredentialDetailPageSetDefaultMutation(\n  $input: SetDefaultPlatformModelProviderCredentialModelInput!\n) {\n  SetDefaultPlatformModelProviderCredentialModel(input: $input) {\n    id\n    isDefault\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cc3fd5cae7588fc1071309ed71f4aedc";
+(node as any).hash = "538c72e20bc8e76cd34de6fa027522e8";
 
 export default node;

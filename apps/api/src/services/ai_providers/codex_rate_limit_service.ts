@@ -49,6 +49,7 @@ export class CodexRateLimitService {
   private static readonly codexProviderId = "openai-codex";
   private static readonly defaultCodexBaseUrl = "https://chatgpt.com/backend-api";
   private static readonly refreshThrottleMilliseconds = 5 * 60 * 1000;
+  private static readonly authClaim = "https://api.openai.com/auth";
   private static readonly accountIdClaim = "https://api.openai.com/auth.chatgpt_account_id";
   private static readonly lastAttemptAtByCredentialKey = new Map<string, number>();
   private static readonly pendingRefreshByCredentialKey = new Map<string, Promise<void>>();
@@ -492,7 +493,9 @@ export class CodexRateLimitService {
       throw new Error("Codex access token payload could not be decoded.");
     }
 
-    const accountId = this.readString(this.readRecord(payload)?.[CodexRateLimitService.accountIdClaim]);
+    const payloadRecord = this.readRecord(payload);
+    const accountId = this.readString(payloadRecord?.[CodexRateLimitService.accountIdClaim])
+      ?? this.readString(this.readRecord(payloadRecord?.[CodexRateLimitService.authClaim])?.chatgpt_account_id);
     if (!accountId) {
       throw new Error("Codex access token is missing the ChatGPT account ID.");
     }

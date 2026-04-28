@@ -345,11 +345,25 @@ function formatPercent(value: number | null | undefined): string {
 function formatWindow(value: {
   readonly resetsAt: string | null | undefined;
   readonly windowMinutes: number | null | undefined;
-}): string {
+}, fallbackWindowLabel: string): string {
   const windowLabel = typeof value.windowMinutes === "number"
-    ? `${value.windowMinutes} min`
-    : "Unknown window";
+    ? formatWindowMinutes(value.windowMinutes)
+    : fallbackWindowLabel;
   return `${windowLabel} · resets ${formatTimestamp(value.resetsAt)}`;
+}
+
+function formatWindowMinutes(value: number): string {
+  if (value === 300) {
+    return "5h window";
+  }
+  if (value === 10_080) {
+    return "Weekly window";
+  }
+  if (value % 60 === 0) {
+    return `${value / 60}h window`;
+  }
+
+  return `${value} min window`;
 }
 
 function formatReasoning(model: {
@@ -439,21 +453,23 @@ function CodexLimitPanel({
           <div className="mt-4 grid gap-4">
             <div className="grid gap-2">
               <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-medium text-foreground">Primary</span>
+                <span className="font-medium text-foreground">Primary (5h)</span>
                 <span className="text-muted-foreground">{formatPercent(snapshot.primary.usedPercent)}</span>
               </div>
               <CodexLimitUsageBar value={snapshot.primary.usedPercent} />
-              <p className="text-xs text-muted-foreground">{formatWindow(snapshot.primary)}</p>
+              <p className="text-xs text-muted-foreground">{formatWindow(snapshot.primary, "5h window")}</p>
             </div>
 
-            {snapshot.secondary.usedPercent !== null || snapshot.secondary.windowMinutes !== null ? (
+            {snapshot.secondary.usedPercent !== null
+              || snapshot.secondary.windowMinutes !== null
+              || snapshot.secondary.resetsAt !== null ? (
               <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-foreground">Secondary</span>
+                  <span className="font-medium text-foreground">Secondary (weekly)</span>
                   <span className="text-muted-foreground">{formatPercent(snapshot.secondary.usedPercent)}</span>
                 </div>
                 <CodexLimitUsageBar value={snapshot.secondary.usedPercent} />
-                <p className="text-xs text-muted-foreground">{formatWindow(snapshot.secondary)}</p>
+                <p className="text-xs text-muted-foreground">{formatWindow(snapshot.secondary, "Weekly window")}</p>
               </div>
             ) : null}
 

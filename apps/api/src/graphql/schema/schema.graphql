@@ -27,6 +27,7 @@ type Query {
   PlatformModelRoutes(platformModelId: ID!): [PlatformModelRoute!]!
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
   PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
+  PlatformCodexRateLimits(platformModelProviderCredentialId: ID!): CodexRateLimits!
   PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!

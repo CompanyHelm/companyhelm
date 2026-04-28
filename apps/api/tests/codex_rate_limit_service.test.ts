@@ -20,7 +20,7 @@ type FakeTransactionProvider = TransactionProviderInterface & {
 class CodexRateLimitServiceTestFactory {
   createCredential(overrides: Partial<CodexRateLimitRefreshCredential> = {}): CodexRateLimitRefreshCredential {
     return {
-      apiKey: this.createJwt("account-123"),
+      apiKey: this.createJwtWithNestedAccountId("account-123"),
       baseUrl: null,
       companyId: "11111111-1111-4111-8111-111111111111",
       credentialId: "22222222-2222-4222-8222-222222222222",
@@ -67,10 +67,20 @@ class CodexRateLimitServiceTestFactory {
     } as Response);
   }
 
-  private createJwt(accountId: string): string {
+  createJwtWithFlatAccountId(accountId: string): string {
     const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
     const payload = Buffer.from(JSON.stringify({
       "https://api.openai.com/auth.chatgpt_account_id": accountId,
+    })).toString("base64url");
+    return `${header}.${payload}.signature`;
+  }
+
+  private createJwtWithNestedAccountId(accountId: string): string {
+    const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({
+      "https://api.openai.com/auth": {
+        chatgpt_account_id: accountId,
+      },
     })).toString("base64url");
     return `${header}.${payload}.signature`;
   }
@@ -178,6 +188,33 @@ test("CodexRateLimitService stores platform credential snapshots in the platform
   });
   expect(transactionProvider.upserts[0]?.record).not.toHaveProperty("companyId");
   expect(transactionProvider.deleteCount).toBe(1);
+});
+
+test("CodexRateLimitService still supports legacy flat ChatGPT account ID claims", async () => {
+  const factory = new CodexRateLimitServiceTestFactory();
+  const service = new CodexRateLimitService();
+  const transactionProvider = factory.createTransactionProvider();
+  const fetchSpy = factory.mockCodexUsageResponse({
+    rate_limit: {
+      primary_window: {
+        used_percent: 10,
+      },
+    },
+  });
+
+  await service.refreshCredentialLimits(
+    transactionProvider,
+    factory.createCredential({
+      apiKey: factory.createJwtWithFlatAccountId("legacy-account-123"),
+    }),
+    new Date("2026-04-28T10:00:00.000Z"),
+  );
+
+  expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({
+    headers: expect.objectContaining({
+      "chatgpt-account-id": "legacy-account-123",
+    }),
+  });
 });
 
 test("CodexRateLimitService throttles refreshes per credential for five minutes", async () => {

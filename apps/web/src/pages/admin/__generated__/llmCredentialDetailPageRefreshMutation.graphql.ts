@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d330b792e4d011c61ce62cab7568e964>>
+ * @generated SignedSource<<2d832ae0fc00e02b88deeb58c3efc32e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,10 +12,10 @@ import { ConcreteRequest } from 'relay-runtime';
 export type RefreshPlatformModelProviderCredentialModelsInput = {
   platformModelProviderCredentialId: string;
 };
-export type llmCredentialModelsPageRefreshMutation$variables = {
+export type llmCredentialDetailPageRefreshMutation$variables = {
   input: RefreshPlatformModelProviderCredentialModelsInput;
 };
-export type llmCredentialModelsPageRefreshMutation$data = {
+export type llmCredentialDetailPageRefreshMutation$data = {
   readonly RefreshPlatformModelProviderCredentialModels: ReadonlyArray<{
     readonly description: string;
     readonly id: string;
@@ -27,9 +27,9 @@ export type llmCredentialModelsPageRefreshMutation$data = {
     readonly updatedAt: string;
   }>;
 };
-export type llmCredentialModelsPageRefreshMutation = {
-  response: llmCredentialModelsPageRefreshMutation$data;
-  variables: llmCredentialModelsPageRefreshMutation$variables;
+export type llmCredentialDetailPageRefreshMutation = {
+  response: llmCredentialDetailPageRefreshMutation$data;
+  variables: llmCredentialDetailPageRefreshMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -120,7 +120,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "llmCredentialModelsPageRefreshMutation",
+    "name": "llmCredentialDetailPageRefreshMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -129,20 +129,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "llmCredentialModelsPageRefreshMutation",
+    "name": "llmCredentialDetailPageRefreshMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "61a8b82825a1850ee4fccc7f13030fb2",
+    "cacheID": "e2232490b02b03fd71e4c4ef70dc441e",
     "id": null,
     "metadata": {},
-    "name": "llmCredentialModelsPageRefreshMutation",
+    "name": "llmCredentialDetailPageRefreshMutation",
     "operationKind": "mutation",
-    "text": "mutation llmCredentialModelsPageRefreshMutation(\n  $input: RefreshPlatformModelProviderCredentialModelsInput!\n) {\n  RefreshPlatformModelProviderCredentialModels(input: $input) {\n    id\n    isDefault\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    updatedAt\n  }\n}\n"
+    "text": "mutation llmCredentialDetailPageRefreshMutation(\n  $input: RefreshPlatformModelProviderCredentialModelsInput!\n) {\n  RefreshPlatformModelProviderCredentialModels(input: $input) {\n    id\n    isDefault\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "843f82bce1945c94e3ccacb6eae33976";
+(node as any).hash = "f028f21e7cf5a2b54668cb842865f498";
 
 export default node;

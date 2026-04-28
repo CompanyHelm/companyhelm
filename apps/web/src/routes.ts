@@ -9,7 +9,7 @@ import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AdminCompaniesPage } from "./pages/admin/companies_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
-import { AdminLlmCredentialModelsPage } from "./pages/admin/llm_credential_models_page";
+import { AdminLlmCredentialDetailPage } from "./pages/admin/llm_credential_detail_page";
 import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
 import { AdminModelDetailPage } from "./pages/admin/model_detail_page";
 import { AdminModelsPage } from "./pages/admin/models_page";
@@ -84,6 +84,10 @@ type ModelProviderCredentialDetailRouteSearch = {
   tab?: "limit" | "models" | "usage";
 };
 
+type AdminLlmCredentialDetailRouteSearch = {
+  tab?: "limit" | "models";
+};
+
 type WorkflowDetailRouteSearch = {
   tab?: "overview" | "runs";
 };
@@ -154,6 +158,16 @@ function validateModelProviderCredentialDetailRouteSearch(
 ): ModelProviderCredentialDetailRouteSearch {
   return {
     tab: search.tab === "limit" || search.tab === "usage" || search.tab === "models"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateAdminLlmCredentialDetailRouteSearch(
+  search: Record<string, unknown>,
+): AdminLlmCredentialDetailRouteSearch {
+  return {
+    tab: search.tab === "limit" || search.tab === "models"
       ? search.tab
       : undefined,
   };
@@ -305,7 +319,8 @@ const adminLlmCredentialsIndexRoute = createRoute({
 const adminLlmCredentialModelsRoute = createRoute({
   getParentRoute: () => adminLlmCredentialsRoute,
   path: "$platformCredentialId" as string,
-  component: AdminLlmCredentialModelsPage,
+  validateSearch: validateAdminLlmCredentialDetailRouteSearch,
+  component: AdminLlmCredentialDetailPage,
 });
 
 const flagsRoute = createRoute({
