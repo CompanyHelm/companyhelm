@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { AdminBreadcrumbs } from "@/components/layout/admin_breadcrumbs";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
@@ -57,11 +58,13 @@ export function PageContainer(props: PageContainerProps) {
     select: (state) => state.location.href,
   });
   const isOrganizationScopedPage = pathname.startsWith("/orgs/");
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
 
   if (!isOrganizationScopedPage) {
     // Routes outside the org slug prefix cannot rely on org-aware chrome like the sidebar/header.
     return (
-      <div className="flex min-h-svh flex-col px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
+      <div className="flex min-h-svh flex-col gap-4 px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
+        {isAdminPage ? <AdminBreadcrumbs pathname={pathname} /> : null}
         {props.children}
       </div>
     );
