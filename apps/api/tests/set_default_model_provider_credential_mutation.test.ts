@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../src/db/schema.ts";
+import {
+  companyModelProviderDefaults,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../src/db/schema.ts";
 import { SetDefaultModelProviderCredentialMutation } from "../src/graphql/mutations/set_default_model_provider_credential.ts";
 
 type CredentialRow = {
@@ -32,6 +36,10 @@ type CredentialModelRow = {
 class SetDefaultModelProviderCredentialMutationTestHarness {
   private readonly credentialRows: CredentialRow[];
   private readonly modelRows: CredentialModelRow[];
+  private readonly defaultProviderSelection: {
+    modelCredentialSource: "platform" | "user_provided";
+    modelProviderCredentialId: string | null;
+  };
 
   constructor() {
     this.credentialRows = [{
@@ -67,11 +75,16 @@ class SetDefaultModelProviderCredentialMutationTestHarness {
       modelProviderCredentialId: "credential-2",
       reasoningLevels: ["medium", "high"],
     }];
+    this.defaultProviderSelection = {
+      modelCredentialSource: "user_provided",
+      modelProviderCredentialId: "credential-1",
+    };
   }
 
   buildTransactionProvider() {
     const credentialRows = this.credentialRows;
     const modelRows = this.modelRows;
+    const defaultProviderSelection = this.defaultProviderSelection;
 
     return {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
@@ -99,15 +112,8 @@ class SetDefaultModelProviderCredentialMutationTestHarness {
               set(value: Record<string, unknown>) {
                 return {
                   async where() {
-                    if (table === modelProviderCredentials) {
-                      if (value.isDefault === false) {
-                        credentialRows.forEach((row) => {
-                          row.isDefault = false;
-                        });
-                      }
-                      if (value.isDefault === true) {
-                        credentialRows[0]!.isDefault = true;
-                      }
+                    if (table === companyModelProviderDefaults) {
+                      Object.assign(defaultProviderSelection, value);
                     }
                   },
                 };
@@ -121,6 +127,10 @@ class SetDefaultModelProviderCredentialMutationTestHarness {
 
   getCredentialRows(): CredentialRow[] {
     return this.credentialRows;
+  }
+
+  getDefaultProviderSelection() {
+    return this.defaultProviderSelection;
   }
 }
 
@@ -142,8 +152,8 @@ test("SetDefaultModelProviderCredentialMutation promotes one credential and pres
     },
   } as never);
 
-  assert.equal(harness.getCredentialRows()[0]?.isDefault, true);
-  assert.equal(harness.getCredentialRows()[1]?.isDefault, false);
+  assert.equal(harness.getDefaultProviderSelection().modelCredentialSource, "user_provided");
+  assert.equal(harness.getDefaultProviderSelection().modelProviderCredentialId, "credential-2");
   assert.deepEqual(result, {
     companyId: "company-123",
     createdAt: "2026-04-05T00:00:00.000Z",

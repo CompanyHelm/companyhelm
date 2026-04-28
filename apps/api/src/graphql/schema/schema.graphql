@@ -181,6 +181,7 @@ type Mutation {
   SetDefaultModelProviderCredential(
     input: SetDefaultModelProviderCredentialInput!
   ): ModelProviderCredential!
+  SetDefaultManagedModelProviderCredential: Boolean!
   SetDefaultPlatformModelProviderCredential(
     input: SetDefaultPlatformModelProviderCredentialInput!
   ): PlatformModelProviderCredential!

@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import {
   agentSessions,
   agents,
+  companyModelProviderDefaults,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
@@ -170,6 +171,14 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
           replacementTarget,
         );
       }
+      if (existingCredential.isDefault) {
+        await this.promoteFallbackDefault(
+          selectableDatabase,
+          updatableDatabase,
+          companyId,
+          credentialId,
+        );
+      }
 
       const deletedCredentials = await (deletableDatabase
         .delete(modelProviderCredentials)
@@ -180,7 +189,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
         .returning?.({
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
-          isDefault: modelProviderCredentials.isDefault,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
@@ -191,46 +199,9 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
           createdAt: modelProviderCredentials.createdAt,
           updatedAt: modelProviderCredentials.updatedAt,
         }) ?? Promise.resolve([]));
-      const deletedCredential = deletedCredentials[0];
-      if (existingCredential.isDefault) {
-        const remainingCredentials = await selectableDatabase
-          .select({
-            id: modelProviderCredentials.id,
-            companyId: modelProviderCredentials.companyId,
-            isDefault: modelProviderCredentials.isDefault,
-            name: modelProviderCredentials.name,
-            modelProvider: modelProviderCredentials.modelProvider,
-            type: modelProviderCredentials.type,
-            status: modelProviderCredentials.status,
-            errorMessage: modelProviderCredentials.errorMessage,
-            refreshToken: modelProviderCredentials.refreshToken,
-            refreshedAt: modelProviderCredentials.refreshedAt,
-            createdAt: modelProviderCredentials.createdAt,
-            updatedAt: modelProviderCredentials.updatedAt,
-          })
-          .from(modelProviderCredentials)
-          .where(eq(modelProviderCredentials.companyId, companyId)) as ModelProviderCredentialRecord[];
-        const fallbackCredential = [...remainingCredentials]
-          .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
-          .at(0);
-        if (fallbackCredential) {
-          await updatableDatabase
-            .update(modelProviderCredentials)
-            .set({
-              isDefault: false,
-            })
-            .where(eq(modelProviderCredentials.companyId, companyId));
-          await updatableDatabase
-            .update(modelProviderCredentials)
-            .set({
-              isDefault: true,
-            })
-            .where(and(
-              eq(modelProviderCredentials.companyId, companyId),
-              eq(modelProviderCredentials.id, fallbackCredential.id),
-            ));
-        }
-      }
+      const deletedCredential = deletedCredentials[0]
+        ? { ...deletedCredentials[0], isDefault: existingCredential.isDefault }
+        : null;
 
       return deletedCredential ? [deletedCredential] : [];
     });
@@ -346,7 +317,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
       .select({
         id: modelProviderCredentials.id,
         companyId: modelProviderCredentials.companyId,
-        isDefault: modelProviderCredentials.isDefault,
         name: modelProviderCredentials.name,
         modelProvider: modelProviderCredentials.modelProvider,
         type: modelProviderCredentials.type,
@@ -363,7 +333,63 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
         eq(modelProviderCredentials.id, credentialId),
       )) as ModelProviderCredentialRecord[];
 
-    return credentialRecord ?? null;
+    if (!credentialRecord) {
+      return null;
+    }
+
+    const [defaultSelectionRecord] = await selectableDatabase
+      .select({
+        modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+        modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+      })
+      .from(companyModelProviderDefaults)
+      .where(eq(companyModelProviderDefaults.companyId, companyId)) as Array<{
+        modelCredentialSource: "platform" | "user_provided";
+        modelProviderCredentialId: string | null;
+      }>;
+
+    return {
+      ...credentialRecord,
+      isDefault: defaultSelectionRecord?.modelCredentialSource === "user_provided"
+        && defaultSelectionRecord.modelProviderCredentialId === credentialRecord.id,
+    };
+  }
+
+  private async promoteFallbackDefault(
+    selectableDatabase: SelectableDatabase,
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    deletedCredentialId: string,
+  ): Promise<void> {
+    const remainingCredentials = await selectableDatabase
+      .select({
+        id: modelProviderCredentials.id,
+        companyId: modelProviderCredentials.companyId,
+        name: modelProviderCredentials.name,
+        modelProvider: modelProviderCredentials.modelProvider,
+        type: modelProviderCredentials.type,
+        status: modelProviderCredentials.status,
+        errorMessage: modelProviderCredentials.errorMessage,
+        refreshToken: modelProviderCredentials.refreshToken,
+        refreshedAt: modelProviderCredentials.refreshedAt,
+        createdAt: modelProviderCredentials.createdAt,
+        updatedAt: modelProviderCredentials.updatedAt,
+      })
+      .from(modelProviderCredentials)
+      .where(eq(modelProviderCredentials.companyId, companyId)) as ModelProviderCredentialRecord[];
+    const fallbackCredential = remainingCredentials
+      .filter((credential) => credential.id !== deletedCredentialId)
+      .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
+      .at(0);
+
+    await updatableDatabase
+      .update(companyModelProviderDefaults)
+      .set({
+        modelCredentialSource: fallbackCredential ? "user_provided" : "platform",
+        modelProviderCredentialId: fallbackCredential?.id ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(companyModelProviderDefaults.companyId, companyId));
   }
 
   private async loadReplacementTarget(

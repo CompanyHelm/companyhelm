@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  companyModelProviderDefaults,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type {
   GraphqlModelProviderCredentialRecord,
@@ -16,6 +20,11 @@ type SelectableDatabase = {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
     };
   };
+};
+
+type DefaultProviderSelectionRecord = {
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
 };
 
 /**
@@ -41,11 +50,17 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const [defaultProviderSelectionRecord] = await selectableDatabase
+        .select({
+          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+          modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+        })
+        .from(companyModelProviderDefaults)
+        .where(eq(companyModelProviderDefaults.companyId, companyId)) as DefaultProviderSelectionRecord[];
       const credentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           baseUrl: modelProviderCredentials.baseUrl,
-          isDefault: modelProviderCredentials.isDefault,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -70,7 +85,11 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
       return credentials.map((credential) =>
-        serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords)
+        serializeModelProviderCredentialRecord(this.modelRegistry, {
+          ...credential,
+          isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
+            && defaultProviderSelectionRecord.modelProviderCredentialId === credential.id,
+        }, modelRecords)
       );
     });
   };

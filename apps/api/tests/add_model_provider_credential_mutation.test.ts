@@ -4,7 +4,11 @@ import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../src/db/schema.ts";
+import {
+  companyModelProviderDefaults,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../src/db/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
@@ -109,8 +113,8 @@ class AddModelProviderCredentialMutationTestHarness {
     const insertedValues: Array<Record<string, unknown>> = [];
     const scopedCompanyIds: string[] = [];
     const credentialRows: Array<Record<string, unknown>> = [];
+    const defaultProviderRows: Array<Record<string, unknown>> = [];
     const modelRows: Array<Record<string, unknown>> = [];
-    let credentialUpdateCount = 0;
     let modelUpdateCount = 0;
 
     return {
@@ -129,6 +133,9 @@ class AddModelProviderCredentialMutationTestHarness {
                     if (table === modelProviderCredentialModels) {
                       return [...modelRows];
                     }
+                    if (table === companyModelProviderDefaults) {
+                      return [...defaultProviderRows];
+                    }
 
                     return [];
                   },
@@ -136,11 +143,14 @@ class AddModelProviderCredentialMutationTestHarness {
               },
             };
           },
-          insert() {
+          insert(table: unknown) {
             return {
               values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
                 const values = Array.isArray(value) ? value : [value];
                 insertedValues.push(...values);
+                if (table === companyModelProviderDefaults) {
+                  defaultProviderRows.push(...values);
+                }
                 if (values[0] && "modelProvider" in values[0]) {
                   credentialRows.push({
                     ...values[0],
@@ -181,11 +191,8 @@ class AddModelProviderCredentialMutationTestHarness {
               set(value: Record<string, unknown>) {
                 return {
                   async where() {
-                    if (table === modelProviderCredentials && "isDefault" in value) {
-                      credentialUpdateCount += 1;
-                      credentialRows.forEach((row) => {
-                        row.isDefault = credentialUpdateCount === 2;
-                      });
+                    if (table === companyModelProviderDefaults) {
+                      Object.assign(defaultProviderRows[0] ?? {}, value);
                     }
                     if (table === modelProviderCredentialModels && "isDefault" in value) {
                       modelUpdateCount += 1;
@@ -315,7 +322,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     document.data.AddModelProviderCredential.updatedAt,
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
   );
-  assert.equal(database.insertedValues.length, 2);
+  assert.equal(database.insertedValues.length, 3);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
   assert.equal(database.insertedValues[0]?.status, "active");
@@ -325,6 +332,9 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues[1]?.name, "GPT-5.4");
   assert.equal(database.insertedValues[1]?.description, "Latest frontier agentic coding model.");
   assert.deepEqual(database.insertedValues[1]?.reasoningLevels, ["low", "medium"]);
+  assert.equal(database.insertedValues[2]?.companyId, "company-123");
+  assert.equal(database.insertedValues[2]?.modelCredentialSource, "user_provided");
+  assert.equal(database.insertedValues[2]?.modelProviderCredentialId, "credential-1");
   assert.deepEqual(modelManager.calls, [{
     provider: "openai",
     apiKey: "secret-value",

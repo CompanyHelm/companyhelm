@@ -36,6 +36,7 @@ class AgentCreateOptionsQueryTestHarness {
     platformModelRecords?: Array<Record<string, unknown>>;
     platformRouteRecords?: Array<Record<string, unknown>>;
     managedProviderSettingsRecords?: Array<Record<string, unknown>>;
+    defaultProviderSelectionRecords?: Array<Record<string, unknown>>;
     credentialRecords?: Array<Record<string, unknown>>;
     modelRecords?: Array<Record<string, unknown>>;
   }) {
@@ -45,9 +46,12 @@ class AgentCreateOptionsQueryTestHarness {
       input?.platformModelRecords ?? [],
       input?.platformRouteRecords ?? [],
       input?.managedProviderSettingsRecords ?? [],
+      input?.defaultProviderSelectionRecords ?? [{
+        modelCredentialSource: "user_provided",
+        modelProviderCredentialId: "credential-1",
+      }],
       input?.credentialRecords ?? [{
         id: "credential-1",
-        isDefault: true,
         modelProvider: "openai",
         name: "OpenAI / Codex",
       }],
@@ -224,6 +228,10 @@ test("GraphQL AgentCreateOptions exposes only one default across managed and use
     platformRouteRecords: [{
       platformModelId: "platform-model-1",
       platformModelProviderCredentialModelId: "platform-model-row-1",
+    }],
+    defaultProviderSelectionRecords: [{
+      modelCredentialSource: "user_provided",
+      modelProviderCredentialId: "credential-1",
     }],
   });
   const modelManager = {

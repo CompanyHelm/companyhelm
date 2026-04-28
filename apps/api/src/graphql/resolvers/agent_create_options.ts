@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
+  companyModelProviderDefaults,
   modelProviderCredentialModels,
   modelProviderCredentials,
   companyManagedModelProviderSettings,
@@ -16,7 +17,6 @@ import { Resolver } from "./resolver.ts";
 
 type CredentialRecord = {
   id: string;
-  isDefault: boolean;
   modelProvider: string;
   name: string;
 };
@@ -52,6 +52,11 @@ type PlatformModelRecord = {
 
 type ManagedProviderSettingsRecord = {
   defaultPlatformModelId: string | null;
+};
+
+type DefaultProviderSelectionRecord = {
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
 };
 
 type GraphqlAgentCreateModelOption = {
@@ -161,11 +166,17 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           eq(companyManagedModelProviderSettings.companyId, companyId),
           eq(companyManagedModelProviderSettings.providerKey, "companyhelm"),
         )) as ManagedProviderSettingsRecord[];
+      const [defaultProviderSelectionRecord] = await selectableDatabase
+        .select({
+          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+          modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+        })
+        .from(companyModelProviderDefaults)
+        .where(eq(companyModelProviderDefaults.companyId, companyId)) as DefaultProviderSelectionRecord[];
 
       const credentialRecords = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
-          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -230,7 +241,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             modelCredentialSource: "user_provided" as const,
             platformModelProviderCredentialId: null,
             modelProviderCredentialId: credentialRecord.id,
-            isDefault: credentialRecord.isDefault,
+            isDefault: this.isDefaultUserProvidedOption(credentialRecord, defaultProviderSelectionRecord ?? null),
             label: this.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
             defaultModelId: defaultModelRecord?.modelId ?? null,
@@ -240,11 +251,12 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         })
         .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((providerOption) => providerOption.models.length > 0);
-      const hasCompanyDefaultOption = companyOptions.some((providerOption) => providerOption.isDefault);
       const resolvedPlatformOption = platformOption
         ? {
           ...platformOption,
-          isDefault: !hasCompanyDefaultOption,
+          isDefault: defaultProviderSelectionRecord
+            ? defaultProviderSelectionRecord.modelCredentialSource === "platform"
+            : true,
         }
         : null;
 
@@ -346,5 +358,13 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
   private isUserProvidedProvider(modelProvider: string): boolean {
     return modelProvider !== "companyhelm" && modelProvider !== "system:companyhelm";
+  }
+
+  private isDefaultUserProvidedOption(
+    credentialRecord: CredentialRecord,
+    defaultProviderSelectionRecord: DefaultProviderSelectionRecord | null,
+  ): boolean {
+    return defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
+      && defaultProviderSelectionRecord.modelProviderCredentialId === credentialRecord.id;
   }
 }

@@ -179,7 +179,20 @@ export function CredentialsTable(props: CredentialsTableProps) {
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
                   {credential.credentialKind === "managed" ? (
-                    <Badge variant="secondary">Read only</Badge>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await props.onSetDefault(credential.id);
+                        }}
+                      >
+                        <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
+                      </Button>
+                      <Badge variant="secondary">Read only</Badge>
+                    </>
                   ) : null}
                   {credential.credentialKind === "user_provided" ? (
                     <>

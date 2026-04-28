@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import {
   agentDefaultSecrets,
   agents,
+  companyModelProviderDefaults,
   companySecrets,
   computeProviderDefinitions,
   modelProviderCredentialModels,
@@ -147,9 +148,13 @@ type AgentSecretAttachmentRecord = {
 
 type CredentialRecord = {
   id: string;
-  isDefault: boolean;
   modelProvider: ModelProviderId;
   name: string;
+};
+
+type DefaultProviderSelectionRecord = {
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
 };
 
 type ComputeProviderDefinitionRecord = {
@@ -490,10 +495,16 @@ export class AgentManagementToolService {
   private async loadProviderOptions(): Promise<AgentManagementToolCredentialOption[]> {
     return this.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const [defaultProviderSelectionRecord] = await selectableDatabase
+        .select({
+          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+          modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+        })
+        .from(companyModelProviderDefaults)
+        .where(eq(companyModelProviderDefaults.companyId, this.companyId)) as DefaultProviderSelectionRecord[];
       const credentialRecords = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
-          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -543,7 +554,8 @@ export class AgentManagementToolService {
               ? providerDefaultReasoningLevel
               : (defaultModelRecord?.reasoningLevels?.[0] ?? null),
             id: credentialRecord.id,
-            isDefault: credentialRecord.isDefault,
+            isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
+              && defaultProviderSelectionRecord.modelProviderCredentialId === credentialRecord.id,
             label: this.resolveCredentialLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
             models: credentialModels,

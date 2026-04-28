@@ -1,6 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  companyModelProviderDefaults,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../../db/schema.ts";
 import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
@@ -39,6 +43,10 @@ type ModelProviderCredentialRecord = {
   createdAt: Date;
   isDefault: boolean;
   updatedAt: Date;
+};
+
+type CompanyModelProviderDefaultRecord = {
+  companyId: string;
 };
 
 type GraphqlModelProviderCredentialRecord = {
@@ -157,26 +165,13 @@ export class AddModelProviderCredentialMutation extends Mutation<
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const insertableDatabase = tx as unknown as InsertableDatabase;
       const updatableDatabase = tx as unknown as UpdatableDatabase;
-      const existingCredentials = await selectableDatabase
+      const [existingDefault] = await selectableDatabase
         .select({
-          id: modelProviderCredentials.id,
-          baseUrl: modelProviderCredentials.baseUrl,
-          companyId: modelProviderCredentials.companyId,
-          name: modelProviderCredentials.name,
-          modelProvider: modelProviderCredentials.modelProvider,
-          type: modelProviderCredentials.type,
-          status: modelProviderCredentials.status,
-          errorMessage: modelProviderCredentials.errorMessage,
-          refreshToken: modelProviderCredentials.refreshToken,
-          refreshedAt: modelProviderCredentials.refreshedAt,
-          createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
-          updatedAt: modelProviderCredentials.updatedAt,
+          companyId: companyModelProviderDefaults.companyId,
         })
-        .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, companyId));
-      const shouldSetDefaultCredential = Boolean(arguments_.input.isDefault)
-        || !existingCredentials.some((existingCredential) => existingCredential.isDefault);
+        .from(companyModelProviderDefaults)
+        .where(eq(companyModelProviderDefaults.companyId, companyId)) as CompanyModelProviderDefaultRecord[];
+      const shouldSetDefaultCredential = Boolean(arguments_.input.isDefault) || !existingDefault;
       const createdCredentials = await (insertableDatabase
         .insert(modelProviderCredentials)
         .values({
@@ -189,7 +184,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshToken: credentialPayload.refreshToken,
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
-          isDefault: false,
           status: "active",
           errorMessage: null,
           createdAt: now,
@@ -207,7 +201,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           updatedAt: modelProviderCredentials.updatedAt,
         }) ?? Promise.resolve([]));
 
@@ -228,9 +221,11 @@ export class AddModelProviderCredentialMutation extends Mutation<
 
       if (shouldSetDefaultCredential) {
         await AddModelProviderCredentialMutation.setDefaultCredential(
+          insertableDatabase,
           updatableDatabase,
           companyId,
           createdCredential.id,
+          Boolean(existingDefault),
         );
       }
       if (defaultModelId) {
@@ -255,7 +250,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
@@ -264,7 +258,10 @@ export class AddModelProviderCredentialMutation extends Mutation<
           eq(modelProviderCredentials.id, createdCredential.id),
         ));
 
-      return reloadedCredentials;
+      return reloadedCredentials.map((reloadedCredential) => ({
+        ...reloadedCredential,
+        isDefault: shouldSetDefaultCredential,
+      }));
     });
 
     if (!credential) {
@@ -348,25 +345,37 @@ export class AddModelProviderCredentialMutation extends Mutation<
   }
 
   private static async setDefaultCredential(
+    insertableDatabase: InsertableDatabase,
     updatableDatabase: UpdatableDatabase,
     companyId: string,
     credentialId: string,
+    hasExistingDefault: boolean,
   ): Promise<void> {
+    const now = new Date();
+    if (!hasExistingDefault) {
+      await insertableDatabase
+        .insert(companyModelProviderDefaults)
+        .values({
+          companyId,
+          modelCredentialSource: "user_provided",
+          modelProviderCredentialId: credentialId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning?.({
+          companyId: companyModelProviderDefaults.companyId,
+        });
+      return;
+    }
+
     await updatableDatabase
-      .update(modelProviderCredentials)
+      .update(companyModelProviderDefaults)
       .set({
-        isDefault: false,
+        modelCredentialSource: "user_provided",
+        modelProviderCredentialId: credentialId,
+        updatedAt: now,
       })
-      .where(eq(modelProviderCredentials.companyId, companyId));
-    await updatableDatabase
-      .update(modelProviderCredentials)
-      .set({
-        isDefault: true,
-      })
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.id, credentialId),
-      ));
+      .where(eq(companyModelProviderDefaults.companyId, companyId));
   }
 
   private static async setDefaultModel(

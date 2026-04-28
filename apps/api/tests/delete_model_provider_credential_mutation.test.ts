@@ -3,6 +3,7 @@ import { test } from "vitest";
 import {
   agentSessions,
   agents,
+  companyModelProviderDefaults,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../src/db/schema.ts";
@@ -59,6 +60,10 @@ class DeleteModelProviderCredentialMutationTestHarness {
   private readonly agentRows: AgentRow[];
   private readonly sessionRows: SessionRow[];
   private readonly deletedCredentialIds: string[];
+  private readonly defaultProviderSelection: {
+    modelCredentialSource: "platform" | "user_provided";
+    modelProviderCredentialId: string | null;
+  };
   private credentialSelectCount: number;
   private credentialModelSelectCount: number;
   private agentUpdateCount: number;
@@ -89,6 +94,10 @@ class DeleteModelProviderCredentialMutationTestHarness {
     this.agentRows = (input.agentRows ?? []).map((agentRow) => ({ ...agentRow }));
     this.sessionRows = (input.sessionRows ?? []).map((sessionRow) => ({ ...sessionRow }));
     this.deletedCredentialIds = [];
+    this.defaultProviderSelection = {
+      modelCredentialSource: "user_provided",
+      modelProviderCredentialId: this.credentialRows.find((credentialRow) => credentialRow.isDefault)?.id ?? null,
+    };
     this.credentialSelectCount = 0;
     this.credentialModelSelectCount = 0;
     this.agentUpdateCount = 0;
@@ -166,6 +175,9 @@ class DeleteModelProviderCredentialMutationTestHarness {
             if (table === agentSessions) {
               return this.sessionRows;
             }
+            if (table === companyModelProviderDefaults) {
+              return [this.defaultProviderSelection];
+            }
 
             return [];
           },
@@ -180,6 +192,14 @@ class DeleteModelProviderCredentialMutationTestHarness {
             }
             if (table === agentSessions) {
               this.updateSessionRow(value);
+              return;
+            }
+            if (table === companyModelProviderDefaults) {
+              Object.assign(this.defaultProviderSelection, value);
+              this.credentialRows.forEach((credentialRow) => {
+                credentialRow.isDefault = this.defaultProviderSelection.modelCredentialSource === "user_provided"
+                  && this.defaultProviderSelection.modelProviderCredentialId === credentialRow.id;
+              });
               return;
             }
             if (table !== modelProviderCredentials) {

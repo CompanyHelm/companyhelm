@@ -4,6 +4,7 @@ import type { Config } from "../src/config/schema.ts";
 import {
   agentSkills,
   agents,
+  companyModelProviderDefaults,
   companyOnboardings,
   computeProviderDefinitions,
   modelProviderCredentialModels,
@@ -45,6 +46,14 @@ type TaskStageRow = {
   createdAt: Date;
   isDefault?: boolean;
   name: string;
+  updatedAt: Date;
+};
+
+type CompanyModelProviderDefaultRow = {
+  companyId: string;
+  createdAt: Date;
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
   updatedAt: Date;
 };
 
@@ -171,6 +180,7 @@ class CompanyBootstrapServiceTestHarness {
   private readonly agentRows: AgentRow[];
   private readonly baseDefinitions: BaseDefinitionRow[];
   private readonly companyOnboardingRows: CompanyOnboardingRow[];
+  private readonly companyModelProviderDefaultRows: CompanyModelProviderDefaultRow[];
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly platformModelRows: PlatformModelRow[];
@@ -185,6 +195,7 @@ class CompanyBootstrapServiceTestHarness {
     agentRows?: AgentRow[];
     baseDefinitions?: BaseDefinitionRow[];
     companyOnboardingRows?: CompanyOnboardingRow[];
+    companyModelProviderDefaultRows?: CompanyModelProviderDefaultRow[];
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     platformModelRows?: PlatformModelRow[];
@@ -198,6 +209,7 @@ class CompanyBootstrapServiceTestHarness {
     this.agentRows = [...(params?.agentRows ?? [])];
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
     this.companyOnboardingRows = [...(params?.companyOnboardingRows ?? [])];
+    this.companyModelProviderDefaultRows = [...(params?.companyModelProviderDefaultRows ?? [])];
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
     this.platformModelRows = [...(params?.platformModelRows ?? [{
@@ -244,6 +256,7 @@ class CompanyBootstrapServiceTestHarness {
     const agentRows = this.agentRows;
     const baseDefinitions = this.baseDefinitions;
     const companyOnboardingRows = this.companyOnboardingRows;
+    const companyModelProviderDefaultRows = this.companyModelProviderDefaultRows;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
     const platformModelRows = this.platformModelRows;
@@ -544,6 +557,28 @@ class CompanyBootstrapServiceTestHarness {
               };
             }
 
+            if (table === companyModelProviderDefaults) {
+              if (Array.isArray(value)) {
+                throw new Error("Unexpected company model provider default batch insert.");
+              }
+
+              return {
+                onConflictDoNothing() {
+                  if (!companyModelProviderDefaultRows.some((row) => row.companyId === value.companyId)) {
+                    companyModelProviderDefaultRows.push({
+                      companyId: value.companyId as string,
+                      createdAt: value.createdAt as Date,
+                      modelCredentialSource: value.modelCredentialSource as "platform" | "user_provided",
+                      modelProviderCredentialId: value.modelProviderCredentialId as string | null,
+                      updatedAt: value.updatedAt as Date,
+                    });
+                  }
+
+                  return this;
+                },
+              };
+            }
+
             if (table === taskStages) {
               if (Array.isArray(value)) {
                 throw new Error("Unexpected task stage batch insert.");
@@ -599,6 +634,9 @@ class CompanyBootstrapServiceTestHarness {
                     }
                     if (table === modelProviderCredentials) {
                       return modelCredentialRows.slice(0, 20);
+                    }
+                    if (table === companyModelProviderDefaults) {
+                      return companyModelProviderDefaultRows.slice(0, 1);
                     }
                     if (table === workflowDefinitions) {
                       return workflowDefinitionRows

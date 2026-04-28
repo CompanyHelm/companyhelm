@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { companyModelProviderDefaults, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -16,7 +16,6 @@ type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   createdAt: Date;
-  isDefault: boolean;
   modelProvider: ModelProviderId;
   name: string;
   status: "active" | "error";
@@ -100,7 +99,6 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,
@@ -116,28 +114,17 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
         throw new Error("Credential not found.");
       }
 
-      await updatableDatabase
-        .update(modelProviderCredentials)
-        .set({
-          isDefault: false,
-        })
-        .where(eq(modelProviderCredentials.companyId, companyId));
-      await updatableDatabase
-        .update(modelProviderCredentials)
-        .set({
-          isDefault: true,
-        })
-        .where(and(
-          eq(modelProviderCredentials.companyId, companyId),
-          eq(modelProviderCredentials.id, credentialId),
-        ));
+      await this.upsertProviderDefault(
+        updatableDatabase,
+        companyId,
+        credentialId,
+      );
 
       const [credential] = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,
@@ -183,8 +170,25 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           ? providerDefaultReasoningLevel
           : (supportedReasoningLevels[0] ?? null),
         refreshedAt: credential.refreshedAt?.toISOString() ?? null,
+        isDefault: true,
         updatedAt: credential.updatedAt.toISOString(),
       };
     });
   };
+
+  private async upsertProviderDefault(
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    credentialId: string,
+  ): Promise<void> {
+    const now = new Date();
+    await updatableDatabase
+      .update(companyModelProviderDefaults)
+      .set({
+        modelCredentialSource: "user_provided",
+        modelProviderCredentialId: credentialId,
+        updatedAt: now,
+      })
+      .where(eq(companyModelProviderDefaults.companyId, companyId));
+  }
 }

@@ -7,6 +7,7 @@ import {
   agents,
   companies,
   companyMembers,
+  companyModelProviderDefaults,
   companyOnboardings,
   computeProviderDefinitions,
   modelProviderCredentialModels,
@@ -43,8 +44,12 @@ type ComputeProviderDefinitionRecord = {
 
 type ModelProviderCredentialRecord = {
   id: string;
-  isDefault?: boolean;
   modelProvider: string;
+};
+
+type DefaultProviderSelectionRecord = {
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
 };
 
 type ModelProviderCredentialModelRecord = {
@@ -257,6 +262,7 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
+    await this.ensureCompanyModelProviderDefault(transaction, companyId);
     await this.ensureDefaultTaskStages(transaction, companyId);
   }
 
@@ -268,6 +274,7 @@ export class CompanyBootstrapService {
     },
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, input.companyId);
+    await this.ensureCompanyModelProviderDefault(transaction, input.companyId);
     await this.ensureCompanyOnboardingWorkflow(transaction, input.companyId);
 
     const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, input.companyId);
@@ -639,6 +646,7 @@ export class CompanyBootstrapService {
     defaultReasoningLevel: string | null;
   }> {
     const credentials = await this.listModelProviderCredentials(transaction, input.companyId);
+    const defaultProviderSelection = await this.loadDefaultProviderSelection(transaction, input.companyId);
     if (input.llmSetupStatus !== "third_party") {
       const platformModel = await this.findPreferredPlatformModel(transaction);
       if (platformModel) {
@@ -651,7 +659,7 @@ export class CompanyBootstrapService {
       }
     }
 
-    const preferredCredential = this.selectPreferredCredential(credentials);
+    const preferredCredential = this.selectPreferredCredential(credentials, defaultProviderSelection);
     if (preferredCredential) {
       const preferredModel = await this.findPreferredCredentialModel(
         transaction,
@@ -683,8 +691,12 @@ export class CompanyBootstrapService {
 
   private selectPreferredCredential(
     credentials: ModelProviderCredentialRecord[],
+    defaultProviderSelection: DefaultProviderSelectionRecord | null,
   ): ModelProviderCredentialRecord | null {
-    return credentials.find((credential) => credential.isDefault) ?? credentials[0] ?? null;
+    return credentials.find((credential) =>
+      defaultProviderSelection?.modelCredentialSource === "user_provided"
+      && defaultProviderSelection.modelProviderCredentialId === credential.id
+    ) ?? credentials[0] ?? null;
   }
 
   private async findPreferredPlatformModel(
@@ -724,7 +736,6 @@ export class CompanyBootstrapService {
     return transaction
       .select({
         id: modelProviderCredentials.id,
-        isDefault: modelProviderCredentials.isDefault,
         modelProvider: modelProviderCredentials.modelProvider,
       })
       .from(modelProviderCredentials)
@@ -733,6 +744,39 @@ export class CompanyBootstrapService {
         eq(modelProviderCredentials.status, "active"),
       ))
       .limit(20) as Promise<ModelProviderCredentialRecord[]>;
+  }
+
+  private async loadDefaultProviderSelection(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<DefaultProviderSelectionRecord | null> {
+    const [defaultProviderSelection] = await transaction
+      .select({
+        modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+        modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+      })
+      .from(companyModelProviderDefaults)
+      .where(eq(companyModelProviderDefaults.companyId, companyId))
+      .limit(1) as DefaultProviderSelectionRecord[];
+
+    return defaultProviderSelection ?? null;
+  }
+
+  private async ensureCompanyModelProviderDefault(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<void> {
+    const now = new Date();
+    const insertOperation = (transaction as BootstrapInsertableDatabase)
+      .insert(companyModelProviderDefaults)
+      .values({
+        companyId,
+        createdAt: now,
+        modelCredentialSource: "platform",
+        modelProviderCredentialId: null,
+        updatedAt: now,
+      }) as BootstrapInsertOperation;
+    await insertOperation.onConflictDoNothing();
   }
 
   private async findPreferredCredentialModel(

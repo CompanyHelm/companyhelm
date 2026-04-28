@@ -13,6 +13,7 @@ import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__g
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
 import type { modelProviderCredentialsPageSetDefaultCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultCredentialMutation.graphql";
+import type { modelProviderCredentialsPageSetDefaultManagedCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultManagedCredentialMutation.graphql";
 
 type StoreCredentialRecord = {
   getDataID(): string;
@@ -120,6 +121,12 @@ const modelProviderCredentialsPageSetDefaultCredentialMutationNode = graphql`
   }
 `;
 
+const modelProviderCredentialsPageSetDefaultManagedCredentialMutationNode = graphql`
+  mutation modelProviderCredentialsPageSetDefaultManagedCredentialMutation {
+    SetDefaultManagedModelProviderCredential
+  }
+`;
+
 function ModelProviderCredentialsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -178,6 +185,10 @@ function ModelProviderCredentialsPageContent() {
   const [commitSetDefaultCredential, isSetDefaultCredentialInFlight] =
     useMutation<modelProviderCredentialsPageSetDefaultCredentialMutation>(
       modelProviderCredentialsPageSetDefaultCredentialMutationNode,
+    );
+  const [commitSetDefaultManagedCredential, isSetDefaultManagedCredentialInFlight] =
+    useMutation<modelProviderCredentialsPageSetDefaultManagedCredentialMutation>(
+      modelProviderCredentialsPageSetDefaultManagedCredentialMutationNode,
     );
   const credentialNameById = useMemo(() => {
     return new Map(
@@ -395,12 +406,37 @@ function ModelProviderCredentialsPageContent() {
               });
             }}
             onSetDefault={async (credentialId) => {
-              if (isSetDefaultCredentialInFlight) {
+              if (isSetDefaultCredentialInFlight || isSetDefaultManagedCredentialInFlight) {
                 return;
               }
 
               setErrorMessage(null);
               setDefaultingCredentialId(credentialId);
+
+              if (credentialId === MANAGED_MODEL_PROVIDER_CREDENTIAL_ID) {
+                await new Promise<void>((resolve, reject) => {
+                  commitSetDefaultManagedCredential({
+                    variables: {},
+                    onCompleted: (_response, errors) => {
+                      const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                      if (nextErrorMessage) {
+                        reject(new Error(nextErrorMessage));
+                        return;
+                      }
+
+                      resolve();
+                    },
+                    onError: reject,
+                  });
+                }).then(() => {
+                  setFetchKey((current) => current + 1);
+                }).catch((error: unknown) => {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to update default credential.");
+                }).finally(() => {
+                  setDefaultingCredentialId(null);
+                });
+                return;
+              }
 
               await new Promise<void>((resolve, reject) => {
                 commitSetDefaultCredential({
@@ -442,9 +478,9 @@ function ModelProviderCredentialsPageContent() {
                 setFetchKey((current) => current + 1);
               }).catch((error: unknown) => {
                 setErrorMessage(error instanceof Error ? error.message : "Failed to update default credential.");
+              }).finally(() => {
+                setDefaultingCredentialId(null);
               });
-
-              setDefaultingCredentialId(null);
             }}
             replacementOptions={replacementOptions}
           />

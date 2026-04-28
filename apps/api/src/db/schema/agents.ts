@@ -77,15 +77,33 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   refreshToken: text("refresh_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
-  isDefault: boolean("is_default").notNull().default(false),
   status: modelProviderCredentialStatusEnum("status").notNull(),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export const companyModelProviderDefaults = pgTable("company_model_provider_defaults", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .primaryKey()
+    .notNull(),
+  modelCredentialSource: modelCredentialSourceEnum("model_credential_source").notNull(),
+  modelProviderCredentialId: uuid("model_provider_credential_id")
+    .references(() => modelProviderCredentials.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  companyDefaultUnique: uniqueIndex("model_provider_credentials_company_default_uidx")
-    .on(table.companyId)
-    .where(sql`${table.isDefault}`),
+  modelProviderCredentialIndex: index("company_model_provider_defaults_credential_idx")
+    .on(table.modelProviderCredentialId),
+  sourceCheck: check(
+    "company_model_provider_defaults_source_check",
+    sql`(
+      (${table.modelCredentialSource} = 'platform' AND ${table.modelProviderCredentialId} IS NULL)
+      OR
+      (${table.modelCredentialSource} = 'user_provided' AND ${table.modelProviderCredentialId} IS NOT NULL)
+    )`,
+  ),
 }));
 
 // avaialbe models based on the model provider credential

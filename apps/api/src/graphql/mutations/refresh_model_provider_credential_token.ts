@@ -1,6 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  companyModelProviderDefaults,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
   LlmOauthCredentialRefreshService,
@@ -41,6 +45,11 @@ type UpdatableDatabase = {
 type RefreshableCredentialRecord = ModelProviderCredentialRecord & {
   encryptedApiKey: string;
   accessTokenExpiresAt: Date | null;
+};
+
+type DefaultProviderSelectionRecord = {
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null;
 };
 
 @injectable()
@@ -93,7 +102,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           updatedAt: modelProviderCredentials.updatedAt,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
           accessTokenExpiresAt: modelProviderCredentials.accessTokenExpiresAt,
@@ -166,7 +174,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
-          isDefault: modelProviderCredentials.isDefault,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
@@ -179,6 +186,14 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
       if (!updatedCredential) {
         throw new Error("Credential not found.");
       }
+      const [defaultProviderSelectionRecord] = await selectableDatabase
+        .select({
+          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
+          modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
+        })
+        .from(companyModelProviderDefaults)
+        .where(eq(companyModelProviderDefaults.companyId, companyId))
+        .limit(1) as DefaultProviderSelectionRecord[];
 
       const models = await selectableDatabase
         .select({
@@ -194,7 +209,11 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
         ))
         .limit(1000) as ModelProviderCredentialModelRecord[];
 
-      return serializeModelProviderCredentialRecord(this.modelRegistry, updatedCredential, models);
+      return serializeModelProviderCredentialRecord(this.modelRegistry, {
+        ...updatedCredential,
+        isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
+          && defaultProviderSelectionRecord.modelProviderCredentialId === updatedCredential.id,
+      }, models);
     });
   };
 }

@@ -143,6 +143,10 @@ class ModelProviderCredentialsQueryTestHarness {
       modelProviderCredentialId: "credential-companyhelm",
       reasoningLevels: ["low", "medium", "high"],
     }];
+    const defaultProviderSelectionRows = [{
+      modelCredentialSource: "user_provided",
+      modelProviderCredentialId: "credential-1",
+    }];
     const scopedCompanyIds: string[] = [];
     let selectCallCount = 0;
 
@@ -156,7 +160,14 @@ class ModelProviderCredentialsQueryTestHarness {
               from() {
                 return {
                   async where() {
-                    return selectCallCount === 1 ? credentialRows : modelRows;
+                    if (selectCallCount === 1) {
+                      return defaultProviderSelectionRows;
+                    }
+                    if (selectCallCount === 2) {
+                      return credentialRows;
+                    }
+
+                    return modelRows;
                   },
                 };
               },
