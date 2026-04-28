@@ -84,19 +84,22 @@ test("adds platform admin destinations only for platform admins", () => {
       label: "Admin",
       to: "/admin",
     }, {
-      label: "LLM Credentials",
-      to: "/model-provider-credentials",
-    }, {
       label: "Users",
       to: "/admin/users",
     }, {
       label: "Companies",
       to: "/admin/companies",
+    }, {
+      label: "LLM credentials",
+      to: "/admin/llm-credentials",
+    }, {
+      label: "Platform models",
+      to: "/admin/models",
     }],
   );
   assert.equal(
     adminGroups.find((group) => group.label === "Agent")?.items.some((item) => item.to === "/model-provider-credentials"),
-    false,
+    true,
   );
 });
 

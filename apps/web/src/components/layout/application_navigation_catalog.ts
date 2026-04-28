@@ -72,13 +72,11 @@ export class ApplicationNavigationCatalog {
         label: "Skills",
         to: "/skills",
       },
-      ...(input.isPlatformAdmin
-        ? []
-        : [{
-          icon: KeyRoundIcon,
-          label: "Model Credentials",
-          to: "/model-provider-credentials",
-        }]),
+      {
+        icon: KeyRoundIcon,
+        label: "Model Credentials",
+        to: "/model-provider-credentials",
+      },
       {
         icon: LockKeyholeIcon,
         label: "Secrets",
