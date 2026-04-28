@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { injectable } from "inversify";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import { agentSessions, agents, platformModelRoutes, platformModels } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
@@ -48,6 +49,7 @@ export class PlatformModelsQueryResolver {
     }
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const modelRecords = await selectableDatabase
         .select({
