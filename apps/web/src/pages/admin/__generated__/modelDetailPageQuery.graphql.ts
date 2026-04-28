@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1c1c21d526d617d6de410b33dde2733e>>
+ * @generated SignedSource<<477dc4a379c4f0cbdb3b25bf2a4e61f6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,12 +13,6 @@ export type modelDetailPageQuery$variables = {
   platformModelId: string;
 };
 export type modelDetailPageQuery$data = {
-  readonly ModelProviders: ReadonlyArray<{
-    readonly authorizationInstructionsMarkdown: string | null | undefined;
-    readonly id: string;
-    readonly name: string;
-    readonly type: string;
-  }>;
   readonly PlatformModelProviderCredentialModels: ReadonlyArray<{
     readonly description: string;
     readonly id: string;
@@ -91,21 +85,21 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "modelProvider",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelProvider",
+  "name": "modelId",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelId",
+  "name": "name",
   "storageKey": null
 },
 v5 = {
@@ -154,42 +148,15 @@ v11 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "ModelProvider",
-    "kind": "LinkedField",
-    "name": "ModelProviders",
-    "plural": true,
-    "selections": [
-      (v1/*: any*/),
-      (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "type",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "authorizationInstructionsMarkdown",
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
     "concreteType": "PlatformModel",
     "kind": "LinkedField",
     "name": "PlatformModels",
     "plural": true,
     "selections": [
       (v1/*: any*/),
+      (v2/*: any*/),
       (v3/*: any*/),
       (v4/*: any*/),
-      (v2/*: any*/),
       (v5/*: any*/),
       (v6/*: any*/),
       (v7/*: any*/),
@@ -237,8 +204,8 @@ v11 = [
         "selections": [
           (v1/*: any*/),
           (v9/*: any*/),
+          (v3/*: any*/),
           (v4/*: any*/),
-          (v2/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -248,8 +215,8 @@ v11 = [
             "plural": false,
             "selections": [
               (v1/*: any*/),
+              (v4/*: any*/),
               (v2/*: any*/),
-              (v3/*: any*/),
               (v10/*: any*/)
             ],
             "storageKey": null
@@ -276,8 +243,8 @@ v11 = [
         "name": "baseUrl",
         "storageKey": null
       },
+      (v4/*: any*/),
       (v2/*: any*/),
-      (v3/*: any*/),
       (v10/*: any*/)
     ],
     "storageKey": null
@@ -300,8 +267,8 @@ v11 = [
         "name": "platformModelProviderCredentialId",
         "storageKey": null
       },
+      (v3/*: any*/),
       (v4/*: any*/),
-      (v2/*: any*/),
       (v5/*: any*/),
       (v6/*: any*/),
       (v7/*: any*/),
@@ -334,16 +301,16 @@ return {
     "selections": (v11/*: any*/)
   },
   "params": {
-    "cacheID": "72372be212c164dcb381e66a9ae7887d",
+    "cacheID": "3f584bc206ccad1d4ccfdd732c5508d9",
     "id": null,
     "metadata": {},
     "name": "modelDetailPageQuery",
     "operationKind": "query",
-    "text": "query modelDetailPageQuery(\n  $platformModelId: ID!\n) {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  PlatformModels {\n    id\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    routeCount\n  }\n  PlatformModelRoutes(platformModelId: $platformModelId) {\n    id\n    platformModelProviderCredentialModelId\n    platformModelProviderCredentialModel {\n      id\n      isAvailable\n      modelId\n      name\n      platformModelProviderCredential {\n        id\n        name\n        modelProvider\n        status\n      }\n    }\n  }\n  PlatformModelProviderCredentials {\n    id\n    baseUrl\n    name\n    modelProvider\n    status\n  }\n  PlatformModelProviderCredentialModels {\n    id\n    isAvailable\n    isDefault\n    platformModelProviderCredentialId\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    updatedAt\n  }\n}\n"
+    "text": "query modelDetailPageQuery(\n  $platformModelId: ID!\n) {\n  PlatformModels {\n    id\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    routeCount\n  }\n  PlatformModelRoutes(platformModelId: $platformModelId) {\n    id\n    platformModelProviderCredentialModelId\n    platformModelProviderCredentialModel {\n      id\n      isAvailable\n      modelId\n      name\n      platformModelProviderCredential {\n        id\n        name\n        modelProvider\n        status\n      }\n    }\n  }\n  PlatformModelProviderCredentials {\n    id\n    baseUrl\n    name\n    modelProvider\n    status\n  }\n  PlatformModelProviderCredentialModels {\n    id\n    isAvailable\n    isDefault\n    platformModelProviderCredentialId\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e67b7d968ee7d389ec0fee708b4f1770";
+(node as any).hash = "2d91ae60ee6c01c20e212eb77b28bced";
 
 export default node;
