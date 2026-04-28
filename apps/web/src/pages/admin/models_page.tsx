@@ -1,22 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRightIcon, BoxesIcon, PlusIcon, RouteIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelAction,
-  AlertDialogCancelButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +30,9 @@ const modelsPageQueryNode = graphql`
       reasoningLevels
       isDefault
       isAvailable
+      agentCount
       routeCount
+      sessionCount
       updatedAt
     }
     PlatformModelProviderCredentials {
@@ -107,6 +96,7 @@ function AdminModelsPageContent() {
   const [fetchKey, setFetchKey] = useState(0);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [deleteModel, setDeleteModel] = useState<PlatformModel | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const data = useLazyLoadQuery<modelsPageQuery>(
     modelsPageQueryNode,
@@ -166,31 +156,9 @@ function AdminModelsPageContent() {
           <PlatformModelsTable
             deleteInFlight={isDeleteInFlight}
             models={data.PlatformModels}
-            onDeleteModel={async (modelId) => {
+            onDeleteModel={(model) => {
               setErrorMessage(null);
-              await new Promise<void>((resolve, reject) => {
-                commitDelete({
-                  variables: {
-                    input: {
-                      id: modelId,
-                    },
-                  },
-                  onCompleted: (_response, errors) => {
-                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                    if (nextErrorMessage) {
-                      reject(new Error(nextErrorMessage));
-                      return;
-                    }
-
-                    resolve();
-                  },
-                  onError: reject,
-                });
-              }).then(() => {
-                setFetchKey((current) => current + 1);
-              }).catch((error: unknown) => {
-                setErrorMessage(error instanceof Error ? error.message : "Failed to delete platform model.");
-              });
+              setDeleteModel(model);
             }}
             onOpenModel={(modelId) => {
               void navigate({
@@ -200,6 +168,45 @@ function AdminModelsPageContent() {
           />
         </CardContent>
       </Card>
+      <DeletePlatformModelDialog
+        inFlight={isDeleteInFlight}
+        model={deleteModel}
+        models={data.PlatformModels}
+        onDelete={async (input) => {
+          setErrorMessage(null);
+          await new Promise<void>((resolve, reject) => {
+            commitDelete({
+              variables: {
+                input: {
+                  id: input.modelId,
+                  replacementPlatformModelId: input.replacementPlatformModelId,
+                },
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          }).then(() => {
+            setDeleteModel(null);
+            setFetchKey((current) => current + 1);
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to delete platform model.");
+          });
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteModel(null);
+          }
+        }}
+        open={Boolean(deleteModel)}
+      />
       <ImportPlatformModelDialog
         credentialModels={data.PlatformModelProviderCredentialModels}
         credentials={data.PlatformModelProviderCredentials}
@@ -271,7 +278,7 @@ function AdminModelsPageContent() {
 function PlatformModelsTable(props: {
   deleteInFlight: boolean;
   models: readonly PlatformModel[];
-  onDeleteModel(modelId: string): Promise<void>;
+  onDeleteModel(model: PlatformModel): void;
   onOpenModel(modelId: string): void;
 }) {
   if (props.models.length === 0) {
@@ -328,61 +335,167 @@ function PlatformModelsTable(props: {
             </TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      aria-label={`Delete ${model.name}`}
-                      disabled={props.deleteInFlight}
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete platform model</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Delete {model.name} from the platform catalog. Existing routes for this model will also be removed.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancelAction asChild>
-                        <AlertDialogCancelButton type="button" variant="outline">
-                          Cancel
-                        </AlertDialogCancelButton>
-                      </AlertDialogCancelAction>
-                      <AlertDialogPrimaryAction asChild>
-                        <AlertDialogActionButton
-                          disabled={props.deleteInFlight}
-                          onClick={() => {
-                            void props.onDeleteModel(model.id);
-                          }}
-                          type="button"
-                          variant="destructive"
-                        >
-                          Delete
-                        </AlertDialogActionButton>
-                      </AlertDialogPrimaryAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              <Button
-                onClick={() => {
-                  props.onOpenModel(model.id);
-                }}
-                size="sm"
-                variant="outline"
-              >
+                <Button
+                  aria-label={`Delete ${model.name}`}
+                  disabled={props.deleteInFlight}
+                  onClick={() => {
+                    props.onDeleteModel(model);
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <Trash2Icon />
+                </Button>
+                <Button
+                  onClick={() => {
+                    props.onOpenModel(model.id);
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
                   Routing
                   <ArrowRightIcon className="size-4" />
-              </Button>
+                </Button>
               </div>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function DeletePlatformModelDialog(props: {
+  inFlight: boolean;
+  model: PlatformModel | null;
+  models: readonly PlatformModel[];
+  onDelete(input: {
+    modelId: string;
+    replacementPlatformModelId: string | null;
+  }): Promise<void>;
+  onOpenChange(open: boolean): void;
+  open: boolean;
+}) {
+  const [replacementPlatformModelId, setReplacementPlatformModelId] = useState("");
+  const model = props.model;
+  const replacementModels = useMemo(() => {
+    if (!model) {
+      return [];
+    }
+
+    return props.models
+      .filter((candidateModel) => {
+        return candidateModel.id !== model.id && candidateModel.isAvailable && candidateModel.routeCount > 0;
+      })
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }, [model, props.models]);
+  const requiresReplacement = Boolean(model && (model.agentCount > 0 || model.sessionCount > 0));
+
+  useEffect(() => {
+    if (!props.open) {
+      setReplacementPlatformModelId("");
+      return;
+    }
+
+    setReplacementPlatformModelId(replacementModels[0]?.id ?? "");
+  }, [props.open, replacementModels]);
+
+  if (!model) {
+    return null;
+  }
+
+  const replacementUnavailable = requiresReplacement && replacementModels.length === 0;
+  const deleteDisabled = props.inFlight || (requiresReplacement && !replacementPlatformModelId);
+
+  return (
+    <Dialog onOpenChange={props.onOpenChange} open={props.open}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete platform model</DialogTitle>
+          <DialogDescription>
+            Delete {model.name} from the platform catalog. Routes for this model will also be removed.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-2 rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Agents using this model</span>
+              <span className="font-medium text-foreground">{model.agentCount}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Existing sessions using this model</span>
+              <span className="font-medium text-foreground">{model.sessionCount}</span>
+            </div>
+          </div>
+          {requiresReplacement ? (
+            <div className="grid gap-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="delete-replacement-platform-model">
+                Replacement model
+              </label>
+              <Select
+                items={replacementModels.map((replacementModel) => ({
+                  label: replacementModel.name,
+                  value: replacementModel.id,
+                }))}
+                onValueChange={(value) => {
+                  setReplacementPlatformModelId(value ?? "");
+                }}
+                value={replacementPlatformModelId}
+              >
+                <SelectTrigger id="delete-replacement-platform-model">
+                  <SelectValue placeholder="Select replacement model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {replacementModels.map((replacementModel) => (
+                    <SelectItem key={replacementModel.id} value={replacementModel.id}>
+                      {replacementModel.name} - {replacementModel.modelId}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {replacementUnavailable ? (
+                <p className="text-xs/relaxed text-destructive">
+                  Add a routed, available platform model before deleting this one.
+                </p>
+              ) : (
+                <p className="text-xs/relaxed text-muted-foreground">
+                  Affected agents and existing sessions will point to the selected model before deletion.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs/relaxed text-muted-foreground">
+              No agents or existing sessions currently point to this model.
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              props.onOpenChange(false);
+            }}
+            type="button"
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={deleteDisabled || replacementUnavailable}
+            onClick={() => {
+              void props.onDelete({
+                modelId: model.id,
+                replacementPlatformModelId: requiresReplacement ? replacementPlatformModelId : null,
+              });
+            }}
+            type="button"
+            variant="destructive"
+          >
+            <Trash2Icon />
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

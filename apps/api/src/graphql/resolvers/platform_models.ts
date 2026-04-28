@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { platformModelRoutes, platformModels } from "../../db/schema.ts";
+import { agentSessions, agents, platformModelRoutes, platformModels } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type PlatformModelRecord = {
@@ -15,7 +15,9 @@ type PlatformModelRecord = {
   name: string;
   reasoningLevels: string[] | null;
   reasoningSupported: boolean;
+  agentCount: number;
   routeCount: number;
+  sessionCount: number;
   updatedAt: Date;
 };
 
@@ -79,11 +81,51 @@ export class PlatformModelsQueryResolver {
           (routeCountByModelId.get(routeRecord.platformModelId) ?? 0) + 1,
         );
       }
+      const agentRecords = await selectableDatabase
+        .select({
+          defaultPlatformModelId: agents.defaultPlatformModelId,
+        })
+        .from(agents)
+        .where(eq(agents.defaultModelCredentialSource, "platform")) as Array<{
+          defaultPlatformModelId: string | null;
+        }>;
+      const agentCountByModelId = new Map<string, number>();
+      for (const agentRecord of agentRecords) {
+        if (!agentRecord.defaultPlatformModelId) {
+          continue;
+        }
+
+        agentCountByModelId.set(
+          agentRecord.defaultPlatformModelId,
+          (agentCountByModelId.get(agentRecord.defaultPlatformModelId) ?? 0) + 1,
+        );
+      }
+      const sessionRecords = await selectableDatabase
+        .select({
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
+        })
+        .from(agentSessions)
+        .where(eq(agentSessions.currentModelCredentialSource, "platform")) as Array<{
+          currentPlatformModelId: string | null;
+        }>;
+      const sessionCountByModelId = new Map<string, number>();
+      for (const sessionRecord of sessionRecords) {
+        if (!sessionRecord.currentPlatformModelId) {
+          continue;
+        }
+
+        sessionCountByModelId.set(
+          sessionRecord.currentPlatformModelId,
+          (sessionCountByModelId.get(sessionRecord.currentPlatformModelId) ?? 0) + 1,
+        );
+      }
 
       return modelRecords
         .map((modelRecord) => ({
           ...modelRecord,
+          agentCount: agentCountByModelId.get(modelRecord.id) ?? 0,
           routeCount: routeCountByModelId.get(modelRecord.id) ?? 0,
+          sessionCount: sessionCountByModelId.get(modelRecord.id) ?? 0,
         }))
         .sort((left, right) => left.name.localeCompare(right.name));
     });

@@ -945,6 +945,8 @@ type PlatformModel {
   reasoningLevels: [String!]!
   isDefault: Boolean!
   isAvailable: Boolean!
+  agentCount: Int!
+  sessionCount: Int!
   routeCount: Int!
   createdAt: String!
   updatedAt: String!
@@ -1349,6 +1351,7 @@ input DeleteModelProviderCredentialInput {
 
 input DeletePlatformModelInput {
   id: ID!
+  replacementPlatformModelId: ID
 }
 
 input DeletePlatformModelProviderCredentialInput {

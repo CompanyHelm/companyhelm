@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f702e81e6d8e9549858c100868704047>>
+ * @generated SignedSource<<294f0738edb0c1dc15971e134df8220b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type DeletePlatformModelInput = {
   id: string;
+  replacementPlatformModelId?: string | null | undefined;
 };
 export type modelsPageDeleteMutation$variables = {
   input: DeletePlatformModelInput;

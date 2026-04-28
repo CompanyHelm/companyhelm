@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<da881d070c570f094904e9493734bee9>>
+ * @generated SignedSource<<bfba3ea0964c2418f4efdf0dc5c4f365>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,6 +25,7 @@ export type modelsPageQuery$data = {
     readonly status: string;
   }>;
   readonly PlatformModels: ReadonlyArray<{
+    readonly agentCount: number;
     readonly description: string;
     readonly id: string;
     readonly isAvailable: boolean;
@@ -36,6 +37,7 @@ export type modelsPageQuery$data = {
     readonly reasoningLevels: ReadonlyArray<string>;
     readonly reasoningSupported: boolean;
     readonly routeCount: number;
+    readonly sessionCount: number;
     readonly updatedAt: string;
   }>;
 };
@@ -133,7 +135,21 @@ v5 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "agentCount",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "routeCount",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "sessionCount",
         "storageKey": null
       },
       {
@@ -208,16 +224,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "3cc97bc734bc16971bac715843f5e30f",
+    "cacheID": "8b894bf7010e94f69aa432f5d79005fd",
     "id": null,
     "metadata": {},
     "name": "modelsPageQuery",
     "operationKind": "query",
-    "text": "query modelsPageQuery {\n  PlatformModels {\n    id\n    key\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    routeCount\n    updatedAt\n  }\n  PlatformModelProviderCredentials {\n    id\n    name\n    modelProvider\n    status\n  }\n  PlatformModelProviderCredentialModels {\n    id\n    isAvailable\n    modelId\n    name\n    platformModelProviderCredentialId\n  }\n}\n"
+    "text": "query modelsPageQuery {\n  PlatformModels {\n    id\n    key\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    agentCount\n    routeCount\n    sessionCount\n    updatedAt\n  }\n  PlatformModelProviderCredentials {\n    id\n    name\n    modelProvider\n    status\n  }\n  PlatformModelProviderCredentialModels {\n    id\n    isAvailable\n    modelId\n    name\n    platformModelProviderCredentialId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4aeecef63a3d220732ac6dda5b2e6323";
+(node as any).hash = "cf1854fec6c2d5c765c487da7b567b3a";
 
 export default node;
