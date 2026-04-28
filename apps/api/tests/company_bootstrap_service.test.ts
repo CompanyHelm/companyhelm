@@ -15,9 +15,7 @@ import {
   workflowDefinitions,
   workflowStepDefinitions,
 } from "../src/db/schema.ts";
-import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
-import { ModelProviderModel } from "../src/services/ai_providers/model_provider_model.ts";
 import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 import { CompanyHelmComputeProviderService } from "../src/services/compute_provider_definitions/companyhelm_service.ts";
 
@@ -173,8 +171,6 @@ class CompanyBootstrapServiceTestHarness {
   private readonly agentRows: AgentRow[];
   private readonly baseDefinitions: BaseDefinitionRow[];
   private readonly companyOnboardingRows: CompanyOnboardingRow[];
-  private readonly companyHelmOpenAiApiKey: string | null;
-  private readonly managedAvailableModelIds: string[] | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly platformModelRows: PlatformModelRow[];
@@ -189,8 +185,6 @@ class CompanyBootstrapServiceTestHarness {
     agentRows?: AgentRow[];
     baseDefinitions?: BaseDefinitionRow[];
     companyOnboardingRows?: CompanyOnboardingRow[];
-    companyHelmOpenAiApiKey?: string | null;
-    managedAvailableModelIds?: string[] | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     platformModelRows?: PlatformModelRow[];
@@ -204,10 +198,6 @@ class CompanyBootstrapServiceTestHarness {
     this.agentRows = [...(params?.agentRows ?? [])];
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
     this.companyOnboardingRows = [...(params?.companyOnboardingRows ?? [])];
-    this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
-      ? "sk-local-api-key"
-      : params.companyHelmOpenAiApiKey;
-    this.managedAvailableModelIds = params?.managedAvailableModelIds ?? null;
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
     this.platformModelRows = [...(params?.platformModelRows ?? [{
@@ -231,43 +221,21 @@ class CompanyBootstrapServiceTestHarness {
       e2b: {
         api_key: string;
       };
-      llm?: {
-        openai_api_key: string;
-      };
     } = {
       e2b: {
         api_key: "e2b-local-api-key",
       },
     };
-    if (this.companyHelmOpenAiApiKey) {
-      companyHelmConfig.llm = {
-        openai_api_key: this.companyHelmOpenAiApiKey,
-      };
-    }
 
     const config = {
       companyhelm: {
         ...companyHelmConfig,
       },
     } as Config;
-    const managedAvailableModelIds = this.managedAvailableModelIds;
-
-    const llmProviderService = new CompanyHelmLlmProviderService(config, new ModelRegistry());
-    if (this.managedAvailableModelIds) {
-      await llmProviderService.refreshAvailableSeedModels({
-        async fetchModels() {
-          return new ModelRegistry()
-            .getModelsForProvider("openai")
-            .filter((model): model is ModelProviderModel => Boolean(managedAvailableModelIds?.includes(model.modelId)));
-        },
-      } as never, {
-        warn() {},
-      });
-    }
 
     return new CompanyBootstrapService(
       new CompanyHelmComputeProviderService(config),
-      llmProviderService,
+      new ModelRegistry(),
     );
   }
 
@@ -710,22 +678,6 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.equal(defaultDefinition?.description, "Managed by CompanyHelm");
   assert.equal(defaultDefinition?.provider, "e2b");
   assert.equal(defaultDefinition?.isDefault, true);
-  assert.deepEqual(harness.listModelCredentials(), []);
-  assert.deepEqual(harness.listModels(), []);
-  assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
-});
-
-test("CompanyBootstrapService skips the CompanyHelm model provider when the OpenAI key is not configured", async () => {
-  const harness = new CompanyBootstrapServiceTestHarness({
-    companyHelmOpenAiApiKey: null,
-  });
-
-  await (await harness.buildService()).ensureCompanyDefaults(
-    harness.buildTransaction() as never,
-    "company-1",
-  );
-
-  assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
   assert.deepEqual(harness.listModelCredentials(), []);
   assert.deepEqual(harness.listModels(), []);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);

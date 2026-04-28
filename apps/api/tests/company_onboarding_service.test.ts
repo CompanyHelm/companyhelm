@@ -5,6 +5,7 @@ import {
   companyGithubInstallations,
   companyOnboardings,
   modelProviderCredentials,
+  platformModelRoutes,
   workflowDefinitions,
 } from "../src/db/schema.ts";
 import {
@@ -85,14 +86,12 @@ class CompanyOnboardingServiceTestHarness {
           });
         },
       },
-      {
-        hasRuntimeApiKey: () => this.hasManagedLlmProvider,
-      },
     );
   }
 
   buildTransactionProvider() {
     const githubInstallations = this.githubInstallations;
+    const hasManagedLlmProvider = this.hasManagedLlmProvider;
     const modelCredentials = this.modelCredentials;
     const onboardingRows = this.onboardingRows;
 
@@ -168,6 +167,9 @@ class CompanyOnboardingServiceTestHarness {
                           return modelCredentials.slice(0, 1).map((credential) => ({
                             id: credential.id,
                           }));
+                        }
+                        if (table === platformModelRoutes) {
+                          return hasManagedLlmProvider ? [{ id: "route-1" }] : [];
                         }
 
                         return [];

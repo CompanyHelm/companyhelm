@@ -14,7 +14,6 @@ import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_cod
 import { OpenAiCompatibleModelAdapter } from "../providers/models-adapters/openai_compatible_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 import { OpenRouterModelAdapter } from "../providers/models-adapters/openrouter_model_adapter.js";
-import { CompanyHelmLlmProviderService } from "./companyhelm_service.ts";
 import { OpenAiCompatibleDefaultModelService } from "./openai_compatible_default_model_service.ts";
 
 type StoredModelRecord = {
@@ -267,10 +266,6 @@ export class ModelService {
   }
 
   private resolveRuntimeProvider(modelProvider: string): string {
-    if (modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
-      return CompanyHelmLlmProviderService.RUNTIME_PROVIDER_ID;
-    }
-
     return modelProvider;
   }
 }

@@ -54,8 +54,7 @@ agent_tools:
 web_search:
   exa:
     api_key: "${EXA_API_KEY}"
-# CompanyHelm default providers. Optional: seeds the managed CompanyHelm providers when present.
-# Users can always add their own providers by adding the providers from UI if these are not present.
+# CompanyHelm default compute settings. Platform LLM credentials are stored in the database.
 companyhelm:
   e2b:
     api_key: "${E2B_API_KEY}"
@@ -64,8 +63,6 @@ companyhelm:
       height: 1080
     # must match the E2B team name
     template_prefix: "realequityapps/"
-  llm:
-    openai_api_key: "${?COMPANYHELM_OPENAI_API_KEY}"
 github:
   # OAuth client id for the GitHub App. The frontend uses this when starting the app
   # installation flow, so it must match the app whose installation URL is configured below.

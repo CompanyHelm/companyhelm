@@ -4,9 +4,6 @@ import { z } from "zod";
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();
-const OptionalConfigSectionSchema = <TSection extends z.ZodType>(schema: TSection) =>
-  schema.nullish().transform((value) => value ?? undefined);
-const OptionalNonEmptyStringSchema = NonEmptyStringSchema.nullish().transform((value) => value ?? undefined);
 const DefaultWorkerConcurrencySchema = z.object({
   concurrency: PositiveIntegerSchema,
 }).default({
@@ -108,9 +105,6 @@ export const ConfigDocument = z.object({
       }),
       template_prefix: NonEmptyStringSchema,
     }),
-    llm: OptionalConfigSectionSchema(z.object({
-      openai_api_key: OptionalNonEmptyStringSchema,
-    })),
   }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,

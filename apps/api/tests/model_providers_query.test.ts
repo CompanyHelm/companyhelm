@@ -38,7 +38,23 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   const config = ModelProvidersQueryTestHarness.createConfigMock();
   const database = {
     async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
-      return callback({} as never);
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    async limit() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      } as never);
     },
   };
   const modelManager = {
@@ -170,16 +186,35 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   await app.close();
 });
 
-test("ModelProviders resolver marks CompanyHelm available when the runtime key is configured", async () => {
-  const resolver = new ModelProvidersQueryResolver(undefined, {
-    hasRuntimeApiKey: () => true,
-  });
+test("ModelProviders resolver marks CompanyHelm available when a platform model route exists", async () => {
+  const resolver = new ModelProvidersQueryResolver();
 
   const providers = await resolver.execute({}, {}, {
     authSession: {
       company: {
         id: "company-123",
         name: "Example Org",
+      },
+    },
+    app_runtime_transaction_provider: {
+      async transaction(callback: (tx: unknown) => Promise<unknown>) {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return [{ id: "route-1" }];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        });
       },
     },
   } as never);

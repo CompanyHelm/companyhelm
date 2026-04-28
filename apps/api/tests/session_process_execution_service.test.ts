@@ -182,7 +182,6 @@ test("SessionProcessExecutionService emits enhanced cleanup diagnostics when ena
     undefined as never,
     companySettingsService as never,
     undefined as never,
-    undefined as never,
     {
       shouldLogEnhanced(_companyId: string, diagnosticComponent: string) {
         return diagnosticComponent === "session_process_cleanup";
@@ -241,6 +240,9 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
       async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
         assert.equal(companyId, "company-1");
         return callback({
+          async execute() {
+            return undefined;
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
@@ -479,6 +481,9 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
         assert.equal(companyId, "company-1");
         return callback({
+          async execute() {
+            return undefined;
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
@@ -764,8 +769,10 @@ test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues un
                     async where() {
                       return [{
                         agentId: "agent-1",
+                        currentModelCredentialSource: "user_provided",
                         currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
+                        ownerUserId: null,
                         status: "queued",
                       }];
                     },
@@ -985,6 +992,9 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
       async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
         assert.equal(companyId, "company-1");
         return callback({
+          async execute() {
+            return undefined;
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
@@ -994,8 +1004,10 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentModelCredentialSource: "platform",
+                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
                         currentReasoningLevel: "high",
+                        ownerUserId: null,
                         status: "queued",
                       }];
                     },
@@ -1039,7 +1051,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                     async where() {
                       return [{
                         modelId: "gpt-5.4",
-                        modelProviderCredentialId: "credential-1",
+                        platformModelProviderCredentialId: "platform-credential-1",
                       }];
                     },
                   };
@@ -1420,6 +1432,9 @@ test("SessionProcessExecutionService clears queued work when the managed provide
       async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
         assert.equal(companyId, "company-1");
         return callback({
+          async execute() {
+            return undefined;
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
@@ -1429,8 +1444,10 @@ test("SessionProcessExecutionService clears queued work when the managed provide
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentModelCredentialSource: "platform",
+                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
                         currentReasoningLevel: "high",
+                        ownerUserId: null,
                         status: "queued",
                       }];
                     },
@@ -1474,7 +1491,7 @@ test("SessionProcessExecutionService clears queued work when the managed provide
                     async where() {
                       return [{
                         modelId: "gpt-5.4",
-                        modelProviderCredentialId: "credential-1",
+                        platformModelProviderCredentialId: "platform-credential-1",
                       }];
                     },
                   };
@@ -1488,8 +1505,8 @@ test("SessionProcessExecutionService clears queued work when the managed provide
                   return {
                     async where() {
                       return [{
-                        encryptedApiKey: "managed",
-                        isManaged: true,
+                        baseUrl: null,
+                        encryptedApiKey: "platform-openai-key",
                         modelProvider: "openai",
                       }];
                     },
@@ -1592,11 +1609,6 @@ test("SessionProcessExecutionService clears queued work when the managed provide
     undefined as never,
     companySettingsService as never,
     {
-      getRuntimeApiKey() {
-        return "sk-companyhelm";
-      },
-    } as never,
-    {
       async checkWithinBudget(_transactionProvider: unknown, input: { companyId: string; modelProviderCredentialId: string }) {
         budgetChecks.push(input);
         return {
@@ -1615,7 +1627,7 @@ test("SessionProcessExecutionService clears queued work when the managed provide
 
   assert.deepEqual(budgetChecks, [{
     companyId: "company-1",
-    modelProviderCredentialId: "credential-1",
+    modelProviderCredentialId: "platform-credential-1",
   }]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",

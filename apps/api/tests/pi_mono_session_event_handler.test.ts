@@ -6,6 +6,8 @@ import {
   messageContents,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -44,7 +46,7 @@ type SessionQueuedMessageRecord = Record<string, unknown> & {
 };
 
 type PiMonoSessionEventHandlerTestHarnessInput = {
-  credentialIsManaged?: boolean;
+  credentialSource?: "platform" | "user_provided";
   credentialType?: "api_key" | "oauth_token";
 };
 
@@ -120,6 +122,9 @@ class PiMonoSessionEventHandlerTestHarness {
       transactionProvider: {
         async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
           return callback({
+            async execute() {
+              return undefined;
+            },
             insert(table: unknown) {
               return {
                 async values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
@@ -165,13 +170,16 @@ class PiMonoSessionEventHandlerTestHarness {
                         return [{
                           agentId: "agent-1",
                           companyId: "company-1",
+                          currentModelCredentialSource: input.credentialSource ?? "user_provided",
                           currentModelProviderCredentialModelId: "credential-model-1",
+                          currentPlatformModelId: "platform-model-1",
+                          currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
                         }];
                       },
                     };
                   }
 
-                  if (table === modelProviderCredentialModels) {
+                  if (table === modelProviderCredentialModels || table === platformModelProviderCredentialModels) {
                     return {
                       async where() {
                         return [{
@@ -181,11 +189,13 @@ class PiMonoSessionEventHandlerTestHarness {
                     };
                   }
 
-                  if (table === modelProviderCredentials) {
+                  if (table === modelProviderCredentials || table === platformModelProviderCredentials) {
                     return {
                       async where() {
                         return [{
-                          isManaged: input.credentialIsManaged ?? false,
+                          baseUrl: null,
+                          encryptedApiKey: "sk-test",
+                          modelProvider: "openai",
                           type: input.credentialType ?? "api_key",
                         }];
                       },
@@ -793,9 +803,9 @@ for (const scenario of [
     },
   },
   {
-    description: "managed CompanyHelm credentials",
+    description: "platform credentials",
     input: {
-      credentialIsManaged: true,
+      credentialSource: "platform" as const,
     },
   },
 ]) {

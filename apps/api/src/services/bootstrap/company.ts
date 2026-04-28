@@ -19,7 +19,7 @@ import {
   workflowStepDefinitions,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
-import { CompanyHelmLlmProviderService } from "../ai_providers/companyhelm_service.ts";
+import { ModelRegistry } from "../ai_providers/model_registry.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
 import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
@@ -169,17 +169,17 @@ export class CompanyBootstrapService {
     stepId: "propose-starter-agents",
   }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
-  private readonly companyHelmLlmProviderService: CompanyHelmLlmProviderService;
+  private readonly modelRegistry: ModelRegistry;
   private readonly systemSkillRegistry = new SystemSkillRegistry();
 
   constructor(
     @inject(CompanyHelmComputeProviderService)
     companyHelmComputeProviderService: CompanyHelmComputeProviderService,
-    @inject(CompanyHelmLlmProviderService)
-    companyHelmLlmProviderService: CompanyHelmLlmProviderService,
+    @inject(ModelRegistry)
+    modelRegistry: ModelRegistry = new ModelRegistry(),
   ) {
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
-    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
+    this.modelRegistry = modelRegistry;
   }
 
   async findOrCreateCompany(
@@ -618,7 +618,7 @@ export class CompanyBootstrapService {
   }
 
   private resolveCompanyHelmDefaultReasoningLevel(reasoningLevels: string[]): string | null {
-    const defaultReasoningLevel = this.companyHelmLlmProviderService.getDefaultReasoningLevel();
+    const defaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider("companyhelm");
     if (defaultReasoningLevel && reasoningLevels.includes(defaultReasoningLevel)) {
       return defaultReasoningLevel;
     }

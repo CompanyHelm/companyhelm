@@ -13,7 +13,6 @@ import { ConfigDocument } from "../src/config/schema.ts";
 class AppConfigTestHarness {
   static createFixtureConfigPath(): {
     companyHelmE2bApiKeyVariableName: string;
-    companyHelmOpenAiApiKeyVariableName: string;
     configPath: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
@@ -38,7 +37,6 @@ class AppConfigTestHarness {
     const githubWebhookSecretVariableName = "COMPANYHELM_TEST_GITHUB_WEBHOOK_SECRET";
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
     const companyHelmE2bApiKeyVariableName = "COMPANYHELM_TEST_E2B_API_KEY";
-    const companyHelmOpenAiApiKeyVariableName = "COMPANYHELM_TEST_OPENAI_API_KEY";
 
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
@@ -50,14 +48,12 @@ class AppConfigTestHarness {
     process.env[githubWebhookSecretVariableName] = "github-webhook-secret";
     process.env[exaApiKeyVariableName] = "exa-local-api-key";
     process.env[companyHelmE2bApiKeyVariableName] = "e2b-local-api-key";
-    process.env[companyHelmOpenAiApiKeyVariableName] = "sk-local-api-key";
 
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
       configPath,
       AppConfigTestHarness.createConfigDocument({
         companyHelmE2bApiKeyVariableName,
-        companyHelmOpenAiApiKeyVariableName,
         githubClientVariableName,
         githubKeyIdVariableName,
         githubKeyVariableName,
@@ -73,7 +69,6 @@ class AppConfigTestHarness {
 
     return {
       companyHelmE2bApiKeyVariableName,
-      companyHelmOpenAiApiKeyVariableName,
       configPath,
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
@@ -132,14 +127,12 @@ log:
     const githubWebhookSecretVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_WEBHOOK_SECRET`;
     const exaApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_EXA_API_KEY`;
     const companyHelmE2bApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_E2B_API_KEY`;
-    const companyHelmOpenAiApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_OPENAI_API_KEY`;
 
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
       baseConfigPath,
       AppConfigTestHarness.createConfigDocument({
         companyHelmE2bApiKeyVariableName,
-        companyHelmOpenAiApiKeyVariableName,
         githubClientVariableName,
         githubKeyIdVariableName,
         githubKeyVariableName,
@@ -175,7 +168,6 @@ ${githubUrlVariableName}=https://dotenv-base-github.example/app
 ${githubWebhookSecretVariableName}=dotenv-base-github-webhook-secret
 ${exaApiKeyVariableName}=dotenv-base-exa-local-api-key
 ${companyHelmE2bApiKeyVariableName}=dotenv-base-e2b-local-api-key
-${companyHelmOpenAiApiKeyVariableName}=dotenv-base-sk-local-api-key
 `.trimStart(),
       "utf8",
     );
@@ -183,7 +175,6 @@ ${companyHelmOpenAiApiKeyVariableName}=dotenv-base-sk-local-api-key
       overrideDotEnvPath,
       `
 ${githubClientVariableName}=dotenv-override-client-id
-${companyHelmOpenAiApiKeyVariableName}=dotenv-override-sk-local-api-key
 `.trimStart(),
       "utf8",
     );
@@ -195,7 +186,6 @@ ${companyHelmOpenAiApiKeyVariableName}=dotenv-override-sk-local-api-key
 
   private static createConfigDocument(params: {
     companyHelmE2bApiKeyVariableName: string;
-    companyHelmOpenAiApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyIdVariableName: string;
     githubKeyVariableName: string;
@@ -279,8 +269,6 @@ companyhelm:
       width: 1920
       height: 1080
     template_prefix: "realequityapps/"
-  llm:
-    openai_api_key: "\${${params.companyHelmOpenAiApiKeyVariableName}}"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   key_id: "\${${params.githubKeyIdVariableName}}"
@@ -369,7 +357,6 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key_id: "companyhelm-local-key",
   });
   assert.equal(document.companyhelm.e2b.api_key, "e2b-local-api-key");
-  assert.equal(document.companyhelm.llm?.openai_api_key, "sk-local-api-key");
   assert.deepEqual(document.companyhelm.e2b.desktop_resolution, {
     height: 1080,
     width: 1920,
@@ -414,54 +401,7 @@ test("AppConfig loads both shared and override dotenv files for local override c
   assert.equal(document.log.level, "warn");
   assert.equal(document.github.app_client_id, "dotenv-override-client-id");
   assert.equal(document.companyhelm.e2b.api_key, "dotenv-base-e2b-local-api-key");
-  assert.equal(document.companyhelm.llm?.openai_api_key, "dotenv-override-sk-local-api-key");
   assert.equal(document.auth.clerk?.secret_key, "dotenv-base-clerk-secret-key");
-});
-
-test("AppConfig allows CompanyHelm LLM settings to be omitted", () => {
-  const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
-
-  const parsedDocument = ConfigDocument.parse({
-    ...document,
-    companyhelm: {
-      e2b: document.companyhelm.e2b,
-    },
-  });
-
-  assert.equal(parsedDocument.companyhelm.llm, undefined);
-});
-
-test("AppConfig treats null CompanyHelm LLM settings as omitted", () => {
-  const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
-
-  const parsedDocument = ConfigDocument.parse({
-    ...document,
-    companyhelm: {
-      e2b: document.companyhelm.e2b,
-      llm: null,
-    },
-  });
-
-  assert.equal(parsedDocument.companyhelm.llm, undefined);
-});
-
-test("AppConfig treats null CompanyHelm OpenAI key as omitted", () => {
-  const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
-
-  const parsedDocument = ConfigDocument.parse({
-    ...document,
-    companyhelm: {
-      e2b: document.companyhelm.e2b,
-      llm: {
-        openai_api_key: null,
-      },
-    },
-  });
-
-  assert.equal(parsedDocument.companyhelm.llm?.openai_api_key, undefined);
 });
 
 test("AppConfig allows GitHub webhook secret to be omitted", () => {

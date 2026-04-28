@@ -357,44 +357,6 @@ test("DeleteModelProviderCredentialMutation deletes an unused default credential
   assert.equal(harness.getCredentials()[0]?.isDefault, true);
 });
 
-test("DeleteModelProviderCredentialMutation rejects managed CompanyHelm credentials", async () => {
-  const harness = new DeleteModelProviderCredentialMutationTestHarness({
-    credentialRows: [{
-      companyId: "company-123",
-      createdAt: new Date("2026-04-04T10:00:00.000Z"),
-      errorMessage: null,
-      id: "credential-1",
-      isDefault: true,
-      isManaged: true,
-      modelProvider: "openai",
-      name: "CompanyHelm",
-      refreshToken: null,
-      refreshedAt: null,
-      status: "active",
-      type: "api_key",
-      updatedAt: new Date("2026-04-04T10:06:00.000Z"),
-    }],
-    targetCredentialId: "credential-1",
-    targetCredentialModels: [],
-  });
-
-  const mutation = new DeleteModelProviderCredentialMutation();
-
-  await assert.rejects(
-    mutation.execute(
-      null,
-      {
-        input: {
-          id: "credential-1",
-        },
-      },
-      harness.getContext(),
-    ),
-    new Error("CompanyHelm model provider is managed by the system."),
-  );
-  assert.deepEqual(harness.getDeletedCredentialIds(), []);
-});
-
 test("DeleteModelProviderCredentialMutation blocks deleting a credential that still has agents or sessions without replacement", async () => {
   const harness = new DeleteModelProviderCredentialMutationTestHarness({
     agentRows: [{

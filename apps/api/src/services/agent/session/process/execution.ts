@@ -29,7 +29,6 @@ import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
 import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
-import { CompanyHelmLlmProviderService } from "../../../ai_providers/companyhelm_service.ts";
 import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 
@@ -91,7 +90,6 @@ type SelectableDatabase = {
 @injectable()
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
-  private readonly companyHelmLlmProviderService?: CompanyHelmLlmProviderService;
   private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
   private readonly companySettingsService: CompanySettingsService;
   private readonly logger: PinoLogger;
@@ -119,15 +117,12 @@ export class SessionProcessExecutionService {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(CompanySettingsService)
     companySettingsService: CompanySettingsService = new CompanySettingsService(),
-    @inject(CompanyHelmLlmProviderService)
-    companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
     @inject(CompanyManagedLlmBudgetService)
     companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
-    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
     this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
     this.companySettingsService = companySettingsService;
     this.logger = logger.child({
@@ -757,26 +752,10 @@ export class SessionProcessExecutionService {
   }
 
   private resolveRuntimeApiKey(credentialRow: CredentialRow): string {
-    if (credentialRow.modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
-      if (!this.companyHelmLlmProviderService) {
-        throw new Error("CompanyHelm model provider service is not configured.");
-      }
-
-      return this.companyHelmLlmProviderService.getRuntimeApiKey();
-    }
-
     return credentialRow.encryptedApiKey;
   }
 
   private resolveRuntimeProviderId(credentialRow: CredentialRow): string {
-    if (credentialRow.modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
-      if (!this.companyHelmLlmProviderService) {
-        throw new Error("CompanyHelm model provider service is not configured.");
-      }
-
-      return this.companyHelmLlmProviderService.getRuntimeModelProvider();
-    }
-
     return credentialRow.modelProvider;
   }
 

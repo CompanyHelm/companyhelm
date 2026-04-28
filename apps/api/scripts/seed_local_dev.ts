@@ -8,14 +8,25 @@ import { Config, ConfigDocument } from "../src/config/schema.ts";
 import { AdminDatabase } from "../src/db/admin_database.ts";
 import { DbBootstrap } from "../src/db/bootstrap/bootstrap.ts";
 import type { DatabaseTransactionInterface } from "../src/db/database_interface.ts";
-import { agents, companies, companyMembers, users } from "../src/db/schema.ts";
+import { PlatformAdminAccess } from "../src/db/platform_admin_access.ts";
+import {
+  agents,
+  companies,
+  companyMembers,
+  platformModelProviderCredentials,
+  platformModels,
+  users,
+} from "../src/db/schema.ts";
+import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
 import { ApiLogger } from "../src/log/api_logger.ts";
-import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
+import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
 import { ModelService } from "../src/services/ai_providers/model_service.ts";
+import { PlatformModelProviderCredentialService } from "../src/services/ai_providers/platform_model_provider_credential_service.ts";
 import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 
 const LOCAL_DEV_USER_ID = "00000000-0000-4000-8000-000000000001";
 const LOCAL_DEV_COMPANY_ID = "00000000-0000-4000-8000-000000000002";
+const LOCAL_DEV_PLATFORM_OPENAI_CREDENTIAL_ID = "00000000-0000-4000-8000-000000000003";
 const LOCAL_DEV_USER_EMAIL = "andrea.local@companyhelm.dev";
 const LOCAL_DEV_COMPANY_SLUG = "companyhelm-local";
 
@@ -28,6 +39,14 @@ type LocalDevCompanyRecord = {
 };
 
 type LocalDevAgentRecord = {
+  id: string;
+};
+
+type LocalDevPlatformCredentialRecord = {
+  id: string;
+};
+
+type LocalDevPlatformModelRecord = {
   id: string;
 };
 
@@ -51,21 +70,24 @@ type LocalDevMutableDatabase = DatabaseTransactionInterface & {
  */
 export class LocalDevSeedScript {
   async run(argv: string[] = process.argv): Promise<void> {
-    this.applyOpenAiFallback();
     const argumentsDocument = new ApiCli().parse(argv);
     const config = new Config(ConfigLoader.load(argumentsDocument.configPath, ConfigDocument));
-    this.assertCompanyHelmProviderConfigured(config);
+    const openAiApiKey = this.resolveOpenAiApiKey();
 
     const container = new ApiContainer().build(config);
     const logger = pino(ApiLogger.createOptions(config)).child({ component: "local_dev_seed" });
     const adminDatabase = container.get(AdminDatabase);
 
     try {
-      await container.get(CompanyHelmLlmProviderService).refreshAvailableSeedModels(
-        container.get(ModelService),
-        logger,
-      );
       await container.get(DbBootstrap).run();
+      await this.seedPlatformOpenAiCredential(
+        adminDatabase,
+        openAiApiKey,
+        new PlatformModelProviderCredentialService(
+          new ModelRegistry(),
+          container.get(ModelService),
+        ),
+      );
       const seeded = await this.seed(adminDatabase, container.get(CompanyBootstrapService));
       logger.info(seeded, "seeded local development data");
     } finally {
@@ -73,16 +95,143 @@ export class LocalDevSeedScript {
     }
   }
 
-  private applyOpenAiFallback(): void {
-    if (!process.env.COMPANYHELM_OPENAI_API_KEY && process.env.OPENAI_API_KEY) {
-      process.env.COMPANYHELM_OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  private resolveOpenAiApiKey(): string {
+    const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
+    if (!openAiApiKey) {
+      throw new Error("OPENAI_API_KEY is required so local dev can seed the CompanyHelm platform OpenAI credential.");
     }
+
+    return openAiApiKey;
   }
 
-  private assertCompanyHelmProviderConfigured(config: Config): void {
-    if (!config.companyhelm.llm?.openai_api_key) {
-      throw new Error("COMPANYHELM_OPENAI_API_KEY or OPENAI_API_KEY is required so local dev can seed the CEO agent with the CompanyHelm provider.");
+  private async seedPlatformOpenAiCredential(
+    adminDatabase: AdminDatabase,
+    openAiApiKey: string,
+    platformCredentialService: PlatformModelProviderCredentialService,
+  ): Promise<void> {
+    const database = adminDatabase.getDatabase();
+    if (!database.transaction) {
+      throw new Error("Configured database does not support transactions.");
     }
+
+    await database.transaction(async (transaction) => {
+      await this.upsertPlatformOpenAiCredential(transaction as DatabaseTransactionInterface, openAiApiKey);
+    });
+    const transactionProvider: TransactionProviderInterface = {
+      transaction: async (callback) => database.transaction((transaction) => callback(transaction as never)),
+    };
+
+    await platformCredentialService.refreshStoredModels({
+      apiKey: openAiApiKey,
+      baseUrl: null,
+      modelProvider: "openai",
+      platformModelProviderCredentialId: LOCAL_DEV_PLATFORM_OPENAI_CREDENTIAL_ID,
+      transactionProvider,
+    });
+
+    await database.transaction(async (transaction) => {
+      await this.setDefaultPlatformOpenAiModel(transaction as DatabaseTransactionInterface);
+    });
+  }
+
+  private async upsertPlatformOpenAiCredential(
+    transaction: DatabaseTransactionInterface,
+    openAiApiKey: string,
+  ): Promise<void> {
+    await PlatformAdminAccess.enable(transaction);
+    const [existingCredential] = await transaction
+      .select({ id: platformModelProviderCredentials.id })
+      .from(platformModelProviderCredentials)
+      .where(eq(platformModelProviderCredentials.id, LOCAL_DEV_PLATFORM_OPENAI_CREDENTIAL_ID))
+      .limit(1) as LocalDevPlatformCredentialRecord[];
+    const now = new Date();
+    const database = transaction as LocalDevMutableDatabase;
+    await database
+      .update(platformModelProviderCredentials)
+      .set({
+        isDefault: false,
+        updatedAt: now,
+      })
+      .where(eq(platformModelProviderCredentials.isDefault, true));
+
+    if (existingCredential) {
+      await database
+        .update(platformModelProviderCredentials)
+        .set({
+          name: "Local OpenAI",
+          modelProvider: "openai",
+          type: "api_key",
+          encryptedApiKey: openAiApiKey,
+          baseUrl: null,
+          refreshToken: null,
+          accessTokenExpiresAt: null,
+          refreshedAt: null,
+          isDefault: true,
+          status: "active",
+          errorMessage: null,
+          updatedAt: now,
+        })
+        .where(eq(platformModelProviderCredentials.id, existingCredential.id));
+      return;
+    }
+
+    await transaction
+      .insert(platformModelProviderCredentials)
+      .values({
+        id: LOCAL_DEV_PLATFORM_OPENAI_CREDENTIAL_ID,
+        name: "Local OpenAI",
+        modelProvider: "openai",
+        type: "api_key",
+        encryptedApiKey: openAiApiKey,
+        baseUrl: null,
+        refreshToken: null,
+        accessTokenExpiresAt: null,
+        refreshedAt: null,
+        isDefault: true,
+        status: "active",
+        errorMessage: null,
+        createdByUserId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+  }
+
+  private async setDefaultPlatformOpenAiModel(transaction: DatabaseTransactionInterface): Promise<void> {
+    await PlatformAdminAccess.enable(transaction);
+    const modelRegistry = new ModelRegistry();
+    const defaultModelId = modelRegistry.getDefaultModelForProvider("openai");
+    const [preferredPlatformModel] = await transaction
+      .select({ id: platformModels.id })
+      .from(platformModels)
+      .where(eq(platformModels.key, `openai:${defaultModelId}`))
+      .limit(1) as LocalDevPlatformModelRecord[];
+    const [fallbackPlatformModel] = preferredPlatformModel
+      ? [preferredPlatformModel]
+      : await transaction
+        .select({ id: platformModels.id })
+        .from(platformModels)
+        .where(eq(platformModels.modelProvider, "openai"))
+        .limit(1) as LocalDevPlatformModelRecord[];
+    if (!fallbackPlatformModel) {
+      throw new Error("Failed to seed any OpenAI platform models.");
+    }
+
+    const now = new Date();
+    const database = transaction as LocalDevMutableDatabase;
+    await database
+      .update(platformModels)
+      .set({
+        isDefault: false,
+        updatedAt: now,
+      })
+      .where(eq(platformModels.isDefault, true));
+    await database
+      .update(platformModels)
+      .set({
+        isDefault: true,
+        updatedAt: now,
+      })
+      .where(eq(platformModels.id, fallbackPlatformModel.id));
   }
 
   private async seed(

@@ -1,14 +1,11 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { Config } from "../src/config/schema.ts";
 import { modelProviderCredentials } from "../src/db/schema.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
-import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
-import { ModelRegistry } from "../src/services/ai_providers/model_registry.js";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-test("RefreshModelProviderCredentialModelsMutation resolves managed credentials from CompanyHelm config", async () => {
+test("RefreshModelProviderCredentialModelsMutation refreshes models with the stored credential key", async () => {
   const calls: Array<{
     apiKey: string;
     baseUrl?: string | null;
@@ -35,16 +32,7 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
       }];
     },
   };
-  const mutation = new RefreshModelProviderCredentialModelsMutation(
-    modelService as never,
-    new CompanyHelmLlmProviderService({
-      companyhelm: {
-        llm: {
-          openai_api_key: "sk-companyhelm-managed",
-        },
-      },
-    } as Config, new ModelRegistry()),
-  );
+  const mutation = new RefreshModelProviderCredentialModelsMutation(modelService as never);
   const context = {
     authSession: {
       token: "jwt-token",
@@ -75,10 +63,9 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
                         return [{
                           companyId: "company-123",
                           baseUrl: null,
-                          encryptedApiKey: CompanyHelmLlmProviderService.ENCRYPTED_API_KEY_SENTINEL,
+                          encryptedApiKey: "sk-user-provided",
                           id: "credential-123",
-                          isManaged: true,
-                          modelProvider: "companyhelm",
+                          modelProvider: "openai",
                         }];
                       },
                     };
@@ -108,10 +95,10 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
     modelProvider: call.modelProvider,
     modelProviderCredentialId: call.modelProviderCredentialId,
   }, {
-    apiKey: "sk-companyhelm-managed",
+    apiKey: "sk-user-provided",
     baseUrl: null,
     companyId: "company-123",
-    modelProvider: "companyhelm",
+    modelProvider: "openai",
     modelProviderCredentialId: "credential-123",
   });
   assert.deepEqual(models, [{
