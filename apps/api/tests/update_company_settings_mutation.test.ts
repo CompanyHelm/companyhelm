@@ -42,7 +42,7 @@ class UpdateCompanySettingsMutationTestHarness {
               from() {
                 return {
                   async where() {
-                    if (selectCallCount === 1) {
+                    if (selectCallCount === 1 || selectCallCount === 2) {
                       return [];
                     }
 
@@ -130,6 +130,7 @@ test("GraphQL UpdateCompanySettings mutation creates the persisted company promp
           UpdateCompanySettings(input: $input) {
             companyId
             baseSystemPrompt
+            defaultManagedPlatformModelId
           }
         }
       `,
@@ -146,6 +147,7 @@ test("GraphQL UpdateCompanySettings mutation creates the persisted company promp
   assert.deepEqual(document.data.UpdateCompanySettings, {
     companyId: "company-123",
     baseSystemPrompt: "Always use company terminology before agent-specific wording.",
+    defaultManagedPlatformModelId: null,
   });
   assert.deepEqual(database.insertedValues, [{
     companyId: "company-123",

@@ -301,6 +301,7 @@ type CompanyOnboarding {
 type CompanySettings {
   companyId: ID!
   baseSystemPrompt: String
+  defaultManagedPlatformModelId: ID
 }
 
 enum CompanyDeletionRequestStatus {
@@ -1296,6 +1297,7 @@ input UpdateAgentInput {
 
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
+  defaultManagedPlatformModelId: ID
 }
 
 input UpdatePlatformAdminCompanyEnhancedLoggingInput {

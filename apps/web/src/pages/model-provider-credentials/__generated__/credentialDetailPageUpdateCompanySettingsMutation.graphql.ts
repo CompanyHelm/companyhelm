@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<01729f51d14c3e8c8e58b0c1d82cbb6e>>
+ * @generated SignedSource<<de6208b33f5c2c9a2446a966207124dc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,18 +13,19 @@ export type UpdateCompanySettingsInput = {
   baseSystemPrompt?: string | null | undefined;
   defaultManagedPlatformModelId?: string | null | undefined;
 };
-export type settingsPageUpdateCompanySettingsMutation$variables = {
+export type credentialDetailPageUpdateCompanySettingsMutation$variables = {
   input: UpdateCompanySettingsInput;
 };
-export type settingsPageUpdateCompanySettingsMutation$data = {
+export type credentialDetailPageUpdateCompanySettingsMutation$data = {
   readonly UpdateCompanySettings: {
     readonly baseSystemPrompt: string | null | undefined;
     readonly companyId: string;
+    readonly defaultManagedPlatformModelId: string | null | undefined;
   };
 };
-export type settingsPageUpdateCompanySettingsMutation = {
-  response: settingsPageUpdateCompanySettingsMutation$data;
-  variables: settingsPageUpdateCompanySettingsMutation$variables;
+export type credentialDetailPageUpdateCompanySettingsMutation = {
+  response: credentialDetailPageUpdateCompanySettingsMutation$data;
+  variables: credentialDetailPageUpdateCompanySettingsMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -63,6 +64,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "baseSystemPrompt",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultManagedPlatformModelId",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -73,7 +81,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "settingsPageUpdateCompanySettingsMutation",
+    "name": "credentialDetailPageUpdateCompanySettingsMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -82,20 +90,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "settingsPageUpdateCompanySettingsMutation",
+    "name": "credentialDetailPageUpdateCompanySettingsMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "efb067d912dcdcfd0c573b535af07398",
+    "cacheID": "def0b1d25adf1c7bc39cc04870473394",
     "id": null,
     "metadata": {},
-    "name": "settingsPageUpdateCompanySettingsMutation",
+    "name": "credentialDetailPageUpdateCompanySettingsMutation",
     "operationKind": "mutation",
-    "text": "mutation settingsPageUpdateCompanySettingsMutation(\n  $input: UpdateCompanySettingsInput!\n) {\n  UpdateCompanySettings(input: $input) {\n    companyId\n    baseSystemPrompt\n  }\n}\n"
+    "text": "mutation credentialDetailPageUpdateCompanySettingsMutation(\n  $input: UpdateCompanySettingsInput!\n) {\n  UpdateCompanySettings(input: $input) {\n    companyId\n    baseSystemPrompt\n    defaultManagedPlatformModelId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9aac3bb8ea2913fb16da09470fee36a7";
+(node as any).hash = "4390684a60e285cc5acb2ada600fa7c5";
 
 export default node;

@@ -1009,6 +1009,13 @@
       "when": 1777387000000,
       "tag": "0144_platform_admins_table",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1777388000000,
+      "tag": "0145_company_managed_model_provider_settings",
+      "breakpoints": true
     }
   ]
 }

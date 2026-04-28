@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   boolean,
   index,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -10,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 import { modelProviderCredentialStatusEnum, modelProviderCredentialTypeEnum, modelProviderEnum } from "./ai_common.ts";
-import { users } from "./company.ts";
+import { companies, users } from "./company.ts";
 
 export const platformModelProviderCredentials = pgTable("platform_model_provider_credentials", {
   id: uuid("id")
@@ -106,4 +107,19 @@ export const platformModelRoutes = pgTable("platform_model_routes", {
   platformModelIndex: index("platform_model_routes_platform_model_idx").on(table.platformModelId),
   credentialModelUnique: uniqueIndex("platform_model_routes_credential_model_uidx")
     .on(table.platformModelId, table.platformModelProviderCredentialModelId),
+}));
+
+export const companyManagedModelProviderSettings = pgTable("company_managed_model_provider_settings", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  providerKey: text("provider_key").notNull(),
+  defaultPlatformModelId: uuid("default_platform_model_id")
+    .references(() => platformModels.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.companyId, table.providerKey] }),
+  defaultPlatformModelIndex: index("company_managed_model_provider_settings_default_model_idx")
+    .on(table.defaultPlatformModelId),
 }));

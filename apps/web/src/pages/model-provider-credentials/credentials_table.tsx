@@ -27,7 +27,8 @@ import { formatProviderCredentialType, formatProviderLabel } from "./provider_la
 
 export type CredentialsTableRecord = {
   baseUrl: string | null;
-  createdAt: string;
+  createdAt: string | null;
+  credentialKind: "managed" | "user_provided";
   defaultModelId: string | null;
   errorMessage: string | null;
   id: string;
@@ -38,7 +39,7 @@ export type CredentialsTableRecord = {
   sessionCount: number;
   status: "active" | "error";
   type: "api_key" | "oauth_token";
-  updatedAt: string;
+  updatedAt: string | null;
   usingAgents: DeleteCredentialDialogAgentRecord[];
 };
 
@@ -165,17 +166,23 @@ export function CredentialsTable(props: CredentialsTableProps) {
                   <span>{providerLabel}</span>
                 </Badge>
               </TableCell>
-              <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>
               <TableCell>
-                {credential.type === "oauth_token"
+                {credential.credentialKind === "managed" ? "Managed" : formatProviderCredentialType(credential.type)}
+              </TableCell>
+              <TableCell>
+                {credential.credentialKind === "managed"
+                  ? "Managed by CompanyHelm"
+                  : credential.type === "oauth_token"
                   ? (credential.refreshedAt ? formatTimestamp(credential.refreshedAt) : "Never")
                   : "—"}
               </TableCell>
-              <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
-              <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
+              <TableCell>{credential.createdAt ? formatTimestamp(credential.createdAt) : "—"}</TableCell>
+              <TableCell>{credential.updatedAt ? formatTimestamp(credential.updatedAt) : "—"}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  {credential.type === "oauth_token" ? (
+                  {credential.credentialKind === "managed" ? (
+                    <Badge variant="secondary">Read only</Badge>
+                  ) : credential.type === "oauth_token" ? (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -190,23 +197,27 @@ export function CredentialsTable(props: CredentialsTableProps) {
                       />
                     </Button>
                   ) : null}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
-                    onClick={async (event) => {
-                      event.stopPropagation();
-                      await props.onSetDefault(credential.id);
-                    }}
-                  >
-                    <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
-                  </Button>
-                  <DeleteCredentialDialog
-                    credential={credential}
-                    deletingCredentialId={props.deletingCredentialId}
-                    onDelete={props.onDelete}
-                    replacementOptions={props.replacementOptions}
-                  />
+                  {credential.credentialKind === "user_provided" ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await props.onSetDefault(credential.id);
+                        }}
+                      >
+                        <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
+                      </Button>
+                      <DeleteCredentialDialog
+                        credential={credential}
+                        deletingCredentialId={props.deletingCredentialId}
+                        onDelete={props.onDelete}
+                        replacementOptions={props.replacementOptions}
+                      />
+                    </>
+                  ) : null}
                 </div>
               </TableCell>
             </TableRow>

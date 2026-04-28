@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
 import {
   modelProviderCredentialModels,
   modelProviderCredentials,
+  companyManagedModelProviderSettings,
   platformModelRoutes,
   platformModelProviderCredentials,
   platformModels,
@@ -47,6 +48,10 @@ type PlatformModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
+};
+
+type ManagedProviderSettingsRecord = {
+  defaultPlatformModelId: string | null;
 };
 
 type GraphqlAgentCreateModelOption = {
@@ -147,6 +152,15 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           platformModelId: string;
           platformModelProviderCredentialModelId: string;
         }>;
+      const [managedProviderSettingsRecord] = await selectableDatabase
+        .select({
+          defaultPlatformModelId: companyManagedModelProviderSettings.defaultPlatformModelId,
+        })
+        .from(companyManagedModelProviderSettings)
+        .where(and(
+          eq(companyManagedModelProviderSettings.companyId, companyId),
+          eq(companyManagedModelProviderSettings.providerKey, "companyhelm"),
+        )) as ManagedProviderSettingsRecord[];
 
       const credentialRecords = await selectableDatabase
         .select({
@@ -176,6 +190,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         platformCredentialRecords,
         platformModelRecords,
         platformRouteRecords,
+        managedProviderSettingsRecord?.defaultPlatformModelId ?? null,
       );
       const companyOptions = credentialRecords
         .filter((credentialRecord) => this.isUserProvidedProvider(credentialRecord.modelProvider))
@@ -237,6 +252,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       platformModelId: string;
       platformModelProviderCredentialModelId: string;
     }>,
+    defaultPlatformModelId: string | null,
   ): GraphqlAgentCreateProviderOption | null {
     void platformCredentialRecords;
     const platformModelIdsWithRoutes = new Set(platformRouteRecords.map((routeRecord) => routeRecord.platformModelId));
@@ -260,7 +276,8 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       return null;
     }
 
-    const defaultModelId = this.modelRegistry.getDefaultModelForProvider("companyhelm")
+    const defaultModelId = credentialModels.find((modelRecord) => modelRecord.platformModelId === defaultPlatformModelId)?.modelId
+      ?? this.modelRegistry.getDefaultModelForProvider("companyhelm")
       ?? credentialModels[0]?.modelId
       ?? null;
     const defaultModelRecord = credentialModels.find((modelRecord) => modelRecord.modelId === defaultModelId)
