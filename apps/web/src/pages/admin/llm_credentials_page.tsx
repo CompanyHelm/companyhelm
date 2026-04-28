@@ -226,7 +226,7 @@ function AdminLlmCredentialsPageContent() {
             }}
             onOpenModels={(credentialId) => {
               void navigate({
-                to: `/admin/llm-credentials/${credentialId}/models`,
+                to: `/admin/llm-credentials/${credentialId}`,
               });
             }}
             onRefreshToken={async (credentialId) => {

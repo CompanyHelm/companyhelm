@@ -304,7 +304,7 @@ const adminLlmCredentialsIndexRoute = createRoute({
 
 const adminLlmCredentialModelsRoute = createRoute({
   getParentRoute: () => adminLlmCredentialsRoute,
-  path: "$platformCredentialId/models" as string,
+  path: "$platformCredentialId" as string,
   component: AdminLlmCredentialModelsPage,
 });
 
