@@ -96,7 +96,10 @@ class SessionsQueryTestHarness {
                               id: "session-newer",
                               agentId: "agent-2",
                               currentContextTokens: null,
-                              currentModelProviderCredentialModelId: "model-row-2",
+                              currentModelCredentialSource: "platform",
+                              currentPlatformModelId: "platform-model-1",
+                              currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
+                              currentModelProviderCredentialModelId: null,
                               currentReasoningLevel: "high",
                               forkedFromTurnId: "turn-source-1",
                               inferredTitle: null,
@@ -114,6 +117,9 @@ class SessionsQueryTestHarness {
                               id: "session-older",
                               agentId: "agent-1",
                               currentContextTokens: 32000,
+                              currentModelCredentialSource: "user_provided",
+                              currentPlatformModelId: null,
+                              currentPlatformModelProviderCredentialModelId: null,
                               currentModelProviderCredentialModelId: "model-row-1",
                               currentReasoningLevel: "medium",
                               forkedFromTurnId: null,
@@ -179,8 +185,21 @@ class SessionsQueryTestHarness {
                           id: "model-row-1",
                           modelId: "gpt-5.4",
                         },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
                         {
-                          id: "model-row-2",
+                          id: "platform-model-1",
                           modelId: "claude-3.7-sonnet",
                         },
                       ];
@@ -190,7 +209,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 6) {
               return {
                 from() {
                   return {
@@ -239,7 +258,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -267,7 +286,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 7) {
+            if (selectCallCount === 8) {
               return {
                 from() {
                   return {
@@ -294,7 +313,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 8) {
+            if (selectCallCount === 9) {
               return {
                 from() {
                   return {
@@ -315,7 +334,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 9) {
+            if (selectCallCount === 10) {
               return {
                 from() {
                   return {
@@ -342,7 +361,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 10) {
+            if (selectCallCount === 11) {
               return {
                 from() {
                   return {
@@ -448,6 +467,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
             forkedFromSessionTitle
             forkedFromTurnId
             isCompacting
+            modelCredentialSource
+            platformModelId
+            platformModelProviderCredentialModelId
+            modelProviderCredentialModelId
             modelId
             maxContextTokens
             reasoningLevel
@@ -482,6 +505,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       forkedFromSessionTitle: "Original review thread",
       forkedFromTurnId: "turn-source-1",
       isCompacting: true,
+      modelCredentialSource: "platform",
+      platformModelId: "platform-model-1",
+      platformModelProviderCredentialModelId: "platform-credential-model-1",
+      modelProviderCredentialModelId: null,
       modelId: "claude-3.7-sonnet",
       maxContextTokens: 200000,
       reasoningLevel: "high",
@@ -528,6 +555,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       forkedFromSessionTitle: null,
       forkedFromTurnId: null,
       isCompacting: false,
+      modelCredentialSource: "user_provided",
+      platformModelId: null,
+      platformModelProviderCredentialModelId: null,
+      modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
       maxContextTokens: 200000,
       reasoningLevel: "medium",

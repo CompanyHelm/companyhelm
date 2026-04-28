@@ -4,6 +4,7 @@ import {
   agentSessions,
   messageContents,
   modelProviderCredentialModels,
+  platformModels,
   sessionMessages,
   sessionTurns,
   taskRuns,
@@ -19,7 +20,10 @@ type SessionRow = {
   id: string;
   agentId: string;
   currentContextTokens: number | null;
-  currentModelProviderCredentialModelId: string;
+  currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelId: string | null;
+  currentPlatformModelProviderCredentialModelId: string | null;
+  currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   forkedFromTurnId: string | null;
   inferredTitle: string | null;
@@ -176,6 +180,9 @@ export type SessionGraphqlRecord = {
   forkedFromTurnId: string | null;
   hasUnread: boolean;
   lastUserMessageAt: string | null;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null;
+  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -299,6 +306,9 @@ export class SessionReadService {
           id: agentSessions.id,
           agentId: agentSessions.agentId,
           currentContextTokens: agentSessions.currentContextTokens,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
@@ -376,6 +386,9 @@ export class SessionReadService {
           id: agentSessions.id,
           agentId: agentSessions.agentId,
           currentContextTokens: agentSessions.currentContextTokens,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
@@ -745,27 +758,58 @@ export class SessionReadService {
     companyId: string,
     sessionRows: ReadonlyArray<SessionRow>,
   ): Promise<Map<string, string>> {
+    const modelIdByLookupKey = new Map<string, string>();
     const modelProviderCredentialModelIds = [...new Set(
-      sessionRows.map((sessionRow) => sessionRow.currentModelProviderCredentialModelId),
+      sessionRows
+        .filter((sessionRow) => sessionRow.currentModelCredentialSource === "user_provided")
+        .map((sessionRow) => sessionRow.currentModelProviderCredentialModelId)
+        .filter((modelId) => typeof modelId === "string"),
     )];
-    if (modelProviderCredentialModelIds.length === 0) {
-      return new Map();
+    const platformModelIds = [...new Set(
+      sessionRows
+        .filter((sessionRow) => sessionRow.currentModelCredentialSource === "platform")
+        .map((sessionRow) => sessionRow.currentPlatformModelId)
+        .filter((modelId) => typeof modelId === "string"),
+    )];
+
+    if (modelProviderCredentialModelIds.length > 0) {
+      const modelRecords = await selectableDatabase
+        .select({
+          id: modelProviderCredentialModels.id,
+          modelId: modelProviderCredentialModels.modelId,
+        })
+        .from(modelProviderCredentialModels)
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          inArray(modelProviderCredentialModels.id, modelProviderCredentialModelIds),
+        )) as SessionModelRecord[];
+
+      for (const modelRecord of modelRecords) {
+        modelIdByLookupKey.set(
+          this.createSessionModelLookupKey("user_provided", modelRecord.id),
+          modelRecord.modelId,
+        );
+      }
     }
 
-    const modelRecords = await selectableDatabase
-      .select({
-        id: modelProviderCredentialModels.id,
-        modelId: modelProviderCredentialModels.modelId,
-      })
-      .from(modelProviderCredentialModels)
-      .where(and(
-        eq(modelProviderCredentialModels.companyId, companyId),
-        inArray(modelProviderCredentialModels.id, modelProviderCredentialModelIds),
-      )) as SessionModelRecord[];
+    if (platformModelIds.length > 0) {
+      const modelRecords = await selectableDatabase
+        .select({
+          id: platformModels.id,
+          modelId: platformModels.modelId,
+        })
+        .from(platformModels)
+        .where(inArray(platformModels.id, platformModelIds)) as SessionModelRecord[];
 
-    return new Map(
-      modelRecords.map((modelRecord) => [modelRecord.id, modelRecord.modelId]),
-    );
+      for (const modelRecord of modelRecords) {
+        modelIdByLookupKey.set(
+          this.createSessionModelLookupKey("platform", modelRecord.id),
+          modelRecord.modelId,
+        );
+      }
+    }
+
+    return modelIdByLookupKey;
   }
 
   private async loadReadSessionIds(
@@ -1124,7 +1168,12 @@ export class SessionReadService {
     associatedWorkflowRunBySessionId: Map<string, SessionAssociatedWorkflowRunGraphqlRecord>,
     isRead: boolean,
   ): SessionGraphqlRecord {
-    const modelId = modelIdByModelRecordId.get(sessionRow.currentModelProviderCredentialModelId);
+    const modelLookupId = sessionRow.currentModelCredentialSource === "platform"
+      ? sessionRow.currentPlatformModelId
+      : sessionRow.currentModelProviderCredentialModelId;
+    const modelId = modelLookupId
+      ? modelIdByModelRecordId.get(this.createSessionModelLookupKey(sessionRow.currentModelCredentialSource, modelLookupId))
+      : null;
     if (!modelId) {
       throw new Error("Session model not found.");
     }
@@ -1142,6 +1191,9 @@ export class SessionReadService {
       forkedFromTurnId: sessionRow.forkedFromTurnId,
       hasUnread: !isRead,
       lastUserMessageAt: sessionRow.lastUserMessageAt?.toISOString() ?? null,
+      modelCredentialSource: sessionRow.currentModelCredentialSource,
+      platformModelId: sessionRow.currentPlatformModelId,
+      platformModelProviderCredentialModelId: sessionRow.currentPlatformModelProviderCredentialModelId,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
@@ -1155,6 +1207,10 @@ export class SessionReadService {
       updatedAt: sessionRow.updatedAt.toISOString(),
       userSetTitle: sessionRow.userSetTitle,
     };
+  }
+
+  private createSessionModelLookupKey(modelCredentialSource: "platform" | "user_provided", modelRecordId: string): string {
+    return `${modelCredentialSource}:${modelRecordId}`;
   }
 
   private serializeMessage(
