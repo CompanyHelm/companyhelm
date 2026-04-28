@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeftIcon, PlusIcon, PowerIcon, RouteIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, PencilIcon, PlusIcon, PowerIcon, RouteIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CreateCredentialDialog } from "@/pages/model-provider-credentials/create_credential_dialog";
@@ -99,6 +100,7 @@ const modelDetailPageUpdateMutationNode = graphql`
   mutation modelDetailPageUpdateMutation($input: UpdatePlatformModelInput!) {
     UpdatePlatformModel(input: $input) {
       id
+      name
       isAvailable
       isDefault
       routeCount
@@ -130,6 +132,7 @@ function AdminModelDetailPageContent() {
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
+  const [isRenameDialogOpen, setRenameDialogOpen] = useState(false);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const data = useLazyLoadQuery<modelDetailPageQuery>(
     modelDetailPageQueryNode,
@@ -239,6 +242,18 @@ function AdminModelDetailPageContent() {
             </CardDescription>
           </div>
           <CardAction className="flex flex-wrap justify-end gap-2">
+            <Button
+              disabled={!platformModel || isUpdateModelInFlight}
+              onClick={() => {
+                setErrorMessage(null);
+                setRenameDialogOpen(true);
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <PencilIcon />
+              Rename
+            </Button>
             <Button
               disabled={!platformModel || providers.length === 0}
               onClick={() => {
@@ -380,6 +395,42 @@ function AdminModelDetailPageContent() {
           platformModel={platformModel}
         />
       ) : null}
+      {platformModel ? (
+        <RenamePlatformModelDialog
+          inFlight={isUpdateModelInFlight}
+          model={platformModel}
+          onOpenChange={setRenameDialogOpen}
+          onRename={async (name) => {
+            setErrorMessage(null);
+            await new Promise<void>((resolve, reject) => {
+              commitUpdateModel({
+                variables: {
+                  input: {
+                    platformModelId: platformModel.id,
+                    name,
+                  },
+                },
+                onCompleted: (_response, errors) => {
+                  const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                  if (nextErrorMessage) {
+                    reject(new Error(nextErrorMessage));
+                    return;
+                  }
+
+                  resolve();
+                },
+                onError: reject,
+              });
+            }).then(() => {
+              setRenameDialogOpen(false);
+              setFetchKey((current) => current + 1);
+            }).catch((error: unknown) => {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to rename platform model.");
+            });
+          }}
+          open={isRenameDialogOpen}
+        />
+      ) : null}
     </main>
   );
 }
@@ -488,6 +539,62 @@ function CurrentRoutesTable(props: {
         })}
       </TableBody>
     </Table>
+  );
+}
+
+function RenamePlatformModelDialog(props: {
+  inFlight: boolean;
+  model: PlatformModel;
+  onOpenChange(open: boolean): void;
+  onRename(name: string): Promise<void>;
+  open: boolean;
+}) {
+  const [name, setName] = useState(props.model.name);
+  const trimmedName = name.trim();
+  const hasChanges = trimmedName !== props.model.name;
+
+  useEffect(() => {
+    if (props.open) {
+      setName(props.model.name);
+    }
+  }, [props.model.name, props.open]);
+
+  return (
+    <Dialog onOpenChange={props.onOpenChange} open={props.open}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename platform model</DialogTitle>
+          <DialogDescription>
+            Update the display name shown to admins and companies without changing the provider model id.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2">
+          <label className="text-sm font-medium text-foreground" htmlFor="platform-model-name">
+            Name
+          </label>
+          <Input
+            autoFocus
+            id="platform-model-name"
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+            value={name}
+          />
+          <p className="font-mono text-xs text-muted-foreground">{props.model.modelId}</p>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={props.inFlight || !trimmedName || !hasChanges}
+            onClick={() => {
+              void props.onRename(trimmedName);
+            }}
+          >
+            <PencilIcon />
+            Rename
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

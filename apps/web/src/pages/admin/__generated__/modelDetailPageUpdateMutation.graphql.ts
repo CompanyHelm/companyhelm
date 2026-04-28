@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<695525cf6a825687526414ac0f191aab>>
+ * @generated SignedSource<<9422913c6b88be41a799e58aabd2ac9f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,6 +26,7 @@ export type modelDetailPageUpdateMutation$data = {
     readonly id: string;
     readonly isAvailable: boolean;
     readonly isDefault: boolean;
+    readonly name: string;
     readonly routeCount: number;
     readonly updatedAt: string;
   };
@@ -63,6 +64,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "name",
         "storageKey": null
       },
       {
@@ -115,16 +123,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "03904a01bd2fff9f1fc1da53b013897b",
+    "cacheID": "dd909d14164b58b03dce7f746f5cd706",
     "id": null,
     "metadata": {},
     "name": "modelDetailPageUpdateMutation",
     "operationKind": "mutation",
-    "text": "mutation modelDetailPageUpdateMutation(\n  $input: UpdatePlatformModelInput!\n) {\n  UpdatePlatformModel(input: $input) {\n    id\n    isAvailable\n    isDefault\n    routeCount\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelDetailPageUpdateMutation(\n  $input: UpdatePlatformModelInput!\n) {\n  UpdatePlatformModel(input: $input) {\n    id\n    name\n    isAvailable\n    isDefault\n    routeCount\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8a2c3cc2717d3a601475d63892a4241d";
+(node as any).hash = "8ba9b07006ec45f590e0133ba0fa1a43";
 
 export default node;
