@@ -158,7 +158,7 @@ export class SessionPromptService {
       existingSession.currentReasoningLevel,
     );
     if (selectedModelRecord.modelCredentialSource === "platform") {
-      await this.companyManagedLlmBudgetService.assertWithinPlatformBudgetInTransaction(selectableDatabase, {
+      await this.companyManagedLlmBudgetService.assertWithinManagedBudgetInTransaction(selectableDatabase, {
         companyId,
       });
     }

@@ -6,13 +6,7 @@ import type { TransactionProviderInterface } from "../../db/transaction_provider
 export type CompanySubscriptionPlan = "free" | "pro";
 type LlmUsageAggregatePeriod = "day" | "month";
 
-type CompanyManagedLlmBudgetInput = {
-  companyId: string;
-  modelProviderCredentialId: string;
-  now?: Date;
-};
-
-type PlatformManagedLlmBudgetInput = {
+type CompanyManagedLlmBudgetCheckInput = {
   companyId: string;
   now?: Date;
 };
@@ -91,59 +85,38 @@ export class CompanyManagedLlmBudgetService {
     },
   };
 
-  async assertWithinBudget(
+  async assertWithinManagedBudget(
     transactionProvider: TransactionProviderInterface,
-    input: CompanyManagedLlmBudgetInput,
+    input: CompanyManagedLlmBudgetCheckInput,
   ): Promise<void> {
-    const status = await this.checkWithinBudget(transactionProvider, input);
+    const status = await this.checkWithinManagedBudget(transactionProvider, input);
     if (!status.allowed) {
       throw new Error(status.message);
     }
   }
 
-  async checkWithinBudget(
+  async checkWithinManagedBudget(
     transactionProvider: TransactionProviderInterface,
-    input: CompanyManagedLlmBudgetInput,
+    input: CompanyManagedLlmBudgetCheckInput,
   ): Promise<CompanyManagedLlmBudgetStatus> {
     return transactionProvider.transaction(async (tx) => {
-      return this.checkWithinBudgetInTransaction(tx as unknown as SelectableDatabase, input);
+      return this.checkWithinManagedBudgetInTransaction(tx as unknown as SelectableDatabase, input);
     });
   }
 
-  async assertWithinBudgetInTransaction(
+  async assertWithinManagedBudgetInTransaction(
     database: SelectableDatabase,
-    input: CompanyManagedLlmBudgetInput,
+    input: CompanyManagedLlmBudgetCheckInput,
   ): Promise<void> {
-    const status = await this.checkWithinBudgetInTransaction(database, input);
+    const status = await this.checkWithinManagedBudgetInTransaction(database, input);
     if (!status.allowed) {
       throw new Error(status.message);
     }
   }
 
-  async checkWithinBudgetInTransaction(
+  async checkWithinManagedBudgetInTransaction(
     database: SelectableDatabase,
-    input: CompanyManagedLlmBudgetInput,
-  ): Promise<CompanyManagedLlmBudgetStatus> {
-    void database;
-    void input;
-    return {
-      allowed: true,
-    };
-  }
-
-  async assertWithinPlatformBudgetInTransaction(
-    database: SelectableDatabase,
-    input: PlatformManagedLlmBudgetInput,
-  ): Promise<void> {
-    const status = await this.checkWithinPlatformBudgetInTransaction(database, input);
-    if (!status.allowed) {
-      throw new Error(status.message);
-    }
-  }
-
-  async checkWithinPlatformBudgetInTransaction(
-    database: SelectableDatabase,
-    input: PlatformManagedLlmBudgetInput,
+    input: CompanyManagedLlmBudgetCheckInput,
   ): Promise<CompanyManagedLlmBudgetStatus> {
     const company = await this.loadCompany(database, input.companyId);
     const entitlements = this.resolveEntitlements(company.plan);

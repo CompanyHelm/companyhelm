@@ -937,7 +937,7 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
     undefined as never,
     companySettingsService as never,
     {
-      async checkWithinBudget() {
+      async checkWithinManagedBudget() {
         return {
           allowed: true,
         };
@@ -1406,6 +1406,13 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     } as never,
     undefined as never,
     companySettingsService as never,
+    {
+      async checkWithinManagedBudget() {
+        return {
+          allowed: true,
+        };
+      },
+    } as never,
   );
 
   await assert.rejects(
@@ -1649,7 +1656,7 @@ test("SessionProcessExecutionService clears stale queued work when the session s
 });
 
 test("SessionProcessExecutionService clears queued work when the managed provider budget is exhausted", async () => {
-  const budgetChecks: Array<{ companyId: string; modelProviderCredentialId: string }> = [];
+  const budgetChecks: Array<{ companyId: string }> = [];
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
   const publishedChannels: string[] = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
@@ -1836,7 +1843,7 @@ test("SessionProcessExecutionService clears queued work when the managed provide
     undefined as never,
     companySettingsService as never,
     {
-      async checkWithinBudget(_transactionProvider: unknown, input: { companyId: string; modelProviderCredentialId: string }) {
+      async checkWithinManagedBudget(_transactionProvider: unknown, input: { companyId: string }) {
         budgetChecks.push(input);
         return {
           allowed: false,
@@ -1854,7 +1861,6 @@ test("SessionProcessExecutionService clears queued work when the managed provide
 
   assert.deepEqual(budgetChecks, [{
     companyId: "company-1",
-    modelProviderCredentialId: "platform-credential-1",
   }]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",

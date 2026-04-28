@@ -47,7 +47,7 @@ class SessionManagerServiceTestHarness {
     const sessionProcessPubSubNames = input.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
     const sessionProcessQueuedNames = input.sessionProcessQueuedNames ?? new SessionProcessQueuedNames();
     const companyManagedLlmBudgetService = {
-      async assertWithinBudgetInTransaction() {
+      async assertWithinManagedBudgetInTransaction() {
         return undefined;
       },
     };

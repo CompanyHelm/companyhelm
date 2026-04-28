@@ -58,7 +58,7 @@ test("CompanyManagedLlmBudgetService blocks free companies at the daily managed-
     dayCostNanoUsd: 5_000_000_000,
   });
 
-  const status = await service.checkWithinPlatformBudgetInTransaction(harness.createDatabase() as never, {
+  const status = await service.checkWithinManagedBudgetInTransaction(harness.createDatabase() as never, {
     companyId: "00000000-0000-0000-0000-000000000001",
     now: new Date("2026-04-22T12:00:00.000Z"),
   });
@@ -79,7 +79,7 @@ test("CompanyManagedLlmBudgetService blocks free companies at the monthly manage
     monthCostNanoUsd: 10_000_000_000,
   });
 
-  const status = await service.checkWithinPlatformBudgetInTransaction(harness.createDatabase() as never, {
+  const status = await service.checkWithinManagedBudgetInTransaction(harness.createDatabase() as never, {
     companyId: "00000000-0000-0000-0000-000000000001",
     now: new Date("2026-04-22T12:00:00.000Z"),
   });
@@ -101,7 +101,7 @@ test("CompanyManagedLlmBudgetService allows pro companies below the managed-prov
     monthCostNanoUsd: 99_000_000_000,
   });
 
-  const status = await service.checkWithinPlatformBudgetInTransaction(harness.createDatabase() as never, {
+  const status = await service.checkWithinManagedBudgetInTransaction(harness.createDatabase() as never, {
     companyId: "00000000-0000-0000-0000-000000000001",
     now: new Date("2026-04-22T12:00:00.000Z"),
   });

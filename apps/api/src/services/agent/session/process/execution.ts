@@ -167,9 +167,8 @@ export class SessionProcessExecutionService {
         return;
       }
       if (runtimeConfig.isCompanyHelmManagedCredential) {
-        const budgetStatus = await this.companyManagedLlmBudgetService.checkWithinBudget(transactionProvider, {
+        const budgetStatus = await this.companyManagedLlmBudgetService.checkWithinManagedBudget(transactionProvider, {
           companyId,
-          modelProviderCredentialId: runtimeConfig.modelProviderCredentialId,
         });
         if (!budgetStatus.allowed) {
           this.logger.info({
