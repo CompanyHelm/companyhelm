@@ -47,6 +47,8 @@ class AgentQueryTestHarness {
                       return [{
                         id: "agent-1",
                         name: "Research Agent",
+                        defaultModelCredentialSource: "user_provided",
+                        defaultPlatformModelId: null,
                         defaultModelProviderCredentialModelId: "model-row-1",
                         defaultComputeProviderDefinitionId: "compute-provider-definition-1",
                         defaultEnvironmentTemplateId: "e2b/desktop",
@@ -101,6 +103,80 @@ class AgentQueryTestHarness {
                       return [{
                         id: "credential-1",
                         modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error(`Unexpected select call: ${selectCallCount}`);
+          },
+        } as never;
+      },
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        return callback(this.getDatabase());
+      },
+    };
+  }
+
+  static createPlatformDatabaseMock() {
+    let selectCallCount = 0;
+
+    return {
+      getDatabase() {
+        return {
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "agent-1",
+                        name: "CEO Agent",
+                        defaultModelCredentialSource: "platform",
+                        defaultPlatformModelId: "platform-model-1",
+                        defaultModelProviderCredentialModelId: null,
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+                        defaultEnvironmentTemplateId: "e2b/desktop",
+                        defaultReasoningLevel: "medium",
+                        systemPrompt: null,
+                        createdAt: new Date("2026-03-24T09:00:00.000Z"),
+                        updatedAt: new Date("2026-03-24T09:10:00.000Z"),
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "compute-provider-definition-1",
+                        name: "Primary E2B",
+                        provider: "e2b",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "platform-model-1",
+                        modelProvider: "openai",
+                        name: "CompanyHelm GPT-5.4",
                       }];
                     },
                   };
@@ -220,6 +296,94 @@ test("GraphQL Agent query returns one agent detail record", async () => {
     },
     createdAt: "2026-03-24T09:00:00.000Z",
     updatedAt: "2026-03-24T09:10:00.000Z",
+  });
+
+  await app.close();
+});
+
+test("GraphQL Agent query returns platform model agent detail without a BYO credential lookup", async () => {
+  const app = Fastify();
+  const config = AgentQueryTestHarness.createConfigMock();
+  const database = AgentQueryTestHarness.createPlatformDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query AgentDetail($id: ID!) {
+          Agent(id: $id) {
+            id
+            name
+            modelCredentialSource
+            platformModelId
+            modelProviderCredentialId
+            modelProviderCredentialModelId
+            modelProvider
+            modelName
+            reasoningLevel
+            systemPrompt
+          }
+        }
+      `,
+      variables: {
+        id: "agent-1",
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.Agent, {
+    id: "agent-1",
+    name: "CEO Agent",
+    modelCredentialSource: "platform",
+    platformModelId: "platform-model-1",
+    modelProviderCredentialId: null,
+    modelProviderCredentialModelId: null,
+    modelProvider: "openai",
+    modelName: "CompanyHelm GPT-5.4",
+    reasoningLevel: "medium",
+    systemPrompt: null,
   });
 
   await app.close();
