@@ -2039,6 +2039,41 @@ test("PiMonoSessionEventHandler error logs unhandled message roles", async () =>
   );
 });
 
+test("PiMonoSessionEventHandler debug logs Pi session info changes", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      logger: harness.logger,
+    },
+  );
+
+  try {
+    await handler.handle({
+      name: "Updated session",
+      type: "session_info_changed",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.debugLogs.length, 1);
+  assert.deepEqual(
+    harness.debugLogs[0],
+    {
+      event: {
+        name: "Updated session",
+        type: "session_info_changed",
+      },
+      logMessage: "pi mono session info changed",
+      sessionId: "session-1",
+    },
+  );
+});
+
 test("PiMonoSessionEventHandler emits enhanced agent-end diagnostics when enabled", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(

@@ -385,6 +385,9 @@ export class PiMonoSessionEventHandler {
       case "auto_compaction_end":
         await this.handleAutoCompactionEnd(sessionEvent);
         return;
+      case "session_info_changed":
+        this.logDebug("pi mono session info changed", sessionEvent);
+        return;
       default:
         this.logError("unhandled pi mono session event", sessionEvent);
     }
