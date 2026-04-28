@@ -43,7 +43,6 @@ import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refr
 import { RefreshPlatformCodexRateLimitsMutation } from "../mutations/refresh_platform_codex_rate_limits.ts";
 import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
 import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
-import { SetDefaultPlatformModelProviderCredentialMutation } from "../mutations/set_default_platform_model_provider_credential.ts";
 import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
 import { SetPlatformModelRoutesMutation } from "../mutations/set_platform_model_routes.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
@@ -157,7 +156,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
-  private readonly setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation;
   private readonly setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation;
   private readonly setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
@@ -340,9 +338,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(RefreshPlatformCodexRateLimitsMutation)
     refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation =
       new RefreshPlatformCodexRateLimitsMutation(),
-    @inject(SetDefaultPlatformModelProviderCredentialMutation)
-    setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation =
-      new SetDefaultPlatformModelProviderCredentialMutation(),
     @inject(SetDefaultPlatformModelProviderCredentialModelMutation)
     setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation =
       new SetDefaultPlatformModelProviderCredentialModelMutation(),
@@ -450,7 +445,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
     this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
-    this.setDefaultPlatformModelProviderCredentialMutation = setDefaultPlatformModelProviderCredentialMutation;
     this.setDefaultPlatformModelProviderCredentialModelMutation = setDefaultPlatformModelProviderCredentialModelMutation;
     this.setPlatformModelRoutesMutation = setPlatformModelRoutesMutation;
     this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
@@ -501,7 +495,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         RefreshPlatformCodexRateLimits: this.refreshPlatformCodexRateLimitsMutation.execute,
         RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
         RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
-        SetDefaultPlatformModelProviderCredential: this.setDefaultPlatformModelProviderCredentialMutation.execute,
         SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
         SetPlatformModelRoutes: this.setPlatformModelRoutesMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,

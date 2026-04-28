@@ -77,7 +77,6 @@ export class RefreshPlatformModelProviderCredentialTokenMutation extends Mutatio
           refreshToken: platformModelProviderCredentials.refreshToken,
           refreshedAt: platformModelProviderCredentials.refreshedAt,
           createdAt: platformModelProviderCredentials.createdAt,
-          isDefault: platformModelProviderCredentials.isDefault,
           updatedAt: platformModelProviderCredentials.updatedAt,
           encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
           accessTokenExpiresAt: platformModelProviderCredentials.accessTokenExpiresAt,
@@ -140,7 +139,6 @@ export class RefreshPlatformModelProviderCredentialTokenMutation extends Mutatio
           refreshToken: platformModelProviderCredentials.refreshToken,
           refreshedAt: platformModelProviderCredentials.refreshedAt,
           createdAt: platformModelProviderCredentials.createdAt,
-          isDefault: platformModelProviderCredentials.isDefault,
           updatedAt: platformModelProviderCredentials.updatedAt,
         })
         .from(platformModelProviderCredentials)

@@ -13,7 +13,6 @@ export type PlatformModelProviderCredentialRecord = {
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
-  isDefault: boolean;
   updatedAt: Date;
 };
 
@@ -39,7 +38,6 @@ export type GraphqlPlatformModelProviderCredentialRecord = {
   modelProvider: ModelProviderId;
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
-  isDefault: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;

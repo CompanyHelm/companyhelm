@@ -1023,6 +1023,13 @@
       "when": 1777472000000,
       "tag": "0146_company_model_provider_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1777473000000,
+      "tag": "0147_remove_platform_credential_default",
+      "breakpoints": true
     }
   ]
 }

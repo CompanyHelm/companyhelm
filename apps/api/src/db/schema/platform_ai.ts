@@ -25,7 +25,6 @@ export const platformModelProviderCredentials = pgTable("platform_model_provider
   refreshToken: text("refresh_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
-  isDefault: boolean("is_default").notNull().default(false),
   status: modelProviderCredentialStatusEnum("status").notNull(),
   errorMessage: text("error_message"),
   createdByUserId: uuid("created_by_user_id")
@@ -33,9 +32,6 @@ export const platformModelProviderCredentials = pgTable("platform_model_provider
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  defaultUnique: uniqueIndex("platform_model_provider_credentials_default_uidx")
-    .on(table.isDefault)
-    .where(sql`${table.isDefault}`),
   modelProviderIndex: index("platform_model_provider_credentials_model_provider_idx").on(table.modelProvider),
   statusIndex: index("platform_model_provider_credentials_status_idx").on(table.status),
 }));

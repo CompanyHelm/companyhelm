@@ -28,6 +28,7 @@ interface CreateCredentialDialogProps {
   isOpen: boolean;
   isSaving: boolean;
   providers: ModelProviderCredentialDialogProvider[];
+  supportsDefaultSelection?: boolean;
   onCreate(input: {
     accessToken?: string;
     accessTokenExpiresAtMilliseconds?: string;
@@ -99,19 +100,20 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const instructionDescription = selectedProvider?.authorizationInstructionsMarkdown
     ? removeFirstFencedCodeBlock(selectedProvider.authorizationInstructionsMarkdown)
     : "";
+  const supportsDefaultSelection = props.supportsDefaultSelection ?? true;
 
   useEffect(() => {
     if (!props.isOpen) {
       setAuthFileContents("");
       setApiKey("");
       setBaseUrl(props.providers[0]?.baseUrl ?? "");
-      setIsDefault(props.suggestDefault);
+      setIsDefault(supportsDefaultSelection && props.suggestDefault);
       setIsInstructionCommandCopied(false);
       setLocalErrorMessage(null);
       setName("");
       setModelProvider(props.providers[0]?.id ?? "");
     }
-  }, [props.isOpen, props.providers, props.suggestDefault]);
+  }, [props.isOpen, props.providers, props.suggestDefault, supportsDefaultSelection]);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -166,24 +168,26 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             </p>
           </div>
 
-          <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
-            <input
-              checked={isDefault}
-              className="mt-0.5 size-4 rounded border border-input bg-background"
-              onChange={(event) => {
-                setIsDefault(event.target.checked);
-              }}
-              type="checkbox"
-            />
-            <div className="grid gap-1">
-              <span className="text-xs font-medium text-foreground">
-                {props.defaultCheckboxTitle ?? "Default for new agents"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {props.defaultCheckboxDescription ?? "Newly created agents will preselect this credential."}
-              </span>
-            </div>
-          </label>
+          {supportsDefaultSelection ? (
+            <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+              <input
+                checked={isDefault}
+                className="mt-0.5 size-4 rounded border border-input bg-background"
+                onChange={(event) => {
+                  setIsDefault(event.target.checked);
+                }}
+                type="checkbox"
+              />
+              <div className="grid gap-1">
+                <span className="text-xs font-medium text-foreground">
+                  {props.defaultCheckboxTitle ?? "Default for new agents"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {props.defaultCheckboxDescription ?? "Newly created agents will preselect this credential."}
+                </span>
+              </div>
+            </label>
+          ) : null}
 
           {selectedProvider?.authorizationInstructionsMarkdown ? (
             <div className="grid gap-2">
@@ -331,7 +335,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                   await props.onCreate({
                     accessToken: oauthCredential.accessToken,
                     accessTokenExpiresAtMilliseconds: oauthCredential.accessTokenExpiresAtMilliseconds,
-                    ...(isDefault ? { isDefault: true } : {}),
+                    ...(supportsDefaultSelection && isDefault ? { isDefault: true } : {}),
                     name,
                     modelProvider: selectedProvider.submittedProviderId,
                     refreshToken: oauthCredential.refreshToken,
@@ -346,7 +350,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 await props.onCreate({
                   apiKey,
                   ...(resolvedBaseUrl ? { baseUrl: resolvedBaseUrl } : {}),
-                  ...(isDefault ? { isDefault: true } : {}),
+                  ...(supportsDefaultSelection && isDefault ? { isDefault: true } : {}),
                   name: ModelProviderCredentialCatalog.resolveCredentialName({
                     name,
                     provider: selectedProvider,

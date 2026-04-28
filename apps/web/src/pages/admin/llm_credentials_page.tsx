@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { KeyRoundIcon, PlusIcon, RefreshCcwIcon, StarIcon, Trash2Icon } from "lucide-react";
+import { KeyRoundIcon, PlusIcon, RefreshCcwIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
@@ -16,7 +16,6 @@ import type { llmCredentialsPageAddMutation } from "./__generated__/llmCredentia
 import type { llmCredentialsPageDeleteMutation } from "./__generated__/llmCredentialsPageDeleteMutation.graphql";
 import type { llmCredentialsPageQuery } from "./__generated__/llmCredentialsPageQuery.graphql";
 import type { llmCredentialsPageRefreshTokenMutation } from "./__generated__/llmCredentialsPageRefreshTokenMutation.graphql";
-import type { llmCredentialsPageSetDefaultMutation } from "./__generated__/llmCredentialsPageSetDefaultMutation.graphql";
 
 const llmCredentialsPageQueryNode = graphql`
   query llmCredentialsPageQuery {
@@ -29,7 +28,6 @@ const llmCredentialsPageQueryNode = graphql`
     PlatformModelProviderCredentials {
       id
       baseUrl
-      isDefault
       name
       modelProvider
       type
@@ -71,15 +69,6 @@ const llmCredentialsPageRefreshTokenMutationNode = graphql`
   }
 `;
 
-const llmCredentialsPageSetDefaultMutationNode = graphql`
-  mutation llmCredentialsPageSetDefaultMutation($input: SetDefaultPlatformModelProviderCredentialInput!) {
-    SetDefaultPlatformModelProviderCredential(input: $input) {
-      id
-      isDefault
-    }
-  }
-`;
-
 type PlatformCredential = llmCredentialsPageQuery["response"]["PlatformModelProviderCredentials"][number];
 
 function formatTimestamp(value: string): string {
@@ -115,7 +104,6 @@ function AdminLlmCredentialsPageContent() {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
   const [refreshingCredentialId, setRefreshingCredentialId] = useState<string | null>(null);
-  const [defaultingCredentialId, setDefaultingCredentialId] = useState<string | null>(null);
   const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null);
   const data = useLazyLoadQuery<llmCredentialsPageQuery>(
     llmCredentialsPageQueryNode,
@@ -131,8 +119,6 @@ function AdminLlmCredentialsPageContent() {
     useMutation<llmCredentialsPageDeleteMutation>(llmCredentialsPageDeleteMutationNode);
   const [commitRefreshToken, isRefreshTokenInFlight] =
     useMutation<llmCredentialsPageRefreshTokenMutation>(llmCredentialsPageRefreshTokenMutationNode);
-  const [commitSetDefault, isSetDefaultInFlight] =
-    useMutation<llmCredentialsPageSetDefaultMutation>(llmCredentialsPageSetDefaultMutationNode);
   const providers = useMemo(() => {
     return ModelProviderCredentialCatalog.toDialogProviders(
       data.ModelProviders.filter((provider) => provider.id !== "companyhelm").map((provider) => ({
@@ -191,7 +177,6 @@ function AdminLlmCredentialsPageContent() {
 
           <PlatformCredentialTable
             credentials={credentials}
-            defaultingCredentialId={defaultingCredentialId}
             deletingCredentialId={deletingCredentialId}
             refreshingCredentialId={refreshingCredentialId}
             onDelete={async (credentialId) => {
@@ -259,48 +244,17 @@ function AdminLlmCredentialsPageContent() {
                 setRefreshingCredentialId(null);
               });
             }}
-            onSetDefault={async (credentialId) => {
-              if (isSetDefaultInFlight) {
-                return;
-              }
-              setErrorMessage(null);
-              setDefaultingCredentialId(credentialId);
-              await runMutation((resolve, reject) => {
-                commitSetDefault({
-                  variables: {
-                    input: {
-                      id: credentialId,
-                    },
-                  },
-                  onCompleted: (_response, errors) => {
-                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                    if (nextErrorMessage) {
-                      reject(new Error(nextErrorMessage));
-                      return;
-                    }
-
-                    resolve();
-                  },
-                  onError: reject,
-                });
-              }).catch((error: unknown) => {
-                setErrorMessage(error instanceof Error ? error.message : "Failed to update default credential.");
-              }).finally(() => {
-                setDefaultingCredentialId(null);
-              });
-            }}
           />
         </CardContent>
       </Card>
 
       <CreateCredentialDialog
-        defaultCheckboxDescription="Future CompanyHelm-managed model selection can use this credential as the platform fallback."
-        defaultCheckboxTitle="Platform default"
         description="Add an operator-owned provider credential. These credentials are visible only to platform admins."
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         isOpen={isCreateDialogOpen}
         isSaving={isAddCredentialInFlight}
         providers={providers}
+        supportsDefaultSelection={false}
         suggestDefault={credentials.length === 0}
         onCreate={async (input) => {
           setErrorMessage(null);
@@ -333,13 +287,11 @@ function AdminLlmCredentialsPageContent() {
 
 function PlatformCredentialTable(props: {
   credentials: readonly PlatformCredential[];
-  defaultingCredentialId: string | null;
   deletingCredentialId: string | null;
   refreshingCredentialId: string | null;
   onDelete(credentialId: string): Promise<void>;
   onOpenModels(credentialId: string): void;
   onRefreshToken(credentialId: string): Promise<void>;
-  onSetDefault(credentialId: string): Promise<void>;
 }) {
   if (props.credentials.length === 0) {
     return (
@@ -387,7 +339,6 @@ function PlatformCredentialTable(props: {
               <TableCell>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">{credential.name}</span>
-                  {credential.isDefault ? <Badge variant="secondary">Default</Badge> : null}
                   {showRefreshFailure ? <Badge variant="destructive">Reconnect required</Badge> : null}
                 </div>
               </TableCell>
@@ -428,18 +379,6 @@ function PlatformCredentialTable(props: {
                       />
                     </Button>
                   ) : null}
-                  <Button
-                    aria-label="Set platform default"
-                    disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
-                    onClick={async (event) => {
-                      event.stopPropagation();
-                      await props.onSetDefault(credential.id);
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <StarIcon className={credential.isDefault ? "fill-current" : ""} />
-                  </Button>
                   <Button
                     aria-label="Delete credential"
                     disabled={props.deletingCredentialId === credential.id}

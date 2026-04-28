@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3045f7869f48147801ee42527a34bbe3>>
+ * @generated SignedSource<<9958fe34e75f76aa881f11914107151d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,7 +14,6 @@ export type AddPlatformModelProviderCredentialInput = {
   accessTokenExpiresAtMilliseconds?: string | null | undefined;
   apiKey?: string | null | undefined;
   baseUrl?: string | null | undefined;
-  isDefault?: boolean | null | undefined;
   modelProvider: string;
   name?: string | null | undefined;
   refreshToken?: string | null | undefined;

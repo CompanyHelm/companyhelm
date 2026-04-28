@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3154d64ae5b836810a72cacebbd47a1b>>
+ * @generated SignedSource<<b022c45c27107678b5a75ffa132e850a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,7 +23,6 @@ export type llmCredentialsPageQuery$data = {
     readonly defaultModelId: string | null | undefined;
     readonly errorMessage: string | null | undefined;
     readonly id: string;
-    readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly refreshedAt: string | null | undefined;
@@ -95,13 +94,6 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "baseUrl",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isDefault",
         "storageKey": null
       },
       (v1/*: any*/),
@@ -177,16 +169,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "1472cb8be9f2b1d4ce77c04d0649982e",
+    "cacheID": "50bbe743932f840fe229bfaedbacbd5b",
     "id": null,
     "metadata": {},
     "name": "llmCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query llmCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  PlatformModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query llmCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  PlatformModelProviderCredentials {\n    id\n    baseUrl\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "39cc333b9577bfba96807926a8b612f4";
+(node as any).hash = "afc28982eabc9c3b5d5b96f284593d31";
 
 export default node;

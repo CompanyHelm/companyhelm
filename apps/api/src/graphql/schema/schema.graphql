@@ -188,9 +188,6 @@ type Mutation {
     input: SetDefaultModelProviderCredentialInput!
   ): ModelProviderCredential!
   SetDefaultManagedModelProviderCredential: Boolean!
-  SetDefaultPlatformModelProviderCredential(
-    input: SetDefaultPlatformModelProviderCredentialInput!
-  ): PlatformModelProviderCredential!
   SetDefaultModelProviderCredentialModel(
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
@@ -924,7 +921,6 @@ type PlatformModelProviderCredential {
   id: ID!
   baseUrl: String
   createdByUserId: ID
-  isDefault: Boolean!
   name: String!
   modelProvider: String!
   defaultModelId: String
@@ -1255,7 +1251,6 @@ input AddPlatformModelProviderCredentialInput {
   accessTokenExpiresAtMilliseconds: String
   apiKey: String
   baseUrl: String
-  isDefault: Boolean
   name: String
   modelProvider: String!
   refreshToken: String
@@ -1737,10 +1732,6 @@ input SetDefaultComputeProviderDefinitionInput {
 }
 
 input SetDefaultModelProviderCredentialInput {
-  id: ID!
-}
-
-input SetDefaultPlatformModelProviderCredentialInput {
   id: ID!
 }
 

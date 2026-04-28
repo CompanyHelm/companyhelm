@@ -25,7 +25,6 @@ type AddPlatformModelProviderCredentialMutationArguments = {
     accessTokenExpiresAtMilliseconds?: string | null;
     apiKey?: string | null;
     baseUrl?: string | null;
-    isDefault?: boolean | null;
     name?: string | null;
     modelProvider: string;
     refreshToken?: string | null;
@@ -125,15 +124,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const insertableDatabase = tx as unknown as InsertableDatabase;
       const updatableDatabase = tx as unknown as UpdatableDatabase;
-      const existingCredentials = await selectableDatabase
-        .select({
-          id: platformModelProviderCredentials.id,
-          isDefault: platformModelProviderCredentials.isDefault,
-        })
-        .from(platformModelProviderCredentials)
-        .where(eq(platformModelProviderCredentials.status, "active"));
-      const shouldSetDefaultCredential = Boolean(arguments_.input.isDefault)
-        || !existingCredentials.some((credential) => Boolean(credential.isDefault));
       const [createdCredential] = await (insertableDatabase
         .insert(platformModelProviderCredentials)
         .values({
@@ -148,7 +138,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
           refreshToken: credentialPayload.refreshToken,
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
-          isDefault: false,
           status: "active",
           errorMessage: null,
           createdByUserId: context.authSession?.user.id ?? null,
@@ -167,7 +156,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
           refreshToken: platformModelProviderCredentials.refreshToken,
           refreshedAt: platformModelProviderCredentials.refreshedAt,
           createdAt: platformModelProviderCredentials.createdAt,
-          isDefault: platformModelProviderCredentials.isDefault,
           updatedAt: platformModelProviderCredentials.updatedAt,
         }) ?? Promise.resolve([])) as PlatformModelProviderCredentialRecord[];
       if (!createdCredential) {
@@ -184,9 +172,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
               platformModelProviderCredentialId: createdCredential.id,
             })
           ));
-      }
-      if (shouldSetDefaultCredential) {
-        await this.setDefaultCredential(updatableDatabase, createdCredential.id, now);
       }
       if (defaultModelId) {
         await this.setDefaultModel(updatableDatabase, createdCredential.id, defaultModelId, now);
@@ -205,7 +190,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
           refreshToken: platformModelProviderCredentials.refreshToken,
           refreshedAt: platformModelProviderCredentials.refreshedAt,
           createdAt: platformModelProviderCredentials.createdAt,
-          isDefault: platformModelProviderCredentials.isDefault,
           updatedAt: platformModelProviderCredentials.updatedAt,
         })
         .from(platformModelProviderCredentials)
@@ -246,27 +230,6 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
 
     return this.presenter.serializeCredential(result.credential, result.storedModels);
   };
-
-  private async setDefaultCredential(
-    database: UpdatableDatabase,
-    credentialId: string,
-    now: Date,
-  ): Promise<void> {
-    await database
-      .update(platformModelProviderCredentials)
-      .set({
-        isDefault: false,
-        updatedAt: now,
-      })
-      .where(eq(platformModelProviderCredentials.isDefault, true));
-    await database
-      .update(platformModelProviderCredentials)
-      .set({
-        isDefault: true,
-        updatedAt: now,
-      })
-      .where(eq(platformModelProviderCredentials.id, credentialId));
-  }
 
   private async setDefaultModel(
     database: UpdatableDatabase,

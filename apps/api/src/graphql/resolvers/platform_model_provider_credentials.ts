@@ -49,7 +49,6 @@ export class PlatformModelProviderCredentialsQueryResolver {
           refreshToken: platformModelProviderCredentials.refreshToken,
           refreshedAt: platformModelProviderCredentials.refreshedAt,
           createdAt: platformModelProviderCredentials.createdAt,
-          isDefault: platformModelProviderCredentials.isDefault,
           updatedAt: platformModelProviderCredentials.updatedAt,
         })
         .from(platformModelProviderCredentials) as PlatformModelProviderCredentialRecord[];

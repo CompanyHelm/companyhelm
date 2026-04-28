@@ -7,7 +7,6 @@ import {
   modelProviderCredentials,
   companyManagedModelProviderSettings,
   platformModelRoutes,
-  platformModelProviderCredentials,
   platformModels,
 } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
@@ -30,13 +29,6 @@ type ModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
-};
-
-type PlatformCredentialRecord = {
-  id: string;
-  isDefault: boolean;
-  modelProvider: string;
-  name: string;
 };
 
 type PlatformModelRecord = {
@@ -124,16 +116,6 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
-      const platformCredentialRecords = await selectableDatabase
-        .select({
-          id: platformModelProviderCredentials.id,
-          isDefault: platformModelProviderCredentials.isDefault,
-          modelProvider: platformModelProviderCredentials.modelProvider,
-          name: platformModelProviderCredentials.name,
-        })
-        .from(platformModelProviderCredentials)
-        .where(eq(platformModelProviderCredentials.status, "active")) as PlatformCredentialRecord[];
-
       const platformModelRecords = await selectableDatabase
         .select({
           id: platformModels.id,
@@ -198,7 +180,6 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
       const platformOption = this.createPlatformProviderOption(
-        platformCredentialRecords,
         platformModelRecords,
         platformRouteRecords,
         managedProviderSettingsRecord?.defaultPlatformModelId ?? null,
@@ -265,7 +246,6 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
   };
 
   private createPlatformProviderOption(
-    platformCredentialRecords: PlatformCredentialRecord[],
     platformModelRecords: PlatformModelRecord[],
     platformRouteRecords: Array<{
       platformModelId: string;
@@ -273,7 +253,6 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     }>,
     defaultPlatformModelId: string | null,
   ): GraphqlAgentCreateProviderOption | null {
-    void platformCredentialRecords;
     const platformModelIdsWithRoutes = new Set(platformRouteRecords.map((routeRecord) => routeRecord.platformModelId));
 
     const credentialModels = platformModelRecords
@@ -314,7 +293,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       modelCredentialSource: "platform",
       platformModelProviderCredentialId: null,
       modelProviderCredentialId: null,
-      isDefault: platformCredentialRecords.some((credentialRecord) => credentialRecord.isDefault),
+      isDefault: false,
       label: "CompanyHelm",
       modelProvider: "companyhelm",
       defaultModelId: defaultModelRecord?.modelId ?? null,
