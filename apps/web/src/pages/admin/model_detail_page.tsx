@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeftIcon, PencilIcon, PlusIcon, PowerIcon, RouteIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
@@ -109,6 +109,7 @@ export function AdminModelDetailPage() {
 }
 
 function AdminModelDetailPageContent() {
+  const navigate = useNavigate();
   const params = useParams({ strict: false }) as { platformModelId?: string };
   const platformModelId = params.platformModelId ?? "";
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false);
@@ -270,6 +271,11 @@ function AdminModelDetailPageContent() {
                 routeModelIds.filter((routeModelId) => routeModelId !== credentialModelId),
               );
             }}
+            onOpenCredential={(credentialId) => {
+              void navigate({
+                to: `/admin/llm-credentials/${credentialId}`,
+              });
+            }}
             routes={data.PlatformModelRoutes}
           />
         </CardContent>
@@ -363,6 +369,7 @@ function CurrentRoutesTable(props: {
   credentialById: Map<string, PlatformCredential>;
   disabled: boolean;
   onDelete(credentialModelId: string): void;
+  onOpenCredential(credentialId: string): void;
   routes: readonly PlatformRoute[];
 }) {
   if (props.routes.length === 0) {
@@ -392,7 +399,15 @@ function CurrentRoutesTable(props: {
           const credentialId = credentialModel.platformModelProviderCredential?.id ?? "";
           const credential = props.credentialById.get(credentialId);
           return (
-            <TableRow key={route.id}>
+            <TableRow
+              className={credential ? "cursor-pointer transition hover:bg-muted/40" : undefined}
+              key={route.id}
+              onClick={() => {
+                if (credential) {
+                  props.onOpenCredential(credential.id);
+                }
+              }}
+            >
               <TableCell>
                 <div className="font-medium text-foreground">{credential?.name ?? "Unknown credential"}</div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -419,7 +434,8 @@ function CurrentRoutesTable(props: {
                 <Button
                   aria-label={`Delete route ${credential?.name ?? credentialModel.name}`}
                   disabled={props.disabled}
-                  onClick={() => {
+                  onClick={(event) => {
+                    event.stopPropagation();
                     props.onDelete(credentialModel.id);
                   }}
                   size="icon-sm"
