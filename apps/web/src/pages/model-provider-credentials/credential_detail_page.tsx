@@ -14,7 +14,6 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
-import type { credentialDetailPageRefreshCredentialTokenMutation } from "./__generated__/credentialDetailPageRefreshCredentialTokenMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
 import type { credentialDetailPageUpdateCompanySettingsMutation } from "./__generated__/credentialDetailPageUpdateCompanySettingsMutation.graphql";
@@ -271,21 +270,6 @@ const modelProviderCredentialDetailPageSetDefaultModelMutationNode = graphql`
   }
 `;
 
-const modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode = graphql`
-  mutation credentialDetailPageRefreshCredentialTokenMutation(
-    $input: RefreshModelProviderCredentialTokenInput!
-  ) {
-    RefreshModelProviderCredentialToken(input: $input) {
-      id
-      status
-      errorMessage
-      refreshToken
-      refreshedAt
-      updatedAt
-    }
-  }
-`;
-
 const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
   mutation credentialDetailPageRefreshModelsMutation(
     $input: RefreshModelProviderCredentialModelsInput!
@@ -472,24 +456,6 @@ function CodexLimitPanel({
                 <p className="text-xs text-muted-foreground">{formatWindow(snapshot.secondary, "Weekly window")}</p>
               </div>
             ) : null}
-
-            {snapshot.credits.hasCredits !== null || snapshot.credits.balance || snapshot.credits.unlimited !== null ? (
-              <div className="flex flex-wrap gap-2">
-                {snapshot.credits.hasCredits !== null ? (
-                  <Badge variant="outline">
-                    {snapshot.credits.hasCredits ? "Credits available" : "No credits"}
-                  </Badge>
-                ) : null}
-                {snapshot.credits.unlimited !== null ? (
-                  <Badge variant="outline">
-                    {snapshot.credits.unlimited ? "Unlimited" : "Metered"}
-                  </Badge>
-                ) : null}
-                {snapshot.credits.balance ? (
-                  <Badge variant="outline">Balance {snapshot.credits.balance}</Badge>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
       ))}
@@ -526,10 +492,6 @@ function ModelProviderCredentialDetailPageContent() {
   const [commitRefreshModels, isRefreshInFlight] =
     useMutation<credentialDetailPageRefreshModelsMutation>(
       modelProviderCredentialDetailPageRefreshModelsMutationNode,
-    );
-  const [commitRefreshCredentialToken, isRefreshTokenInFlight] =
-    useMutation<credentialDetailPageRefreshCredentialTokenMutation>(
-      modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode,
     );
   const [commitSetDefaultModel, isSetDefaultModelInFlight] =
     useMutation<credentialDetailPageSetDefaultModelMutation>(
@@ -688,46 +650,8 @@ function ModelProviderCredentialDetailPageContent() {
             <div className="flex items-center gap-2">
               {isManagedCredential ? (
                 <Badge variant="secondary">Read only</Badge>
-              ) : isOauthCredential ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={isRefreshTokenInFlight}
-                  onClick={async () => {
-                    if (isRefreshTokenInFlight) {
-                      return;
-                    }
-
-                    setErrorMessage(null);
-                    await new Promise<void>((resolve, reject) => {
-                      commitRefreshCredentialToken({
-                        variables: {
-                          input: {
-                            modelProviderCredentialId: normalizedCredentialId,
-                          },
-                        },
-                        onCompleted: (_response, errors) => {
-                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                          if (nextErrorMessage) {
-                            reject(new Error(nextErrorMessage));
-                            return;
-                          }
-
-                          setFetchKey((current) => current + 1);
-                          resolve();
-                        },
-                        onError: reject,
-                      });
-                    }).catch((error: unknown) => {
-                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh credential token.");
-                    });
-                  }}
-                >
-                  <RefreshCcwIcon className={isRefreshTokenInFlight ? "animate-spin" : ""} />
-                  Refresh token
-                </Button>
               ) : null}
-              {!isManagedCredential ? (
+              {!isManagedCredential && selectedTab === "models" ? (
                 <Button
                   size="sm"
                   variant="outline"

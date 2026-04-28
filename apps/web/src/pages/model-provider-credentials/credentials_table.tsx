@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { RefreshCcwIcon, StarIcon } from "lucide-react";
+import { StarIcon } from "lucide-react";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,7 @@ interface CredentialsTableProps {
     credentialId: string;
     replacementCredentialId?: string | null;
   }) => Promise<void>;
-  onRefreshToken: (credentialId: string) => Promise<void>;
   onSetDefault: (credentialId: string) => Promise<void>;
-  refreshingCredentialId: string | null;
   replacementOptions: DeleteCredentialDialogReplacementRecord[];
 }
 
@@ -182,20 +180,6 @@ export function CredentialsTable(props: CredentialsTableProps) {
                 <div className="flex items-center justify-end gap-1">
                   {credential.credentialKind === "managed" ? (
                     <Badge variant="secondary">Read only</Badge>
-                  ) : credential.type === "oauth_token" ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={props.refreshingCredentialId === credential.id}
-                      onClick={async (event) => {
-                        event.stopPropagation();
-                        await props.onRefreshToken(credential.id);
-                      }}
-                    >
-                      <RefreshCcwIcon
-                        className={`h-4 w-4 ${props.refreshingCredentialId === credential.id ? "animate-spin" : ""}`}
-                      />
-                    </Button>
                   ) : null}
                   {credential.credentialKind === "user_provided" ? (
                     <>
