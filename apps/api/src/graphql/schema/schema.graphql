@@ -88,6 +88,7 @@ type Mutation {
   UpdatePlatformAdminCompanyEnhancedLogging(
     input: UpdatePlatformAdminCompanyEnhancedLoggingInput!
   ): PlatformAdminCompanyEnhancedLogging!
+  GrantPlatformAdmin(input: GrantPlatformAdminInput!): PlatformAdminUser!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
@@ -1303,6 +1304,10 @@ input UpdatePlatformAdminCompanyEnhancedLoggingInput {
   ttlSeconds: Int
   components: [String!]
   sessionIds: [String!]
+}
+
+input GrantPlatformAdminInput {
+  userId: ID!
 }
 
 input UpdateCompanyOnboardingInput {

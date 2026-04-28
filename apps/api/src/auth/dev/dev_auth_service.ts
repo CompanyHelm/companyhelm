@@ -1,7 +1,7 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../../db/admin_database.ts";
-import { companies, companyMembers, users } from "../../db/schema.ts";
+import { companies, companyMembers, platformAdmins, users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import type { AuthSession } from "../auth_provider.ts";
 import { DevAuthHeaders } from "./headers.ts";
@@ -110,7 +110,6 @@ export class DevAuthService {
           created_at: now,
           email,
           first_name: firstName,
-          isPlatformAdmin: false,
           last_name: lastName,
           updated_at: now,
         })
@@ -118,7 +117,7 @@ export class DevAuthService {
           email: users.email,
           first_name: users.first_name,
           id: users.id,
-          isPlatformAdmin: users.isPlatformAdmin,
+          isPlatformAdmin: sql<boolean>`false`,
           last_name: users.last_name,
         }) as DevAuthUserRecord[];
       if (!createdUser) {
@@ -320,7 +319,11 @@ export class DevAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: users.isPlatformAdmin,
+        isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -345,7 +348,11 @@ export class DevAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: users.isPlatformAdmin,
+        isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -384,7 +391,11 @@ export class DevAuthService {
         user_email: users.email,
         user_first_name: users.first_name,
         user_id: users.id,
-        user_isPlatformAdmin: users.isPlatformAdmin,
+        user_isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         user_last_name: users.last_name,
       })
       .from(companyMembers)

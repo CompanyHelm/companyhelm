@@ -1002,6 +1002,13 @@
       "when": 1777386000000,
       "tag": "0143_platform_llm_credential_access_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1777387000000,
+      "tag": "0144_platform_admins_table",
+      "breakpoints": true
     }
   ]
 }

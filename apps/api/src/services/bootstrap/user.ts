@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { injectable } from "inversify";
 import type { DatabaseTransactionInterface } from "../../db/database_interface.ts";
-import { users } from "../../db/schema.ts";
+import { platformAdmins, users } from "../../db/schema.ts";
 
 type UserRecord = {
   id: string;
@@ -85,7 +85,7 @@ export class UserBootstrapService {
         clerk_user_id: users.clerkUserId,
         email: users.email,
         first_name: users.first_name,
-        is_platform_admin: users.isPlatformAdmin,
+        is_platform_admin: sql<boolean>`false`,
         last_name: users.last_name,
       });
     const createdRows = insertResult ? await insertResult as UserRecord[] : [];
@@ -121,7 +121,11 @@ export class UserBootstrapService {
         clerk_user_id: users.clerkUserId,
         email: users.email,
         first_name: users.first_name,
-        is_platform_admin: users.isPlatformAdmin,
+        is_platform_admin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
       })
       .from(users)

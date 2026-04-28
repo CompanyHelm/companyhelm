@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { graphql, useLazyLoadQuery } from "react-relay";
+import { ShieldCheck } from "lucide-react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/components/toast_provider";
+import type { usersPageGrantPlatformAdminMutation } from "./__generated__/usersPageGrantPlatformAdminMutation.graphql";
 import type { usersPageQuery } from "./__generated__/usersPageQuery.graphql";
 
 const USERS_PAGE_SIZE = 25;
@@ -26,6 +29,21 @@ const usersPageQueryNode = graphql`
         createdAt
         updatedAt
       }
+    }
+  }
+`;
+
+const usersPageGrantPlatformAdminMutationNode = graphql`
+  mutation usersPageGrantPlatformAdminMutation($input: GrantPlatformAdminInput!) {
+    GrantPlatformAdmin(input: $input) {
+      id
+      email
+      firstName
+      lastName
+      isPlatformAdmin
+      companyCount
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -63,6 +81,11 @@ export function AdminUsersPage() {
 
 function AdminUsersPageContent() {
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingGrantUserId, setPendingGrantUserId] = useState<string | null>(null);
+  const toast = useToast();
+  const [commitGrantPlatformAdmin, isGrantPlatformAdminInFlight] =
+    useMutation<usersPageGrantPlatformAdminMutation>(usersPageGrantPlatformAdminMutationNode);
   const data = useLazyLoadQuery<usersPageQuery>(
     usersPageQueryNode,
     {
@@ -71,11 +94,31 @@ function AdminUsersPageContent() {
     },
     {
       fetchPolicy: "store-and-network",
+      fetchKey: refreshKey,
     },
   );
   const userPage = data.PlatformAdminUsers;
   const canGoBack = userPage.page > 1;
   const canGoForward = userPage.page < userPage.totalPages;
+
+  const grantPlatformAdmin = (userId: string) => {
+    setPendingGrantUserId(userId);
+    commitGrantPlatformAdmin({
+      variables: {
+        input: {
+          userId,
+        },
+      },
+      onCompleted() {
+        setPendingGrantUserId(null);
+        setRefreshKey((currentRefreshKey) => currentRefreshKey + 1);
+        toast.showSavedToast("Platform admin granted");
+      },
+      onError() {
+        setPendingGrantUserId(null);
+      },
+    });
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -128,6 +171,7 @@ function AdminUsersPageContent() {
                   <TableHead>Access</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Updated</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -144,6 +188,18 @@ function AdminUsersPageContent() {
                     </TableCell>
                     <TableCell>{formatTimestamp(user.createdAt)}</TableCell>
                     <TableCell>{formatTimestamp(user.updatedAt)}</TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={user.isPlatformAdmin || isGrantPlatformAdminInFlight}
+                        onClick={() => grantPlatformAdmin(user.id)}
+                      >
+                        <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                        {pendingGrantUserId === user.id ? "Granting" : "Grant admin"}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

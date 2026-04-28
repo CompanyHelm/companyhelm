@@ -56,7 +56,6 @@ export const users = pgTable("users", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   clerkUserId: text("clerk_user_id"),
-  isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
   first_name: text("first_name").notNull(),
   last_name: text("last_name"),
   email: text("email").notNull(),
@@ -71,6 +70,16 @@ export const users = pgTable("users", {
     sql`${table.last_name} IS NULL OR length(${table.last_name}) <= 255`,
   ),
 }));
+
+export const platformAdmins = pgTable("platform_admins", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  grantedByUserId: uuid("granted_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
 
 export const companyMembers = pgTable("company_members", {
   companyId: uuid("company_id")

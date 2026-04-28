@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { injectable } from "inversify";
-import { companyMembers, users } from "../../db/schema.ts";
+import { companyMembers, platformAdmins, users } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type PlatformAdminUsersArguments = {
@@ -90,7 +90,11 @@ export class PlatformAdminUsersQueryResolver {
           email: users.email,
           firstName: users.first_name,
           id: users.id,
-          isPlatformAdmin: users.isPlatformAdmin,
+          isPlatformAdmin: sql<boolean>`exists (
+            select 1
+            from ${platformAdmins}
+            where ${platformAdmins.userId} = ${users.id}
+          )`,
           lastName: users.last_name,
           updatedAt: users.updated_at,
         })

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import {
@@ -7,6 +7,7 @@ import {
   companyMembers,
   localAuthCredentials,
   localAuthSessions,
+  platformAdmins,
   users,
 } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
@@ -141,7 +142,6 @@ export class LocalAuthService {
           created_at: now,
           email,
           first_name: firstName,
-          isPlatformAdmin: false,
           last_name: lastName,
           updated_at: now,
         })
@@ -149,7 +149,7 @@ export class LocalAuthService {
           email: users.email,
           first_name: users.first_name,
           id: users.id,
-          isPlatformAdmin: users.isPlatformAdmin,
+          isPlatformAdmin: sql<boolean>`false`,
           last_name: users.last_name,
         }) as LocalAuthUserRecord[];
       const [createdCompany] = await insertableDatabase
@@ -374,7 +374,11 @@ export class LocalAuthService {
         first_name: users.first_name,
         id: companies.id,
         id_user: users.id,
-        isPlatformAdmin: users.isPlatformAdmin,
+        isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
         name: companies.name,
         revokedAt: localAuthSessions.revokedAt,
@@ -427,7 +431,11 @@ export class LocalAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: users.isPlatformAdmin,
+        isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -454,7 +462,11 @@ export class LocalAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: users.isPlatformAdmin,
+        isPlatformAdmin: sql<boolean>`exists (
+          select 1
+          from ${platformAdmins}
+          where ${platformAdmins.userId} = ${users.id}
+        )`,
         last_name: users.last_name,
         passwordHash: localAuthCredentials.passwordHash,
         passwordSalt: localAuthCredentials.passwordSalt,

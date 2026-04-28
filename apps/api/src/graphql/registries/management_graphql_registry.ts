@@ -34,6 +34,7 @@ import { DeleteMcpServerMutation } from "../mutations/delete_mcp_server.ts";
 import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
 import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onboarding.ts";
+import { GrantPlatformAdminMutation } from "../mutations/grant_platform_admin.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
 import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
@@ -122,6 +123,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly githubRepositoryProvisioningsQueryResolver: GithubRepositoryProvisioningsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
   private readonly githubSkillBranchesQueryResolver: GithubSkillBranchesQueryResolver;
+  private readonly grantPlatformAdminMutation: GrantPlatformAdminMutation;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
   private readonly llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver;
@@ -320,6 +322,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new SetDefaultPlatformModelProviderCredentialModelMutation(),
     @inject(SetPlatformModelRoutesMutation)
     setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation = new SetPlatformModelRoutesMutation(),
+    @inject(GrantPlatformAdminMutation)
+    grantPlatformAdminMutation: GrantPlatformAdminMutation = new GrantPlatformAdminMutation(),
     @inject(UpdateCompanyOnboardingMutation)
     updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation = new UpdateCompanyOnboardingMutation(),
     @inject(UpdatePlatformAdminCompanyEnhancedLoggingMutation)
@@ -380,6 +384,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.githubSkillBranchesQueryResolver = githubSkillBranchesQueryResolver
       ?? new GithubSkillBranchesQueryResolver(defaultSkillGithubCatalog);
+    this.grantPlatformAdminMutation = grantPlatformAdminMutation;
     this.healthQueryResolver = healthQueryResolver;
     this.importGithubSkillsMutation = importGithubSkillsMutation
       ?? new ImportGithubSkillsMutation(defaultSkillGithubCatalog);
@@ -455,6 +460,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteSkill: this.deleteSkillMutation.execute,
         DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
         EnsureCompanyOnboarding: this.ensureCompanyOnboardingMutation.execute,
+        GrantPlatformAdmin: this.grantPlatformAdminMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
         RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
