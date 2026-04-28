@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import {
   boolean,
+  check,
   index,
-  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -12,20 +12,22 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
+import {
+  modelCredentialSourceEnum,
+  modelProviderCredentialStatusEnum,
+  modelProviderCredentialTypeEnum,
+  modelProviderEnum,
+} from "./ai_common.ts";
 import { companySecrets, companies, secret_groups, users } from "./company.ts";
 import { computeProviderDefinitions } from "./environments.ts";
+import { platformModelProviderCredentialModels } from "./platform_ai.ts";
 
-export const modelProviderEnum = pgEnum("model_provider", [
-  "openai",
-  "anthropic",
-  "openai-codex",
-  "openrouter",
-  "openai-compatible",
-  "google-gemini-cli",
-  "companyhelm",
-]);
-export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
-export const modelProviderCredentialStatusEnum = pgEnum("model_provider_credential_status", ["active", "error"]);
+export {
+  modelCredentialSourceEnum,
+  modelProviderCredentialStatusEnum,
+  modelProviderCredentialTypeEnum,
+  modelProviderEnum,
+} from "./ai_common.ts";
 
 export const agents = pgTable("agents", {
   id: uuid("id")
@@ -37,6 +39,9 @@ export const agents = pgTable("agents", {
     .notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
+  defaultModelCredentialSource: modelCredentialSourceEnum("default_model_credential_source").notNull().default("user_provided"),
+  defaultPlatformModelProviderCredentialModelId: uuid("default_platform_model_provider_credential_model_id")
+    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
   defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
@@ -46,6 +51,14 @@ export const agents = pgTable("agents", {
   system_prompt: text("system_prompt"),
 }, (table) => ({
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
+  defaultModelSelectionCheck: check(
+    "agents_default_model_selection_check",
+    sql`(
+      (${table.defaultModelCredentialSource} = 'platform' AND ${table.defaultPlatformModelProviderCredentialModelId} IS NOT NULL AND ${table.defaultModelProviderCredentialModelId} IS NULL)
+      OR
+      (${table.defaultModelCredentialSource} = 'user_provided' AND ${table.defaultPlatformModelProviderCredentialModelId} IS NULL AND ${table.defaultModelProviderCredentialModelId} IS NOT NULL)
+    )`,
+  ),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {
@@ -65,7 +78,6 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
   isDefault: boolean("is_default").notNull().default(false),
-  isManaged: boolean("is_managed").notNull().default(false),
   status: modelProviderCredentialStatusEnum("status").notNull(),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -74,9 +86,6 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   companyDefaultUnique: uniqueIndex("model_provider_credentials_company_default_uidx")
     .on(table.companyId)
     .where(sql`${table.isDefault}`),
-  companyManagedUnique: uniqueIndex("model_provider_credentials_company_managed_uidx")
-    .on(table.companyId)
-    .where(sql`${table.isManaged}`),
 }));
 
 // avaialbe models based on the model provider credential

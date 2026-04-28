@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import {
   boolean,
   index,
-  pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
+  pgTable,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
-import { modelProviderCredentialStatusEnum, modelProviderCredentialTypeEnum, modelProviderEnum } from "./agents.ts";
+import { modelProviderCredentialStatusEnum, modelProviderCredentialTypeEnum, modelProviderEnum } from "./ai_common.ts";
 import { users } from "./company.ts";
 
 export const platformModelProviderCredentials = pgTable("platform_model_provider_credentials", {
@@ -52,6 +52,8 @@ export const platformModelProviderCredentialModels = pgTable("platform_model_pro
   reasoningSupported: boolean("reasoning_supported").notNull().default(false),
   reasoningLevels: text("reasoning_levels").array(),
   isDefault: boolean("is_default").notNull().default(false),
+  isAvailable: boolean("is_available").notNull().default(true),
+  unavailableAt: timestamp("unavailable_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({

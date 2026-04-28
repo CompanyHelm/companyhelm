@@ -38,7 +38,6 @@ type ModelProviderCredentialRecord = {
   refreshedAt: Date | null;
   createdAt: Date;
   isDefault: boolean;
-  isManaged: boolean;
   updatedAt: Date;
 };
 
@@ -51,7 +50,6 @@ type GraphqlModelProviderCredentialRecord = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   isDefault: boolean;
-  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -173,7 +171,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
@@ -193,7 +190,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
           isDefault: false,
-          isManaged: false,
           status: "active",
           errorMessage: null,
           createdAt: now,
@@ -212,7 +208,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         }) ?? Promise.resolve([]));
 
@@ -261,7 +256,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)

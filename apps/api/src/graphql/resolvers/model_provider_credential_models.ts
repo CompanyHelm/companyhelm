@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
-import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type ModelProviderCredentialModelsArguments = {
@@ -21,7 +20,6 @@ type ModelProviderCredentialModelRecord = {
 
 type ModelProviderCredentialRecord = {
   id: string;
-  isManaged: boolean;
   modelProvider: string;
 };
 
@@ -49,21 +47,6 @@ type SelectableDatabase = {
  */
 @injectable()
 export class ModelProviderCredentialModelsQueryResolver {
-  constructor(
-    @inject(CompanyHelmLlmProviderService)
-    private readonly companyHelmLlmProviderService: Pick<
-      CompanyHelmLlmProviderService,
-      "getSeedModels" | "matchesCredential"
-    > = {
-      getSeedModels() {
-        return [];
-      },
-      matchesCredential() {
-        return false;
-      },
-    },
-  ) {}
-
   execute = async (
     _root: unknown,
     arguments_: ModelProviderCredentialModelsArguments,
@@ -87,7 +70,6 @@ export class ModelProviderCredentialModelsQueryResolver {
       const [credential] = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
         })
         .from(modelProviderCredentials)
@@ -116,14 +98,7 @@ export class ModelProviderCredentialModelsQueryResolver {
           eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
         ));
 
-      const allowedManagedModelIds = this.companyHelmLlmProviderService.matchesCredential(credential)
-        ? new Set(this.companyHelmLlmProviderService.getSeedModels().map((model) => model.modelId))
-        : null;
-      const visibleModels = allowedManagedModelIds
-        ? models.filter((model) => allowedManagedModelIds.has(model.modelId))
-        : models;
-
-      return visibleModels.map((model) => ({
+      return models.map((model) => ({
         ...model,
         reasoningSupported: model.reasoningSupported,
         reasoningLevels: model.reasoningLevels ?? [],

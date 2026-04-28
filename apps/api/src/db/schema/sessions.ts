@@ -17,8 +17,10 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
+import { modelCredentialSourceEnum } from "./ai_common.ts";
 import { agents, modelProviderCredentialModels } from "./agents.ts";
 import { companySecrets, companies, users } from "./company.ts";
+import { platformModelProviderCredentialModels } from "./platform_ai.ts";
 
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
@@ -51,9 +53,11 @@ export const agentSessions = pgTable("agent_sessions", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
+  currentModelCredentialSource: modelCredentialSourceEnum("current_model_credential_source").notNull().default("user_provided"),
+  currentPlatformModelProviderCredentialModelId: uuid("current_platform_model_provider_credential_model_id")
+    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
   currentModelProviderCredentialModelId: uuid("current_model_provider_credential_model_id")
-    .references(() => modelProviderCredentialModels.id, { onDelete: "set null" })
-    .notNull(),
+    .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
   // owner of a user-initiated chat, optional when the session was created by the system
@@ -84,6 +88,14 @@ export const agentSessions = pgTable("agent_sessions", {
 }, (table) => ({
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
   companyLastUserMessageAtIndex: index("agent_sessions_company_last_user_message_at_idx").on(table.companyId, table.lastUserMessageAt),
+  currentModelSelectionCheck: check(
+    "agent_sessions_current_model_selection_check",
+    sql`(
+      (${table.currentModelCredentialSource} = 'platform' AND ${table.currentPlatformModelProviderCredentialModelId} IS NOT NULL AND ${table.currentModelProviderCredentialModelId} IS NULL)
+      OR
+      (${table.currentModelCredentialSource} = 'user_provided' AND ${table.currentPlatformModelProviderCredentialModelId} IS NULL AND ${table.currentModelProviderCredentialModelId} IS NOT NULL)
+    )`,
+  ),
 }));
 
 export const sessionTurns = pgTable("session_turns", {

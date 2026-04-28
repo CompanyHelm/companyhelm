@@ -56,7 +56,6 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           updatedAt: modelProviderCredentials.updatedAt,
-          isManaged: modelProviderCredentials.isManaged,
         })
         .from(modelProviderCredentials)
         .where(eq(modelProviderCredentials.companyId, companyId)) as ModelProviderCredentialRecord[];

@@ -4,7 +4,16 @@ import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { agentSessions, agents, companies, modelProviderCredentialModels, modelProviderCredentials, users } from "../../../../db/schema.ts";
+import {
+  agentSessions,
+  agents,
+  companies,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
+  users,
+} from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { CompanySettingsService } from "../../../company_settings_service.ts";
@@ -25,7 +34,9 @@ import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service
 
 type SessionRuntimeRow = {
   agentId: string;
-  currentModelProviderCredentialModelId: string;
+  currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelProviderCredentialModelId: string | null;
+  currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   ownerUserId: string | null;
   status: string;
@@ -42,7 +53,8 @@ type CompanyRow = {
 
 type ModelRow = {
   modelId: string;
-  modelProviderCredentialId: string;
+  modelProviderCredentialId: string | null;
+  platformModelProviderCredentialId: string | null;
   name?: string;
   reasoningSupported?: boolean;
 };
@@ -50,7 +62,6 @@ type ModelRow = {
 type CredentialRow = {
   baseUrl: string | null;
   encryptedApiKey: string;
-  isManaged: boolean;
   modelProvider: string;
 };
 
@@ -568,6 +579,8 @@ export class SessionProcessExecutionService {
       const [sessionRow] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           ownerUserId: agentSessions.ownerUserId,
@@ -611,37 +624,56 @@ export class SessionProcessExecutionService {
         throw new Error("Session company not found.");
       }
 
-      const [modelRow] = await selectableDatabase
-        .select({
-          modelId: modelProviderCredentialModels.modelId,
-          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-          name: modelProviderCredentialModels.name,
-          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
-        })
-        .from(modelProviderCredentialModels)
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, companyId),
-          eq(modelProviderCredentialModels.id, sessionRow.currentModelProviderCredentialModelId),
-        )) as ModelRow[];
+      const [modelRow] = sessionRow.currentModelCredentialSource === "platform"
+        ? await selectableDatabase
+          .select({
+            modelId: platformModelProviderCredentialModels.modelId,
+            platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+            name: platformModelProviderCredentialModels.name,
+            reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
+          })
+          .from(platformModelProviderCredentialModels)
+          .where(eq(platformModelProviderCredentialModels.id, sessionRow.currentPlatformModelProviderCredentialModelId ?? "")) as ModelRow[]
+        : await selectableDatabase
+          .select({
+            modelId: modelProviderCredentialModels.modelId,
+            modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+            name: modelProviderCredentialModels.name,
+            reasoningSupported: modelProviderCredentialModels.reasoningSupported,
+          })
+          .from(modelProviderCredentialModels)
+          .where(and(
+            eq(modelProviderCredentialModels.companyId, companyId),
+            eq(modelProviderCredentialModels.id, sessionRow.currentModelProviderCredentialModelId ?? ""),
+          )) as ModelRow[];
       if (!modelRow) {
         throw new Error("Session model not found.");
       }
 
-      const [credentialRow] = await selectableDatabase
-        .select({
-          baseUrl: modelProviderCredentials.baseUrl,
-          encryptedApiKey: modelProviderCredentials.encryptedApiKey,
-          isManaged: modelProviderCredentials.isManaged,
-          modelProvider: modelProviderCredentials.modelProvider,
-        })
-        .from(modelProviderCredentials)
-        .where(and(
-          eq(modelProviderCredentials.companyId, companyId),
-          eq(modelProviderCredentials.id, modelRow.modelProviderCredentialId),
-        )) as CredentialRow[];
+      const [credentialRow] = sessionRow.currentModelCredentialSource === "platform"
+        ? await selectableDatabase
+          .select({
+            baseUrl: platformModelProviderCredentials.baseUrl,
+            encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
+            modelProvider: platformModelProviderCredentials.modelProvider,
+          })
+          .from(platformModelProviderCredentials)
+          .where(eq(platformModelProviderCredentials.id, modelRow.platformModelProviderCredentialId ?? "")) as CredentialRow[]
+        : await selectableDatabase
+          .select({
+            baseUrl: modelProviderCredentials.baseUrl,
+            encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+            modelProvider: modelProviderCredentials.modelProvider,
+          })
+          .from(modelProviderCredentials)
+          .where(and(
+            eq(modelProviderCredentials.companyId, companyId),
+            eq(modelProviderCredentials.id, modelRow.modelProviderCredentialId ?? ""),
+          )) as CredentialRow[];
       if (!credentialRow) {
         throw new Error("Session credential not found.");
       }
+      const resolvedCredentialId = modelRow.platformModelProviderCredentialId ?? modelRow.modelProviderCredentialId;
 
       return {
         agentId: sessionRow.agentId,
@@ -651,10 +683,10 @@ export class SessionProcessExecutionService {
         ...(credentialRow.baseUrl ? { baseUrl: credentialRow.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
-        isCompanyHelmManagedCredential: Boolean(credentialRow.isManaged),
+        isCompanyHelmManagedCredential: sessionRow.currentModelCredentialSource === "platform",
         modelId: modelRow.modelId,
         ...(modelRow.name ? { modelName: modelRow.name } : {}),
-        modelProviderCredentialId: modelRow.modelProviderCredentialId,
+        modelProviderCredentialId: resolvedCredentialId ?? "",
         providerId: this.resolveRuntimeProviderId(credentialRow),
         ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,
@@ -707,7 +739,7 @@ export class SessionProcessExecutionService {
   }
 
   private resolveRuntimeApiKey(credentialRow: CredentialRow): string {
-    if (credentialRow.isManaged) {
+    if (credentialRow.modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
       if (!this.companyHelmLlmProviderService) {
         throw new Error("CompanyHelm model provider service is not configured.");
       }
@@ -719,7 +751,7 @@ export class SessionProcessExecutionService {
   }
 
   private resolveRuntimeProviderId(credentialRow: CredentialRow): string {
-    if (credentialRow.isManaged) {
+    if (credentialRow.modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
       if (!this.companyHelmLlmProviderService) {
         throw new Error("CompanyHelm model provider service is not configured.");
       }

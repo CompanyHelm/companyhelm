@@ -115,9 +115,8 @@ export class CompanyHelmLlmProviderService {
   }
 
   matchesCredential(credential: {
-    isManaged: boolean;
     modelProvider?: string;
   }): boolean {
-    return credential.isManaged || credential.modelProvider === this.getModelProvider();
+    return credential.modelProvider === this.getModelProvider();
   }
 }

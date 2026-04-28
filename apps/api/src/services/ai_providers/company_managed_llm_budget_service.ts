@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { companies, llmUsageAggregates, modelProviderCredentials } from "../../db/schema.ts";
+import { companies, llmUsageAggregates, platformModelProviderCredentials } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 
 export type CompanySubscriptionPlan = "free" | "pro";
@@ -10,6 +10,12 @@ type CompanyManagedLlmBudgetInput = {
   companyId: string;
   modelProviderCredentialId: string;
   now?: Date;
+};
+
+type PlatformManagedLlmBudgetInput = {
+  companyId: string;
+  now?: Date;
+  platformModelProviderCredentialId: string | null;
 };
 
 type CompanyManagedLlmBudgetSnapshotInput = {
@@ -48,10 +54,6 @@ export type CompanyManagedLlmBudgetSnapshot = {
   managedCredentialId: string | null;
   monthly: CompanyManagedLlmBudgetPeriodSnapshot;
   plan: CompanySubscriptionPlan;
-};
-
-type CredentialRecord = {
-  isManaged: boolean;
 };
 
 type ManagedCredentialRecord = {
@@ -127,13 +129,30 @@ export class CompanyManagedLlmBudgetService {
     database: SelectableDatabase,
     input: CompanyManagedLlmBudgetInput,
   ): Promise<CompanyManagedLlmBudgetStatus> {
-    const credential = await this.loadCredential(database, input.companyId, input.modelProviderCredentialId);
-    if (!credential.isManaged) {
-      return {
-        allowed: true,
-      };
-    }
+    void database;
+    void input;
+    return {
+      allowed: true,
+    };
+  }
 
+  async assertWithinPlatformBudgetInTransaction(
+    database: SelectableDatabase,
+    input: PlatformManagedLlmBudgetInput,
+  ): Promise<void> {
+    const status = await this.checkWithinPlatformBudgetInTransaction(database, input);
+    if (!status.allowed) {
+      throw new Error(status.message);
+    }
+  }
+
+  async checkWithinPlatformBudgetInTransaction(
+    database: SelectableDatabase,
+    input: PlatformManagedLlmBudgetInput,
+  ): Promise<CompanyManagedLlmBudgetStatus> {
+    if (!input.platformModelProviderCredentialId) {
+      return { allowed: true };
+    }
     const company = await this.loadCompany(database, input.companyId);
     const entitlements = this.resolveEntitlements(company.plan);
     const now = input.now ?? new Date();
@@ -143,7 +162,7 @@ export class CompanyManagedLlmBudgetService {
     const dailyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.dailyCapNanoUsd,
       companyId: input.companyId,
-      modelProviderCredentialId: input.modelProviderCredentialId,
+      modelProviderCredentialId: input.platformModelProviderCredentialId,
       period: "day",
       periodStart: dayPeriodStart,
     });
@@ -154,7 +173,7 @@ export class CompanyManagedLlmBudgetService {
     const monthlyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.monthlyCapNanoUsd,
       companyId: input.companyId,
-      modelProviderCredentialId: input.modelProviderCredentialId,
+      modelProviderCredentialId: input.platformModelProviderCredentialId,
       period: "month",
       periodStart: monthPeriodStart,
     });
@@ -241,40 +260,17 @@ export class CompanyManagedLlmBudgetService {
     });
   }
 
-  private async loadCredential(
-    database: SelectableDatabase,
-    companyId: string,
-    modelProviderCredentialId: string,
-  ): Promise<CredentialRecord> {
-    const [credential] = await database
-      .select({
-        isManaged: modelProviderCredentials.isManaged,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.id, modelProviderCredentialId),
-      )) as CredentialRecord[];
-    if (!credential) {
-      throw new Error("Model provider credential not found.");
-    }
-
-    return credential;
-  }
-
   private async loadManagedCredentialId(
     database: SelectableDatabase,
-    companyId: string,
+    _companyId: string,
   ): Promise<string | null> {
+    void _companyId;
     const [credential] = await database
       .select({
-        id: modelProviderCredentials.id,
+        id: platformModelProviderCredentials.id,
       })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isManaged, true),
-      )) as ManagedCredentialRecord[];
+      .from(platformModelProviderCredentials)
+      .where(eq(platformModelProviderCredentials.isDefault, true)) as ManagedCredentialRecord[];
 
     return credential?.id ?? null;
   }

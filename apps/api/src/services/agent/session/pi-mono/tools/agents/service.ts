@@ -148,7 +148,6 @@ type AgentSecretAttachmentRecord = {
 type CredentialRecord = {
   id: string;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: ModelProviderId;
   name: string;
 };
@@ -495,7 +494,6 @@ export class AgentManagementToolService {
         .select({
           id: modelProviderCredentials.id,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -661,7 +659,6 @@ export class AgentManagementToolService {
       : await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -795,10 +792,6 @@ export class AgentManagementToolService {
   }
 
   private resolveCredentialLabel(credentialRecord: CredentialRecord): string {
-    if (credentialRecord.isManaged) {
-      return "CompanyHelm";
-    }
-
     const providerDefinition = this.modelProviderService.get(credentialRecord.modelProvider);
     if (credentialRecord.name === providerDefinition.name) {
       return providerDefinition.name;
@@ -981,7 +974,6 @@ export class AgentManagementToolService {
     const [credential] = await selectableDatabase
       .select({
         id: modelProviderCredentials.id,
-        isManaged: modelProviderCredentials.isManaged,
         modelProvider: modelProviderCredentials.modelProvider,
         name: modelProviderCredentials.name,
       })

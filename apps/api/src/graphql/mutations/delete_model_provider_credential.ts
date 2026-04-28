@@ -24,7 +24,6 @@ type ModelProviderCredentialRecord = {
   name: string;
   modelProvider: ModelProviderId;
   isDefault: boolean;
-  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -39,7 +38,6 @@ type GraphqlModelProviderCredentialRecord = {
   companyId: string;
   name: string;
   modelProvider: ModelProviderId;
-  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -151,10 +149,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
       if (!existingCredential) {
         throw new Error("Credential not found.");
       }
-      if (existingCredential.isManaged) {
-        throw new Error("CompanyHelm model provider is managed by the system.");
-      }
-
       const credentialUsage = await this.findCredentialUsage(selectableDatabase, companyId, credentialId);
       if (credentialUsage && replacementCredentialId.length === 0) {
         throw new Error(this.buildInUseErrorMessage(credentialUsage));
@@ -187,7 +181,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
@@ -205,7 +198,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
             id: modelProviderCredentials.id,
             companyId: modelProviderCredentials.companyId,
             isDefault: modelProviderCredentials.isDefault,
-            isManaged: modelProviderCredentials.isManaged,
             name: modelProviderCredentials.name,
             modelProvider: modelProviderCredentials.modelProvider,
             type: modelProviderCredentials.type,
@@ -355,7 +347,6 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
         id: modelProviderCredentials.id,
         companyId: modelProviderCredentials.companyId,
         isDefault: modelProviderCredentials.isDefault,
-        isManaged: modelProviderCredentials.isManaged,
         name: modelProviderCredentials.name,
         modelProvider: modelProviderCredentials.modelProvider,
         type: modelProviderCredentials.type,

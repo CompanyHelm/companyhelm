@@ -6,6 +6,8 @@ import {
   messageContents,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -1210,13 +1212,22 @@ export class PiMonoSessionEventHandler {
         .select({
           agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, this.sessionId));
       const companyId = sessionRecord?.companyId;
-      const currentModelProviderCredentialModelId = sessionRecord?.currentModelProviderCredentialModelId;
-      if (typeof companyId !== "string" || typeof currentModelProviderCredentialModelId !== "string") {
+      const currentModelCredentialSource = sessionRecord?.currentModelCredentialSource;
+      const currentModelProviderCredentialModelId = typeof sessionRecord?.currentModelProviderCredentialModelId === "string"
+        ? sessionRecord.currentModelProviderCredentialModelId
+        : "";
+      const currentPlatformModelProviderCredentialModelId =
+        typeof sessionRecord?.currentPlatformModelProviderCredentialModelId === "string"
+          ? sessionRecord.currentPlatformModelProviderCredentialModelId
+          : "";
+      if (typeof companyId !== "string" || typeof currentModelCredentialSource !== "string") {
         return {
           agentId: sessionRecord?.agentId,
           companyId,
@@ -1225,15 +1236,22 @@ export class PiMonoSessionEventHandler {
         };
       }
 
-      const [credentialModelRecord] = await selectableDatabase
-        .select({
-          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-        })
-        .from(modelProviderCredentialModels)
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, companyId),
-          eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId),
-        ));
+      const [credentialModelRecord] = currentModelCredentialSource === "platform"
+        ? await selectableDatabase
+          .select({
+            modelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+          })
+          .from(platformModelProviderCredentialModels)
+          .where(eq(platformModelProviderCredentialModels.id, currentPlatformModelProviderCredentialModelId ?? ""))
+        : await selectableDatabase
+          .select({
+            modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+          })
+          .from(modelProviderCredentialModels)
+          .where(and(
+            eq(modelProviderCredentialModels.companyId, companyId),
+            eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId ?? ""),
+          ));
       const modelProviderCredentialId = credentialModelRecord?.modelProviderCredentialId;
       if (typeof modelProviderCredentialId !== "string") {
         return {
@@ -1244,21 +1262,29 @@ export class PiMonoSessionEventHandler {
         };
       }
 
-      const [credentialRecord] = await selectableDatabase
-        .select({
-          isManaged: modelProviderCredentials.isManaged,
-          type: modelProviderCredentials.type,
-        })
-        .from(modelProviderCredentials)
-        .where(and(
-          eq(modelProviderCredentials.companyId, companyId),
-          eq(modelProviderCredentials.id, modelProviderCredentialId),
-        ));
+      const [credentialRecord] = currentModelCredentialSource === "platform"
+        ? await selectableDatabase
+          .select({
+            type: platformModelProviderCredentials.type,
+          })
+          .from(platformModelProviderCredentials)
+          .where(eq(platformModelProviderCredentials.id, modelProviderCredentialId))
+        : await selectableDatabase
+          .select({
+            type: modelProviderCredentials.type,
+          })
+          .from(modelProviderCredentials)
+          .where(and(
+            eq(modelProviderCredentials.companyId, companyId),
+            eq(modelProviderCredentials.id, modelProviderCredentialId),
+          ));
 
       return {
         agentId: sessionRecord?.agentId,
         companyId,
-        costKind: credentialRecord
+        costKind: currentModelCredentialSource === "platform"
+          ? "virtual"
+          : credentialRecord
           ? PiMonoSessionEventHandler.resolveCredentialCostKind(credentialRecord)
           : undefined,
         modelProviderCredentialId,
@@ -1291,7 +1317,7 @@ export class PiMonoSessionEventHandler {
   }
 
   private static resolveCredentialCostKind(credential: Record<string, unknown> | undefined): SessionTurnUsageCostKind {
-    if (credential?.isManaged === true || credential?.type === "oauth_token") {
+    if (credential?.type === "oauth_token") {
       return "virtual";
     }
 

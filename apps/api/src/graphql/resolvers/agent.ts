@@ -5,6 +5,8 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
 } from "../../db/schema.ts";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -16,6 +18,8 @@ type AgentQueryArguments = {
 type AgentRecord = {
   id: string;
   name: string;
+  defaultModelCredentialSource: "platform" | "user_provided";
+  defaultPlatformModelProviderCredentialModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
@@ -29,6 +33,12 @@ type ModelRecord = {
   id: string;
   modelProviderCredentialId: string;
   name: string;
+};
+
+type PlatformModelRecord = {
+  id: string;
+  name: string;
+  platformModelProviderCredentialId: string;
 };
 
 type CredentialRecord = {
@@ -49,6 +59,8 @@ type GraphqlAgentRecord = {
   defaultEnvironmentTemplateId: string;
   id: string;
   name: string;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
   modelProvider: ModelProviderId | null;
@@ -95,6 +107,8 @@ export class AgentQueryResolver {
         .select({
           id: agents.id,
           name: agents.name,
+          defaultModelCredentialSource: agents.defaultModelCredentialSource,
+          defaultPlatformModelProviderCredentialModelId: agents.defaultPlatformModelProviderCredentialModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
@@ -123,7 +137,7 @@ export class AgentQueryResolver {
           .where(eq(computeProviderDefinitions.id, agentRecord.defaultComputeProviderDefinitionId)) as ComputeProviderDefinitionRecord[]
         : [];
 
-      if (!agentRecord.defaultModelProviderCredentialModelId) {
+      if (!agentRecord.defaultModelProviderCredentialModelId && !agentRecord.defaultPlatformModelProviderCredentialModelId) {
         return AgentQueryResolver.serializeRecord(
           agentRecord,
           null,
@@ -139,10 +153,18 @@ export class AgentQueryResolver {
           name: modelProviderCredentialModels.name,
         })
         .from(modelProviderCredentialModels)
-        .where(eq(
-          modelProviderCredentialModels.id,
-          agentRecord.defaultModelProviderCredentialModelId,
-        )) as ModelRecord[];
+        .where(eq(modelProviderCredentialModels.id, agentRecord.defaultModelProviderCredentialModelId ?? "")) as ModelRecord[];
+
+      const [platformModelRecord] = agentRecord.defaultPlatformModelProviderCredentialModelId
+        ? await selectableDatabase
+          .select({
+            id: platformModelProviderCredentialModels.id,
+            name: platformModelProviderCredentialModels.name,
+            platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+          })
+          .from(platformModelProviderCredentialModels)
+          .where(eq(platformModelProviderCredentialModels.id, agentRecord.defaultPlatformModelProviderCredentialModelId)) as PlatformModelRecord[]
+        : [];
 
       const [credentialRecord] = modelRecord
         ? await selectableDatabase
@@ -152,11 +174,19 @@ export class AgentQueryResolver {
           })
           .from(modelProviderCredentials)
           .where(eq(modelProviderCredentials.id, modelRecord.modelProviderCredentialId)) as CredentialRecord[]
+        : platformModelRecord
+        ? await selectableDatabase
+          .select({
+            id: platformModelProviderCredentials.id,
+            modelProvider: platformModelProviderCredentials.modelProvider,
+          })
+          .from(platformModelProviderCredentials)
+          .where(eq(platformModelProviderCredentials.id, platformModelRecord.platformModelProviderCredentialId)) as CredentialRecord[]
         : [];
 
       return AgentQueryResolver.serializeRecord(
         agentRecord,
-        modelRecord ?? null,
+        modelRecord ?? platformModelRecord ?? null,
         credentialRecord ?? null,
         computeProviderDefinitionRecord ?? null,
       );
@@ -165,7 +195,7 @@ export class AgentQueryResolver {
 
   private static serializeRecord(
     agentRecord: AgentRecord,
-    modelRecord: ModelRecord | null,
+    modelRecord: ModelRecord | PlatformModelRecord | null,
     credentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
   ): GraphqlAgentRecord {
@@ -176,7 +206,9 @@ export class AgentQueryResolver {
       defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
       id: agentRecord.id,
       name: agentRecord.name,
-      modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,
+      modelCredentialSource: agentRecord.defaultModelCredentialSource,
+      platformModelProviderCredentialModelId: agentRecord.defaultPlatformModelProviderCredentialModelId,
+      modelProviderCredentialId: modelRecord && "modelProviderCredentialId" in modelRecord ? modelRecord.modelProviderCredentialId : null,
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord?.modelProvider ?? null,
       modelName: modelRecord?.name ?? null,

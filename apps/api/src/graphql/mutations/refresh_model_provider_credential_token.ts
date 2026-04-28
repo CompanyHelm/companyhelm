@@ -94,7 +94,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
           accessTokenExpiresAt: modelProviderCredentials.accessTokenExpiresAt,
@@ -168,7 +167,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)

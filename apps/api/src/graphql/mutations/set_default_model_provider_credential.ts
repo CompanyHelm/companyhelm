@@ -17,7 +17,6 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   createdAt: Date;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: ModelProviderId;
   name: string;
   status: "active" | "error";
@@ -42,7 +41,6 @@ type GraphqlModelProviderCredentialRecord = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: ModelProviderId;
   name: string;
   status: "active" | "error";
@@ -103,7 +101,6 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,
@@ -141,7 +138,6 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,

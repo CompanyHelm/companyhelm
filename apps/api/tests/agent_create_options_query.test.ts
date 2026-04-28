@@ -44,6 +44,30 @@ class AgentCreateOptionsQueryTestHarness {
                 from() {
                   return {
                     async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
                       return [{
                         id: "credential-1",
                         isDefault: true,
@@ -56,7 +80,7 @@ class AgentCreateOptionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -140,6 +164,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
         query AgentCreateOptions {
           AgentCreateOptions {
             id
+            modelCredentialSource
+            platformModelProviderCredentialId
             modelProviderCredentialId
             isDefault
             label
@@ -148,6 +174,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
             defaultReasoningLevel
             models {
               id
+              modelCredentialSource
+              platformModelProviderCredentialModelId
               modelProviderCredentialModelId
               modelId
               name
@@ -165,6 +193,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
   const document = response.json();
   assert.deepEqual(document.data.AgentCreateOptions, [{
     id: "agent-create-provider-option:credential-1",
+    modelCredentialSource: "user_provided",
+    platformModelProviderCredentialId: null,
     modelProviderCredentialId: "credential-1",
     isDefault: true,
     label: "OpenAI / Codex",
@@ -173,6 +203,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
     defaultReasoningLevel: "high",
     models: [{
       id: "agent-create-model-option:model-row-1",
+      modelCredentialSource: "user_provided",
+      platformModelProviderCredentialModelId: null,
       modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
       name: "GPT-5.4",

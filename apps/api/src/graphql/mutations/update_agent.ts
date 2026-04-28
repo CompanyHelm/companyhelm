@@ -5,6 +5,8 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
 } from "../../db/schema.ts";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
@@ -18,8 +20,10 @@ type UpdateAgentMutationArguments = {
     defaultEnvironmentTemplateId: string;
     id: string;
     name: string;
-    modelProviderCredentialId: string;
-    modelProviderCredentialModelId: string;
+    modelCredentialSource?: "platform" | "user_provided" | null;
+    platformModelProviderCredentialModelId?: string | null;
+    modelProviderCredentialId?: string | null;
+    modelProviderCredentialModelId?: string | null;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
   };
@@ -28,6 +32,8 @@ type UpdateAgentMutationArguments = {
 type AgentRecord = {
   id: string;
   name: string;
+  defaultModelCredentialSource: "platform" | "user_provided";
+  defaultPlatformModelProviderCredentialModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
@@ -39,12 +45,19 @@ type AgentRecord = {
 
 type ModelRecord = {
   id: string;
+  modelCredentialSource: "platform" | "user_provided";
   modelProviderCredentialId: string;
+  platformModelProviderCredentialId: string | null;
   name: string;
   reasoningLevels: string[] | null;
 };
 
 type CredentialRecord = {
+  id: string;
+  modelProvider: ModelProviderId;
+};
+
+type PlatformCredentialRecord = {
   id: string;
   modelProvider: ModelProviderId;
 };
@@ -67,6 +80,8 @@ type GraphqlAgentRecord = {
   environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
   modelProvider: ModelProviderId | null;
@@ -138,12 +153,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     if (arguments_.input.name.length === 0) {
       throw new Error("name is required.");
     }
-    if (arguments_.input.modelProviderCredentialId.length === 0) {
-      throw new Error("modelProviderCredentialId is required.");
-    }
-    if (arguments_.input.modelProviderCredentialModelId.length === 0) {
-      throw new Error("modelProviderCredentialModelId is required.");
-    }
+    const modelCredentialSource = UpdateAgentMutation.resolveModelCredentialSource(arguments_.input);
     if (arguments_.input.defaultComputeProviderDefinitionId.length === 0) {
       throw new Error("defaultComputeProviderDefinitionId is required.");
     }
@@ -174,38 +184,12 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         throw new Error("Agent not found.");
       }
 
-      const [credentialRecord] = await databaseTransaction
-        .select({
-          id: modelProviderCredentials.id,
-          modelProvider: modelProviderCredentials.modelProvider,
-        })
-        .from(modelProviderCredentials)
-        .where(and(
-          eq(modelProviderCredentials.companyId, companyId),
-          eq(modelProviderCredentials.id, arguments_.input.modelProviderCredentialId),
-        )) as CredentialRecord[];
-      if (!credentialRecord) {
-        throw new Error("Provider credential not found.");
-      }
-
-      const [modelRecord] = await databaseTransaction
-        .select({
-          id: modelProviderCredentialModels.id,
-          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-          name: modelProviderCredentialModels.name,
-          reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-        })
-        .from(modelProviderCredentialModels)
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, companyId),
-          eq(modelProviderCredentialModels.id, arguments_.input.modelProviderCredentialModelId),
-        )) as ModelRecord[];
-      if (!modelRecord) {
-        throw new Error("Provider model not found.");
-      }
-      if (modelRecord.modelProviderCredentialId !== credentialRecord.id) {
-        throw new Error("Provider model does not belong to the selected credential.");
-      }
+      const { credentialRecord, modelRecord } = await this.loadModelSelection(
+        databaseTransaction,
+        companyId,
+        modelCredentialSource,
+        arguments_.input,
+      );
 
       const [computeProviderDefinitionRecord] = await databaseTransaction
         .select({
@@ -237,7 +221,9 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .update(agents)
         .set({
           name: arguments_.input.name,
-          defaultModelProviderCredentialModelId: modelRecord.id,
+          defaultModelCredentialSource: modelRecord.modelCredentialSource,
+          defaultPlatformModelProviderCredentialModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
+          defaultModelProviderCredentialModelId: modelRecord.modelCredentialSource === "user_provided" ? modelRecord.id : null,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
           default_reasoning_level: reasoningLevel,
@@ -251,6 +237,8 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .returning?.({
           id: agents.id,
           name: agents.name,
+          defaultModelCredentialSource: agents.defaultModelCredentialSource,
+          defaultPlatformModelProviderCredentialModelId: agents.defaultPlatformModelProviderCredentialModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
@@ -304,6 +292,117 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     return systemPrompt;
   }
 
+  private static resolveModelCredentialSource(input: UpdateAgentMutationArguments["input"]): "platform" | "user_provided" {
+    if (input.modelCredentialSource === "platform" || input.platformModelProviderCredentialModelId) {
+      if (!input.platformModelProviderCredentialModelId) {
+        throw new Error("platformModelProviderCredentialModelId is required.");
+      }
+
+      return "platform";
+    }
+
+    if (!input.modelProviderCredentialModelId) {
+      throw new Error("modelProviderCredentialModelId is required.");
+    }
+
+    return "user_provided";
+  }
+
+  private async loadModelSelection(
+    databaseTransaction: DatabaseTransaction,
+    companyId: string,
+    modelCredentialSource: "platform" | "user_provided",
+    input: UpdateAgentMutationArguments["input"],
+  ): Promise<{ credentialRecord: CredentialRecord; modelRecord: ModelRecord }> {
+    if (modelCredentialSource === "platform") {
+      const [modelRecord] = await databaseTransaction
+        .select({
+          id: platformModelProviderCredentialModels.id,
+          platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+          name: platformModelProviderCredentialModels.name,
+          reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+        })
+        .from(platformModelProviderCredentialModels)
+        .where(and(
+          eq(platformModelProviderCredentialModels.id, input.platformModelProviderCredentialModelId ?? ""),
+          eq(platformModelProviderCredentialModels.isAvailable, true),
+        )) as Array<{
+          id: string;
+          name: string;
+          platformModelProviderCredentialId: string;
+          reasoningLevels: string[] | null;
+        }>;
+      if (!modelRecord) {
+        throw new Error("Platform provider model not found.");
+      }
+
+      const [platformCredentialRecord] = await databaseTransaction
+        .select({
+          id: platformModelProviderCredentials.id,
+          modelProvider: platformModelProviderCredentials.modelProvider,
+        })
+        .from(platformModelProviderCredentials)
+        .where(eq(platformModelProviderCredentials.id, modelRecord.platformModelProviderCredentialId)) as PlatformCredentialRecord[];
+      if (!platformCredentialRecord) {
+        throw new Error("Platform provider credential not found.");
+      }
+
+      return {
+        credentialRecord: platformCredentialRecord,
+        modelRecord: {
+          ...modelRecord,
+          modelCredentialSource: "platform",
+          modelProviderCredentialId: platformCredentialRecord.id,
+          platformModelProviderCredentialId: platformCredentialRecord.id,
+        },
+      };
+    }
+
+    const [credentialRecord] = await databaseTransaction
+      .select({
+        id: modelProviderCredentials.id,
+        modelProvider: modelProviderCredentials.modelProvider,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.id, input.modelProviderCredentialId ?? ""),
+      )) as CredentialRecord[];
+    if (!credentialRecord) {
+      throw new Error("Provider credential not found.");
+    }
+
+    const [modelRecord] = await databaseTransaction
+      .select({
+        id: modelProviderCredentialModels.id,
+        modelCredentialSource: modelProviderCredentialModels.modelProviderCredentialId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        platformModelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        name: modelProviderCredentialModels.name,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.id, input.modelProviderCredentialModelId ?? ""),
+      )) as Array<ModelRecord & { modelCredentialSource: string }>;
+    if (!modelRecord) {
+      throw new Error("Provider model not found.");
+    }
+    if (modelRecord.modelProviderCredentialId !== credentialRecord.id) {
+      throw new Error("Provider model does not belong to the selected credential.");
+    }
+
+    return {
+      credentialRecord,
+      modelRecord: {
+        ...modelRecord,
+        modelCredentialSource: "user_provided",
+        platformModelProviderCredentialId: null,
+      },
+    };
+  }
+
   private static serializeRecord(
     agentRecord: AgentRecord,
     modelRecord: ModelRecord,
@@ -319,8 +418,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
-      modelProviderCredentialId: credentialRecord.id,
-      modelProviderCredentialModelId: modelRecord.id,
+      modelCredentialSource: agentRecord.defaultModelCredentialSource,
+      platformModelProviderCredentialModelId: agentRecord.defaultPlatformModelProviderCredentialModelId,
+      modelProviderCredentialId: modelRecord.modelCredentialSource === "user_provided" ? credentialRecord.id : null,
+      modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord.modelProvider,
       modelName: modelRecord.name,
       reasoningLevel: agentRecord.defaultReasoningLevel,

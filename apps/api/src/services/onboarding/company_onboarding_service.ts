@@ -466,10 +466,7 @@ export class CompanyOnboardingService {
         id: modelProviderCredentials.id,
       })
       .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isManaged, false),
-      ))
+      .where(eq(modelProviderCredentials.companyId, companyId))
       .limit(1) as ExistenceRow[];
 
     return Boolean(credential);

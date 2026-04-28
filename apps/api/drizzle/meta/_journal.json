@@ -953,6 +953,13 @@
       "when": 1777291200000,
       "tag": "0136_platform_model_provider_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1777380000000,
+      "tag": "0137_platform_model_selection",
+      "breakpoints": true
     }
   ]
 }

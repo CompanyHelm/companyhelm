@@ -7,6 +7,8 @@ type PromptSessionMutationArguments = {
   input: {
     id: string;
     images?: SessionPromptImageInput[] | null;
+    modelCredentialSource?: "platform" | "user_provided" | null;
+    platformModelProviderCredentialModelId?: string | null;
     modelProviderCredentialModelId?: string | null;
     reasoningLevel?: string | null;
     shouldSteer?: boolean | null;
@@ -25,6 +27,8 @@ type GraphqlSessionRecord = {
   isThinking: boolean;
   lastUserMessageAt: string | null;
   maxContextTokens: number | null;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -39,7 +43,9 @@ type ServiceSessionRecord = {
   createdAt: Date;
   currentContextTokens: number | null;
   currentModelId: string;
-  currentModelProviderCredentialModelId: string;
+  currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelProviderCredentialModelId: string | null;
+  currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   id: string;
   inferredTitle: string | null;
@@ -95,6 +101,8 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       arguments_.input.shouldSteer === true,
       images,
       context.authSession.user.id,
+      arguments_.input.modelCredentialSource,
+      arguments_.input.platformModelProviderCredentialModelId,
     );
 
     return PromptSessionMutation.serializeRecord(sessionRecord);
@@ -107,6 +115,8 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       currentContextTokens: sessionRecord.currentContextTokens,
       hasUnread: false,
       lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
+      modelCredentialSource: sessionRecord.currentModelCredentialSource,
+      platformModelProviderCredentialModelId: sessionRecord.currentPlatformModelProviderCredentialModelId,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,

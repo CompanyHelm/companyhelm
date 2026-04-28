@@ -9,6 +9,7 @@ import { ModelService } from "./model_service.ts";
 export type PlatformStoredModelRecord = {
   description: string;
   id: string;
+  isAvailable: boolean;
   isDefault: boolean;
   modelId: string;
   name: string;
@@ -16,6 +17,7 @@ export type PlatformStoredModelRecord = {
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
   createdAt: Date;
+  unavailableAt: Date | null;
   updatedAt: Date;
 };
 
@@ -38,12 +40,6 @@ type UpdatableDatabase = {
     set(value: Record<string, unknown>): {
       where(condition: unknown): Promise<void>;
     };
-  };
-};
-
-type DeletableDatabase = {
-  delete(table: unknown): {
-    where(condition: unknown): Promise<void>;
   };
 };
 
@@ -89,7 +85,6 @@ export class PlatformModelProviderCredentialService {
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const insertableDatabase = tx as unknown as InsertableDatabase;
       const updatableDatabase = tx as unknown as UpdatableDatabase;
-      const deletableDatabase = tx as unknown as DeletableDatabase;
       const existingModels = await this.loadStoredModels(selectableDatabase, input.platformModelProviderCredentialId);
       const existingModelsByModelId = new Map(existingModels.map((model) => [model.modelId, model]));
       const existingDefaultModelId = existingModels.find((model) => model.isDefault)?.modelId ?? null;
@@ -118,8 +113,10 @@ export class PlatformModelProviderCredentialService {
           .set({
             name: fetchedModel.name,
             description: fetchedModel.description,
+            isAvailable: true,
             reasoningSupported: fetchedModel.reasoningSupported,
             reasoningLevels: fetchedModel.reasoningLevels,
+            unavailableAt: null,
             updatedAt: now,
           })
           .where(and(
@@ -136,8 +133,13 @@ export class PlatformModelProviderCredentialService {
           continue;
         }
 
-        await deletableDatabase
-          .delete(platformModelProviderCredentialModels)
+        await updatableDatabase
+          .update(platformModelProviderCredentialModels)
+          .set({
+            isAvailable: false,
+            unavailableAt: now,
+            updatedAt: now,
+          })
           .where(and(
             eq(platformModelProviderCredentialModels.id, existingModel.id),
             eq(
@@ -202,6 +204,8 @@ export class PlatformModelProviderCredentialService {
       reasoningSupported: input.model.reasoningSupported,
       reasoningLevels: input.model.reasoningLevels,
       isDefault: false,
+      isAvailable: true,
+      unavailableAt: null,
       createdAt: input.now,
       updatedAt: input.now,
     };
@@ -215,6 +219,7 @@ export class PlatformModelProviderCredentialService {
       .select({
         description: platformModelProviderCredentialModels.description,
         id: platformModelProviderCredentialModels.id,
+        isAvailable: platformModelProviderCredentialModels.isAvailable,
         isDefault: platformModelProviderCredentialModels.isDefault,
         modelId: platformModelProviderCredentialModels.modelId,
         name: platformModelProviderCredentialModels.name,
@@ -222,6 +227,7 @@ export class PlatformModelProviderCredentialService {
         reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
         reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
         createdAt: platformModelProviderCredentialModels.createdAt,
+        unavailableAt: platformModelProviderCredentialModels.unavailableAt,
         updatedAt: platformModelProviderCredentialModels.updatedAt,
       })
       .from(platformModelProviderCredentialModels)

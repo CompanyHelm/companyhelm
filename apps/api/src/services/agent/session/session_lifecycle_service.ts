@@ -98,6 +98,8 @@ export class SessionLifecycleService {
     sessionId?: string | null,
     userId?: string | null,
     images?: SessionPromptImageInput[],
+    modelCredentialSource?: "platform" | "user_provided" | null,
+    platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.createSessionInTransaction(
@@ -108,7 +110,9 @@ export class SessionLifecycleService {
         userMessage,
         {
           images,
+          modelCredentialSource,
           modelProviderCredentialModelId,
+          platformModelProviderCredentialModelId,
           reasoningLevel,
           sessionId,
           userId,
@@ -132,6 +136,8 @@ export class SessionLifecycleService {
     const [agentRecord] = await selectableDatabase
       .select({
         id: agents.id,
+        defaultModelCredentialSource: agents.defaultModelCredentialSource,
+        defaultPlatformModelProviderCredentialModelId: agents.defaultPlatformModelProviderCredentialModelId,
         defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
         defaultReasoningLevel: agents.default_reasoning_level,
       })
@@ -144,13 +150,11 @@ export class SessionLifecycleService {
       throw new Error("Agent not found.");
     }
 
-    const selectedModelRecord = options.modelProviderCredentialModelId
-      ? await this.sessionModelSelectionService.resolveModelRecordById(
-        selectableDatabase,
-        companyId,
-        options.modelProviderCredentialModelId,
-      )
-      : await this.sessionModelSelectionService.resolveDefaultModelRecord(
+    const selectedModelRecord = await this.sessionModelSelectionService.resolveModelRecordBySelection(
+      selectableDatabase,
+      companyId,
+      options,
+    ) ?? await this.sessionModelSelectionService.resolveDefaultModelRecord(
         selectableDatabase,
         companyId,
         agentRecord,
@@ -160,10 +164,12 @@ export class SessionLifecycleService {
       options.reasoningLevel,
       agentRecord.defaultReasoningLevel,
     );
-    await this.companyManagedLlmBudgetService.assertWithinBudgetInTransaction(selectableDatabase, {
-      companyId,
-      modelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
-    });
+    if (selectedModelRecord.modelCredentialSource === "platform") {
+      await this.companyManagedLlmBudgetService.assertWithinPlatformBudgetInTransaction(selectableDatabase, {
+        companyId,
+        platformModelProviderCredentialId: selectedModelRecord.platformModelProviderCredentialId,
+      });
+    }
     const preparedPrompt = this.sessionPromptService.prepareQueuedPrompt(userMessage, options.images);
     const resolvedSessionId = String(options.sessionId || "").trim();
     const now = new Date();
@@ -172,9 +178,11 @@ export class SessionLifecycleService {
       .values({
         ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
         companyId,
+        currentModelCredentialSource: selectedModelRecord.modelCredentialSource,
+        currentPlatformModelProviderCredentialModelId: selectedModelRecord.platformModelProviderCredentialModelId,
         currentContextTokens: null,
         agentId,
-        currentModelProviderCredentialModelId: selectedModelRecord.id,
+        currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,
         inferredTitle: preparedPrompt.inferredTitle,
         isCompacting: false,
@@ -230,6 +238,8 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -276,10 +286,10 @@ export class SessionLifecycleService {
         userId,
       );
 
-      const currentModelRecord = await this.sessionModelSelectionService.resolveModelRecordById(
+      const currentModelRecord = await this.sessionModelSelectionService.resolveCurrentModelRecord(
         selectableDatabase,
         companyId,
-        updatedSessionRecord.currentModelProviderCredentialModelId,
+        updatedSessionRecord,
       );
 
       return {
@@ -317,6 +327,8 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -355,10 +367,10 @@ export class SessionLifecycleService {
         throw new Error("Session not found.");
       }
 
-      const currentModelRecord = await this.sessionModelSelectionService.resolveModelRecordById(
+      const currentModelRecord = await this.sessionModelSelectionService.resolveCurrentModelRecord(
         selectableDatabase,
         companyId,
-        updatedSessionRecord.currentModelProviderCredentialModelId,
+        updatedSessionRecord,
       );
 
       return {
@@ -384,6 +396,8 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -482,6 +496,8 @@ export class SessionLifecycleService {
           contextMessagesSnapshotAt: sourceSession.contextMessagesSnapshotAt ?? latestCompletedTurn.endedAt,
           currentContextTokens: sourceSession.currentContextTokens,
           agentId: sourceSession.agentId,
+          currentModelCredentialSource: sourceSession.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: sourceSession.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,
           currentReasoningLevel: sourceSession.currentReasoningLevel,
           forkedFromTurnId: latestCompletedTurn.id,
@@ -546,6 +562,8 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -689,6 +707,8 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,

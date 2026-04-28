@@ -31,7 +31,7 @@ type ServiceSessionRecord = {
   agentId: string;
   currentContextTokens: number | null;
   currentModelId: string;
-  currentModelProviderCredentialModelId: string;
+  currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   isCompacting: boolean;
   isThinking: boolean;

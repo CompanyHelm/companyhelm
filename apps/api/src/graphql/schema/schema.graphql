@@ -557,6 +557,8 @@ type Agent {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
+  modelCredentialSource: String!
+  platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
   modelProvider: String
@@ -628,7 +630,9 @@ type E2bComputeProviderDefinition {
 
 type AgentCreateProviderOption {
   id: ID!
-  modelProviderCredentialId: ID!
+  modelCredentialSource: String!
+  platformModelProviderCredentialId: ID
+  modelProviderCredentialId: ID
   isDefault: Boolean!
   label: String!
   modelProvider: String!
@@ -639,7 +643,9 @@ type AgentCreateProviderOption {
 
 type AgentCreateModelOption {
   id: ID!
-  modelProviderCredentialModelId: ID!
+  modelCredentialSource: String!
+  platformModelProviderCredentialModelId: ID
+  modelProviderCredentialModelId: ID
   modelId: String!
   name: String!
   description: String!
@@ -659,6 +665,8 @@ type Session {
   forkedFromTurnId: ID
   hasUnread: Boolean!
   lastUserMessageAt: String
+  modelCredentialSource: String!
+  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   modelId: String!
   reasoningLevel: String!
@@ -848,7 +856,6 @@ type ModelProviderCredential {
   baseUrl: String
   companyId: ID!
   isDefault: Boolean!
-  isManaged: Boolean!
   name: String!
   modelProvider: String!
   defaultModelId: String
@@ -1183,8 +1190,10 @@ input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
   name: String!
-  modelProviderCredentialId: ID!
-  modelProviderCredentialModelId: ID!
+  modelCredentialSource: String
+  platformModelProviderCredentialModelId: ID
+  modelProviderCredentialId: ID
+  modelProviderCredentialModelId: ID
   reasoningLevel: String
   secretGroupIds: [ID!]
   systemPrompt: String
@@ -1199,8 +1208,10 @@ input UpdateAgentInput {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
-  modelProviderCredentialId: ID!
-  modelProviderCredentialModelId: ID!
+  modelCredentialSource: String
+  platformModelProviderCredentialModelId: ID
+  modelProviderCredentialId: ID
+  modelProviderCredentialModelId: ID
   reasoningLevel: String
   systemPrompt: String
 }
@@ -1310,6 +1321,8 @@ input ForkSessionInput {
 input CreateSessionInput {
   agentId: ID!
   images: [SessionPromptImageInput!]
+  modelCredentialSource: String
+  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   sessionId: ID
@@ -1319,6 +1332,8 @@ input CreateSessionInput {
 input PromptSessionInput {
   id: ID!
   images: [SessionPromptImageInput!]
+  modelCredentialSource: String
+  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   shouldSteer: Boolean

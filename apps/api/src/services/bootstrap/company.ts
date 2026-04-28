@@ -11,6 +11,8 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
   taskStages,
   workflowDefinitionInputs,
   workflowDefinitions,
@@ -42,7 +44,6 @@ type ComputeProviderDefinitionRecord = {
 type ModelProviderCredentialRecord = {
   id: string;
   isDefault?: boolean;
-  isManaged: boolean;
   modelProvider: string;
 };
 
@@ -51,6 +52,14 @@ type ModelProviderCredentialModelRecord = {
   isDefault: boolean;
   modelId: string;
   modelProviderCredentialId?: string;
+  reasoningLevels: string[] | null;
+};
+
+type PlatformModelProviderCredentialModelRecord = {
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+  platformModelProviderCredentialId: string;
   reasoningLevels: string[] | null;
 };
 
@@ -249,9 +258,6 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
-    if (this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
-      await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
-    }
     await this.ensureDefaultTaskStages(transaction, companyId);
   }
 
@@ -364,96 +370,6 @@ export class CompanyBootstrapService {
     await insertOperation.onConflictDoNothing();
   }
 
-  private async ensureCompanyHelmLlmProviderCredential(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<ModelProviderCredentialRecord> {
-    const updatableDatabase = transaction as BootstrapUpdatableDatabase;
-    const [existingCredential] = await transaction
-      .select({
-        id: modelProviderCredentials.id,
-        isManaged: modelProviderCredentials.isManaged,
-        modelProvider: modelProviderCredentials.modelProvider,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isManaged, true),
-      ))
-      .limit(1) as ModelProviderCredentialRecord[];
-    if (existingCredential) {
-      if (!this.companyHelmLlmProviderService.matchesCredential(existingCredential)) {
-        await updatableDatabase
-          .update(modelProviderCredentials)
-          .set({
-            accessTokenExpiresAt: null,
-            baseUrl: null,
-            encryptedApiKey: this.companyHelmLlmProviderService.getStoredApiKeySentinel(),
-            errorMessage: null,
-            modelProvider: this.companyHelmLlmProviderService.getModelProvider(),
-            name: this.companyHelmLlmProviderService.getCredentialName(),
-            refreshedAt: null,
-            refreshToken: null,
-            status: "active",
-            type: "api_key",
-            updatedAt: new Date(),
-          })
-          .where(and(
-            eq(modelProviderCredentials.companyId, companyId),
-            eq(modelProviderCredentials.id, existingCredential.id),
-          ));
-      }
-      await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, existingCredential.id);
-      return existingCredential;
-    }
-
-    const [existingDefaultCredential] = await transaction
-      .select({
-        id: modelProviderCredentials.id,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isDefault, true),
-      ))
-      .limit(1);
-    const now = new Date();
-    const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    const insertOperation = insertableDatabase
-      .insert(modelProviderCredentials)
-      .values({
-        accessTokenExpiresAt: null,
-        companyId,
-        createdAt: now,
-        encryptedApiKey: this.companyHelmLlmProviderService.getStoredApiKeySentinel(),
-        errorMessage: null,
-        isDefault: !existingDefaultCredential,
-        isManaged: true,
-        modelProvider: this.companyHelmLlmProviderService.getModelProvider(),
-        name: this.companyHelmLlmProviderService.getCredentialName(),
-        refreshedAt: null,
-        refreshToken: null,
-        status: "active",
-        type: "api_key",
-        updatedAt: now,
-      }) as BootstrapInsertOperation;
-    const createdRows = await insertOperation
-      .onConflictDoNothing()
-      .returning?.({
-        id: modelProviderCredentials.id,
-        isManaged: modelProviderCredentials.isManaged,
-        modelProvider: modelProviderCredentials.modelProvider,
-      }) as ModelProviderCredentialRecord[] | undefined;
-    const credential = createdRows?.[0]
-      ?? await this.findCompanyHelmLlmProviderCredential(transaction, companyId);
-    if (!credential) {
-      throw new Error("Failed to provision CompanyHelm model provider credential.");
-    }
-
-    await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, credential.id);
-    return credential;
-  }
-
   private async findCompanyHelmComputeProviderDefinition(
     transaction: DatabaseTransactionInterface,
     companyId: string,
@@ -477,119 +393,14 @@ export class CompanyBootstrapService {
     return existingDefinition ?? null;
   }
 
-  private async findCompanyHelmLlmProviderCredential(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<ModelProviderCredentialRecord | null> {
-    const [existingCredential] = await transaction
-      .select({
-        id: modelProviderCredentials.id,
-        isManaged: modelProviderCredentials.isManaged,
-        modelProvider: modelProviderCredentials.modelProvider,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isManaged, true),
-      ))
-      .limit(1) as ModelProviderCredentialRecord[];
-
-    return existingCredential ?? null;
-  }
-
-  private async ensureCompanyHelmLlmProviderModels(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-    credentialId: string,
-  ): Promise<void> {
-    const existingModels = await (transaction
-      .select({
-        id: modelProviderCredentialModels.id,
-        isDefault: modelProviderCredentialModels.isDefault,
-        modelId: modelProviderCredentialModels.modelId,
-        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-      })
-      .from(modelProviderCredentialModels)
-      .where(and(
-        eq(modelProviderCredentialModels.companyId, companyId),
-        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
-      )) as unknown as Promise<ModelProviderCredentialModelRecord[]>);
-    const existingModelsByModelId = new Map(existingModels.map((model) => [model.modelId, model]));
-    const seedModels = this.companyHelmLlmProviderService.getSeedModels();
-    const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    const updatableDatabase = transaction as BootstrapUpdatableDatabase;
-
-    for (const seedModel of seedModels) {
-      const existingModel = existingModelsByModelId.get(seedModel.modelId);
-      if (!existingModel) {
-        await insertableDatabase
-          .insert(modelProviderCredentialModels)
-          .values({
-            companyId,
-            description: seedModel.description,
-            isDefault: false,
-            modelId: seedModel.modelId,
-            modelProviderCredentialId: credentialId,
-            name: seedModel.name,
-            reasoningLevels: seedModel.reasoningLevels,
-            reasoningSupported: seedModel.reasoningSupported,
-          });
-        continue;
-      }
-
-      await updatableDatabase
-        .update(modelProviderCredentialModels)
-        .set({
-          description: seedModel.description,
-          name: seedModel.name,
-          reasoningLevels: seedModel.reasoningLevels,
-          reasoningSupported: seedModel.reasoningSupported,
-        })
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, companyId),
-          eq(modelProviderCredentialModels.id, existingModel.id),
-        ));
-    }
-
-    const defaultModelId = this.resolveCompanyHelmDefaultModelId(seedModels.map((model) => model.modelId));
-    await updatableDatabase
-      .update(modelProviderCredentialModels)
-      .set({
-        isDefault: false,
-      })
-      .where(and(
-        eq(modelProviderCredentialModels.companyId, companyId),
-        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
-      ));
-    if (defaultModelId) {
-      await updatableDatabase
-        .update(modelProviderCredentialModels)
-        .set({
-          isDefault: true,
-        })
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, companyId),
-          eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
-          eq(modelProviderCredentialModels.modelId, defaultModelId),
-        ));
-    }
-  }
-
-  private resolveCompanyHelmDefaultModelId(modelIds: string[]): string | null {
-    const configuredDefaultModelId = this.companyHelmLlmProviderService.getDefaultModelId();
-    if (configuredDefaultModelId && modelIds.includes(configuredDefaultModelId)) {
-      return configuredDefaultModelId;
-    }
-
-    return modelIds[0] ?? null;
-  }
-
   private async ensureCompanyHelmSeedAgent(
     transaction: DatabaseTransactionInterface,
     companyId: string,
     computeProviderDefinitionId: string,
     modelSelection: {
-      defaultModelProviderCredentialModelId: string;
+      defaultModelCredentialSource: "platform" | "user_provided";
+      defaultPlatformModelProviderCredentialModelId: string | null;
+      defaultModelProviderCredentialModelId: string | null;
       defaultReasoningLevel: string | null;
     },
   ): Promise<AgentRecord> {
@@ -599,6 +410,8 @@ export class CompanyBootstrapService {
         .update(agents)
         .set({
           defaultComputeProviderDefinitionId: computeProviderDefinitionId,
+          defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
+          defaultPlatformModelProviderCredentialModelId: modelSelection.defaultPlatformModelProviderCredentialModelId,
           defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
           default_reasoning_level: modelSelection.defaultReasoningLevel,
           updated_at: new Date(),
@@ -619,6 +432,8 @@ export class CompanyBootstrapService {
         created_at: now,
         defaultComputeProviderDefinitionId: computeProviderDefinitionId,
         defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
+        defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
+        defaultPlatformModelProviderCredentialModelId: modelSelection.defaultPlatformModelProviderCredentialModelId,
         defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
         default_reasoning_level: modelSelection.defaultReasoningLevel,
         id: seedAgentId,
@@ -819,69 +634,52 @@ export class CompanyBootstrapService {
       llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
     },
   ): Promise<{
-    defaultModelProviderCredentialModelId: string;
+    defaultModelCredentialSource: "platform" | "user_provided";
+    defaultPlatformModelProviderCredentialModelId: string | null;
+    defaultModelProviderCredentialModelId: string | null;
     defaultReasoningLevel: string | null;
   }> {
     const credentials = await this.listModelProviderCredentials(transaction, input.companyId);
-    const preferredCredential = await this.resolvePreferredOnboardingCredential(transaction, input, credentials);
-    if (!preferredCredential) {
-      throw new Error("Company onboarding requires an active model provider credential.");
-    }
-
-    const preferredModel = await this.findPreferredCredentialModel(
-      transaction,
-      input.companyId,
-      preferredCredential.id,
-    );
-    if (preferredModel) {
-      return {
-        defaultModelProviderCredentialModelId: preferredModel.id,
-        defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
-      };
-    }
-
-    if (!preferredCredential.isManaged && this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
-      const fallbackManagedCredential = await this.ensureCompanyHelmLlmProviderCredential(transaction, input.companyId);
-      const fallbackManagedModel = await this.findPreferredCredentialModel(
-        transaction,
-        input.companyId,
-        fallbackManagedCredential.id,
-      );
-      if (fallbackManagedModel) {
+    if (input.llmSetupStatus !== "third_party") {
+      const platformModel = await this.findPreferredPlatformModel(transaction);
+      if (platformModel) {
         return {
-          defaultModelProviderCredentialModelId: fallbackManagedModel.id,
-          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(fallbackManagedModel.reasoningLevels ?? []),
+          defaultModelCredentialSource: "platform",
+          defaultPlatformModelProviderCredentialModelId: platformModel.id,
+          defaultModelProviderCredentialModelId: null,
+          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(platformModel.reasoningLevels ?? []),
         };
       }
     }
 
+    const preferredCredential = this.selectPreferredCredential(credentials);
+    if (preferredCredential) {
+      const preferredModel = await this.findPreferredCredentialModel(
+        transaction,
+        input.companyId,
+        preferredCredential.id,
+      );
+      if (preferredModel) {
+        return {
+          defaultModelCredentialSource: "user_provided",
+          defaultPlatformModelProviderCredentialModelId: null,
+          defaultModelProviderCredentialModelId: preferredModel.id,
+          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
+        };
+      }
+    }
+
+    const fallbackPlatformModel = await this.findPreferredPlatformModel(transaction);
+    if (fallbackPlatformModel) {
+      return {
+        defaultModelCredentialSource: "platform",
+        defaultPlatformModelProviderCredentialModelId: fallbackPlatformModel.id,
+        defaultModelProviderCredentialModelId: null,
+        defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(fallbackPlatformModel.reasoningLevels ?? []),
+      };
+    }
+
     throw new Error("Company onboarding requires at least one synced model for the selected provider.");
-  }
-
-  private async resolvePreferredOnboardingCredential(
-    transaction: DatabaseTransactionInterface,
-    input: {
-      companyId: string;
-      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
-    },
-    existingCredentials: ModelProviderCredentialRecord[],
-  ): Promise<ModelProviderCredentialRecord | null> {
-    const thirdPartyCredentials = existingCredentials.filter((credential) => !credential.isManaged);
-    const managedCredentials = existingCredentials.filter((credential) => credential.isManaged);
-
-    if (input.llmSetupStatus === "company_managed") {
-      return this.selectPreferredCredential(managedCredentials)
-        ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId)
-        ?? this.selectPreferredCredential(thirdPartyCredentials);
-    }
-    if (input.llmSetupStatus === "third_party") {
-      return this.selectPreferredCredential(thirdPartyCredentials)
-        ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId);
-    }
-
-    return this.selectPreferredCredential(thirdPartyCredentials)
-      ?? this.selectPreferredCredential(managedCredentials)
-      ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId);
   }
 
   private selectPreferredCredential(
@@ -890,15 +688,35 @@ export class CompanyBootstrapService {
     return credentials.find((credential) => credential.isDefault) ?? credentials[0] ?? null;
   }
 
-  private async ensureManagedCredentialForFallback(
+  private async findPreferredPlatformModel(
     transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<ModelProviderCredentialRecord | null> {
-    if (!this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
+  ): Promise<PlatformModelProviderCredentialModelRecord | null> {
+    const [platformCredential] = await transaction
+      .select({
+        id: platformModelProviderCredentials.id,
+      })
+      .from(platformModelProviderCredentials)
+      .where(eq(platformModelProviderCredentials.isDefault, true))
+      .limit(1) as Array<{ id: string }>;
+    if (!platformCredential) {
       return null;
     }
 
-    return this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+    const models = await transaction
+      .select({
+        id: platformModelProviderCredentialModels.id,
+        isDefault: platformModelProviderCredentialModels.isDefault,
+        modelId: platformModelProviderCredentialModels.modelId,
+        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+        reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+      })
+      .from(platformModelProviderCredentialModels)
+      .where(and(
+        eq(platformModelProviderCredentialModels.platformModelProviderCredentialId, platformCredential.id),
+        eq(platformModelProviderCredentialModels.isAvailable, true),
+      )) as unknown as PlatformModelProviderCredentialModelRecord[];
+
+    return models.find((model) => model.isDefault) ?? models[0] ?? null;
   }
 
   private async listModelProviderCredentials(
@@ -909,7 +727,6 @@ export class CompanyBootstrapService {
       .select({
         id: modelProviderCredentials.id,
         isDefault: modelProviderCredentials.isDefault,
-        isManaged: modelProviderCredentials.isManaged,
         modelProvider: modelProviderCredentials.modelProvider,
       })
       .from(modelProviderCredentials)

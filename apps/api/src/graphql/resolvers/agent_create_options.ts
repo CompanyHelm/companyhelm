@@ -1,6 +1,11 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
+} from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import { ModelProviderService } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -9,7 +14,6 @@ import { Resolver } from "./resolver.ts";
 type CredentialRecord = {
   id: string;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: string;
   name: string;
 };
@@ -25,9 +29,29 @@ type ModelRecord = {
   reasoningLevels: string[] | null;
 };
 
+type PlatformCredentialRecord = {
+  id: string;
+  isDefault: boolean;
+  modelProvider: string;
+  name: string;
+};
+
+type PlatformModelRecord = {
+  id: string;
+  isDefault: boolean;
+  platformModelProviderCredentialId: string;
+  modelId: string;
+  name: string;
+  description: string;
+  reasoningSupported: boolean;
+  reasoningLevels: string[] | null;
+};
+
 type GraphqlAgentCreateModelOption = {
   id: string;
-  modelProviderCredentialModelId: string;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelProviderCredentialModelId: string | null;
+  modelProviderCredentialModelId: string | null;
   modelId: string;
   name: string;
   description: string;
@@ -37,7 +61,9 @@ type GraphqlAgentCreateModelOption = {
 
 type GraphqlAgentCreateProviderOption = {
   id: string;
-  modelProviderCredentialId: string;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelProviderCredentialId: string | null;
+  modelProviderCredentialId: string | null;
   isDefault: boolean;
   label: string;
   modelProvider: string;
@@ -83,11 +109,34 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const platformCredentialRecords = await selectableDatabase
+        .select({
+          id: platformModelProviderCredentials.id,
+          isDefault: platformModelProviderCredentials.isDefault,
+          modelProvider: platformModelProviderCredentials.modelProvider,
+          name: platformModelProviderCredentials.name,
+        })
+        .from(platformModelProviderCredentials)
+        .where(eq(platformModelProviderCredentials.status, "active")) as PlatformCredentialRecord[];
+
+      const platformModelRecords = await selectableDatabase
+        .select({
+          id: platformModelProviderCredentialModels.id,
+          isDefault: platformModelProviderCredentialModels.isDefault,
+          platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+          modelId: platformModelProviderCredentialModels.modelId,
+          name: platformModelProviderCredentialModels.name,
+          description: platformModelProviderCredentialModels.description,
+          reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
+          reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+        })
+        .from(platformModelProviderCredentialModels)
+        .where(eq(platformModelProviderCredentialModels.isAvailable, true)) as PlatformModelRecord[];
+
       const credentialRecords = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           isDefault: modelProviderCredentials.isDefault,
-          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -108,13 +157,16 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
-      return credentialRecords
+      const platformOption = this.createPlatformProviderOption(platformCredentialRecords, platformModelRecords);
+      const companyOptions = credentialRecords
         .map((credentialRecord) => {
           const credentialModelRecords = modelRecords
             .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
           const credentialModels = credentialModelRecords
             .map((modelRecord) => ({
               id: this.createModelOptionId(modelRecord.id),
+              modelCredentialSource: "user_provided" as const,
+              platformModelProviderCredentialModelId: null,
               modelProviderCredentialModelId: modelRecord.id,
               modelId: modelRecord.modelId,
               name: modelRecord.name,
@@ -139,6 +191,8 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
           return {
             id: this.createProviderOptionId(credentialRecord.id),
+            modelCredentialSource: "user_provided" as const,
+            platformModelProviderCredentialId: null,
             modelProviderCredentialId: credentialRecord.id,
             isDefault: credentialRecord.isDefault,
             label: this.resolveProviderLabel(credentialRecord),
@@ -150,8 +204,80 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         })
         .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((providerOption) => providerOption.models.length > 0);
+
+      return platformOption ? [platformOption, ...companyOptions] : companyOptions;
     });
   };
+
+  private createPlatformProviderOption(
+    platformCredentialRecords: PlatformCredentialRecord[],
+    platformModelRecords: PlatformModelRecord[],
+  ): GraphqlAgentCreateProviderOption | null {
+    const activeCredentialIds = new Set(platformCredentialRecords.map((credentialRecord) => credentialRecord.id));
+    const credentialById = new Map(platformCredentialRecords.map((credentialRecord) => [credentialRecord.id, credentialRecord]));
+    const selectedModelsByModelId = new Map<string, PlatformModelRecord>();
+
+    for (const modelRecord of platformModelRecords) {
+      const credentialRecord = credentialById.get(modelRecord.platformModelProviderCredentialId);
+      if (!credentialRecord || !activeCredentialIds.has(modelRecord.platformModelProviderCredentialId)) {
+        continue;
+      }
+
+      const existingModel = selectedModelsByModelId.get(modelRecord.modelId);
+      if (!existingModel) {
+        selectedModelsByModelId.set(modelRecord.modelId, modelRecord);
+        continue;
+      }
+
+      const existingCredential = credentialById.get(existingModel.platformModelProviderCredentialId);
+      if (credentialRecord.isDefault && !existingCredential?.isDefault) {
+        selectedModelsByModelId.set(modelRecord.modelId, modelRecord);
+      }
+    }
+
+    const credentialModels = [...selectedModelsByModelId.values()]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((modelRecord) => ({
+        id: this.createPlatformModelOptionId(modelRecord.id),
+        modelCredentialSource: "platform" as const,
+        platformModelProviderCredentialModelId: modelRecord.id,
+        modelProviderCredentialModelId: null,
+        modelId: modelRecord.modelId,
+        name: modelRecord.name,
+        description: modelRecord.description,
+        reasoningSupported: modelRecord.reasoningSupported,
+        reasoningLevels: modelRecord.reasoningLevels ?? [],
+      }));
+    if (credentialModels.length === 0) {
+      return null;
+    }
+
+    const defaultModelId = this.modelRegistry.getDefaultModelForProvider("companyhelm")
+      ?? credentialModels[0]?.modelId
+      ?? null;
+    const defaultModelRecord = credentialModels.find((modelRecord) => modelRecord.modelId === defaultModelId)
+      ?? credentialModels[0]
+      ?? null;
+    const supportedReasoningLevels = defaultModelRecord?.reasoningLevels ?? [];
+    const providerDefaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider("companyhelm");
+    const defaultReasoningLevel = providerDefaultReasoningLevel
+      && supportedReasoningLevels.includes(providerDefaultReasoningLevel)
+      ? providerDefaultReasoningLevel
+      : (supportedReasoningLevels[0] ?? null);
+
+    return {
+      id: "agent-create-provider-option:platform:companyhelm",
+      modelCredentialSource: "platform",
+      platformModelProviderCredentialId: null,
+      modelProviderCredentialId: null,
+      isDefault: platformCredentialRecords.some((credentialRecord) => credentialRecord.isDefault),
+      label: "CompanyHelm",
+      modelProvider: "companyhelm",
+      defaultModelId: defaultModelRecord?.modelId ?? null,
+      defaultReasoningLevel,
+      models: credentialModels,
+    };
+  }
 
   /**
    * Namespaces option ids so Relay does not merge these projection records with the credential
@@ -169,11 +295,11 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     return `agent-create-model-option:${modelProviderCredentialModelId}`;
   }
 
-  private resolveProviderLabel(credentialRecord: CredentialRecord): string {
-    if (credentialRecord.isManaged) {
-      return "CompanyHelm";
-    }
+  private createPlatformModelOptionId(platformModelProviderCredentialModelId: string): string {
+    return `agent-create-platform-model-option:${platformModelProviderCredentialModelId}`;
+  }
 
+  private resolveProviderLabel(credentialRecord: CredentialRecord): string {
     const providerDefinition = this.modelProviderService.get(credentialRecord.modelProvider);
     if (credentialRecord.name === providerDefinition.name) {
       return providerDefinition.name;

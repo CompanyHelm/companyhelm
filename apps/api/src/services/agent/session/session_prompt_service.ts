@@ -79,6 +79,8 @@ export class SessionPromptService {
     shouldSteer = false,
     images?: SessionPromptImageInput[],
     userId?: string | null,
+    modelCredentialSource?: "platform" | "user_provided" | null,
+    platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.queuePromptInTransaction(
@@ -90,7 +92,9 @@ export class SessionPromptService {
         userMessage,
         {
           images,
+          modelCredentialSource,
           modelProviderCredentialModelId,
+          platformModelProviderCredentialModelId,
           reasoningLevel,
           shouldSteer,
           userId,
@@ -115,6 +119,8 @@ export class SessionPromptService {
     const [existingSession] = await selectableDatabase
       .select({
         agentId: agentSessions.agentId,
+        currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+        currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
         currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         currentReasoningLevel: agentSessions.currentReasoningLevel,
         id: agentSessions.id,
@@ -134,13 +140,11 @@ export class SessionPromptService {
       throw new Error("Archived sessions cannot receive new messages.");
     }
 
-    const selectedModelRecord = options.modelProviderCredentialModelId
-      ? await this.sessionModelSelectionService.resolveModelRecordById(
-        selectableDatabase,
-        companyId,
-        options.modelProviderCredentialModelId,
-      )
-      : await this.sessionModelSelectionService.resolveCurrentModelRecord(
+    const selectedModelRecord = await this.sessionModelSelectionService.resolveModelRecordBySelection(
+      selectableDatabase,
+      companyId,
+      options,
+    ) ?? await this.sessionModelSelectionService.resolveCurrentModelRecord(
         selectableDatabase,
         companyId,
         existingSession,
@@ -150,16 +154,20 @@ export class SessionPromptService {
       options.reasoningLevel,
       existingSession.currentReasoningLevel,
     );
-    await this.companyManagedLlmBudgetService.assertWithinBudgetInTransaction(selectableDatabase, {
-      companyId,
-      modelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
-    });
+    if (selectedModelRecord.modelCredentialSource === "platform") {
+      await this.companyManagedLlmBudgetService.assertWithinPlatformBudgetInTransaction(selectableDatabase, {
+        companyId,
+        platformModelProviderCredentialId: selectedModelRecord.platformModelProviderCredentialId,
+      });
+    }
     const preparedPrompt = this.prepareQueuedPrompt(userMessage, options.images);
     const now = new Date();
     const [updatedSessionRecord] = await updatableDatabase
       .update(agentSessions)
       .set({
-        currentModelProviderCredentialModelId: selectedModelRecord.id,
+        currentModelCredentialSource: selectedModelRecord.modelCredentialSource,
+        currentPlatformModelProviderCredentialModelId: selectedModelRecord.platformModelProviderCredentialModelId,
+        currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,
         lastUserMessageAt: now,
         status: existingSession.status === "running" ? "running" : "queued",

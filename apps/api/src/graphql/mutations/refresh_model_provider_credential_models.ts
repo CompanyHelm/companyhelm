@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
-import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelService } from "../../services/ai_providers/model_service.js";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -19,7 +18,6 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   modelProvider: ModelProviderId;
   encryptedApiKey: string;
-  isManaged: boolean;
 };
 
 type GraphqlModelProviderCredentialModelRecord = {
@@ -51,17 +49,13 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
   RefreshModelProviderCredentialModelsMutationArguments,
   GraphqlModelProviderCredentialModelRecord[]
 > {
-  private readonly companyHelmLlmProviderService?: CompanyHelmLlmProviderService;
   private readonly modelService: ModelService;
 
   constructor(
     @inject(ModelService) modelService: ModelService,
-    @inject(CompanyHelmLlmProviderService)
-    companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
   ) {
     super();
     this.modelService = modelService;
-    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
   }
 
   protected resolve = async (
@@ -89,7 +83,6 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
           companyId: modelProviderCredentials.companyId,
           modelProvider: modelProviderCredentials.modelProvider,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
-          isManaged: modelProviderCredentials.isManaged,
         })
         .from(modelProviderCredentials)
         .where(and(
@@ -102,9 +95,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     if (!credential) {
       throw new Error("Credential not found.");
     }
-    const apiKey = credential.isManaged
-      ? this.requireCompanyHelmLlmProviderService().getRuntimeApiKey()
-      : credential.encryptedApiKey;
+    const apiKey = credential.encryptedApiKey;
 
     const updatedModels = await this.modelService.refreshStoredModels({
       apiKey,
@@ -122,11 +113,4 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     }));
   };
 
-  private requireCompanyHelmLlmProviderService(): CompanyHelmLlmProviderService {
-    if (!this.companyHelmLlmProviderService) {
-      throw new Error("CompanyHelm model provider service is not configured.");
-    }
-
-    return this.companyHelmLlmProviderService;
-  }
 }
