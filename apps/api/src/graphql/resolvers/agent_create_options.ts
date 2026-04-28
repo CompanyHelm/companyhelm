@@ -240,8 +240,15 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         })
         .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((providerOption) => providerOption.models.length > 0);
+      const hasCompanyDefaultOption = companyOptions.some((providerOption) => providerOption.isDefault);
+      const resolvedPlatformOption = platformOption
+        ? {
+          ...platformOption,
+          isDefault: !hasCompanyDefaultOption,
+        }
+        : null;
 
-      return platformOption ? [platformOption, ...companyOptions] : companyOptions;
+      return resolvedPlatformOption ? [resolvedPlatformOption, ...companyOptions] : companyOptions;
     });
   };
 

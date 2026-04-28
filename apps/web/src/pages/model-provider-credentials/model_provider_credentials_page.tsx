@@ -279,7 +279,7 @@ function ModelProviderCredentialsPageContent() {
       defaultModelId: managedProviderOption.models.find((model) => model.platformModelId)?.platformModelId ?? null,
       errorMessage: null,
       id: MANAGED_MODEL_PROVIDER_CREDENTIAL_ID,
-      isDefault: true,
+      isDefault: managedProviderOption.isDefault,
       modelProvider: managedProviderOption.modelProvider,
       name: managedProviderOption.label,
       refreshedAt: null,

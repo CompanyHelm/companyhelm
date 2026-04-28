@@ -31,82 +31,53 @@ class AgentCreateOptionsQueryTestHarness {
     } as Config;
   }
 
-  static createDatabaseMock() {
+  static createDatabaseMock(input?: {
+    platformCredentialRecords?: Array<Record<string, unknown>>;
+    platformModelRecords?: Array<Record<string, unknown>>;
+    platformRouteRecords?: Array<Record<string, unknown>>;
+    managedProviderSettingsRecords?: Array<Record<string, unknown>>;
+    credentialRecords?: Array<Record<string, unknown>>;
+    modelRecords?: Array<Record<string, unknown>>;
+  }) {
     let selectCallCount = 0;
+    const selectResults = [
+      input?.platformCredentialRecords ?? [],
+      input?.platformModelRecords ?? [],
+      input?.platformRouteRecords ?? [],
+      input?.managedProviderSettingsRecords ?? [],
+      input?.credentialRecords ?? [{
+        id: "credential-1",
+        isDefault: true,
+        modelProvider: "openai",
+        name: "OpenAI / Codex",
+      }],
+      input?.modelRecords ?? [{
+        id: "model-row-1",
+        isDefault: true,
+        modelProviderCredentialId: "credential-1",
+        modelId: "gpt-5.4",
+        name: "GPT-5.4",
+        description: "Latest frontier agentic coding model.",
+        reasoningSupported: true,
+        reasoningLevels: ["low", "medium", "high"],
+      }],
+    ];
 
     return {
       getDatabase() {
         return {
+          async execute() {
+            return [];
+          },
           select() {
             selectCallCount += 1;
-            if (selectCallCount === 1) {
+            const selectResult = selectResults[selectCallCount - 1];
+            if (selectResult) {
               return {
                 from() {
                   return {
                     async where() {
-                      return [];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 2) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 3) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 4) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "credential-1",
-                        isDefault: true,
-                        modelProvider: "openai",
-                        name: "OpenAI / Codex",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 5) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "model-row-1",
-                        isDefault: true,
-                        modelProviderCredentialId: "credential-1",
-                        modelId: "gpt-5.4",
-                        name: "GPT-5.4",
-                        description: "Latest frontier agentic coding model.",
-                        reasoningSupported: true,
-                        reasoningLevels: ["low", "medium", "high"],
-                      }];
+                      return selectResult;
                     },
                   };
                 },
@@ -203,6 +174,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
+  assert.equal(document.errors, undefined);
   assert.deepEqual(document.data.AgentCreateOptions, [{
     id: "agent-create-provider-option:credential-1",
     modelCredentialSource: "user_provided",
@@ -225,6 +197,97 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
       reasoningLevels: ["low", "medium", "high"],
     }],
   }]);
+
+  await app.close();
+});
+
+test("GraphQL AgentCreateOptions exposes only one default across managed and user credentials", async () => {
+  const app = Fastify();
+  const config = AgentCreateOptionsQueryTestHarness.createConfigMock();
+  const database = AgentCreateOptionsQueryTestHarness.createDatabaseMock({
+    platformCredentialRecords: [{
+      id: "platform-credential-1",
+      isDefault: true,
+      modelProvider: "openai",
+      name: "Platform OpenAI",
+    }],
+    platformModelRecords: [{
+      id: "platform-model-1",
+      isDefault: true,
+      modelProvider: "companyhelm",
+      modelId: "gpt-5.5",
+      name: "GPT-5.5",
+      description: "CompanyHelm managed model.",
+      reasoningSupported: true,
+      reasoningLevels: ["low", "medium", "high"],
+    }],
+    platformRouteRecords: [{
+      platformModelId: "platform-model-1",
+      platformModelProviderCredentialModelId: "platform-model-row-1",
+    }],
+  });
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query AgentCreateOptions {
+          AgentCreateOptions {
+            modelCredentialSource
+            isDefault
+          }
+        }
+      `,
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.errors, undefined);
+  assert.deepEqual(document.data.AgentCreateOptions.map((option: { isDefault: boolean }) => option.isDefault), [
+    false,
+    true,
+  ]);
 
   await app.close();
 });
