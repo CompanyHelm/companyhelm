@@ -46,6 +46,14 @@ test("AgentListAssignedSecretsTool renders attached session secret metadata", as
       ].join("\n"),
       type: "text",
     }],
+    details: {
+      secrets: [{
+        description: "Used for GitHub API calls.",
+        envVarName: "GITHUB_TOKEN",
+        name: "GitHub Token",
+      }],
+      type: "assigned_secrets",
+    },
   });
 });
 
@@ -106,5 +114,13 @@ test("AgentListAvailableSecretsTool renders the reusable company secret catalog"
       ].join("\n"),
       type: "text",
     }],
+    details: {
+      secrets: [{
+        description: null,
+        envVarName: "OPENAI_API_KEY",
+        name: "OpenAI API Key",
+      }],
+      type: "available_secrets",
+    },
   });
 });

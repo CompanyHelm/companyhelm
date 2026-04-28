@@ -4,15 +4,10 @@ import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { PlatformAdminAccess } from "../../../../db/platform_admin_access.ts";
 import {
   agentSessions,
   agents,
   companies,
-  modelProviderCredentialModels,
-  modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
   users,
 } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
@@ -31,10 +26,12 @@ import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
+import { RuntimeModelResolver } from "../runtime/model_resolver.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
   currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelId: string | null;
   currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
@@ -49,20 +46,6 @@ type AgentRow = {
 
 type CompanyRow = {
   name: string;
-};
-
-type ModelRow = {
-  modelId: string;
-  modelProviderCredentialId: string | null;
-  platformModelProviderCredentialId: string | null;
-  name?: string;
-  reasoningSupported?: boolean;
-};
-
-type CredentialRow = {
-  baseUrl: string | null;
-  encryptedApiKey: string;
-  modelProvider: string;
 };
 
 type SessionStatusRow = {
@@ -95,6 +78,7 @@ export class SessionProcessExecutionService {
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
+  private readonly runtimeModelResolver: RuntimeModelResolver;
   private readonly sessionLeaseService: SessionLeaseService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionProcessQueueService: SessionProcessQueueService;
@@ -121,6 +105,8 @@ export class SessionProcessExecutionService {
     companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
+    @inject(RuntimeModelResolver)
+    runtimeModelResolver: RuntimeModelResolver = new RuntimeModelResolver(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
     this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
@@ -130,6 +116,7 @@ export class SessionProcessExecutionService {
     });
     this.piMonoSessionManagerService = piMonoSessionManagerService;
     this.redisService = redisService;
+    this.runtimeModelResolver = runtimeModelResolver;
     this.sessionLeaseService = sessionLeaseService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
     this.sessionProcessQueueService = sessionProcessQueueService;
@@ -577,6 +564,7 @@ export class SessionProcessExecutionService {
         .select({
           agentId: agentSessions.agentId,
           currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
@@ -621,56 +609,29 @@ export class SessionProcessExecutionService {
         throw new Error("Session company not found.");
       }
 
-      const [modelRow] = sessionRow.currentModelCredentialSource === "platform"
-        ? await this.loadPlatformModelRow(selectableDatabase, sessionRow.currentPlatformModelProviderCredentialModelId ?? "")
-        : await selectableDatabase
-          .select({
-            modelId: modelProviderCredentialModels.modelId,
-            modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-            name: modelProviderCredentialModels.name,
-            reasoningSupported: modelProviderCredentialModels.reasoningSupported,
-          })
-          .from(modelProviderCredentialModels)
-          .where(and(
-            eq(modelProviderCredentialModels.companyId, companyId),
-            eq(modelProviderCredentialModels.id, sessionRow.currentModelProviderCredentialModelId ?? ""),
-          )) as ModelRow[];
-      if (!modelRow) {
-        throw new Error("Session model not found.");
-      }
-
-      const [credentialRow] = sessionRow.currentModelCredentialSource === "platform"
-        ? await this.loadPlatformCredentialRow(selectableDatabase, modelRow.platformModelProviderCredentialId ?? "")
-        : await selectableDatabase
-          .select({
-            baseUrl: modelProviderCredentials.baseUrl,
-            encryptedApiKey: modelProviderCredentials.encryptedApiKey,
-            modelProvider: modelProviderCredentials.modelProvider,
-          })
-          .from(modelProviderCredentials)
-          .where(and(
-            eq(modelProviderCredentials.companyId, companyId),
-            eq(modelProviderCredentials.id, modelRow.modelProviderCredentialId ?? ""),
-          )) as CredentialRow[];
-      if (!credentialRow) {
-        throw new Error("Session credential not found.");
-      }
-      const resolvedCredentialId = modelRow.platformModelProviderCredentialId ?? modelRow.modelProviderCredentialId;
+      const runtimeModel = await this.runtimeModelResolver.resolve(selectableDatabase, companyId, {
+        currentModelCredentialSource: sessionRow.currentModelCredentialSource,
+        currentModelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
+        currentPlatformModelId: sessionRow.currentPlatformModelId,
+        currentPlatformModelProviderCredentialModelId: sessionRow.currentPlatformModelProviderCredentialModelId,
+      });
 
       return {
         agentId: sessionRow.agentId,
         agentName: agentRow.name,
         agentSystemPrompt: agentRow.systemPrompt,
-        apiKey: this.resolveRuntimeApiKey(credentialRow),
-        ...(credentialRow.baseUrl ? { baseUrl: credentialRow.baseUrl } : {}),
+        apiKey: runtimeModel.apiKey,
+        ...(runtimeModel.baseUrl ? { baseUrl: runtimeModel.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
         isCompanyHelmManagedCredential: sessionRow.currentModelCredentialSource === "platform",
-        modelId: modelRow.modelId,
-        ...(modelRow.name ? { modelName: modelRow.name } : {}),
-        modelProviderCredentialId: resolvedCredentialId ?? "",
-        providerId: this.resolveRuntimeProviderId(credentialRow),
-        ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
+        modelId: runtimeModel.modelId,
+        ...(runtimeModel.modelName ? { modelName: runtimeModel.modelName } : {}),
+        modelProviderCredentialId: runtimeModel.modelProviderCredentialId,
+        providerId: runtimeModel.providerId,
+        ...(typeof runtimeModel.reasoningSupported === "boolean"
+          ? { reasoningSupported: runtimeModel.reasoningSupported }
+          : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,
         ...(userFirstName ? { userFirstName } : {}),
       };
@@ -693,37 +654,6 @@ export class SessionProcessExecutionService {
     }
 
     return userRow.firstName;
-  }
-
-  private async loadPlatformModelRow(
-    selectableDatabase: SelectableDatabase,
-    platformModelProviderCredentialModelId: string,
-  ): Promise<ModelRow[]> {
-    await PlatformAdminAccess.enable(selectableDatabase);
-    return selectableDatabase
-      .select({
-        modelId: platformModelProviderCredentialModels.modelId,
-        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-        name: platformModelProviderCredentialModels.name,
-        reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
-      })
-      .from(platformModelProviderCredentialModels)
-      .where(eq(platformModelProviderCredentialModels.id, platformModelProviderCredentialModelId)) as Promise<ModelRow[]>;
-  }
-
-  private async loadPlatformCredentialRow(
-    selectableDatabase: SelectableDatabase,
-    platformModelProviderCredentialId: string,
-  ): Promise<CredentialRow[]> {
-    await PlatformAdminAccess.enable(selectableDatabase);
-    return selectableDatabase
-      .select({
-        baseUrl: platformModelProviderCredentials.baseUrl,
-        encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
-        modelProvider: platformModelProviderCredentials.modelProvider,
-      })
-      .from(platformModelProviderCredentials)
-      .where(eq(platformModelProviderCredentials.id, platformModelProviderCredentialId)) as Promise<CredentialRow[]>;
   }
 
   private async isSessionProcessable(
@@ -749,14 +679,6 @@ export class SessionProcessExecutionService {
 
   private isProcessableStatus(status: string): boolean {
     return status === "queued" || status === "running";
-  }
-
-  private resolveRuntimeApiKey(credentialRow: CredentialRow): string {
-    return credentialRow.encryptedApiKey;
-  }
-
-  private resolveRuntimeProviderId(credentialRow: CredentialRow): string {
-    return credentialRow.modelProvider;
   }
 
   private async clearQueuedMessages(

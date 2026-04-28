@@ -101,6 +101,8 @@ test("DetachSkillFromSessionMutation deactivates the skill and removes it from a
     skillId: "skill-1",
   }]);
   assert.deepEqual(result, {
+    autoUpdate: false,
+    branchCommitSha: null,
     companyId: "company-123",
     description: "Browser automation guidance.",
     fileList: [],

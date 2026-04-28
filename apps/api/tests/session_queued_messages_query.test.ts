@@ -48,6 +48,7 @@ class SessionQueuedMessagesQueryTestHarness {
                         agentId: "agent-1",
                         createdAt: new Date("2026-03-31T07:50:00.000Z"),
                         currentContextTokens: null,
+                        currentModelCredentialSource: "user_provided",
                         currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "medium",
                         forkedFromTurnId: null,
@@ -276,6 +277,7 @@ test("GraphQL SessionQueuedMessages query returns queued rows for one session", 
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
+  assert.equal(document.errors, undefined);
   assert.deepEqual(document.data.SessionQueuedMessages, [{
     claimedAt: "2026-03-31T08:00:30.000Z",
     createdAt: "2026-03-31T08:00:00.000Z",

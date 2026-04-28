@@ -17,7 +17,12 @@ class AgentConversationServiceTestTransaction {
     return {
       from: (table: unknown) => {
         void table;
-        return {
+        const query = {
+          innerJoin(_table: unknown, _condition: unknown) {
+            void _table;
+            void _condition;
+            return query;
+          },
           where: (condition: unknown) => {
             const execute = async () => {
               void condition;
@@ -45,6 +50,7 @@ class AgentConversationServiceTestTransaction {
             };
           },
         };
+        return query;
       },
     };
   }

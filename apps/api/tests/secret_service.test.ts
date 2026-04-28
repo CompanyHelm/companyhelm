@@ -118,13 +118,19 @@ test("SecretService attachSecretToAgent copies the secret to existing agent sess
     createdByUserId: "user-1",
     secretId: "secret-1",
   }]);
-  assert.deepEqual(insertedSessionValues, [{
+  assert.deepEqual(insertedSessionValues, [[{
     companyId: "company-1",
-    createdAt: insertedSessionValues[0]?.createdAt,
+    createdAt: (insertedSessionValues[0] as Array<Record<string, unknown>>)[0]?.createdAt,
+    createdByUserId: "user-1",
+    secretId: "secret-1",
+    sessionId: "session-1",
+  }, {
+    companyId: "company-1",
+    createdAt: (insertedSessionValues[0] as Array<Record<string, unknown>>)[1]?.createdAt,
     createdByUserId: "user-1",
     secretId: "secret-1",
     sessionId: "session-2",
-  }]);
+  }]]);
 });
 
 test("SecretService detachSecretFromAgent removes the secret from existing agent sessions", async () => {
@@ -166,6 +172,30 @@ test("SecretService detachSecretFromAgent removes the secret from existing agent
       }
 
       if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 4) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 5) {
         return {
           from() {
             return {

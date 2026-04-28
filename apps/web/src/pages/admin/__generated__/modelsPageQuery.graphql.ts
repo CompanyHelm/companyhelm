@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ae1472138d9a88a4adbcc2416f97901e>>
+ * @generated SignedSource<<da881d070c570f094904e9493734bee9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,19 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type modelsPageQuery$variables = Record<PropertyKey, never>;
 export type modelsPageQuery$data = {
+  readonly PlatformModelProviderCredentialModels: ReadonlyArray<{
+    readonly id: string;
+    readonly isAvailable: boolean;
+    readonly modelId: string;
+    readonly name: string;
+    readonly platformModelProviderCredentialId: string;
+  }>;
+  readonly PlatformModelProviderCredentials: ReadonlyArray<{
+    readonly id: string;
+    readonly modelProvider: string;
+    readonly name: string;
+    readonly status: string;
+  }>;
   readonly PlatformModels: ReadonlyArray<{
     readonly description: string;
     readonly id: string;
@@ -32,7 +45,42 @@ export type modelsPageQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProvider",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelId",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isAvailable",
+  "storageKey": null
+},
+v5 = [
   {
     "alias": null,
     "args": null,
@@ -41,13 +89,7 @@ var v0 = [
     "name": "PlatformModels",
     "plural": true,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
+      (v0/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -55,27 +97,9 @@ var v0 = [
         "name": "key",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "modelProvider",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "modelId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "name",
-        "storageKey": null
-      },
+      (v1/*: any*/),
+      (v2/*: any*/),
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -104,13 +128,7 @@ var v0 = [
         "name": "isDefault",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isAvailable",
-        "storageKey": null
-      },
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -127,6 +145,49 @@ var v0 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "PlatformModelProviderCredential",
+    "kind": "LinkedField",
+    "name": "PlatformModelProviderCredentials",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v3/*: any*/),
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "PlatformModelProviderCredentialModel",
+    "kind": "LinkedField",
+    "name": "PlatformModelProviderCredentialModels",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v4/*: any*/),
+      (v2/*: any*/),
+      (v3/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "platformModelProviderCredentialId",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -135,7 +196,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "modelsPageQuery",
-    "selections": (v0/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -144,19 +205,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "modelsPageQuery",
-    "selections": (v0/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "87202f2e7a5b1a4ed40d7798d0d12b36",
+    "cacheID": "3cc97bc734bc16971bac715843f5e30f",
     "id": null,
     "metadata": {},
     "name": "modelsPageQuery",
     "operationKind": "query",
-    "text": "query modelsPageQuery {\n  PlatformModels {\n    id\n    key\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    routeCount\n    updatedAt\n  }\n}\n"
+    "text": "query modelsPageQuery {\n  PlatformModels {\n    id\n    key\n    modelProvider\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n    isDefault\n    isAvailable\n    routeCount\n    updatedAt\n  }\n  PlatformModelProviderCredentials {\n    id\n    name\n    modelProvider\n    status\n  }\n  PlatformModelProviderCredentialModels {\n    id\n    isAvailable\n    modelId\n    name\n    platformModelProviderCredentialId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "192218c958217e1ab1a8af6c7545307e";
+(node as any).hash = "4aeecef63a3d220732ac6dda5b2e6323";
 
 export default node;

@@ -120,5 +120,6 @@ test("SetDefaultModelProviderCredentialModelMutation promotes one stored model w
     modelProviderCredentialId: "credential-1",
     name: "GPT-5.4",
     reasoningLevels: ["low", "medium", "high", "xhigh"],
+    reasoningSupported: undefined,
   });
 });

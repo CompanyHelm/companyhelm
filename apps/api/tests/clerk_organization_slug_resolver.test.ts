@@ -5,6 +5,7 @@ import { ClerkOrganizationSlugResolver } from "../src/auth/clerk/organization_sl
 function createConfigMock() {
   return {
     auth: {
+      provider: "clerk",
       clerk: {
         publishable_key: "pk_test_example",
         secret_key: "sk_test_example",

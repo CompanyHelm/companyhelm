@@ -3,6 +3,7 @@ import { injectable } from "inversify";
 import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
   platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
   platformModelRoutes,
   platformModels,
 } from "../../db/schema.ts";
@@ -96,18 +97,49 @@ export class SetPlatformModelRoutesMutation extends Mutation<
       if (!platformModelRecord) {
         throw new Error("Platform model not found.");
       }
+      if (platformModelRecord.isAvailable && routeModelIds.length === 0) {
+        throw new Error("An available platform model must have at least one route.");
+      }
 
       if (routeModelIds.length > 0) {
         const credentialModelRecords = await database
           .select({
             id: platformModelProviderCredentialModels.id,
+            isAvailable: platformModelProviderCredentialModels.isAvailable,
+            modelId: platformModelProviderCredentialModels.modelId,
+            platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
           })
           .from(platformModelProviderCredentialModels)
           .where(inArray(platformModelProviderCredentialModels.id, routeModelIds)) as Array<{
             id: string;
+            isAvailable: boolean;
+            modelId: string;
+            platformModelProviderCredentialId: string;
           }>;
         if (credentialModelRecords.length !== routeModelIds.length) {
           throw new Error("One or more credential models were not found.");
+        }
+
+        for (const credentialModelRecord of credentialModelRecords) {
+          if (credentialModelRecord.modelId !== platformModelRecord.modelId) {
+            throw new Error("Route credential models must match the platform model id.");
+          }
+          if (!credentialModelRecord.isAvailable) {
+            throw new Error("Route credential models must be available.");
+          }
+
+          const [credentialRecord] = await database
+            .select({
+              status: platformModelProviderCredentials.status,
+            })
+            .from(platformModelProviderCredentials)
+            .where(eq(
+              platformModelProviderCredentials.id,
+              credentialModelRecord.platformModelProviderCredentialId,
+            )) as Array<{ status: string }>;
+          if (credentialRecord?.status !== "active") {
+            throw new Error("Route credential models must belong to active platform credentials.");
+          }
         }
       }
 

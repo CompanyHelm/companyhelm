@@ -74,13 +74,13 @@ test("AgentEnvironmentProvisioning provisions the workspace directory through th
   await provisioning.provision({} as never, createdEnvironment);
 
   assert.equal(createShell.mock.calls.length, 1);
-  assert.deepEqual(createShell.mock.calls[0]?.[1], createdEnvironment);
+  assert.deepEqual(createShell.mock.calls[0]?.[0], createdEnvironment);
   assert.equal(executeCommand.mock.calls.length, 2);
   assert.match(String(executeCommand.mock.calls[0]?.[0] ?? ""), /mkdir -p/);
   assert.match(String(executeCommand.mock.calls[0]?.[0] ?? ""), /~\/workspace/);
   assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /mkdir -p/);
-  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /~\/\.companyhelm\/skill-cache/);
-  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /~\/skills/);
+  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /\/home\/user\/\.companyhelm\/skill-cache/);
+  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /\/home\/user\/skills/);
 });
 
 test("AgentEnvironmentProvisioningService bootstraps the created environment before returning it", async () => {

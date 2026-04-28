@@ -27,6 +27,13 @@ vi.mock("bullmq", () => ({
 }));
 
 vi.mock("ioredis", () => ({
+  Redis: class MockIORedis {
+    quit = ioRedisMocks.quitMock;
+
+    constructor() {
+      ioRedisMocks.instances.push(this);
+    }
+  },
   default: class MockIORedis {
     quit = ioRedisMocks.quitMock;
 
@@ -64,6 +71,12 @@ test("SessionProcessQueueService enqueues wake jobs without BullMQ deduplication
       sessionId: "session-1",
     },
     {
+      attempts: 3,
+      backoff: {
+        delay: 2000,
+        type: "exponential",
+      },
+      delay: undefined,
       removeOnComplete: true,
       removeOnFail: true,
     },

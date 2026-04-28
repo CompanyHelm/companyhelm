@@ -1,20 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeftIcon, PlusIcon, RouteIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, PlusIcon, PowerIcon, RouteIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { CreateCredentialDialog } from "@/pages/model-provider-credentials/create_credential_dialog";
 import { ModelProviderCredentialCatalog } from "@/pages/model-provider-credentials/provider_catalog";
 import { formatProviderLabel } from "@/pages/model-provider-credentials/provider_label";
 import type { modelDetailPageAddCredentialMutation } from "./__generated__/modelDetailPageAddCredentialMutation.graphql";
 import type { modelDetailPageQuery } from "./__generated__/modelDetailPageQuery.graphql";
 import type { modelDetailPageSetRoutesMutation } from "./__generated__/modelDetailPageSetRoutesMutation.graphql";
+import type { modelDetailPageUpdateMutation } from "./__generated__/modelDetailPageUpdateMutation.graphql";
 
 const modelDetailPageQueryNode = graphql`
   query modelDetailPageQuery($platformModelId: ID!) {
@@ -93,9 +95,22 @@ const modelDetailPageSetRoutesMutationNode = graphql`
   }
 `;
 
+const modelDetailPageUpdateMutationNode = graphql`
+  mutation modelDetailPageUpdateMutation($input: UpdatePlatformModelInput!) {
+    UpdatePlatformModel(input: $input) {
+      id
+      isAvailable
+      isDefault
+      routeCount
+      updatedAt
+    }
+  }
+`;
+
 type PlatformCredential = modelDetailPageQuery["response"]["PlatformModelProviderCredentials"][number];
 type PlatformCredentialModel = modelDetailPageQuery["response"]["PlatformModelProviderCredentialModels"][number];
 type PlatformModel = modelDetailPageQuery["response"]["PlatformModels"][number];
+type PlatformRoute = modelDetailPageQuery["response"]["PlatformModelRoutes"][number];
 
 /**
  * Lets platform admins choose the concrete platform credential and provider model that should
@@ -112,10 +127,10 @@ export function AdminModelDetailPage() {
 function AdminModelDetailPageContent() {
   const params = useParams({ strict: false }) as { platformModelId?: string };
   const platformModelId = params.platformModelId ?? "";
+  const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-  const [showAllCredentials, setShowAllCredentials] = useState(false);
   const data = useLazyLoadQuery<modelDetailPageQuery>(
     modelDetailPageQueryNode,
     {
@@ -130,22 +145,14 @@ function AdminModelDetailPageContent() {
   const credentialById = useMemo(() => {
     return new Map(data.PlatformModelProviderCredentials.map((credential) => [credential.id, credential]));
   }, [data.PlatformModelProviderCredentials]);
-  const visibleCredentialModels = useMemo(() => {
+  const routeableCredentialModels = useMemo(() => {
+    if (!platformModel) {
+      return [];
+    }
+
     return data.PlatformModelProviderCredentialModels
       .filter((credentialModel) => {
-        const credential = credentialById.get(credentialModel.platformModelProviderCredentialId);
-        if (!credential) {
-          return false;
-        }
-        if (showAllCredentials) {
-          return true;
-        }
-        if (!platformModel) {
-          return false;
-        }
-
-        return credential.modelProvider === platformModel.modelProvider
-          && credentialModel.modelId === platformModel.modelId;
+        return credentialModel.modelId === platformModel.modelId;
       })
       .sort((left, right) => {
         const leftCredential = credentialById.get(left.platformModelProviderCredentialId);
@@ -158,15 +165,16 @@ function AdminModelDetailPageContent() {
 
         return left.name.localeCompare(right.name);
       });
-  }, [credentialById, data.PlatformModelProviderCredentialModels, platformModel, showAllCredentials]);
-  const initialRouteModelIds = useMemo(() => {
-    return data.PlatformModelRoutes.map((route) => route.platformModelProviderCredentialModelId);
-  }, [data.PlatformModelRoutes]);
-  const [selectedRouteModelIds, setSelectedRouteModelIds] = useState<Set<string>>(() => new Set(initialRouteModelIds));
+  }, [credentialById, data.PlatformModelProviderCredentialModels, platformModel]);
   const [commitAddCredential, isAddCredentialInFlight] =
     useMutation<modelDetailPageAddCredentialMutation>(modelDetailPageAddCredentialMutationNode);
   const [commitSetRoutes, isSetRoutesInFlight] =
     useMutation<modelDetailPageSetRoutesMutation>(modelDetailPageSetRoutesMutationNode);
+  const [commitUpdateModel, isUpdateModelInFlight] =
+    useMutation<modelDetailPageUpdateMutation>(modelDetailPageUpdateMutationNode);
+  const routeModelIds = useMemo(() => {
+    return data.PlatformModelRoutes.map((route) => route.platformModelProviderCredentialModelId);
+  }, [data.PlatformModelRoutes]);
   const providers = useMemo(() => {
     const apiProviders = data.ModelProviders
       .filter((provider) => {
@@ -182,12 +190,34 @@ function AdminModelDetailPageContent() {
     return ModelProviderCredentialCatalog.toDialogProviders(apiProviders);
   }, [data.ModelProviders]);
 
-  useEffect(() => {
-    setSelectedRouteModelIds(new Set(initialRouteModelIds));
-  }, [initialRouteModelIds]);
+  async function replaceRoutes(platformModelRecord: PlatformModel, routeIds: string[]): Promise<void> {
+    setErrorMessage(null);
+    await new Promise<void>((resolve, reject) => {
+      commitSetRoutes({
+        variables: {
+          input: {
+            platformModelId: platformModelRecord.id,
+            platformModelProviderCredentialModelIds: [...new Set(routeIds)].sort(),
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
 
-  const selectedRouteModelIdsArray = [...selectedRouteModelIds].sort();
-  const hasChanges = selectedRouteModelIdsArray.join("|") !== [...initialRouteModelIds].sort().join("|");
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      setAddRouteDialogOpen(false);
+      setFetchKey((current) => current + 1);
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update model routes.");
+    });
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -208,36 +238,35 @@ function AdminModelDetailPageContent() {
               {platformModel ? `${formatProviderLabel(platformModel.modelProvider)} / ${platformModel.modelId}` : ""}
             </CardDescription>
           </div>
-          <CardAction>
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                disabled={!platformModel || providers.length === 0}
-                onClick={() => {
-                  setErrorMessage(null);
-                  setCreateDialogOpen(true);
-                }}
-                size="sm"
-                variant="outline"
-              >
-                <PlusIcon />
-                Add router
-              </Button>
-              <Button
-                disabled={!platformModel || !hasChanges || isSetRoutesInFlight}
-                onClick={async () => {
-                  if (!platformModel) {
-                    return;
-                  }
+          <CardAction className="flex flex-wrap justify-end gap-2">
+            <Button
+              disabled={!platformModel || providers.length === 0}
+              onClick={() => {
+                setErrorMessage(null);
+                setCreateDialogOpen(true);
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <PlusIcon />
+              Add router
+            </Button>
+            <Button
+              disabled={!platformModel || isUpdateModelInFlight}
+              onClick={async () => {
+                if (!platformModel) {
+                  return;
+                }
 
-                  setErrorMessage(null);
-                  await new Promise<void>((resolve, reject) => {
-                    commitSetRoutes({
-                      variables: {
-                        input: {
-                          platformModelId: platformModel.id,
-                          platformModelProviderCredentialModelIds: selectedRouteModelIdsArray,
-                        },
+                setErrorMessage(null);
+                await new Promise<void>((resolve, reject) => {
+                  commitUpdateModel({
+                    variables: {
+                      input: {
+                        platformModelId: platformModel.id,
+                        isAvailable: !platformModel.isAvailable,
                       },
+                    },
                       onCompleted: (_response, errors) => {
                         const nextErrorMessage = String(errors?.[0]?.message || "").trim();
                         if (nextErrorMessage) {
@@ -249,18 +278,29 @@ function AdminModelDetailPageContent() {
                       },
                       onError: reject,
                     });
-                  }).then(() => {
-                    setFetchKey((current) => current + 1);
-                  }).catch((error: unknown) => {
-                    setErrorMessage(error instanceof Error ? error.message : "Failed to update model routes.");
-                  });
-                }}
-                size="sm"
-              >
-                <SaveIcon />
-                Save routes
-              </Button>
-            </div>
+                }).then(() => {
+                  setFetchKey((current) => current + 1);
+                }).catch((error: unknown) => {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to update platform model.");
+                });
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <PowerIcon />
+              {platformModel?.isAvailable ? "Deactivate" : "Activate"}
+            </Button>
+            <Button
+              disabled={!platformModel || isSetRoutesInFlight}
+              onClick={() => {
+                setErrorMessage(null);
+                setAddRouteDialogOpen(true);
+              }}
+              size="sm"
+            >
+              <PlusIcon />
+              Add route
+            </Button>
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-5">
@@ -270,39 +310,23 @@ function AdminModelDetailPageContent() {
             </div>
           ) : null}
           {platformModel ? <PlatformModelSummary model={platformModel} /> : null}
-          <div className="flex items-center justify-end">
-            <Button
-              onClick={() => {
-                setShowAllCredentials((current) => !current);
-              }}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              {showAllCredentials ? "Show matching credentials" : "Show all credentials"}
-            </Button>
-          </div>
-          <EligibleRoutesTable
+          <CurrentRoutesTable
             credentialById={credentialById}
-            credentialModels={visibleCredentialModels}
-            platformModel={platformModel}
-            selectedRouteModelIds={selectedRouteModelIds}
-            onToggle={(credentialModelId) => {
-              setSelectedRouteModelIds((current) => {
-                const next = new Set(current);
-                if (next.has(credentialModelId)) {
-                  next.delete(credentialModelId);
-                } else {
-                  next.add(credentialModelId);
-                }
+            disabled={!platformModel || isSetRoutesInFlight}
+            onDelete={(credentialModelId) => {
+              if (!platformModel) {
+                return;
+              }
 
-                return next;
-              });
+              void replaceRoutes(
+                platformModel,
+                routeModelIds.filter((routeModelId) => routeModelId !== credentialModelId),
+              );
             }}
+            routes={data.PlatformModelRoutes}
           />
         </CardContent>
       </Card>
-
       <CreateCredentialDialog
         defaultCheckboxDescription="Use this credential as the platform fallback for managed model selection."
         defaultCheckboxTitle="Platform default"
@@ -334,7 +358,6 @@ function AdminModelDetailPageContent() {
               onError: reject,
             });
           }).then(() => {
-            setShowAllCredentials(true);
             setFetchKey((current) => current + 1);
           }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create router credential.");
@@ -342,6 +365,21 @@ function AdminModelDetailPageContent() {
         }}
         onOpenChange={setCreateDialogOpen}
       />
+      {platformModel ? (
+        <AddRouteDialog
+          credentialById={credentialById}
+          credentialModels={routeableCredentialModels}
+          credentials={data.PlatformModelProviderCredentials}
+          disabled={isSetRoutesInFlight}
+          existingRouteModelIds={routeModelIds}
+          onAdd={(credentialModelId) => {
+            void replaceRoutes(platformModel, [...routeModelIds, credentialModelId]);
+          }}
+          onOpenChange={setAddRouteDialogOpen}
+          open={addRouteDialogOpen}
+          platformModel={platformModel}
+        />
+      ) : null}
     </main>
   );
 }
@@ -376,19 +414,18 @@ function PlatformModelSummary(props: { model: PlatformModel }) {
   );
 }
 
-function EligibleRoutesTable(props: {
+function CurrentRoutesTable(props: {
   credentialById: Map<string, PlatformCredential>;
-  credentialModels: readonly PlatformCredentialModel[];
-  platformModel: PlatformModel | null;
-  selectedRouteModelIds: Set<string>;
-  onToggle(credentialModelId: string): void;
+  disabled: boolean;
+  onDelete(credentialModelId: string): void;
+  routes: readonly PlatformRoute[];
 }) {
-  if (props.credentialModels.length === 0) {
+  if (props.routes.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-        <p className="text-sm font-medium text-foreground">No eligible credential models</p>
+        <p className="text-sm font-medium text-foreground">No routes configured</p>
         <p className="mt-2 text-xs/relaxed text-muted-foreground">
-          Add or update platform LLM credentials, or show all credentials to select a different provider model.
+          Add an existing provider credential model before activating this platform model.
         </p>
       </div>
     );
@@ -398,36 +435,19 @@ function EligibleRoutesTable(props: {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12">Use</TableHead>
           <TableHead>Credential</TableHead>
           <TableHead>Concrete model</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead className="w-24 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {props.credentialModels.map((credentialModel) => {
-          const credential = props.credentialById.get(credentialModel.platformModelProviderCredentialId);
-          const isSelected = props.selectedRouteModelIds.has(credentialModel.id);
-          const isSameModelId = props.platformModel
-            ? credential?.modelProvider === props.platformModel.modelProvider
-              && credentialModel.modelId === props.platformModel.modelId
-            : false;
+        {props.routes.map((route) => {
+          const credentialModel = route.platformModelProviderCredentialModel;
+          const credentialId = credentialModel.platformModelProviderCredential?.id ?? "";
+          const credential = props.credentialById.get(credentialId);
           return (
-            <TableRow
-              key={credentialModel.id}
-              className={cn(isSelected ? "bg-primary/5" : "")}
-            >
-              <TableCell>
-                <input
-                  aria-label={`Use ${credential?.name ?? credentialModel.name}`}
-                  checked={isSelected}
-                  className="size-4 rounded border-border accent-primary"
-                  onChange={() => {
-                    props.onToggle(credentialModel.id);
-                  }}
-                  type="checkbox"
-                />
-              </TableCell>
+            <TableRow key={route.id}>
               <TableCell>
                 <div className="font-medium text-foreground">{credential?.name ?? "Unknown credential"}</div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -448,14 +468,161 @@ function EligibleRoutesTable(props: {
                 <div className="flex flex-wrap gap-2">
                   {credential?.status === "active" ? <Badge variant="positive">Credential active</Badge> : <Badge variant="destructive">Credential error</Badge>}
                   {credentialModel.isAvailable ? <Badge variant="positive">Model available</Badge> : <Badge variant="warning">Model unavailable</Badge>}
-                  {credentialModel.isDefault ? <Badge variant="secondary">Credential default</Badge> : null}
-                  {isSameModelId ? null : <Badge variant="outline">Different target model</Badge>}
                 </div>
+              </TableCell>
+              <TableCell className="text-right">
+                <Button
+                  aria-label={`Delete route ${credential?.name ?? credentialModel.name}`}
+                  disabled={props.disabled}
+                  onClick={() => {
+                    props.onDelete(credentialModel.id);
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <Trash2Icon />
+                </Button>
               </TableCell>
             </TableRow>
           );
         })}
       </TableBody>
     </Table>
+  );
+}
+
+function AddRouteDialog(props: {
+  credentialById: Map<string, PlatformCredential>;
+  credentialModels: readonly PlatformCredentialModel[];
+  credentials: readonly PlatformCredential[];
+  disabled: boolean;
+  existingRouteModelIds: readonly string[];
+  onAdd(credentialModelId: string): void;
+  onOpenChange(open: boolean): void;
+  open: boolean;
+  platformModel: PlatformModel;
+}) {
+  const activeCredentialIds = new Set(
+    props.credentials
+      .filter((credential) => credential.status === "active")
+      .map((credential) => credential.id),
+  );
+  const existingRouteModelIds = new Set(props.existingRouteModelIds);
+  const credentialsWithModels = props.credentials
+    .filter((credential) => activeCredentialIds.has(credential.id))
+    .filter((credential) =>
+      props.credentialModels.some((model) =>
+        model.platformModelProviderCredentialId === credential.id
+        && model.isAvailable
+        && !existingRouteModelIds.has(model.id)
+      )
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const [credentialId, setCredentialId] = useState(credentialsWithModels[0]?.id ?? "");
+  const modelOptions = props.credentialModels
+    .filter((model) =>
+      model.platformModelProviderCredentialId === credentialId
+      && model.isAvailable
+      && !existingRouteModelIds.has(model.id)
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const [credentialModelId, setCredentialModelId] = useState(modelOptions[0]?.id ?? "");
+  const selectedCredentialModelId = credentialModelId || modelOptions[0]?.id || "";
+
+  useEffect(() => {
+    const nextCredentialId = credentialsWithModels.some((credential) => credential.id === credentialId)
+      ? credentialId
+      : credentialsWithModels[0]?.id ?? "";
+    if (nextCredentialId !== credentialId) {
+      setCredentialId(nextCredentialId);
+      setCredentialModelId("");
+      return;
+    }
+
+    if (!modelOptions.some((model) => model.id === credentialModelId)) {
+      setCredentialModelId(modelOptions[0]?.id ?? "");
+    }
+  }, [credentialId, credentialModelId, credentialsWithModels, modelOptions]);
+
+  return (
+    <Dialog onOpenChange={props.onOpenChange} open={props.open}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add route</DialogTitle>
+          <DialogDescription>
+            Select an existing provider credential and one discovered model for this platform model.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="route-provider">
+              Provider credential
+            </label>
+            <Select
+              items={credentialsWithModels.map((credential) => ({
+                label: credential.name,
+                value: credential.id,
+              }))}
+              onValueChange={(value) => {
+                setCredentialId(value ?? "");
+                setCredentialModelId("");
+              }}
+              value={credentialId}
+            >
+              <SelectTrigger id="route-provider">
+                <SelectValue placeholder="Select provider credential" />
+              </SelectTrigger>
+              <SelectContent>
+                {credentialsWithModels.map((credential) => (
+                  <SelectItem key={credential.id} value={credential.id}>
+                    {credential.name} - {formatProviderLabel(credential.modelProvider)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="route-model">
+              Model
+            </label>
+            <Select
+              items={modelOptions.map((model) => ({
+                label: model.name,
+                value: model.id,
+              }))}
+              onValueChange={(value) => {
+                setCredentialModelId(value ?? "");
+              }}
+              value={selectedCredentialModelId}
+            >
+              <SelectTrigger id="route-model">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                {modelOptions.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name} - {model.modelId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Routes are limited to discovered models with id {props.platformModel.modelId}.
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            disabled={props.disabled || !selectedCredentialModelId}
+            onClick={() => {
+              props.onAdd(selectedCredentialModelId);
+            }}
+          >
+            <PlusIcon />
+            Add route
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

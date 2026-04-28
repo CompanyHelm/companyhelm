@@ -61,7 +61,9 @@ test("AgentSkillsQueryResolver lists individual skills attached to one agent", a
     companyId: "company-123",
   }]);
   assert.deepEqual(result, [{
+    autoUpdate: false,
     branchName: null,
+    branchCommitSha: null,
     branchSkillFileUrl: null,
     companyId: "company-123",
     description: "Open pages and gather sources.",

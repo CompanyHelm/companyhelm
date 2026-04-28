@@ -739,6 +739,233 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
   assert.deepEqual(disposeCalls, [runtime]);
 });
 
+test("SessionProcessExecutionService maps CompanyHelm managed credentials to the OpenAI runtime provider", async () => {
+  const runtime = { id: "runtime-1" };
+  const createRuntimeCalls: unknown[] = [];
+  let selectCallCount = 0;
+  const subscriber = {
+    isOpen: true,
+    async connect() {
+      return this;
+    },
+    async subscribe() {},
+    async unsubscribe() {},
+    async quit() {},
+  };
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        assert.equal(companyId, "company-1");
+        return callback({
+          async execute() {
+            return undefined;
+          },
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-1",
+                        currentModelCredentialSource: "platform",
+                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
+                        currentReasoningLevel: "high",
+                        ownerUserId: null,
+                        status: "queued",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        platformModelProviderCredentialId: "platform-credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        baseUrl: null,
+                        encryptedApiKey: "platform-openai-key",
+                        modelProvider: "companyhelm",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        status: "queued",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        });
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+          info() {},
+        };
+      },
+    } as never,
+    {
+      async createRuntime(_transactionProvider: unknown, sessionId: string, runtimeConfig: unknown) {
+        createRuntimeCalls.push({
+          runtimeConfig,
+          sessionId,
+        });
+        return runtime;
+      },
+      async disposeRuntime() {},
+      async prompt() {},
+    } as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+      async getSubscriberClient() {
+        return subscriber;
+      },
+    } as never,
+    {
+      async acquire(companyId: string, sessionId: string) {
+        return {
+          companyId,
+          sessionId,
+          token: "lease-token",
+        };
+      },
+      async heartbeat() {
+        return true;
+      },
+      async release() {},
+    } as never,
+    {
+      async enqueueSessionWake() {
+        throw new Error("enqueueSessionWake should not be called.");
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return [{
+          createdAt: new Date("2026-04-28T18:12:27.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: false,
+          status: "pending",
+          text: "Start the investigation.",
+          updatedAt: new Date("2026-04-28T18:12:27.000Z"),
+        }];
+      },
+      async listPendingSteer() {
+        return [];
+      },
+      async markProcessing() {},
+      async markPending() {
+        throw new Error("markPending should not be called.");
+      },
+      async hasPendingMessages() {
+        return false;
+      },
+    } as never,
+    undefined as never,
+    companySettingsService as never,
+    {
+      async checkWithinBudget() {
+        return {
+          allowed: true,
+        };
+      },
+    } as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.deepEqual(createRuntimeCalls, [{
+    runtimeConfig: {
+      agentId: "agent-1",
+      agentName: "Support Agent",
+      agentSystemPrompt: undefined,
+      apiKey: "platform-openai-key",
+      companyBaseSystemPrompt: null,
+      companyId: "company-1",
+      companyName: "My Organization",
+      isCompanyHelmManagedCredential: true,
+      modelId: "gpt-5.4",
+      modelProviderCredentialId: "platform-credential-1",
+      providerId: "openai",
+      reasoningLevel: "high",
+    },
+    sessionId: "session-1",
+  }]);
+});
+
 test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues undispatched steer rows", async () => {
   const runtime = { id: "runtime-1" };
   const disposeCalls: unknown[] = [];

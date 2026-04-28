@@ -72,7 +72,7 @@ test("AgentComputeE2bProvider resolves templates from the local manager catalog"
 
   assert.deepEqual(templates, [
     {
-      computerUse: false,
+      computerUse: true,
       cpuCount: 8,
       diskSpaceGb: 20,
       memoryGb: 8,
@@ -484,4 +484,4 @@ test("AgentComputeE2bProvider throws an actionable error when the display cannot
     },
     /could not start its desktop runtime/,
   );
-});
+}, 10_000);

@@ -40,6 +40,13 @@ test("AgentListCompanyMembersTool renders the human company directory", async ()
       ].join("\n"),
       type: "text",
     }],
+    details: {
+      members: [{
+        id: "user-1",
+        name: "Jane Doe",
+      }],
+      type: "company_directory_members",
+    },
   });
 });
 
@@ -63,5 +70,12 @@ test("AgentListCompanyAgentsTool renders the company agent directory", async () 
       ].join("\n"),
       type: "text",
     }],
+    details: {
+      agents: [{
+        id: "agent-1",
+        name: "CEO",
+      }],
+      type: "company_directory_agents",
+    },
   });
 });

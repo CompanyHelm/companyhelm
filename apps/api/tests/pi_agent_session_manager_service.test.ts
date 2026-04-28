@@ -371,9 +371,16 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
                 return {
                   async where() {
                     return [{
+                      agentId: "agent-1",
                       companyId: "company-1",
                       contextMessagesSnapshot: storedMessages,
                       contextMessagesSnapshotAt: new Date("2026-04-09T08:00:00.000Z"),
+                      currentModelCredentialSource: "user_provided",
+                      currentModelProviderCredentialModelId: "model-row-1",
+                      encryptedApiKey: "sk-test",
+                      modelProvider: "openai",
+                      modelProviderCredentialId: "credential-1",
+                      type: "api_key",
                     }];
                   },
                 };
@@ -417,7 +424,14 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
               return {
                 async where() {
                   return [{
+                    agentId: "agent-1",
                     companyId: "company-1",
+                    currentModelCredentialSource: "user_provided",
+                    currentModelProviderCredentialModelId: "model-row-1",
+                    encryptedApiKey: "sk-test",
+                    modelProvider: "openai",
+                    modelProviderCredentialId: "credential-1",
+                    type: "api_key",
                   }];
                 },
               };
@@ -891,9 +905,16 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
                 return {
                   async where() {
                     return [{
+                      agentId: "agent-1",
                       companyId: "company-1",
                       contextMessagesSnapshot: storedMessages,
                       contextMessagesSnapshotAt: new Date("2026-04-09T08:00:00.000Z"),
+                      currentModelCredentialSource: "user_provided",
+                      currentModelProviderCredentialModelId: "model-row-1",
+                      encryptedApiKey: "sk-test",
+                      modelProvider: "openai",
+                      modelProviderCredentialId: "credential-1",
+                      type: "api_key",
                     }];
                   },
                 };
@@ -944,7 +965,14 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
               return {
                 async where() {
                   return [{
+                    agentId: "agent-1",
                     companyId: "company-1",
+                    currentModelCredentialSource: "user_provided",
+                    currentModelProviderCredentialModelId: "model-row-1",
+                    encryptedApiKey: "sk-test",
+                    modelProvider: "openai",
+                    modelProviderCredentialId: "credential-1",
+                    type: "api_key",
                   }];
                 },
               };

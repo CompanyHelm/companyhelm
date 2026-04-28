@@ -94,6 +94,7 @@ type Mutation {
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   AddPlatformModelProviderCredential(input: AddPlatformModelProviderCredentialInput!): PlatformModelProviderCredential!
+  CreatePlatformModel(input: CreatePlatformModelInput!): PlatformModel!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
   AttachSecretGroupToAgent(input: AttachSecretGroupToAgentInput!): SecretGroup!
   AttachSkillGroupToAgent(input: AttachSkillGroupToAgentInput!): SkillGroup!
@@ -111,6 +112,7 @@ type Mutation {
   CompleteMcpServerOAuth(input: CompleteMcpServerOAuthInput!): CompleteMcpServerOAuthPayload!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
+  ImportPlatformModel(input: ImportPlatformModelInput!): PlatformModel!
   ImportGithubSkills(input: ImportGithubSkillsInput!): [Skill!]!
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
@@ -124,6 +126,7 @@ type Mutation {
     input: DeleteGithubRepositoryProvisioningInput!
   ): DeleteGithubRepositoryProvisioningPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  DeletePlatformModel(input: DeletePlatformModelInput!): PlatformModel!
   DeletePlatformModelProviderCredential(
     input: DeletePlatformModelProviderCredentialInput!
   ): PlatformModelProviderCredential!
@@ -158,6 +161,7 @@ type Mutation {
   ): RefreshGithubInstallationRepositoriesPayload!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
+  UpdatePlatformModel(input: UpdatePlatformModelInput!): PlatformModel!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskStage(input: CreateTaskStageInput!): TaskStage!
   DeleteTaskStage(input: DeleteTaskStageInput!): TaskStage!
@@ -1257,6 +1261,22 @@ input AddPlatformModelProviderCredentialInput {
   refreshToken: String
 }
 
+input CreatePlatformModelInput {
+  description: String
+  isDefault: Boolean
+  modelId: String!
+  modelProvider: String!
+  name: String
+  reasoningLevels: [String!]
+  reasoningSupported: Boolean
+}
+
+input ImportPlatformModelInput {
+  isDefault: Boolean
+  modelProvider: String
+  platformModelProviderCredentialModelId: ID!
+}
+
 input AddGithubInstallationInput {
   installationId: ID!
   setupAction: String
@@ -1330,6 +1350,10 @@ input DeleteCompanyInput {
 input DeleteModelProviderCredentialInput {
   id: ID!
   replacementCredentialId: ID
+}
+
+input DeletePlatformModelInput {
+  id: ID!
 }
 
 input DeletePlatformModelProviderCredentialInput {
@@ -1696,6 +1720,16 @@ input RefreshModelProviderCredentialTokenInput {
 
 input RefreshPlatformModelProviderCredentialTokenInput {
   platformModelProviderCredentialId: ID!
+}
+
+input UpdatePlatformModelInput {
+  description: String
+  isAvailable: Boolean
+  isDefault: Boolean
+  name: String
+  platformModelId: ID!
+  reasoningLevels: [String!]
+  reasoningSupported: Boolean
 }
 
 input SetDefaultComputeProviderDefinitionInput {
