@@ -10,6 +10,7 @@ import { PageTabs } from "@/components/ui/page_tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatProviderLabel } from "@/pages/model-provider-credentials/provider_label";
 import type { llmCredentialDetailPageQuery } from "./__generated__/llmCredentialDetailPageQuery.graphql";
+import type { llmCredentialDetailPageRefreshLimitMutation } from "./__generated__/llmCredentialDetailPageRefreshLimitMutation.graphql";
 import type { llmCredentialDetailPageRefreshMutation } from "./__generated__/llmCredentialDetailPageRefreshMutation.graphql";
 import type { llmCredentialDetailPageSetDefaultMutation } from "./__generated__/llmCredentialDetailPageSetDefaultMutation.graphql";
 
@@ -77,6 +78,37 @@ const llmCredentialDetailPageRefreshMutationNode = graphql`
   }
 `;
 
+const llmCredentialDetailPageRefreshLimitMutationNode = graphql`
+  mutation llmCredentialDetailPageRefreshLimitMutation($input: RefreshPlatformCodexRateLimitsInput!) {
+    RefreshPlatformCodexRateLimits(input: $input) {
+      isCodexCredential
+      snapshots {
+        credits {
+          balance
+          hasCredits
+          unlimited
+        }
+        lastError
+        limitId
+        limitName
+        planType
+        primary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
+        rateLimitReachedType
+        refreshedAt
+        secondary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
+      }
+    }
+  }
+`;
+
 const llmCredentialDetailPageSetDefaultMutationNode = graphql`
   mutation llmCredentialDetailPageSetDefaultMutation($input: SetDefaultPlatformModelProviderCredentialModelInput!) {
     SetDefaultPlatformModelProviderCredentialModel(input: $input) {
@@ -119,6 +151,8 @@ function AdminLlmCredentialDetailPageContent() {
   );
   const [commitRefreshModels, isRefreshModelsInFlight] =
     useMutation<llmCredentialDetailPageRefreshMutation>(llmCredentialDetailPageRefreshMutationNode);
+  const [commitRefreshLimit, isRefreshLimitInFlight] =
+    useMutation<llmCredentialDetailPageRefreshLimitMutation>(llmCredentialDetailPageRefreshLimitMutationNode);
   const [commitSetDefault, isSetDefaultInFlight] =
     useMutation<llmCredentialDetailPageSetDefaultMutation>(llmCredentialDetailPageSetDefaultMutationNode);
   const credential = data.PlatformModelProviderCredentials.find((item) => item.id === credentialId) ?? null;
@@ -209,6 +243,39 @@ function AdminLlmCredentialDetailPageContent() {
               >
                 <RefreshCcwIcon className={isRefreshModelsInFlight ? "animate-spin" : ""} />
                 Refresh models
+              </Button>
+            ) : selectedTab === "limit" ? (
+              <Button
+                disabled={isRefreshLimitInFlight}
+                onClick={async () => {
+                  setErrorMessage(null);
+                  await runMutation((resolve, reject) => {
+                    commitRefreshLimit({
+                      variables: {
+                        input: {
+                          platformModelProviderCredentialId: credentialId,
+                        },
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
+
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  }).catch((error: unknown) => {
+                    setErrorMessage(error instanceof Error ? error.message : "Failed to refresh limit.");
+                  });
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <RefreshCcwIcon className={isRefreshLimitInFlight ? "animate-spin" : ""} />
+                Refresh limit
               </Button>
             ) : null}
           </CardAction>

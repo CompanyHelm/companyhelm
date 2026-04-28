@@ -8,6 +8,7 @@ import { DeleteEnvironmentMutation } from "../mutations/delete_environment.ts";
 import { DeleteModelProviderCredentialMutation } from "../mutations/delete_model_provider_credential.ts";
 import { CreateEnvironmentTerminalConnectionMutation } from "../mutations/create_environment_terminal_connection.ts";
 import { GetEnvironmentVncUrlMutation } from "../mutations/get_environment_vnc_url.ts";
+import { RefreshCodexRateLimitsMutation } from "../mutations/refresh_codex_rate_limits.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../mutations/refresh_model_provider_credential_models.ts";
 import { RefreshModelProviderCredentialTokenMutation } from "../mutations/refresh_model_provider_credential_token.ts";
 import { SetDefaultComputeProviderDefinitionMutation } from "../mutations/set_default_compute_provider_definition.ts";
@@ -53,6 +54,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
+  private readonly refreshCodexRateLimitsMutation: RefreshCodexRateLimitsMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly refreshModelProviderCredentialTokenMutation: RefreshModelProviderCredentialTokenMutation;
   private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
@@ -157,6 +159,8 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(SetDefaultManagedModelProviderCredentialMutation)
     setDefaultManagedModelProviderCredentialMutation: SetDefaultManagedModelProviderCredentialMutation =
       new SetDefaultManagedModelProviderCredentialMutation(),
+    @inject(RefreshCodexRateLimitsMutation)
+    refreshCodexRateLimitsMutation: RefreshCodexRateLimitsMutation = new RefreshCodexRateLimitsMutation(),
   ) {
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
       ?? EnvironmentGraphqlRegistry.createFallbackAgentEnvironmentTemplateService();
@@ -175,6 +179,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
+    this.refreshCodexRateLimitsMutation = refreshCodexRateLimitsMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.refreshModelProviderCredentialTokenMutation = refreshModelProviderCredentialTokenMutation;
     this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
@@ -200,6 +205,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteEnvironment: this.deleteEnvironmentMutation.execute,
         DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
         GetEnvironmentVncUrl: this.getEnvironmentVncUrlMutation.execute,
+        RefreshCodexRateLimits: this.refreshCodexRateLimitsMutation.execute,
         RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
         RefreshModelProviderCredentialToken: this.refreshModelProviderCredentialTokenMutation.execute,
         SetDefaultComputeProviderDefinition: this.setDefaultComputeProviderDefinitionMutation.execute,

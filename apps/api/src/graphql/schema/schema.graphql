@@ -175,6 +175,8 @@ type Mutation {
   RefreshPlatformModelProviderCredentialModels(
     input: RefreshPlatformModelProviderCredentialModelsInput!
   ): [PlatformModelProviderCredentialModel!]!
+  RefreshCodexRateLimits(input: RefreshCodexRateLimitsInput!): CodexRateLimits!
+  RefreshPlatformCodexRateLimits(input: RefreshPlatformCodexRateLimitsInput!): CodexRateLimits!
   SetDefaultComputeProviderDefinition(
     input: SetDefaultComputeProviderDefinitionInput!
   ): ComputeProviderDefinition!
@@ -1677,6 +1679,14 @@ input RefreshModelProviderCredentialModelsInput {
 }
 
 input RefreshPlatformModelProviderCredentialModelsInput {
+  platformModelProviderCredentialId: ID!
+}
+
+input RefreshCodexRateLimitsInput {
+  modelProviderCredentialId: ID!
+}
+
+input RefreshPlatformCodexRateLimitsInput {
   platformModelProviderCredentialId: ID!
 }
 

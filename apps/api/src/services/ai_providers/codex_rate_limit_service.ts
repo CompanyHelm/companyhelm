@@ -58,6 +58,9 @@ export class CodexRateLimitService {
     transactionProvider: TransactionProviderInterface,
     credential: CodexRateLimitRefreshCredential,
     refreshedAt: Date = new Date(),
+    options: {
+      force?: boolean;
+    } = {},
   ): Promise<void> {
     if (credential.modelProvider !== CodexRateLimitService.codexProviderId) {
       return;
@@ -65,17 +68,18 @@ export class CodexRateLimitService {
 
     const credentialKey = this.createCredentialKey(credential);
     const nowMilliseconds = refreshedAt.getTime();
-    const lastAttemptAtMilliseconds = CodexRateLimitService.lastAttemptAtByCredentialKey.get(credentialKey);
-    if (
-      typeof lastAttemptAtMilliseconds === "number"
-      && nowMilliseconds - lastAttemptAtMilliseconds < CodexRateLimitService.refreshThrottleMilliseconds
-    ) {
-      return;
-    }
-
     const pendingRefresh = CodexRateLimitService.pendingRefreshByCredentialKey.get(credentialKey);
     if (pendingRefresh) {
       await pendingRefresh;
+      return;
+    }
+
+    const lastAttemptAtMilliseconds = CodexRateLimitService.lastAttemptAtByCredentialKey.get(credentialKey);
+    if (
+      !options.force
+      && typeof lastAttemptAtMilliseconds === "number"
+      && nowMilliseconds - lastAttemptAtMilliseconds < CodexRateLimitService.refreshThrottleMilliseconds
+    ) {
       return;
     }
 

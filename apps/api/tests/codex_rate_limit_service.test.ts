@@ -237,3 +237,28 @@ test("CodexRateLimitService throttles refreshes per credential for five minutes"
   expect(fetchSpy).toHaveBeenCalledTimes(2);
   expect(transactionProvider.upserts).toHaveLength(2);
 });
+
+test("CodexRateLimitService force refresh bypasses the five minute throttle", async () => {
+  const factory = new CodexRateLimitServiceTestFactory();
+  const service = new CodexRateLimitService();
+  const transactionProvider = factory.createTransactionProvider();
+  const fetchSpy = factory.mockCodexUsageResponse({
+    rate_limit: {
+      primary_window: {
+        used_percent: 10,
+      },
+    },
+  });
+  const credential = factory.createCredential();
+
+  await service.refreshCredentialLimits(transactionProvider, credential, new Date("2026-04-28T10:00:00.000Z"));
+  await service.refreshCredentialLimits(
+    transactionProvider,
+    credential,
+    new Date("2026-04-28T10:01:00.000Z"),
+    { force: true },
+  );
+
+  expect(fetchSpy).toHaveBeenCalledTimes(2);
+  expect(transactionProvider.upserts).toHaveLength(2);
+});

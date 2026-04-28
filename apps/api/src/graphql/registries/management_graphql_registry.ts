@@ -37,6 +37,7 @@ import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onb
 import { GrantPlatformAdminMutation } from "../mutations/grant_platform_admin.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
+import { RefreshPlatformCodexRateLimitsMutation } from "../mutations/refresh_platform_codex_rate_limits.ts";
 import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
 import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
 import { SetDefaultPlatformModelProviderCredentialMutation } from "../mutations/set_default_platform_model_provider_credential.ts";
@@ -140,6 +141,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver;
   private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
   private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
+  private readonly refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
   private readonly mcpServersQueryResolver: McpServersQueryResolver;
@@ -319,6 +321,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(RefreshPlatformModelProviderCredentialTokenMutation)
     refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation =
       new RefreshPlatformModelProviderCredentialTokenMutation(),
+    @inject(RefreshPlatformCodexRateLimitsMutation)
+    refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation =
+      new RefreshPlatformCodexRateLimitsMutation(),
     @inject(SetDefaultPlatformModelProviderCredentialMutation)
     setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation =
       new SetDefaultPlatformModelProviderCredentialMutation(),
@@ -405,6 +410,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.platformModelProviderCredentialsQueryResolver = platformModelProviderCredentialsQueryResolver;
     this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
+    this.refreshPlatformCodexRateLimitsMutation = refreshPlatformCodexRateLimitsMutation;
     this.refreshPlatformModelProviderCredentialModelsMutation = refreshPlatformModelProviderCredentialModelsMutation;
     this.refreshPlatformModelProviderCredentialTokenMutation = refreshPlatformModelProviderCredentialTokenMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
@@ -469,6 +475,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         GrantPlatformAdmin: this.grantPlatformAdminMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
+        RefreshPlatformCodexRateLimits: this.refreshPlatformCodexRateLimitsMutation.execute,
         RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
         RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
         SetDefaultPlatformModelProviderCredential: this.setDefaultPlatformModelProviderCredentialMutation.execute,

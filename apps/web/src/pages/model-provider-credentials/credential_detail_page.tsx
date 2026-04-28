@@ -14,6 +14,7 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
+import type { credentialDetailPageRefreshLimitMutation } from "./__generated__/credentialDetailPageRefreshLimitMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
 import type { credentialDetailPageUpdateCompanySettingsMutation } from "./__generated__/credentialDetailPageUpdateCompanySettingsMutation.graphql";
@@ -286,6 +287,38 @@ const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
   }
 `;
 
+const modelProviderCredentialDetailPageRefreshLimitMutationNode = graphql`
+  mutation credentialDetailPageRefreshLimitMutation($input: RefreshCodexRateLimitsInput!) {
+    RefreshCodexRateLimits(input: $input) {
+      isCodexCredential
+      modelProviderCredentialId
+      snapshots {
+        credits {
+          balance
+          hasCredits
+          unlimited
+        }
+        lastError
+        limitId
+        limitName
+        planType
+        primary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
+        rateLimitReachedType
+        refreshedAt
+        secondary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
+      }
+    }
+  }
+`;
+
 function ModelProviderCredentialDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -493,6 +526,10 @@ function ModelProviderCredentialDetailPageContent() {
     useMutation<credentialDetailPageRefreshModelsMutation>(
       modelProviderCredentialDetailPageRefreshModelsMutationNode,
     );
+  const [commitRefreshLimit, isRefreshLimitInFlight] =
+    useMutation<credentialDetailPageRefreshLimitMutation>(
+      modelProviderCredentialDetailPageRefreshLimitMutationNode,
+    );
   const [commitSetDefaultModel, isSetDefaultModelInFlight] =
     useMutation<credentialDetailPageSetDefaultModelMutation>(
       modelProviderCredentialDetailPageSetDefaultModelMutationNode,
@@ -688,6 +725,44 @@ function ModelProviderCredentialDetailPageContent() {
                 >
                   <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
                   Refresh models
+                </Button>
+              ) : !isManagedCredential && selectedTab === "limit" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isRefreshLimitInFlight}
+                  onClick={async () => {
+                    if (isRefreshLimitInFlight) {
+                      return;
+                    }
+
+                    setErrorMessage(null);
+                    await new Promise<void>((resolve, reject) => {
+                      commitRefreshLimit({
+                        variables: {
+                          input: {
+                            modelProviderCredentialId: normalizedCredentialId,
+                          },
+                        },
+                        onCompleted: (_response, errors) => {
+                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                          if (nextErrorMessage) {
+                            reject(new Error(nextErrorMessage));
+                            return;
+                          }
+
+                          setFetchKey((current) => current + 1);
+                          resolve();
+                        },
+                        onError: reject,
+                      });
+                    }).catch((error: unknown) => {
+                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh limit.");
+                    });
+                  }}
+                >
+                  <RefreshCcwIcon className={isRefreshLimitInFlight ? "animate-spin" : ""} />
+                  Refresh limit
                 </Button>
               ) : null}
             </div>
