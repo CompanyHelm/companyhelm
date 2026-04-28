@@ -23,8 +23,10 @@ type Query {
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String): PlatformAdminCompanyPage!
+  PlatformModels: [PlatformModel!]!
+  PlatformModelRoutes(platformModelId: ID!): [PlatformModelRoute!]!
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
-  PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID!): [PlatformModelProviderCredentialModel!]!
+  PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
   PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -186,6 +188,7 @@ type Mutation {
   SetDefaultPlatformModelProviderCredentialModel(
     input: SetDefaultPlatformModelProviderCredentialModelInput!
   ): PlatformModelProviderCredentialModel!
+  SetPlatformModelRoutes(input: SetPlatformModelRoutesInput!): PlatformModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
   CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
@@ -559,6 +562,7 @@ type Agent {
   id: ID!
   name: String!
   modelCredentialSource: String!
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
@@ -645,6 +649,7 @@ type AgentCreateProviderOption {
 type AgentCreateModelOption {
   id: ID!
   modelCredentialSource: String!
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   modelId: String!
@@ -667,6 +672,7 @@ type Session {
   hasUnread: Boolean!
   lastUserMessageAt: String
   modelCredentialSource: String!
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   modelId: String!
@@ -918,6 +924,31 @@ type PlatformModelProviderCredential {
   updatedAt: String!
 }
 
+type PlatformModel {
+  id: ID!
+  key: String!
+  modelProvider: String!
+  modelId: String!
+  name: String!
+  description: String!
+  reasoningSupported: Boolean!
+  reasoningLevels: [String!]!
+  isDefault: Boolean!
+  isAvailable: Boolean!
+  routeCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformModelRoute {
+  id: ID!
+  platformModelId: ID!
+  platformModelProviderCredentialModelId: ID!
+  platformModelProviderCredentialModel: PlatformModelProviderCredentialModel!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type Secret {
   id: ID!
   companyId: ID!
@@ -1018,7 +1049,9 @@ type ModelProviderCredentialModel {
 type PlatformModelProviderCredentialModel {
   id: ID!
   isDefault: Boolean!
+  isAvailable: Boolean!
   platformModelProviderCredentialId: ID!
+  platformModelProviderCredential: PlatformModelProviderCredentialSummary
   modelId: String!
   name: String!
   description: String!
@@ -1026,6 +1059,13 @@ type PlatformModelProviderCredentialModel {
   reasoningLevels: [String!]!
   createdAt: String!
   updatedAt: String!
+}
+
+type PlatformModelProviderCredentialSummary {
+  id: ID!
+  name: String!
+  modelProvider: String!
+  status: String!
 }
 
 type ModelProvider {
@@ -1222,6 +1262,7 @@ input AddAgentInput {
   defaultEnvironmentTemplateId: ID!
   name: String!
   modelCredentialSource: String
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
@@ -1240,6 +1281,7 @@ input UpdateAgentInput {
   id: ID!
   name: String!
   modelCredentialSource: String
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
@@ -1353,6 +1395,7 @@ input CreateSessionInput {
   agentId: ID!
   images: [SessionPromptImageInput!]
   modelCredentialSource: String
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
@@ -1364,6 +1407,7 @@ input PromptSessionInput {
   id: ID!
   images: [SessionPromptImageInput!]
   modelCredentialSource: String
+  platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
@@ -1649,6 +1693,11 @@ input SetDefaultModelProviderCredentialModelInput {
 
 input SetDefaultPlatformModelProviderCredentialModelInput {
   id: ID!
+}
+
+input SetPlatformModelRoutesInput {
+  platformModelId: ID!
+  platformModelProviderCredentialModelIds: [ID!]!
 }
 
 input ArtifactsInput {

@@ -23,7 +23,8 @@ import { SecretDefaultOptions } from "./secret_default_options";
 
 export type AgentCreateProviderOption = {
   id: string;
-  modelProviderCredentialId: string;
+  modelCredentialSource: "platform" | "user_provided";
+  modelProviderCredentialId: string | null | undefined;
   isDefault: boolean;
   label: string;
   modelProvider: string;
@@ -32,7 +33,9 @@ export type AgentCreateProviderOption = {
   models: Array<{
     id: string;
     description: string | null | undefined;
-    modelProviderCredentialModelId: string;
+    modelCredentialSource: "platform" | "user_provided";
+    platformModelId: string | null | undefined;
+    modelProviderCredentialModelId: string | null | undefined;
     modelId: string;
     name: string;
     reasoningSupported: boolean;
@@ -104,8 +107,10 @@ interface CreateAgentDialogProps {
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
-    modelProviderCredentialId: string;
-    modelProviderCredentialModelId: string;
+    modelCredentialSource: "platform" | "user_provided";
+    platformModelId?: string | null;
+    modelProviderCredentialId?: string | null;
+    modelProviderCredentialModelId?: string | null;
     name: string;
     reasoningLevel?: string;
     secretGroupIds?: string[];
@@ -806,8 +811,10 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               await props.onCreate({
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
-                modelProviderCredentialId: selectedProviderOption.modelProviderCredentialId,
-                modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId,
+                modelCredentialSource: selectedModelOption.modelCredentialSource,
+                platformModelId: selectedModelOption.platformModelId ?? undefined,
+                modelProviderCredentialId: selectedProviderOption.modelProviderCredentialId ?? undefined,
+                modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId ?? undefined,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretGroupIds: selectedSecretGroupIds.length > 0 ? selectedSecretGroupIds : undefined,

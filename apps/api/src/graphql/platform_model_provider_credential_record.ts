@@ -20,6 +20,7 @@ export type PlatformModelProviderCredentialRecord = {
 export type PlatformModelProviderCredentialModelRecord = {
   description: string;
   id: string;
+  isAvailable: boolean;
   isDefault: boolean;
   modelId: string;
   name: string;
@@ -51,6 +52,7 @@ export type GraphqlPlatformModelProviderCredentialRecord = {
 export type GraphqlPlatformModelProviderCredentialModelRecord = {
   description: string;
   id: string;
+  isAvailable: boolean;
   isDefault: boolean;
   modelId: string;
   name: string;

@@ -6,18 +6,18 @@ export type AgentDetailProviderFieldOption = {
 };
 
 /**
- * Keeps the agent detail provider select aligned with the persisted credential ids expected by
- * UpdateAgent while the GraphQL create-option records keep separate Relay-safe projection ids.
+ * Keeps the agent detail provider select aligned with Relay-safe option ids so platform virtual
+ * providers and user-provided credentials can share the same control.
  */
 export class AgentDetailProviderSelection {
   static toFieldOptions(providerOptions: AgentCreateProviderOption[]): AgentDetailProviderFieldOption[] {
     return providerOptions.map((option) => ({
       label: option.label,
-      value: option.modelProviderCredentialId,
+      value: option.id,
     }));
   }
 
   static resolveFieldValue(providerOption: AgentCreateProviderOption | null): string {
-    return providerOption?.modelProviderCredentialId ?? "";
+    return providerOption?.id ?? "";
   }
 }

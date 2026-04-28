@@ -20,7 +20,7 @@ import { sql } from "drizzle-orm/sql";
 import { modelCredentialSourceEnum } from "./ai_common.ts";
 import { agents, modelProviderCredentialModels } from "./agents.ts";
 import { companySecrets, companies, users } from "./company.ts";
-import { platformModelProviderCredentialModels } from "./platform_ai.ts";
+import { platformModelProviderCredentialModels, platformModelProviderCredentials, platformModels } from "./platform_ai.ts";
 
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
@@ -54,6 +54,8 @@ export const agentSessions = pgTable("agent_sessions", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   currentModelCredentialSource: modelCredentialSourceEnum("current_model_credential_source").notNull().default("user_provided"),
+  currentPlatformModelId: uuid("current_platform_model_id")
+    .references(() => platformModels.id, { onDelete: "set null" }),
   currentPlatformModelProviderCredentialModelId: uuid("current_platform_model_provider_credential_model_id")
     .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
   currentModelProviderCredentialModelId: uuid("current_model_provider_credential_model_id")
@@ -91,9 +93,9 @@ export const agentSessions = pgTable("agent_sessions", {
   currentModelSelectionCheck: check(
     "agent_sessions_current_model_selection_check",
     sql`(
-      (${table.currentModelCredentialSource} = 'platform' AND ${table.currentPlatformModelProviderCredentialModelId} IS NOT NULL AND ${table.currentModelProviderCredentialModelId} IS NULL)
+      (${table.currentModelCredentialSource} = 'platform' AND ${table.currentPlatformModelId} IS NOT NULL AND ${table.currentModelProviderCredentialModelId} IS NULL)
       OR
-      (${table.currentModelCredentialSource} = 'user_provided' AND ${table.currentPlatformModelProviderCredentialModelId} IS NULL AND ${table.currentModelProviderCredentialModelId} IS NOT NULL)
+      (${table.currentModelCredentialSource} = 'user_provided' AND ${table.currentPlatformModelId} IS NULL AND ${table.currentPlatformModelProviderCredentialModelId} IS NULL AND ${table.currentModelProviderCredentialModelId} IS NOT NULL)
     )`,
   ),
 }));
@@ -108,6 +110,12 @@ export const sessionTurns = pgTable("session_turns", {
   sessionId: uuid("session_id")
     .references((): AnyPgColumn => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
+  platformModelId: uuid("platform_model_id")
+    .references(() => platformModels.id, { onDelete: "set null" }),
+  platformModelProviderCredentialModelId: uuid("platform_model_provider_credential_model_id")
+    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
+  platformModelProviderCredentialId: uuid("platform_model_provider_credential_id")
+    .references(() => platformModelProviderCredentials.id, { onDelete: "set null" }),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   usageInputTokens: integer("usage_input_tokens").default(0).notNull(),

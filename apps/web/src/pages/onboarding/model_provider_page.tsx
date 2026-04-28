@@ -116,7 +116,6 @@ function ModelProviderPageContent() {
                     <span>
                       {credential.name} · {formatProviderLabel(credential.modelProvider, {
                         baseUrl: credential.baseUrl,
-                        isManaged: credential.isManaged,
                       })}
                     </span>
                   </li>

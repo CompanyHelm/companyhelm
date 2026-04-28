@@ -66,3 +66,44 @@ export const platformModelProviderCredentialModels = pgTable("platform_model_pro
   credentialModelUnique: uniqueIndex("platform_model_provider_credential_models_credential_model_uidx")
     .on(table.platformModelProviderCredentialId, table.modelId),
 }));
+
+export const platformModels = pgTable("platform_models", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  key: text("key").notNull(),
+  modelProvider: modelProviderEnum("model_provider").notNull(),
+  modelId: text("model_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  reasoningSupported: boolean("reasoning_supported").notNull().default(false),
+  reasoningLevels: text("reasoning_levels").array(),
+  isDefault: boolean("is_default").notNull().default(false),
+  isAvailable: boolean("is_available").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  defaultUnique: uniqueIndex("platform_models_default_uidx")
+    .on(table.isDefault)
+    .where(sql`${table.isDefault}`),
+  keyUnique: uniqueIndex("platform_models_key_uidx").on(table.key),
+  modelProviderIndex: index("platform_models_model_provider_idx").on(table.modelProvider),
+}));
+
+export const platformModelRoutes = pgTable("platform_model_routes", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  platformModelId: uuid("platform_model_id")
+    .references(() => platformModels.id, { onDelete: "cascade" })
+    .notNull(),
+  platformModelProviderCredentialModelId: uuid("platform_model_provider_credential_model_id")
+    .references(() => platformModelProviderCredentialModels.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  platformModelIndex: index("platform_model_routes_platform_model_idx").on(table.platformModelId),
+  credentialModelUnique: uniqueIndex("platform_model_routes_credential_model_uidx")
+    .on(table.platformModelId, table.platformModelProviderCredentialModelId),
+}));

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7f986823ad0247af0297c76a57fb07d6>>
+ * @generated SignedSource<<32d5e82ac06bbcde18bede78470b9864>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -44,7 +44,6 @@ export type flowQuery$data = {
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly baseUrl: string | null | undefined;
     readonly id: string;
-    readonly isManaged: boolean;
     readonly modelProvider: string;
     readonly name: string;
   }>;
@@ -293,13 +292,6 @@ v2 = [
         "kind": "ScalarField",
         "name": "baseUrl",
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isManaged",
-        "storageKey": null
       }
     ],
     "storageKey": null
@@ -323,16 +315,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "6878161f43cdbcecc6a52c3092e3ff59",
+    "cacheID": "59c970c55cfcbbf9ea4756306319fd75",
     "id": null,
     "metadata": {},
     "name": "flowQuery",
     "operationKind": "query",
-    "text": "query flowQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        companyMission\n        missionSkippedAt\n        githubSetupStatus\n        githubCompletedAt\n        githubSkippedAt\n        llmSetupStatus\n        llmCompletedAt\n        llmSkippedAt\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n  GithubInstallations {\n    accountLogin\n    id\n    installationId\n  }\n  ModelProviders {\n    id\n    isAvailable\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n    isManaged\n  }\n}\n"
+    "text": "query flowQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        companyMission\n        missionSkippedAt\n        githubSetupStatus\n        githubCompletedAt\n        githubSkippedAt\n        llmSetupStatus\n        llmCompletedAt\n        llmSkippedAt\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n  GithubInstallations {\n    accountLogin\n    id\n    installationId\n  }\n  ModelProviders {\n    id\n    isAvailable\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7199fd045169eaf577f20514ff3b77e8";
+(node as any).hash = "1a8566aafb09d4d0ada126c06d7cca40";
 
 export default node;

@@ -52,6 +52,7 @@ export class SessionManagerService {
     userId?: string | null,
     images?: SessionPromptImageInput[],
     modelCredentialSource?: "platform" | "user_provided" | null,
+    platformModelId?: string | null,
     platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await this.sessionLifecycleService.createSession(
@@ -65,6 +66,7 @@ export class SessionManagerService {
       userId,
       images,
       modelCredentialSource,
+      platformModelId,
       platformModelProviderCredentialModelId,
     );
 
@@ -212,6 +214,7 @@ export class SessionManagerService {
     images?: SessionPromptImageInput[],
     userId?: string | null,
     modelCredentialSource?: "platform" | "user_provided" | null,
+    platformModelId?: string | null,
     platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await this.sessionPromptService.prompt(
@@ -225,6 +228,7 @@ export class SessionManagerService {
       images,
       userId,
       modelCredentialSource,
+      platformModelId,
       platformModelProviderCredentialModelId,
     );
 

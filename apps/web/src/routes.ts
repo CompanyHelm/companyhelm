@@ -11,6 +11,8 @@ import { AdminCompaniesPage } from "./pages/admin/companies_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
 import { AdminLlmCredentialModelsPage } from "./pages/admin/llm_credential_models_page";
 import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
+import { AdminModelDetailPage } from "./pages/admin/model_detail_page";
+import { AdminModelsPage } from "./pages/admin/models_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
 import { CompaniesRoute } from "./pages/auth/companies_route";
 import { AuthenticationRoute } from "./pages/auth/route";
@@ -268,6 +270,24 @@ const adminCompaniesRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/admin/companies",
   component: AdminCompaniesPage,
+});
+
+const adminModelsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/admin/models",
+  component: Outlet,
+});
+
+const adminModelsIndexRoute = createRoute({
+  getParentRoute: () => adminModelsRoute,
+  path: "/",
+  component: AdminModelsPage,
+});
+
+const adminModelDetailRoute = createRoute({
+  getParentRoute: () => adminModelsRoute,
+  path: "$platformModelId" as string,
+  component: AdminModelDetailPage,
 });
 
 const adminLlmCredentialsRoute = createRoute({
@@ -533,6 +553,10 @@ const routeTree = rootRoute.addChildren([
       adminDashboardRoute,
       adminUsersRoute,
       adminCompaniesRoute,
+      adminModelsRoute.addChildren([
+        adminModelsIndexRoute,
+        adminModelDetailRoute,
+      ]),
       adminLlmCredentialsRoute.addChildren([
         adminLlmCredentialsIndexRoute,
         adminLlmCredentialModelsRoute,

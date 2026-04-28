@@ -38,6 +38,7 @@ const modelProviderCredentialsPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      modelCredentialSource
       modelProviderCredentialId
       isDefault
       label
@@ -55,7 +56,6 @@ const modelProviderCredentialsPageQueryNode = graphql`
       id
       baseUrl
       isDefault
-      isManaged
       name
       modelProvider
       type
@@ -81,7 +81,6 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
       id
       baseUrl
       isDefault
-      isManaged
       name
       modelProvider
       type
@@ -203,16 +202,28 @@ function ModelProviderCredentialsPageContent() {
     );
   }, [data.ModelProviderCredentials]);
   const replacementOptions = useMemo<DeleteCredentialDialogReplacementRecord[]>(() => {
-    return data.AgentCreateOptions.map((providerOption) => ({
-      id: providerOption.modelProviderCredentialId,
-      isDefault: providerOption.isDefault,
-      label: credentialNameById.get(providerOption.modelProviderCredentialId) ?? providerOption.label,
-    }));
+    return data.AgentCreateOptions
+      .filter((providerOption) =>
+        providerOption.modelCredentialSource === "user_provided" && providerOption.modelProviderCredentialId
+      )
+      .map((providerOption) => ({
+        id: String(providerOption.modelProviderCredentialId),
+        isDefault: providerOption.isDefault,
+        label: credentialNameById.get(String(providerOption.modelProviderCredentialId)) ?? providerOption.label,
+      }));
   }, [credentialNameById, data.AgentCreateOptions]);
   const credentialIdByModelId = useMemo(() => {
     const nextCredentialIdByModelId = new Map<string, string>();
     for (const providerOption of data.AgentCreateOptions) {
+      if (providerOption.modelCredentialSource !== "user_provided" || !providerOption.modelProviderCredentialId) {
+        continue;
+      }
+
       for (const model of providerOption.models) {
+        if (!model.modelProviderCredentialModelId) {
+          continue;
+        }
+
         nextCredentialIdByModelId.set(
           model.modelProviderCredentialModelId,
           providerOption.modelProviderCredentialId,
@@ -251,7 +262,6 @@ function ModelProviderCredentialsPageContent() {
       errorMessage: credential.errorMessage ?? null,
       id: credential.id,
       isDefault: credential.isDefault,
-      isManaged: credential.isManaged,
       modelProvider: credential.modelProvider,
       name: credential.name,
       refreshedAt: credential.refreshedAt ?? null,

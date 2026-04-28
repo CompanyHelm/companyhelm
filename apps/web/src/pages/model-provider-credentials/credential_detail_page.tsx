@@ -4,7 +4,6 @@ import { GaugeIcon, RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
-import { CompanyManagedLlmBudgetPanel } from "@/components/usage/company_managed_llm_budget_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
     ModelProviderCredentials {
       id
       baseUrl
-      isManaged
       name
       modelProvider
       type
@@ -38,28 +36,6 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       errorMessage
       refreshedAt
       updatedAt
-    }
-    CompanyManagedLlmBudget {
-      plan
-      managedCredentialId
-      daily {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
-      }
-      monthly {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
-      }
     }
     CodexRateLimits(modelProviderCredentialId: $credentialId) {
       isCodexCredential
@@ -414,11 +390,9 @@ function ModelProviderCredentialDetailPageContent() {
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
     baseUrl: currentCredential?.baseUrl ?? null,
-    isManaged: currentCredential?.isManaged ?? false,
   })
     || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
-  const isManagedCredential = currentCredential?.isManaged ?? false;
   const isCodexCredential = currentCredential?.modelProvider === "openai-codex";
   const selectedTab = search.tab === "limit" && isCodexCredential
     ? "limit"
@@ -494,9 +468,6 @@ function ModelProviderCredentialDetailPageContent() {
             <Badge variant="secondary">
               {formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
             </Badge>
-            {isManagedCredential ? (
-              <Badge variant="outline">Managed</Badge>
-            ) : null}
             <span className="text-xs text-muted-foreground">{credentialStatus}</span>
           </CardDescription>
           <CardAction>
@@ -540,45 +511,43 @@ function ModelProviderCredentialDetailPageContent() {
                   Refresh token
                 </Button>
               ) : null}
-              {isManagedCredential ? null : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={isRefreshInFlight}
-                  onClick={async () => {
-                    if (isRefreshInFlight) {
-                      return;
-                    }
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isRefreshInFlight}
+                onClick={async () => {
+                  if (isRefreshInFlight) {
+                    return;
+                  }
 
-                    setErrorMessage(null);
-                    await new Promise<void>((resolve, reject) => {
-                      commitRefreshModels({
-                        variables: {
-                          input: {
-                            modelProviderCredentialId: normalizedCredentialId,
-                          },
+                  setErrorMessage(null);
+                  await new Promise<void>((resolve, reject) => {
+                    commitRefreshModels({
+                      variables: {
+                        input: {
+                          modelProviderCredentialId: normalizedCredentialId,
                         },
-                        onCompleted: (_response, errors) => {
-                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                          if (nextErrorMessage) {
-                            reject(new Error(nextErrorMessage));
-                            return;
-                          }
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
 
-                          setFetchKey((current) => current + 1);
-                          resolve();
-                        },
-                        onError: reject,
-                      });
-                    }).catch((error: unknown) => {
-                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
+                        setFetchKey((current) => current + 1);
+                        resolve();
+                      },
+                      onError: reject,
                     });
-                  }}
-                >
-                  <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
-                  Refresh models
-                </Button>
-              )}
+                  }).catch((error: unknown) => {
+                    setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
+                  });
+                }}
+              >
+                <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
+                Refresh models
+              </Button>
             </div>
           </CardAction>
         </CardHeader>
@@ -606,19 +575,12 @@ function ModelProviderCredentialDetailPageContent() {
             <CodexLimitPanel snapshots={data.CodexRateLimits.snapshots} />
           ) : selectedTab === "usage" ? (
             <div className="grid gap-6">
-              {isManagedCredential ? (
-                <CompanyManagedLlmBudgetPanel
-                  budget={data.CompanyManagedLlmBudget}
-                  description="Included CompanyHelm-managed LLM budget for this provider, using the same daily and monthly caps enforced before new agent work starts."
-                  title="Included usage for this provider"
-                />
-              ) : null}
               <UsageSummaryPanel
                 aggregates={providerUsageAggregates}
                 description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
                 scopeId={normalizedCredentialId}
                 scopeType="provider"
-                spendKind={isManagedCredential || isOauthCredential ? "virtual" : "actual"}
+                spendKind={isOauthCredential ? "virtual" : "actual"}
                 title={`${currentCredential?.name ?? providerLabel} usage`}
               />
             </div>

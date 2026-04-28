@@ -32,7 +32,6 @@ export type CredentialsTableRecord = {
   errorMessage: string | null;
   id: string;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: string;
   name: string;
   refreshedAt: string | null;
@@ -113,7 +112,6 @@ export function CredentialsTable(props: CredentialsTableProps) {
         {props.credentials.map((credential) => {
           const providerLabel = formatProviderLabel(credential.modelProvider, {
             baseUrl: credential.baseUrl,
-            isManaged: credential.isManaged,
           });
           const showRefreshFailure = hasCredentialRefreshFailure(credential);
 
@@ -141,9 +139,6 @@ export function CredentialsTable(props: CredentialsTableProps) {
                     <span className="font-medium text-foreground">{credential.name}</span>
                     {credential.isDefault ? (
                       <Badge variant="secondary">Default</Badge>
-                    ) : null}
-                    {credential.isManaged ? (
-                      <Badge variant="outline">Managed</Badge>
                     ) : null}
                     {showRefreshFailure ? (
                       <Badge variant="destructive">Reconnect required</Badge>
@@ -206,14 +201,12 @@ export function CredentialsTable(props: CredentialsTableProps) {
                   >
                     <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
                   </Button>
-                  {credential.isManaged ? null : (
-                    <DeleteCredentialDialog
-                      credential={credential}
-                      deletingCredentialId={props.deletingCredentialId}
-                      onDelete={props.onDelete}
-                      replacementOptions={props.replacementOptions}
-                    />
-                  )}
+                  <DeleteCredentialDialog
+                    credential={credential}
+                    deletingCredentialId={props.deletingCredentialId}
+                    onDelete={props.onDelete}
+                    replacementOptions={props.replacementOptions}
+                  />
                 </div>
               </TableCell>
             </TableRow>

@@ -1,6 +1,6 @@
 {
-  "id": "3ffc97a2-ef97-4632-b20a-b7f349120362",
-  "prevId": "bf472fdb-efbf-431b-972b-e9eb88ad3913",
+  "id": "4199484e-23a7-439c-88b5-eec9945fc5a5",
+  "prevId": "6e012a58-da4c-47d5-854a-a8e4c293ac7b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1638,6 +1638,20 @@
           "primaryKey": false,
           "notNull": true
         },
+        "default_model_credential_source": {
+          "name": "default_model_credential_source",
+          "type": "model_credential_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user_provided'"
+        },
+        "default_platform_model_id": {
+          "name": "default_platform_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "default_model_provider_credential_model_id": {
           "name": "default_model_provider_credential_model_id",
           "type": "uuid",
@@ -1700,6 +1714,19 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "agents_default_platform_model_id_platform_models_id_fk": {
+          "name": "agents_default_platform_model_id_platform_models_id_fk",
+          "tableFrom": "agents",
+          "tableTo": "platform_models",
+          "columnsFrom": [
+            "default_platform_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "agents_default_model_provider_credential_model_id_model_provider_credential_models_id_fk": {
           "name": "agents_default_model_provider_credential_model_id_model_provider_credential_models_id_fk",
           "tableFrom": "agents",
@@ -1730,7 +1757,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "agents_default_model_selection_check": {
+          "name": "agents_default_model_selection_check",
+          "value": "(\n      (\"agents\".\"default_model_credential_source\" = 'platform' AND \"agents\".\"default_platform_model_id\" IS NOT NULL AND \"agents\".\"default_model_provider_credential_model_id\" IS NULL)\n      OR\n      (\"agents\".\"default_model_credential_source\" = 'user_provided' AND \"agents\".\"default_platform_model_id\" IS NULL AND \"agents\".\"default_model_provider_credential_model_id\" IS NOT NULL)\n    )"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.model_provider_credential_models": {
@@ -1949,13 +1981,6 @@
           "notNull": true,
           "default": false
         },
-        "is_managed": {
-          "name": "is_managed",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "status": {
           "name": "status",
           "type": "model_provider_credential_status",
@@ -1995,22 +2020,6 @@
           ],
           "isUnique": true,
           "where": "\"model_provider_credentials\".\"is_default\"",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "model_provider_credentials_company_managed_uidx": {
-          "name": "model_provider_credentials_company_managed_uidx",
-          "columns": [
-            {
-              "expression": "company_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"model_provider_credentials\".\"is_managed\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2684,11 +2693,31 @@
           "primaryKey": false,
           "notNull": true
         },
+        "current_model_credential_source": {
+          "name": "current_model_credential_source",
+          "type": "model_credential_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user_provided'"
+        },
+        "current_platform_model_id": {
+          "name": "current_platform_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_platform_model_provider_credential_model_id": {
+          "name": "current_platform_model_provider_credential_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "current_model_provider_credential_model_id": {
           "name": "current_model_provider_credential_model_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "inferred_title": {
           "name": "inferred_title",
@@ -2846,6 +2875,32 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
+        "agent_sessions_current_platform_model_id_platform_models_id_fk": {
+          "name": "agent_sessions_current_platform_model_id_platform_models_id_fk",
+          "tableFrom": "agent_sessions",
+          "tableTo": "platform_models",
+          "columnsFrom": [
+            "current_platform_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "agent_sessions_current_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk": {
+          "name": "agent_sessions_current_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk",
+          "tableFrom": "agent_sessions",
+          "tableTo": "platform_model_provider_credential_models",
+          "columnsFrom": [
+            "current_platform_model_provider_credential_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "agent_sessions_current_model_provider_credential_model_id_model_provider_credential_models_id_fk": {
           "name": "agent_sessions_current_model_provider_credential_model_id_model_provider_credential_models_id_fk",
           "tableFrom": "agent_sessions",
@@ -2902,7 +2957,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "agent_sessions_current_model_selection_check": {
+          "name": "agent_sessions_current_model_selection_check",
+          "value": "(\n      (\"agent_sessions\".\"current_model_credential_source\" = 'platform' AND \"agent_sessions\".\"current_platform_model_id\" IS NOT NULL AND \"agent_sessions\".\"current_model_provider_credential_model_id\" IS NULL)\n      OR\n      (\"agent_sessions\".\"current_model_credential_source\" = 'user_provided' AND \"agent_sessions\".\"current_platform_model_id\" IS NULL AND \"agent_sessions\".\"current_platform_model_provider_credential_model_id\" IS NULL AND \"agent_sessions\".\"current_model_provider_credential_model_id\" IS NOT NULL)\n    )"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.llm_usage_aggregates": {
@@ -4140,6 +4200,24 @@
           "primaryKey": false,
           "notNull": true
         },
+        "platform_model_id": {
+          "name": "platform_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "platform_model_provider_credential_model_id": {
+          "name": "platform_model_provider_credential_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "platform_model_provider_credential_id": {
+          "name": "platform_model_provider_credential_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "started_at": {
           "name": "started_at",
           "type": "timestamp with time zone",
@@ -4342,6 +4420,45 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "session_turns_platform_model_id_platform_models_id_fk": {
+          "name": "session_turns_platform_model_id_platform_models_id_fk",
+          "tableFrom": "session_turns",
+          "tableTo": "platform_models",
+          "columnsFrom": [
+            "platform_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "session_turns_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk": {
+          "name": "session_turns_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk",
+          "tableFrom": "session_turns",
+          "tableTo": "platform_model_provider_credential_models",
+          "columnsFrom": [
+            "platform_model_provider_credential_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "session_turns_platform_model_provider_credential_id_platform_model_provider_credentials_id_fk": {
+          "name": "session_turns_platform_model_provider_credential_id_platform_model_provider_credentials_id_fk",
+          "tableFrom": "session_turns",
+          "tableTo": "platform_model_provider_credentials",
+          "columnsFrom": [
+            "platform_model_provider_credential_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -10806,6 +10923,19 @@
           "notNull": true,
           "default": false
         },
+        "is_available": {
+          "name": "is_available",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "unavailable_at": {
+          "name": "unavailable_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -11061,6 +11191,249 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.platform_model_routes": {
+      "name": "platform_model_routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "platform_model_id": {
+          "name": "platform_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "platform_model_provider_credential_model_id": {
+          "name": "platform_model_provider_credential_model_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "platform_model_routes_platform_model_idx": {
+          "name": "platform_model_routes_platform_model_idx",
+          "columns": [
+            {
+              "expression": "platform_model_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_model_routes_credential_model_uidx": {
+          "name": "platform_model_routes_credential_model_uidx",
+          "columns": [
+            {
+              "expression": "platform_model_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "platform_model_provider_credential_model_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "platform_model_routes_platform_model_id_platform_models_id_fk": {
+          "name": "platform_model_routes_platform_model_id_platform_models_id_fk",
+          "tableFrom": "platform_model_routes",
+          "tableTo": "platform_models",
+          "columnsFrom": [
+            "platform_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "platform_model_routes_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk": {
+          "name": "platform_model_routes_platform_model_provider_credential_model_id_platform_model_provider_credential_models_id_fk",
+          "tableFrom": "platform_model_routes",
+          "tableTo": "platform_model_provider_credential_models",
+          "columnsFrom": [
+            "platform_model_provider_credential_model_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.platform_models": {
+      "name": "platform_models",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model_provider": {
+          "name": "model_provider",
+          "type": "model_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model_id": {
+          "name": "model_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reasoning_supported": {
+          "name": "reasoning_supported",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "reasoning_levels": {
+          "name": "reasoning_levels",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_available": {
+          "name": "is_available",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "platform_models_default_uidx": {
+          "name": "platform_models_default_uidx",
+          "columns": [
+            {
+              "expression": "is_default",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"platform_models\".\"is_default\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_models_key_uidx": {
+          "name": "platform_models_key_uidx",
+          "columns": [
+            {
+              "expression": "key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "platform_models_model_provider_idx": {
+          "name": "platform_models_model_provider_idx",
+          "columns": [
+            {
+              "expression": "model_provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -11088,6 +11461,14 @@
       "values": [
         "free",
         "pro"
+      ]
+    },
+    "public.model_credential_source": {
+      "name": "model_credential_source",
+      "schema": "public",
+      "values": [
+        "platform",
+        "user_provided"
       ]
     },
     "public.model_provider_credential_status": {

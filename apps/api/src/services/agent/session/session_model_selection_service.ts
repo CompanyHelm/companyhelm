@@ -1,6 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { modelProviderCredentialModels, platformModelProviderCredentialModels } from "../../../db/schema.ts";
+import {
+  modelProviderCredentialModels,
+  platformModelProviderCredentialModels,
+  platformModelProviderCredentials,
+  platformModelRoutes,
+  platformModels,
+  sessionTurns,
+} from "../../../db/schema.ts";
 import type {
   AgentRecord,
   ExistingSessionRow,
@@ -21,13 +28,13 @@ export class SessionModelSelectionService {
     agentRecord: AgentRecord,
   ): Promise<ModelRecord> {
     if (agentRecord.defaultModelCredentialSource === "platform") {
-      if (!agentRecord.defaultPlatformModelProviderCredentialModelId) {
+      if (!agentRecord.defaultPlatformModelId) {
         throw new Error("Agent default platform model is required.");
       }
 
       return this.resolvePlatformModelRecordById(
         selectableDatabase,
-        agentRecord.defaultPlatformModelProviderCredentialModelId,
+        agentRecord.defaultPlatformModelId,
       );
     }
 
@@ -48,15 +55,18 @@ export class SessionModelSelectionService {
     input: {
       modelCredentialSource?: "platform" | "user_provided" | null;
       modelProviderCredentialModelId?: string | null;
+      platformModelId?: string | null;
       platformModelProviderCredentialModelId?: string | null;
     },
   ): Promise<ModelRecord | null> {
-    if (input.modelCredentialSource === "platform" || input.platformModelProviderCredentialModelId) {
-      if (!input.platformModelProviderCredentialModelId) {
-        throw new Error("platformModelProviderCredentialModelId is required.");
+    if (input.modelCredentialSource === "platform" || input.platformModelId || input.platformModelProviderCredentialModelId) {
+      const platformModelId = input.platformModelId
+        ?? await this.resolvePlatformModelIdForCredentialModel(selectableDatabase, input.platformModelProviderCredentialModelId);
+      if (!platformModelId) {
+        throw new Error("platformModelId is required.");
       }
 
-      return this.resolvePlatformModelRecordById(selectableDatabase, input.platformModelProviderCredentialModelId);
+      return this.resolvePlatformModelRecordById(selectableDatabase, platformModelId);
     }
 
     if (input.modelProviderCredentialModelId) {
@@ -98,6 +108,7 @@ export class SessionModelSelectionService {
       modelId: modelRecord.modelId,
       modelProviderCredentialId: modelRecord.modelProviderCredentialId,
       modelProviderCredentialModelId: modelRecord.id,
+      platformModelId: null,
       platformModelProviderCredentialId: null,
       platformModelProviderCredentialModelId: null,
       reasoningLevels: modelRecord.reasoningLevels,
@@ -106,28 +117,30 @@ export class SessionModelSelectionService {
 
   async resolvePlatformModelRecordById(
     selectableDatabase: SelectableDatabase,
-    platformModelProviderCredentialModelId: string,
+    platformModelId: string,
   ): Promise<ModelRecord> {
     const [modelRecord] = await selectableDatabase
       .select({
-        id: platformModelProviderCredentialModels.id,
-        modelId: platformModelProviderCredentialModels.modelId,
-        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-        reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+        description: platformModels.description,
+        id: platformModels.id,
+        modelId: platformModels.modelId,
+        name: platformModels.name,
+        reasoningLevels: platformModels.reasoningLevels,
+        reasoningSupported: platformModels.reasoningSupported,
       })
-      .from(platformModelProviderCredentialModels)
+      .from(platformModels)
       .where(and(
-        eq(platformModelProviderCredentialModels.id, platformModelProviderCredentialModelId),
-        eq(platformModelProviderCredentialModels.isAvailable, true),
+        eq(platformModels.id, platformModelId),
+        eq(platformModels.isAvailable, true),
       )) as Array<{
         id: string;
         modelId: string;
-        platformModelProviderCredentialId: string;
         reasoningLevels: string[] | null;
       }>;
     if (!modelRecord) {
       throw new Error("Selected platform model not found.");
     }
+    const routeRecord = await this.resolvePlatformModelRoute(selectableDatabase, modelRecord.id);
 
     return {
       id: modelRecord.id,
@@ -135,10 +148,111 @@ export class SessionModelSelectionService {
       modelId: modelRecord.modelId,
       modelProviderCredentialId: null,
       modelProviderCredentialModelId: null,
-      platformModelProviderCredentialId: modelRecord.platformModelProviderCredentialId,
-      platformModelProviderCredentialModelId: modelRecord.id,
+      platformModelId: modelRecord.id,
+      platformModelProviderCredentialId: routeRecord.platformModelProviderCredentialId,
+      platformModelProviderCredentialModelId: routeRecord.platformModelProviderCredentialModelId,
       reasoningLevels: modelRecord.reasoningLevels,
     };
+  }
+
+  private async resolvePlatformModelRoute(
+    selectableDatabase: SelectableDatabase,
+    platformModelId: string,
+  ): Promise<{
+    platformModelProviderCredentialId: string;
+    platformModelProviderCredentialModelId: string;
+  }> {
+    const routeRecords = await selectableDatabase
+      .select({
+        createdAt: platformModelRoutes.createdAt,
+        id: platformModelRoutes.id,
+        platformModelProviderCredentialModelId: platformModelRoutes.platformModelProviderCredentialModelId,
+      })
+      .from(platformModelRoutes)
+      .where(eq(platformModelRoutes.platformModelId, platformModelId)) as Array<{
+        createdAt: Date;
+        id: string;
+        platformModelProviderCredentialModelId: string;
+      }>;
+    const availableRoutes = [];
+    for (const routeRecord of routeRecords) {
+      const [credentialModelRecord] = await selectableDatabase
+        .select({
+          id: platformModelProviderCredentialModels.id,
+          platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
+        })
+        .from(platformModelProviderCredentialModels)
+        .where(and(
+          eq(platformModelProviderCredentialModels.id, routeRecord.platformModelProviderCredentialModelId),
+          eq(platformModelProviderCredentialModels.isAvailable, true),
+        )) as Array<{
+          id: string;
+          platformModelProviderCredentialId: string;
+        }>;
+      if (!credentialModelRecord) {
+        continue;
+      }
+
+      const [credentialRecord] = await selectableDatabase
+        .select({
+          id: platformModelProviderCredentials.id,
+        })
+        .from(platformModelProviderCredentials)
+        .where(and(
+          eq(platformModelProviderCredentials.id, credentialModelRecord.platformModelProviderCredentialId),
+          eq(platformModelProviderCredentials.status, "active"),
+        )) as Array<{ id: string }>;
+      if (!credentialRecord) {
+        continue;
+      }
+
+      availableRoutes.push({
+        createdAt: routeRecord.createdAt,
+        id: routeRecord.id,
+        platformModelProviderCredentialId: credentialModelRecord.platformModelProviderCredentialId,
+        platformModelProviderCredentialModelId: credentialModelRecord.id,
+      });
+    }
+    if (availableRoutes.length === 0) {
+      throw new Error("Selected platform model has no available routes.");
+    }
+
+    const turnRecords = await selectableDatabase
+      .select({
+        id: sessionTurns.id,
+      })
+      .from(sessionTurns)
+      .where(eq(sessionTurns.platformModelId, platformModelId)) as Array<{ id: string }>;
+    const routeIndex = turnRecords.length % availableRoutes.length;
+    const sortedRoutes = availableRoutes.sort((left, right) => {
+      const createdAtComparison = left.createdAt.getTime() - right.createdAt.getTime();
+      if (createdAtComparison !== 0) {
+        return createdAtComparison;
+      }
+
+      return left.id.localeCompare(right.id);
+    });
+    return sortedRoutes[routeIndex] ?? sortedRoutes[0];
+  }
+
+  private async resolvePlatformModelIdForCredentialModel(
+    selectableDatabase: SelectableDatabase,
+    platformModelProviderCredentialModelId: string | null | undefined,
+  ): Promise<string | null> {
+    if (!platformModelProviderCredentialModelId) {
+      return null;
+    }
+
+    const [routeRecord] = await selectableDatabase
+      .select({
+        platformModelId: platformModelRoutes.platformModelId,
+      })
+      .from(platformModelRoutes)
+      .where(eq(
+        platformModelRoutes.platformModelProviderCredentialModelId,
+        platformModelProviderCredentialModelId,
+      )) as Array<{ platformModelId: string }>;
+    return routeRecord?.platformModelId ?? null;
   }
 
   async resolveCurrentModelRecord(
@@ -147,13 +261,13 @@ export class SessionModelSelectionService {
     existingSession: ExistingSessionRow,
   ): Promise<ModelRecord> {
     if (existingSession.currentModelCredentialSource === "platform") {
-      if (!existingSession.currentPlatformModelProviderCredentialModelId) {
+      if (!existingSession.currentPlatformModelId) {
         throw new Error("Current session platform model not found.");
       }
 
       return this.resolvePlatformModelRecordById(
         selectableDatabase,
-        existingSession.currentPlatformModelProviderCredentialModelId,
+        existingSession.currentPlatformModelId,
       );
     }
 

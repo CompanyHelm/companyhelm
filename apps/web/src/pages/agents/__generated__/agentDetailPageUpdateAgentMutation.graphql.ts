@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7e1df9b65d1a0a60b18d820f8c5a7a02>>
+ * @generated SignedSource<<7bb7a61c1aadfa93893d37a93e03ad6a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,9 +13,12 @@ export type UpdateAgentInput = {
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
   id: string;
-  modelProviderCredentialId: string;
-  modelProviderCredentialModelId: string;
+  modelCredentialSource?: string | null | undefined;
+  modelProviderCredentialId?: string | null | undefined;
+  modelProviderCredentialModelId?: string | null | undefined;
   name: string;
+  platformModelId?: string | null | undefined;
+  platformModelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   systemPrompt?: string | null | undefined;
 };

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<10eaa40e632fd1a83cbf65f6aa604c0c>>
+ * @generated SignedSource<<f1e76aaf33b44c186c2e778c8fdfae37>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -30,7 +30,6 @@ export type modelProviderCredentialsPageCreateCredentialMutation$data = {
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isDefault: boolean;
-    readonly isManaged: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly refreshedAt: string | null | undefined;
@@ -86,13 +85,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "isDefault",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isManaged",
         "storageKey": null
       },
       {
@@ -180,16 +172,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "5fce4e44e55f03f74231b2590310cf19",
+    "cacheID": "fcf27248308d1043649c416137fca988",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageCreateCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    baseUrl\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    baseUrl\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c23c68f74562a20748c34b1bb84d8fe1";
+(node as any).hash = "a09c3a85c1c3029851a59872ef08b93d";
 
 export default node;

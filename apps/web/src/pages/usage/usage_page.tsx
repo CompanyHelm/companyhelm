@@ -135,7 +135,6 @@ const usagePageQueryNode = graphql`
     ModelProviderCredentials {
       id
       baseUrl
-      isManaged
       name
       modelProvider
       status
@@ -255,7 +254,6 @@ function UsagePageContent() {
                       <Badge variant="outline">
                         {formatProviderLabel(String(credential.modelProvider), {
                           baseUrl: credential.baseUrl ?? null,
-                          isManaged: credential.isManaged,
                         })}
                       </Badge>
                       {credential.status === "error" ? (

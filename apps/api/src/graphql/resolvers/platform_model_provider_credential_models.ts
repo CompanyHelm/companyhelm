@@ -22,7 +22,7 @@ export class PlatformModelProviderCredentialModelsQueryResolver {
 
   execute = async (
     _root: unknown,
-    arguments_: { platformModelProviderCredentialId: string },
+    arguments_: { platformModelProviderCredentialId?: string | null },
     context: GraphqlRequestContext,
   ) => {
     this.assertPlatformAdmin(context);
@@ -31,15 +31,13 @@ export class PlatformModelProviderCredentialModelsQueryResolver {
       throw new Error("Authentication required.");
     }
     const credentialId = String(arguments_.platformModelProviderCredentialId || "").trim();
-    if (!credentialId) {
-      throw new Error("platformModelProviderCredentialId is required.");
-    }
 
     return transactionProvider.transaction(async (tx) => {
       const models = await tx
         .select({
           description: platformModelProviderCredentialModels.description,
           id: platformModelProviderCredentialModels.id,
+          isAvailable: platformModelProviderCredentialModels.isAvailable,
           isDefault: platformModelProviderCredentialModels.isDefault,
           modelId: platformModelProviderCredentialModels.modelId,
           name: platformModelProviderCredentialModels.name,
@@ -50,10 +48,10 @@ export class PlatformModelProviderCredentialModelsQueryResolver {
           updatedAt: platformModelProviderCredentialModels.updatedAt,
         })
         .from(platformModelProviderCredentialModels)
-        .where(eq(
-          platformModelProviderCredentialModels.platformModelProviderCredentialId,
-          credentialId,
-        )) as PlatformModelProviderCredentialModelRecord[];
+        .where(credentialId
+          ? eq(platformModelProviderCredentialModels.platformModelProviderCredentialId, credentialId)
+          : eq(platformModelProviderCredentialModels.id, platformModelProviderCredentialModels.id)) as
+          PlatformModelProviderCredentialModelRecord[];
 
       return models.map((model) => this.presenter.serializeModel(model));
     });

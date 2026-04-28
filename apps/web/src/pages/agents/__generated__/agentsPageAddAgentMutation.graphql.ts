@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bec0a0eed3eceae9eab51a107a0cce34>>
+ * @generated SignedSource<<bd3fef6f2b1616bd129f809aaee1637b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,9 +13,12 @@ export type AddAgentInput = {
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
   mcpServerIds?: ReadonlyArray<string> | null | undefined;
-  modelProviderCredentialId: string;
-  modelProviderCredentialModelId: string;
+  modelCredentialSource?: string | null | undefined;
+  modelProviderCredentialId?: string | null | undefined;
+  modelProviderCredentialModelId?: string | null | undefined;
   name: string;
+  platformModelId?: string | null | undefined;
+  platformModelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   secretGroupIds?: ReadonlyArray<string> | null | undefined;
   secretIds?: ReadonlyArray<string> | null | undefined;

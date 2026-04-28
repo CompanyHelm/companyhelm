@@ -2,7 +2,7 @@ import { agentSessions } from "../../../db/schema.ts";
 
 export type AgentRecord = {
   defaultModelCredentialSource: "platform" | "user_provided";
-  defaultPlatformModelProviderCredentialModelId: string | null;
+  defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultReasoningLevel: string | null;
   id: string;
@@ -11,6 +11,7 @@ export type AgentRecord = {
 export type ExistingSessionRow = {
   agentId: string;
   currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelId: string | null;
   currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
@@ -26,6 +27,7 @@ export type ModelRecord = {
   modelCredentialSource: "platform" | "user_provided";
   modelId: string;
   modelProviderCredentialId: string | null;
+  platformModelId: string | null;
   platformModelProviderCredentialId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
@@ -48,6 +50,7 @@ export type SessionRecord = {
   currentContextTokens: number | null;
   currentModelId: string;
   currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelId: string | null;
   currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
@@ -79,6 +82,7 @@ export type SessionMessagePrincipalMetadata = {
 export type SessionManagerCreateSessionOptions = {
   images?: SessionPromptImageInput[];
   modelCredentialSource?: "platform" | "user_provided" | null;
+  platformModelId?: string | null;
   platformModelProviderCredentialModelId?: string | null;
   modelProviderCredentialModelId?: string | null;
   principalMetadata?: SessionMessagePrincipalMetadata;
@@ -91,6 +95,7 @@ export type SessionManagerCreateSessionOptions = {
 export type SessionManagerQueuePromptOptions = {
   images?: SessionPromptImageInput[];
   modelCredentialSource?: "platform" | "user_provided" | null;
+  platformModelId?: string | null;
   platformModelProviderCredentialModelId?: string | null;
   modelProviderCredentialModelId?: string | null;
   principalMetadata?: SessionMessagePrincipalMetadata;
@@ -135,6 +140,7 @@ export const agentSessionSelection = {
   id: agentSessions.id,
   agentId: agentSessions.agentId,
   currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+  currentPlatformModelId: agentSessions.currentPlatformModelId,
   currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
   currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
   currentReasoningLevel: agentSessions.currentReasoningLevel,

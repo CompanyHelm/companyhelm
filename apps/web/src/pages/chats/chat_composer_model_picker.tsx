@@ -12,7 +12,9 @@ import {
 
 export type ChatComposerModelOption = ModelSelectionOption & {
   description: string;
-  modelProviderCredentialModelId: string;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null | undefined;
+  modelProviderCredentialModelId: string | null | undefined;
   providerId: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];

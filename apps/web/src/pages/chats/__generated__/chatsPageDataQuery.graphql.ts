@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6c5d36f3017d681a4be3c36e188c7fc1>>
+ * @generated SignedSource<<b7b861109204588738a8bbcbdc33f60f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,13 +16,16 @@ export type chatsPageDataQuery$data = {
     readonly defaultReasoningLevel: string | null | undefined;
     readonly id: string;
     readonly label: string;
+    readonly modelCredentialSource: string;
     readonly modelProvider: string;
     readonly models: ReadonlyArray<{
       readonly description: string;
       readonly id: string;
+      readonly modelCredentialSource: string;
       readonly modelId: string;
-      readonly modelProviderCredentialModelId: string;
+      readonly modelProviderCredentialModelId: string | null | undefined;
       readonly name: string;
+      readonly platformModelId: string | null | undefined;
       readonly reasoningLevels: ReadonlyArray<string>;
       readonly reasoningSupported: boolean;
     }>;
@@ -34,6 +37,7 @@ export type chatsPageDataQuery$data = {
     readonly modelProviderCredentialId: string | null | undefined;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly name: string;
+    readonly platformModelId: string | null | undefined;
     readonly reasoningLevel: string | null | undefined;
   }>;
   readonly InboxHumanQuestions: ReadonlyArray<{
@@ -84,6 +88,7 @@ export type chatsPageDataQuery$data = {
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
+    readonly platformModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -115,45 +120,59 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelProviderCredentialModelId",
+  "name": "platformModelId",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelProvider",
+  "name": "modelProviderCredentialModelId",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "reasoningLevel",
+  "name": "modelProvider",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelId",
+  "name": "reasoningLevel",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "modelCredentialSource",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "modelId",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v8 = [
+v10 = [
   {
     "alias": null,
     "args": null,
@@ -164,6 +183,7 @@ v8 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -171,8 +191,8 @@ v8 = [
         "name": "modelProviderCredentialId",
         "storageKey": null
       },
-      (v2/*: any*/),
       (v3/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -180,7 +200,7 @@ v8 = [
         "name": "modelName",
         "storageKey": null
       },
-      (v4/*: any*/)
+      (v5/*: any*/)
     ],
     "storageKey": null
   },
@@ -193,6 +213,7 @@ v8 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -200,7 +221,7 @@ v8 = [
         "name": "label",
         "storageKey": null
       },
-      (v3/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -224,8 +245,10 @@ v8 = [
         "plural": true,
         "selections": [
           (v0/*: any*/),
+          (v6/*: any*/),
           (v2/*: any*/),
-          (v5/*: any*/),
+          (v3/*: any*/),
+          (v7/*: any*/),
           (v1/*: any*/),
           {
             "alias": null,
@@ -291,7 +314,7 @@ v8 = [
         "name": "allowCustomAnswer",
         "storageKey": null
       },
-      (v6/*: any*/),
+      (v8/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -347,7 +370,7 @@ v8 = [
         "selections": [
           (v0/*: any*/),
           (v1/*: any*/),
-          (v7/*: any*/)
+          (v9/*: any*/)
         ],
         "storageKey": null
       },
@@ -368,7 +391,7 @@ v8 = [
             "storageKey": null
           },
           (v1/*: any*/),
-          (v7/*: any*/),
+          (v9/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -393,7 +416,7 @@ v8 = [
                 "name": "ordinal",
                 "storageKey": null
               },
-              (v7/*: any*/)
+              (v9/*: any*/)
             ],
             "storageKey": null
           }
@@ -457,8 +480,9 @@ v8 = [
         "storageKey": null
       },
       (v2/*: any*/),
+      (v3/*: any*/),
+      (v7/*: any*/),
       (v5/*: any*/),
-      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -473,7 +497,7 @@ v8 = [
         "name": "isThinking",
         "storageKey": null
       },
-      (v7/*: any*/),
+      (v9/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -481,7 +505,7 @@ v8 = [
         "name": "thinkingText",
         "storageKey": null
       },
-      (v6/*: any*/),
+      (v8/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -513,7 +537,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v10/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -522,19 +546,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageDataQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "4b6235a1ec7c081debe20de3187eeb87",
+    "cacheID": "0ae5abff04e78641cc8d34a32218e180",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    platformModelId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d9927d8a945cb79c7f1d710617b18365";
+(node as any).hash = "7b44bb82327b886c705ea8b020244f9f";
 
 export default node;

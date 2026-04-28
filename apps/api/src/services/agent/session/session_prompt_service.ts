@@ -80,6 +80,7 @@ export class SessionPromptService {
     images?: SessionPromptImageInput[],
     userId?: string | null,
     modelCredentialSource?: "platform" | "user_provided" | null,
+    platformModelId?: string | null,
     platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
@@ -94,6 +95,7 @@ export class SessionPromptService {
           images,
           modelCredentialSource,
           modelProviderCredentialModelId,
+          platformModelId,
           platformModelProviderCredentialModelId,
           reasoningLevel,
           shouldSteer,
@@ -120,6 +122,7 @@ export class SessionPromptService {
       .select({
         agentId: agentSessions.agentId,
         currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+        currentPlatformModelId: agentSessions.currentPlatformModelId,
         currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
         currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         currentReasoningLevel: agentSessions.currentReasoningLevel,
@@ -166,6 +169,7 @@ export class SessionPromptService {
       .update(agentSessions)
       .set({
         currentModelCredentialSource: selectedModelRecord.modelCredentialSource,
+        currentPlatformModelId: selectedModelRecord.platformModelId,
         currentPlatformModelProviderCredentialModelId: selectedModelRecord.platformModelProviderCredentialModelId,
         currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,

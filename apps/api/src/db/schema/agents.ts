@@ -20,7 +20,7 @@ import {
 } from "./ai_common.ts";
 import { companySecrets, companies, secret_groups, users } from "./company.ts";
 import { computeProviderDefinitions } from "./environments.ts";
-import { platformModelProviderCredentialModels } from "./platform_ai.ts";
+import { platformModels } from "./platform_ai.ts";
 
 export {
   modelCredentialSourceEnum,
@@ -40,8 +40,8 @@ export const agents = pgTable("agents", {
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
   defaultModelCredentialSource: modelCredentialSourceEnum("default_model_credential_source").notNull().default("user_provided"),
-  defaultPlatformModelProviderCredentialModelId: uuid("default_platform_model_provider_credential_model_id")
-    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
+  defaultPlatformModelId: uuid("default_platform_model_id")
+    .references(() => platformModels.id, { onDelete: "set null" }),
   defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
@@ -54,9 +54,9 @@ export const agents = pgTable("agents", {
   defaultModelSelectionCheck: check(
     "agents_default_model_selection_check",
     sql`(
-      (${table.defaultModelCredentialSource} = 'platform' AND ${table.defaultPlatformModelProviderCredentialModelId} IS NOT NULL AND ${table.defaultModelProviderCredentialModelId} IS NULL)
+      (${table.defaultModelCredentialSource} = 'platform' AND ${table.defaultPlatformModelId} IS NOT NULL AND ${table.defaultModelProviderCredentialModelId} IS NULL)
       OR
-      (${table.defaultModelCredentialSource} = 'user_provided' AND ${table.defaultPlatformModelProviderCredentialModelId} IS NULL AND ${table.defaultModelProviderCredentialModelId} IS NOT NULL)
+      (${table.defaultModelCredentialSource} = 'user_provided' AND ${table.defaultPlatformModelId} IS NULL AND ${table.defaultModelProviderCredentialModelId} IS NOT NULL)
     )`,
   ),
 }));

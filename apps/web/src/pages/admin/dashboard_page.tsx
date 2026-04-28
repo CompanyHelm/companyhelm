@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon, Building2Icon, KeyRoundIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
+import { ArrowRightIcon, BoxesIcon, Building2Icon, KeyRoundIcon, ShieldCheckIcon, UsersIcon } from "lucide-react";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +27,12 @@ function AdminDashboardPageContent() {
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">Admin dashboard</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Internal CompanyHelm controls live here. Review global users, companies, and platform LLM credentials.
+            Internal CompanyHelm controls live here. Review global users, companies, platform models, and LLM credentials.
           </p>
         </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="border border-border/70 bg-card/90 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -94,6 +94,28 @@ function AdminDashboardPageContent() {
             <Button asChild size="sm">
               <Link to="/admin/llm-credentials">
                 Open credentials
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+        <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BoxesIcon className="size-4" />
+              Platform models
+            </CardTitle>
+            <CardDescription>
+              Review stable model options and define which concrete credential models serve them.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Agents select these models; runtime routes across the checked credential models.
+          </CardContent>
+          <CardFooter>
+            <Button asChild size="sm">
+              <Link to="/admin/models">
+                Open models
                 <ArrowRightIcon className="size-4" />
               </Link>
             </Button>

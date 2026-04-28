@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { platformModelProviderCredentialModels } from "../../db/schema.ts";
+import { platformModelProviderCredentialModels, platformModelRoutes, platformModels } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { ModelRegistry } from "./model_registry.ts";
 import type { ModelProviderModel } from "./model_provider_model.ts";
@@ -24,7 +24,7 @@ export type PlatformStoredModelRecord = {
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
-      where(condition: unknown): Promise<PlatformStoredModelRecord[]>;
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
     };
   };
 };
@@ -175,6 +175,16 @@ export class PlatformModelProviderCredentialService {
           ));
       }
 
+      const refreshedModels = await this.loadStoredModels(selectableDatabase, input.platformModelProviderCredentialId);
+      await this.reconcilePlatformModelsAndRoutes({
+        insertableDatabase,
+        modelProvider: input.modelProvider,
+        now,
+        selectableDatabase,
+        storedModels: refreshedModels,
+        updatableDatabase,
+      });
+
       return this.loadStoredModels(selectableDatabase, input.platformModelProviderCredentialId);
     });
   }
@@ -234,7 +244,105 @@ export class PlatformModelProviderCredentialService {
       .where(eq(
         platformModelProviderCredentialModels.platformModelProviderCredentialId,
         platformModelProviderCredentialId,
-      ));
+      )) as Promise<PlatformStoredModelRecord[]>;
+  }
+
+  private async reconcilePlatformModelsAndRoutes(input: {
+    insertableDatabase: InsertableDatabase;
+    modelProvider: string;
+    now: Date;
+    selectableDatabase: SelectableDatabase;
+    storedModels: PlatformStoredModelRecord[];
+    updatableDatabase: UpdatableDatabase;
+  }): Promise<void> {
+    for (const storedModel of input.storedModels) {
+      if (!storedModel.isAvailable) {
+        continue;
+      }
+
+      const key = `${input.modelProvider}:${storedModel.modelId}`;
+      const [existingPlatformModel] = await input.selectableDatabase
+        .select({
+          id: platformModels.id,
+        })
+        .from(platformModels)
+        .where(eq(platformModels.key, key)) as Array<{ id: string }>;
+      const platformModelId = existingPlatformModel?.id;
+      if (platformModelId) {
+        await input.updatableDatabase
+          .update(platformModels)
+          .set({
+            description: storedModel.description,
+            isAvailable: true,
+            isDefault: false,
+            modelProvider: input.modelProvider,
+            name: storedModel.name,
+            reasoningSupported: storedModel.reasoningSupported,
+            reasoningLevels: storedModel.reasoningLevels,
+            updatedAt: input.now,
+          })
+          .where(eq(platformModels.id, platformModelId));
+        await this.ensurePlatformModelRoute(input, platformModelId, storedModel.id);
+        continue;
+      }
+
+      await input.insertableDatabase
+        .insert(platformModels)
+        .values({
+          createdAt: input.now,
+          description: storedModel.description,
+          isAvailable: true,
+          isDefault: false,
+          key,
+          modelId: storedModel.modelId,
+          modelProvider: input.modelProvider,
+          name: storedModel.name,
+          reasoningSupported: storedModel.reasoningSupported,
+          reasoningLevels: storedModel.reasoningLevels,
+          updatedAt: input.now,
+        });
+      const [createdPlatformModel] = await input.selectableDatabase
+        .select({
+          id: platformModels.id,
+        })
+        .from(platformModels)
+        .where(eq(platformModels.key, key)) as Array<{ id: string }>;
+      if (createdPlatformModel) {
+        await this.ensurePlatformModelRoute(input, createdPlatformModel.id, storedModel.id);
+      }
+    }
+  }
+
+  private async ensurePlatformModelRoute(
+    input: {
+      insertableDatabase: InsertableDatabase;
+      now: Date;
+      selectableDatabase: SelectableDatabase;
+    },
+    platformModelId: string,
+    platformModelProviderCredentialModelId: string,
+  ): Promise<void> {
+    const [existingRoute] = await input.selectableDatabase
+      .select({
+        id: platformModelRoutes.id,
+      })
+      .from(platformModelRoutes)
+      .where(and(
+        eq(platformModelRoutes.platformModelId, platformModelId),
+        eq(platformModelRoutes.platformModelProviderCredentialModelId, platformModelProviderCredentialModelId),
+      )) as Array<{ id: string }>;
+    if (existingRoute) {
+      return;
+    }
+
+    await input.insertableDatabase
+      .insert(platformModelRoutes)
+      .values({
+        createdAt: input.now,
+        platformModelId,
+        platformModelProviderCredentialModelId,
+        updatedAt: input.now,
+      });
   }
 
   private resolvePreferredDefaultModelId(

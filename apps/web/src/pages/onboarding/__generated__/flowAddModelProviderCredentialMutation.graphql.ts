@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a9fa51ef5e8bf06c3ef80aa8e46c44d5>>
+ * @generated SignedSource<<5f1e89dc265707ea30cc681aaf571216>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,7 +26,6 @@ export type flowAddModelProviderCredentialMutation$data = {
   readonly AddModelProviderCredential: {
     readonly baseUrl: string | null | undefined;
     readonly id: string;
-    readonly isManaged: boolean;
     readonly modelProvider: string;
     readonly name: string;
   };
@@ -86,13 +85,6 @@ v1 = [
         "kind": "ScalarField",
         "name": "baseUrl",
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isManaged",
-        "storageKey": null
       }
     ],
     "storageKey": null
@@ -116,16 +108,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "dc5fbffc2222f7d9c36ce3b26e80b987",
+    "cacheID": "1494351157025ec6b0f803d819fc73b7",
     "id": null,
     "metadata": {},
     "name": "flowAddModelProviderCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation flowAddModelProviderCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    name\n    modelProvider\n    baseUrl\n    isManaged\n  }\n}\n"
+    "text": "mutation flowAddModelProviderCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    name\n    modelProvider\n    baseUrl\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4651af23cb23f207136e926ad8fc98b1";
+(node as any).hash = "5cf07b0013d825572f31e2a5b7d54836";
 
 export default node;

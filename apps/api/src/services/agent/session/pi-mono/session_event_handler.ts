@@ -141,6 +141,9 @@ type SessionAttribution = {
   costKind: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   modelProvider: string | null;
+  platformModelId: string | null;
+  platformModelProviderCredentialId: string | null;
+  platformModelProviderCredentialModelId: string | null;
 };
 
 type PersistedSessionMessageReference = {
@@ -198,6 +201,9 @@ export class PiMonoSessionEventHandler {
   private modelProviderCredentialCostKind?: SessionTurnUsageCostKind;
   private modelProviderCredentialId?: string;
   private modelProviderCredentialProvider?: string;
+  private platformModelId?: string | null;
+  private platformModelProviderCredentialId?: string | null;
+  private platformModelProviderCredentialModelId?: string | null;
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -269,6 +275,7 @@ export class PiMonoSessionEventHandler {
     }
 
     const companyId = await this.resolveCompanyId();
+    const attribution = await this.resolveSessionAttribution();
     const turnId = randomUUID();
     await this.transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as unknown as InsertableDatabase;
@@ -276,6 +283,9 @@ export class PiMonoSessionEventHandler {
         companyId,
         endedAt: null,
         id: turnId,
+        platformModelId: attribution.platformModelId,
+        platformModelProviderCredentialId: attribution.platformModelProviderCredentialId,
+        platformModelProviderCredentialModelId: attribution.platformModelProviderCredentialModelId,
         sessionId: this.sessionId,
         startedAt,
       });
@@ -1241,6 +1251,9 @@ export class PiMonoSessionEventHandler {
         costKind: this.modelProviderCredentialCostKind,
         modelProviderCredentialId: this.modelProviderCredentialId,
         modelProvider: this.modelProviderCredentialProvider ?? null,
+        platformModelId: this.platformModelId ?? null,
+        platformModelProviderCredentialId: this.platformModelProviderCredentialId ?? null,
+        platformModelProviderCredentialModelId: this.platformModelProviderCredentialModelId ?? null,
       };
     }
 
@@ -1257,6 +1270,7 @@ export class PiMonoSessionEventHandler {
           agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
           currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         })
@@ -1280,6 +1294,9 @@ export class PiMonoSessionEventHandler {
           costKind: undefined,
           modelProviderCredentialId: undefined,
           modelProvider: null,
+          platformModelId: null,
+          platformModelProviderCredentialId: null,
+          platformModelProviderCredentialModelId: null,
         };
       }
 
@@ -1309,6 +1326,9 @@ export class PiMonoSessionEventHandler {
           costKind: undefined,
           modelProviderCredentialId,
           modelProvider: null,
+          platformModelId: null,
+          platformModelProviderCredentialId: null,
+          platformModelProviderCredentialModelId: null,
         };
       }
 
@@ -1347,6 +1367,14 @@ export class PiMonoSessionEventHandler {
           : undefined,
         modelProviderCredentialId,
         modelProvider: typeof credentialRecord?.modelProvider === "string" ? credentialRecord.modelProvider : null,
+        platformModelId: currentModelCredentialSource === "platform"
+          && typeof sessionRecord?.currentPlatformModelId === "string"
+          ? sessionRecord.currentPlatformModelId
+          : null,
+        platformModelProviderCredentialId: currentModelCredentialSource === "platform" ? modelProviderCredentialId : null,
+        platformModelProviderCredentialModelId: currentModelCredentialSource === "platform"
+          ? currentPlatformModelProviderCredentialModelId
+          : null,
       };
     });
 
@@ -1373,6 +1401,9 @@ export class PiMonoSessionEventHandler {
     this.modelProviderCredentialCostKind = costKind;
     this.modelProviderCredentialId = modelProviderCredentialId;
     this.modelProviderCredentialProvider = modelProvider ?? undefined;
+    this.platformModelId = attribution.platformModelId;
+    this.platformModelProviderCredentialId = attribution.platformModelProviderCredentialId;
+    this.platformModelProviderCredentialModelId = attribution.platformModelProviderCredentialModelId;
     return {
       agentId,
       apiKey,
@@ -1381,6 +1412,9 @@ export class PiMonoSessionEventHandler {
       costKind,
       modelProviderCredentialId,
       modelProvider,
+      platformModelId: attribution.platformModelId,
+      platformModelProviderCredentialId: attribution.platformModelProviderCredentialId,
+      platformModelProviderCredentialModelId: attribution.platformModelProviderCredentialModelId,
     };
   }
 

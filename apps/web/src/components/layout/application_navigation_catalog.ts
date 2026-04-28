@@ -1,6 +1,7 @@
 import {
   BotIcon,
   BookOpenIcon,
+  BoxesIcon,
   Building2Icon,
   ChartPieIcon,
   FolderGit2Icon,
@@ -200,6 +201,12 @@ export class ApplicationNavigationCatalog {
               label: "LLM credentials",
               scope: "root",
               to: "/admin/llm-credentials",
+            },
+            {
+              icon: BoxesIcon,
+              label: "Platform models",
+              scope: "root",
+              to: "/admin/models",
             },
           ],
           label: "Platform",

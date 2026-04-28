@@ -74,7 +74,9 @@ function buildModelOptions() {
   return [{
     description: "Synthetic model for local transcript typing measurements.",
     id: "model-1",
+    modelCredentialSource: "user_provided",
     modelId: "gpt-5.4",
+    platformModelId: null,
     modelProviderCredentialModelId: "credential-model-1",
     name: "GPT-5.4",
     providerId: "companyhelm",

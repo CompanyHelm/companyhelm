@@ -40,6 +40,7 @@ import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutatio
 import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
 import { SetDefaultPlatformModelProviderCredentialMutation } from "../mutations/set_default_platform_model_provider_credential.ts";
 import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
+import { SetPlatformModelRoutesMutation } from "../mutations/set_platform_model_routes.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
 import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
@@ -66,6 +67,8 @@ import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregat
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
+import { PlatformModelRoutesQueryResolver } from "../resolvers/platform_model_routes.ts";
+import { PlatformModelsQueryResolver } from "../resolvers/platform_models.ts";
 import { PlatformModelProviderCredentialModelsQueryResolver } from "../resolvers/platform_model_provider_credential_models.ts";
 import { PlatformModelProviderCredentialsQueryResolver } from "../resolvers/platform_model_provider_credentials.ts";
 import { PlatformAdminUsersQueryResolver } from "../resolvers/platform_admin_users.ts";
@@ -128,6 +131,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation;
   private readonly refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation;
   private readonly platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver;
+  private readonly platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver;
+  private readonly platformModelsQueryResolver: PlatformModelsQueryResolver;
   private readonly platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver;
   private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
   private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
@@ -141,6 +146,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly skillsQueryResolver: SkillsQueryResolver;
   private readonly setDefaultPlatformModelProviderCredentialMutation: SetDefaultPlatformModelProviderCredentialMutation;
   private readonly setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation;
+  private readonly setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation;
   private readonly updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation;
@@ -285,6 +291,10 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new PlatformAdminCompaniesQueryResolver(),
     @inject(PlatformAdminUsersQueryResolver)
     platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
+    @inject(PlatformModelsQueryResolver)
+    platformModelsQueryResolver: PlatformModelsQueryResolver = new PlatformModelsQueryResolver(),
+    @inject(PlatformModelRoutesQueryResolver)
+    platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver = new PlatformModelRoutesQueryResolver(),
     @inject(PlatformModelProviderCredentialsQueryResolver)
     platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver =
       new PlatformModelProviderCredentialsQueryResolver(),
@@ -308,6 +318,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(SetDefaultPlatformModelProviderCredentialModelMutation)
     setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation =
       new SetDefaultPlatformModelProviderCredentialModelMutation(),
+    @inject(SetPlatformModelRoutesMutation)
+    setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation = new SetPlatformModelRoutesMutation(),
     @inject(UpdateCompanyOnboardingMutation)
     updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation = new UpdateCompanyOnboardingMutation(),
     @inject(UpdatePlatformAdminCompanyEnhancedLoggingMutation)
@@ -376,6 +388,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
     this.platformAdminCompaniesQueryResolver = platformAdminCompaniesQueryResolver;
+    this.platformModelRoutesQueryResolver = platformModelRoutesQueryResolver;
+    this.platformModelsQueryResolver = platformModelsQueryResolver;
     this.platformModelProviderCredentialModelsQueryResolver = platformModelProviderCredentialModelsQueryResolver;
     this.platformModelProviderCredentialsQueryResolver = platformModelProviderCredentialsQueryResolver;
     this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
@@ -402,6 +416,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
     this.setDefaultPlatformModelProviderCredentialMutation = setDefaultPlatformModelProviderCredentialMutation;
     this.setDefaultPlatformModelProviderCredentialModelMutation = setDefaultPlatformModelProviderCredentialModelMutation;
+    this.setPlatformModelRoutesMutation = setPlatformModelRoutesMutation;
     this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updatePlatformAdminCompanyEnhancedLoggingMutation = updatePlatformAdminCompanyEnhancedLoggingMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
@@ -446,6 +461,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
         SetDefaultPlatformModelProviderCredential: this.setDefaultPlatformModelProviderCredentialMutation.execute,
         SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
+        SetPlatformModelRoutes: this.setPlatformModelRoutesMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
         UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
         UpdatePlatformAdminCompanyEnhancedLogging: this.updatePlatformAdminCompanyEnhancedLoggingMutation.execute,
@@ -472,6 +488,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,
+        PlatformModels: this.platformModelsQueryResolver.execute,
+        PlatformModelRoutes: this.platformModelRoutesQueryResolver.execute,
         PlatformModelProviderCredentials: this.platformModelProviderCredentialsQueryResolver.execute,
         PlatformModelProviderCredentialModels: this.platformModelProviderCredentialModelsQueryResolver.execute,
         PlatformAdminUsers: this.platformAdminUsersQueryResolver.execute,

@@ -3,8 +3,9 @@ import { inject, injectable } from "inversify";
 import {
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
+  platformModelRoutes,
   platformModelProviderCredentials,
+  platformModels,
 } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import { ModelProviderService } from "../../services/ai_providers/model_provider_service.js";
@@ -39,7 +40,7 @@ type PlatformCredentialRecord = {
 type PlatformModelRecord = {
   id: string;
   isDefault: boolean;
-  platformModelProviderCredentialId: string;
+  modelProvider: string;
   modelId: string;
   name: string;
   description: string;
@@ -50,6 +51,7 @@ type PlatformModelRecord = {
 type GraphqlAgentCreateModelOption = {
   id: string;
   modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
@@ -121,17 +123,27 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
       const platformModelRecords = await selectableDatabase
         .select({
-          id: platformModelProviderCredentialModels.id,
-          isDefault: platformModelProviderCredentialModels.isDefault,
-          platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-          modelId: platformModelProviderCredentialModels.modelId,
-          name: platformModelProviderCredentialModels.name,
-          description: platformModelProviderCredentialModels.description,
-          reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
-          reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+          id: platformModels.id,
+          isDefault: platformModels.isDefault,
+          modelProvider: platformModels.modelProvider,
+          modelId: platformModels.modelId,
+          name: platformModels.name,
+          description: platformModels.description,
+          reasoningSupported: platformModels.reasoningSupported,
+          reasoningLevels: platformModels.reasoningLevels,
         })
-        .from(platformModelProviderCredentialModels)
-        .where(eq(platformModelProviderCredentialModels.isAvailable, true)) as PlatformModelRecord[];
+        .from(platformModels)
+        .where(eq(platformModels.isAvailable, true)) as PlatformModelRecord[];
+      const platformRouteRecords = await selectableDatabase
+        .select({
+          platformModelId: platformModelRoutes.platformModelId,
+          platformModelProviderCredentialModelId: platformModelRoutes.platformModelProviderCredentialModelId,
+        })
+        .from(platformModelRoutes)
+        .where(eq(platformModelRoutes.platformModelId, platformModelRoutes.platformModelId)) as Array<{
+          platformModelId: string;
+          platformModelProviderCredentialModelId: string;
+        }>;
 
       const credentialRecords = await selectableDatabase
         .select({
@@ -157,8 +169,13 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
-      const platformOption = this.createPlatformProviderOption(platformCredentialRecords, platformModelRecords);
+      const platformOption = this.createPlatformProviderOption(
+        platformCredentialRecords,
+        platformModelRecords,
+        platformRouteRecords,
+      );
       const companyOptions = credentialRecords
+        .filter((credentialRecord) => this.isUserProvidedProvider(credentialRecord.modelProvider))
         .map((credentialRecord) => {
           const credentialModelRecords = modelRecords
             .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
@@ -166,6 +183,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             .map((modelRecord) => ({
               id: this.createModelOptionId(modelRecord.id),
               modelCredentialSource: "user_provided" as const,
+              platformModelId: null,
               platformModelProviderCredentialModelId: null,
               modelProviderCredentialModelId: modelRecord.id,
               modelId: modelRecord.modelId,
@@ -212,35 +230,22 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
   private createPlatformProviderOption(
     platformCredentialRecords: PlatformCredentialRecord[],
     platformModelRecords: PlatformModelRecord[],
+    platformRouteRecords: Array<{
+      platformModelId: string;
+      platformModelProviderCredentialModelId: string;
+    }>,
   ): GraphqlAgentCreateProviderOption | null {
-    const activeCredentialIds = new Set(platformCredentialRecords.map((credentialRecord) => credentialRecord.id));
-    const credentialById = new Map(platformCredentialRecords.map((credentialRecord) => [credentialRecord.id, credentialRecord]));
-    const selectedModelsByModelId = new Map<string, PlatformModelRecord>();
+    void platformCredentialRecords;
+    const platformModelIdsWithRoutes = new Set(platformRouteRecords.map((routeRecord) => routeRecord.platformModelId));
 
-    for (const modelRecord of platformModelRecords) {
-      const credentialRecord = credentialById.get(modelRecord.platformModelProviderCredentialId);
-      if (!credentialRecord || !activeCredentialIds.has(modelRecord.platformModelProviderCredentialId)) {
-        continue;
-      }
-
-      const existingModel = selectedModelsByModelId.get(modelRecord.modelId);
-      if (!existingModel) {
-        selectedModelsByModelId.set(modelRecord.modelId, modelRecord);
-        continue;
-      }
-
-      const existingCredential = credentialById.get(existingModel.platformModelProviderCredentialId);
-      if (credentialRecord.isDefault && !existingCredential?.isDefault) {
-        selectedModelsByModelId.set(modelRecord.modelId, modelRecord);
-      }
-    }
-
-    const credentialModels = [...selectedModelsByModelId.values()]
+    const credentialModels = platformModelRecords
+      .filter((modelRecord) => platformModelIdsWithRoutes.has(modelRecord.id))
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((modelRecord) => ({
         id: this.createPlatformModelOptionId(modelRecord.id),
         modelCredentialSource: "platform" as const,
-        platformModelProviderCredentialModelId: modelRecord.id,
+        platformModelId: modelRecord.id,
+        platformModelProviderCredentialModelId: null,
         modelProviderCredentialModelId: null,
         modelId: modelRecord.modelId,
         name: modelRecord.name,
@@ -295,8 +300,8 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     return `agent-create-model-option:${modelProviderCredentialModelId}`;
   }
 
-  private createPlatformModelOptionId(platformModelProviderCredentialModelId: string): string {
-    return `agent-create-platform-model-option:${platformModelProviderCredentialModelId}`;
+  private createPlatformModelOptionId(platformModelId: string): string {
+    return `agent-create-platform-model-option:${platformModelId}`;
   }
 
   private resolveProviderLabel(credentialRecord: CredentialRecord): string {
@@ -310,5 +315,9 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     }
 
     return `${credentialRecord.name} (${credentialRecord.modelProvider})`;
+  }
+
+  private isUserProvidedProvider(modelProvider: string): boolean {
+    return modelProvider !== "companyhelm" && modelProvider !== "system:companyhelm";
   }
 }

@@ -69,9 +69,12 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
-      return credentials.map((credential) =>
-        serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords)
-      );
+      return credentials
+        .filter((credential) => {
+          const modelProvider = String(credential.modelProvider);
+          return modelProvider !== "companyhelm" && modelProvider !== "system:companyhelm";
+        })
+        .map((credential) => serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords));
     });
   };
 }

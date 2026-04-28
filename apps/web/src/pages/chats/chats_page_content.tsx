@@ -291,6 +291,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         return providerOption.models.map((modelOption) => ({
           description: modelOption.description,
           id: modelOption.id,
+          modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
+          platformModelId: modelOption.platformModelId,
           modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
           modelId: modelOption.modelId,
           name: modelOption.name,
@@ -1029,8 +1031,10 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     // picker when the operator actually switches chat targets or the current model disappears.
     const nextModelOptionId = resolveComposerModelOptionId(
       composerModelOptions,
+      selectedSession?.platformModelId ?? null,
       selectedSession?.modelProviderCredentialModelId ?? null,
       selectedSession?.modelId ?? null,
+      selectedAgent.platformModelId ?? null,
       selectedAgent.modelProviderCredentialModelId ?? null,
     );
     const nextModelOption = composerModelOptionById.get(nextModelOptionId) ?? null;
@@ -1048,6 +1052,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     selectedAgent,
     selectedSession?.id,
     selectedSession?.modelId,
+    selectedSession?.platformModelId,
     selectedSession?.modelProviderCredentialModelId,
     selectedSession?.reasoningLevel,
   ]);
@@ -1419,6 +1424,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           input: {
             agentId: selectedAgent.id,
             images: promptImages.length > 0 ? promptImages : undefined,
+            modelCredentialSource: selectedComposerModelOption.modelCredentialSource,
+            platformModelId: selectedComposerModelOption.platformModelId,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
@@ -1626,6 +1633,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           input: {
             id: selectedSession.id,
             images: promptImages.length > 0 ? promptImages : undefined,
+            modelCredentialSource: selectedComposerModelOption.modelCredentialSource,
+            platformModelId: selectedComposerModelOption.platformModelId,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer,

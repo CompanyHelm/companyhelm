@@ -60,7 +60,6 @@ const onboardingPageQueryNode = graphql`
       name
       modelProvider
       baseUrl
-      isManaged
     }
   }
 `;
@@ -146,7 +145,6 @@ const onboardingPageAddModelProviderCredentialMutationNode = graphql`
       name
       modelProvider
       baseUrl
-      isManaged
     }
   }
 `;
@@ -187,7 +185,6 @@ export interface OnboardingFlowController {
   modelProviderCredentials: Array<{
     baseUrl: string | null | undefined;
     id: string;
-    isManaged: boolean;
     modelProvider: string;
     name: string;
   }>;
@@ -278,18 +275,16 @@ export function useOnboardingFlowController(options?: {
     installationId: installation.installationId,
   }));
   const modelProviderCredentials = data.ModelProviderCredentials
-    .filter((credential) => !credential.isManaged)
     .map((credential) => ({
       baseUrl: credential.baseUrl,
       id: credential.id,
-      isManaged: credential.isManaged,
       modelProvider: credential.modelProvider,
       name: credential.name,
     }));
   const hasManagedLlmProvider = data.ModelProviders.some((provider) => (
     provider.id === "companyhelm" && provider.isAvailable
   ));
-  const hasThirdPartyCredential = data.ModelProviderCredentials.some((credential) => !credential.isManaged);
+  const hasThirdPartyCredential = data.ModelProviderCredentials.length > 0;
   const thirdPartyProviders = useMemo(() => {
     return ModelProviderCredentialCatalog.toDialogProviders(
       data.ModelProviders

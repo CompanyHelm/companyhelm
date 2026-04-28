@@ -68,6 +68,18 @@ class AgentCreateOptionsQueryTestHarness {
                 from() {
                   return {
                     async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
                       return [{
                         id: "credential-1",
                         isDefault: true,
@@ -80,7 +92,7 @@ class AgentCreateOptionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {

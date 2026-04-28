@@ -11,8 +11,8 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
+  platformModelRoutes,
+  platformModels,
   taskStages,
   workflowDefinitionInputs,
   workflowDefinitions,
@@ -55,11 +55,10 @@ type ModelProviderCredentialModelRecord = {
   reasoningLevels: string[] | null;
 };
 
-type PlatformModelProviderCredentialModelRecord = {
+type PlatformModelRecord = {
   id: string;
   isDefault: boolean;
   modelId: string;
-  platformModelProviderCredentialId: string;
   reasoningLevels: string[] | null;
 };
 
@@ -399,7 +398,7 @@ export class CompanyBootstrapService {
     computeProviderDefinitionId: string,
     modelSelection: {
       defaultModelCredentialSource: "platform" | "user_provided";
-      defaultPlatformModelProviderCredentialModelId: string | null;
+      defaultPlatformModelId: string | null;
       defaultModelProviderCredentialModelId: string | null;
       defaultReasoningLevel: string | null;
     },
@@ -411,7 +410,7 @@ export class CompanyBootstrapService {
         .set({
           defaultComputeProviderDefinitionId: computeProviderDefinitionId,
           defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
-          defaultPlatformModelProviderCredentialModelId: modelSelection.defaultPlatformModelProviderCredentialModelId,
+          defaultPlatformModelId: modelSelection.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
           default_reasoning_level: modelSelection.defaultReasoningLevel,
           updated_at: new Date(),
@@ -433,7 +432,7 @@ export class CompanyBootstrapService {
         defaultComputeProviderDefinitionId: computeProviderDefinitionId,
         defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
         defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
-        defaultPlatformModelProviderCredentialModelId: modelSelection.defaultPlatformModelProviderCredentialModelId,
+        defaultPlatformModelId: modelSelection.defaultPlatformModelId,
         defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
         default_reasoning_level: modelSelection.defaultReasoningLevel,
         id: seedAgentId,
@@ -635,7 +634,7 @@ export class CompanyBootstrapService {
     },
   ): Promise<{
     defaultModelCredentialSource: "platform" | "user_provided";
-    defaultPlatformModelProviderCredentialModelId: string | null;
+    defaultPlatformModelId: string | null;
     defaultModelProviderCredentialModelId: string | null;
     defaultReasoningLevel: string | null;
   }> {
@@ -645,7 +644,7 @@ export class CompanyBootstrapService {
       if (platformModel) {
         return {
           defaultModelCredentialSource: "platform",
-          defaultPlatformModelProviderCredentialModelId: platformModel.id,
+          defaultPlatformModelId: platformModel.id,
           defaultModelProviderCredentialModelId: null,
           defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(platformModel.reasoningLevels ?? []),
         };
@@ -662,7 +661,7 @@ export class CompanyBootstrapService {
       if (preferredModel) {
         return {
           defaultModelCredentialSource: "user_provided",
-          defaultPlatformModelProviderCredentialModelId: null,
+          defaultPlatformModelId: null,
           defaultModelProviderCredentialModelId: preferredModel.id,
           defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
         };
@@ -673,7 +672,7 @@ export class CompanyBootstrapService {
     if (fallbackPlatformModel) {
       return {
         defaultModelCredentialSource: "platform",
-        defaultPlatformModelProviderCredentialModelId: fallbackPlatformModel.id,
+        defaultPlatformModelId: fallbackPlatformModel.id,
         defaultModelProviderCredentialModelId: null,
         defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(fallbackPlatformModel.reasoningLevels ?? []),
       };
@@ -690,33 +689,32 @@ export class CompanyBootstrapService {
 
   private async findPreferredPlatformModel(
     transaction: DatabaseTransactionInterface,
-  ): Promise<PlatformModelProviderCredentialModelRecord | null> {
-    const [platformCredential] = await transaction
+  ): Promise<PlatformModelRecord | null> {
+    const routeRecords = await transaction
       .select({
-        id: platformModelProviderCredentials.id,
+        platformModelId: platformModelRoutes.platformModelId,
       })
-      .from(platformModelProviderCredentials)
-      .where(eq(platformModelProviderCredentials.isDefault, true))
-      .limit(1) as Array<{ id: string }>;
-    if (!platformCredential) {
+      .from(platformModelRoutes)
+      .where(eq(platformModelRoutes.platformModelId, platformModelRoutes.platformModelId)) as unknown as Array<{
+        platformModelId: string;
+      }>;
+    const platformModelIdsWithRoutes = new Set(routeRecords.map((routeRecord) => routeRecord.platformModelId));
+    if (platformModelIdsWithRoutes.size === 0) {
       return null;
     }
 
     const models = await transaction
       .select({
-        id: platformModelProviderCredentialModels.id,
-        isDefault: platformModelProviderCredentialModels.isDefault,
-        modelId: platformModelProviderCredentialModels.modelId,
-        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-        reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+        id: platformModels.id,
+        isDefault: platformModels.isDefault,
+        modelId: platformModels.modelId,
+        reasoningLevels: platformModels.reasoningLevels,
       })
-      .from(platformModelProviderCredentialModels)
-      .where(and(
-        eq(platformModelProviderCredentialModels.platformModelProviderCredentialId, platformCredential.id),
-        eq(platformModelProviderCredentialModels.isAvailable, true),
-      )) as unknown as PlatformModelProviderCredentialModelRecord[];
+      .from(platformModels)
+      .where(eq(platformModels.isAvailable, true)) as unknown as PlatformModelRecord[];
+    const routedModels = models.filter((model) => platformModelIdsWithRoutes.has(model.id));
 
-    return models.find((model) => model.isDefault) ?? models[0] ?? null;
+    return routedModels.find((model) => model.isDefault) ?? routedModels[0] ?? null;
   }
 
   private async listModelProviderCredentials(

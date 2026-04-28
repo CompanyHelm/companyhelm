@@ -23,6 +23,7 @@ type GraphqlAgentRecord = {
   id: string;
   name: string;
   modelCredentialSource: "user_provided";
+  platformModelId: null;
   platformModelProviderCredentialModelId: null;
   modelProviderCredentialId: null;
   modelProviderCredentialModelId: null;
@@ -89,6 +90,7 @@ export class DeleteAgentMutation extends Mutation<DeleteAgentMutationArguments, 
       id: agent.id,
       name: agent.name,
       modelCredentialSource: "user_provided",
+      platformModelId: null,
       platformModelProviderCredentialModelId: null,
       modelProviderCredentialId: null,
       modelProviderCredentialModelId: null,

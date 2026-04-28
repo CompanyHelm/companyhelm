@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dd7df818dfc4cecd68cd8f7d64f50076>>
+ * @generated SignedSource<<0e8c8d3c4aaa0a523b1a8f29a82894b5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,9 +15,10 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly id: string;
     readonly isDefault: boolean;
     readonly label: string;
-    readonly modelProviderCredentialId: string;
+    readonly modelCredentialSource: string;
+    readonly modelProviderCredentialId: string | null | undefined;
     readonly models: ReadonlyArray<{
-      readonly modelProviderCredentialModelId: string;
+      readonly modelProviderCredentialModelId: string | null | undefined;
     }>;
   }>;
   readonly Agents: ReadonlyArray<{
@@ -32,7 +33,6 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isDefault: boolean;
-    readonly isManaged: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly refreshedAt: string | null | undefined;
@@ -96,31 +96,38 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isDefault",
+  "name": "modelCredentialSource",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "label",
+  "name": "isDefault",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelProviderCredentialModelId",
+  "name": "label",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "type",
+  "name": "modelProviderCredentialModelId",
   "storageKey": null
 },
 v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v9 = {
   "alias": null,
   "args": null,
   "concreteType": "ModelProvider",
@@ -130,7 +137,7 @@ v8 = {
   "selections": [
     (v0/*: any*/),
     (v1/*: any*/),
-    (v7/*: any*/),
+    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -141,7 +148,7 @@ v8 = {
   ],
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "ModelProviderCredential",
@@ -157,14 +164,7 @@ v9 = {
       "name": "baseUrl",
       "storageKey": null
     },
-    (v4/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "isManaged",
-      "storageKey": null
-    },
+    (v5/*: any*/),
     (v1/*: any*/),
     {
       "alias": null,
@@ -173,7 +173,7 @@ v9 = {
       "name": "modelProvider",
       "storageKey": null
     },
-    (v7/*: any*/),
+    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -219,7 +219,7 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = {
+v11 = {
   "alias": null,
   "args": null,
   "concreteType": "Session",
@@ -228,7 +228,7 @@ v10 = {
   "plural": true,
   "selections": [
     (v0/*: any*/),
-    (v6/*: any*/)
+    (v7/*: any*/)
   ],
   "storageKey": null
 };
@@ -249,9 +249,10 @@ return {
         "plural": true,
         "selections": [
           (v0/*: any*/),
-          (v2/*: any*/),
           (v4/*: any*/),
+          (v2/*: any*/),
           (v5/*: any*/),
+          (v6/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -260,16 +261,16 @@ return {
             "name": "models",
             "plural": true,
             "selections": [
-              (v6/*: any*/)
+              (v7/*: any*/)
             ],
             "storageKey": null
           }
         ],
         "storageKey": null
       },
-      (v8/*: any*/),
       (v9/*: any*/),
-      (v10/*: any*/)
+      (v10/*: any*/),
+      (v11/*: any*/)
     ],
     "type": "Query",
     "abstractKey": null
@@ -290,9 +291,10 @@ return {
         "plural": true,
         "selections": [
           (v0/*: any*/),
-          (v2/*: any*/),
           (v4/*: any*/),
+          (v2/*: any*/),
           (v5/*: any*/),
+          (v6/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -301,7 +303,7 @@ return {
             "name": "models",
             "plural": true,
             "selections": [
-              (v6/*: any*/),
+              (v7/*: any*/),
               (v0/*: any*/)
             ],
             "storageKey": null
@@ -309,22 +311,22 @@ return {
         ],
         "storageKey": null
       },
-      (v8/*: any*/),
       (v9/*: any*/),
-      (v10/*: any*/)
+      (v10/*: any*/),
+      (v11/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "08194d02243d6886ebf4be1932459866",
+    "cacheID": "9e30e50bf30605401925c4ebf8d6dfeb",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    models {\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    modelProviderCredentialId\n    isDefault\n    label\n    models {\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e416908e82aff5bee392823dd86c9fc5";
+(node as any).hash = "87f10168c16435e7d00ce208b508b0b4";
 
 export default node;

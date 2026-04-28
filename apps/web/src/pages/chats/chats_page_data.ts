@@ -31,6 +31,7 @@ export const chatsPageQueryNode = graphql`
     Agents {
       id
       name
+      platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
@@ -39,12 +40,15 @@ export const chatsPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      modelCredentialSource
       label
       modelProvider
       defaultModelId
       defaultReasoningLevel
       models {
         id
+        modelCredentialSource
+        platformModelId
         modelProviderCredentialModelId
         modelId
         name
@@ -95,6 +99,7 @@ export const chatsPageQueryNode = graphql`
       forkedFromTurnId
       isCompacting
       maxContextTokens
+      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -296,6 +301,7 @@ export const chatsPageCreateSessionMutationNode = graphql`
       forkedFromTurnId
       isCompacting
       maxContextTokens
+      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -324,6 +330,7 @@ export const chatsPageForkSessionMutationNode = graphql`
       forkedFromTurnId
       isCompacting
       maxContextTokens
+      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel

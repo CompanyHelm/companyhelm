@@ -8,6 +8,7 @@ type CreateSessionMutationArguments = {
     agentId: string;
     images?: SessionPromptImageInput[] | null;
     modelCredentialSource?: "platform" | "user_provided" | null;
+    platformModelId?: string | null;
     platformModelProviderCredentialModelId?: string | null;
     modelProviderCredentialModelId?: string | null;
     reasoningLevel?: string | null;
@@ -23,6 +24,7 @@ type GraphqlSessionRecord = {
   hasUnread: boolean;
   lastUserMessageAt: string | null;
   modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
@@ -44,6 +46,7 @@ type ServiceSessionRecord = {
   currentContextTokens: number | null;
   currentModelId: string;
   currentModelCredentialSource: "platform" | "user_provided";
+  currentPlatformModelId: string | null;
   currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
@@ -102,6 +105,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       context.authSession.user.id,
       images,
       arguments_.input.modelCredentialSource,
+      arguments_.input.platformModelId,
       arguments_.input.platformModelProviderCredentialModelId,
     );
 
@@ -116,6 +120,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       hasUnread: false,
       lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
       modelCredentialSource: sessionRecord.currentModelCredentialSource,
+      platformModelId: sessionRecord.currentPlatformModelId,
       platformModelProviderCredentialModelId: sessionRecord.currentPlatformModelProviderCredentialModelId,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,

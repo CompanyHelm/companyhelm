@@ -5,8 +5,7 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
+  platformModels,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
@@ -23,6 +22,7 @@ type AddAgentMutationArguments = {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     modelCredentialSource?: "platform" | "user_provided" | null;
+    platformModelId?: string | null;
     platformModelProviderCredentialModelId?: string | null;
     modelProviderCredentialId?: string | null;
     modelProviderCredentialModelId?: string | null;
@@ -41,7 +41,7 @@ type AgentRecord = {
   id: string;
   name: string;
   defaultModelCredentialSource: "platform" | "user_provided";
-  defaultPlatformModelProviderCredentialModelId: string | null;
+  defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
@@ -65,11 +65,6 @@ type CredentialRecord = {
   modelProvider: ModelProviderId;
 };
 
-type PlatformCredentialRecord = {
-  id: string;
-  modelProvider: ModelProviderId;
-};
-
 type ComputeProviderDefinitionRecord = {
   id: string;
   name: string;
@@ -85,6 +80,7 @@ type GraphqlAgentRecord = {
   id: string;
   name: string;
   modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
@@ -245,7 +241,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           companyId: company.id,
           name: arguments_.input.name,
           defaultModelCredentialSource: modelRecord.modelCredentialSource,
-          defaultPlatformModelProviderCredentialModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
+          defaultPlatformModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
           defaultModelProviderCredentialModelId: modelRecord.modelCredentialSource === "user_provided" ? modelRecord.id : null,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
@@ -258,7 +254,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           id: agents.id,
           name: agents.name,
           defaultModelCredentialSource: agents.defaultModelCredentialSource,
-          defaultPlatformModelProviderCredentialModelId: agents.defaultPlatformModelProviderCredentialModelId,
+          defaultPlatformModelId: agents.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
@@ -346,9 +342,9 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   }
 
   private static resolveModelCredentialSource(input: AddAgentMutationArguments["input"]): "platform" | "user_provided" {
-    if (input.modelCredentialSource === "platform" || input.platformModelProviderCredentialModelId) {
-      if (!input.platformModelProviderCredentialModelId) {
-        throw new Error("platformModelProviderCredentialModelId is required.");
+    if (input.modelCredentialSource === "platform" || input.platformModelId || input.platformModelProviderCredentialModelId) {
+      if (!input.platformModelId && !input.platformModelProviderCredentialModelId) {
+        throw new Error("platformModelId is required.");
       }
 
       return "platform";
@@ -370,43 +366,35 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     if (modelCredentialSource === "platform") {
       const [modelRecord] = await databaseTransaction
         .select({
-          id: platformModelProviderCredentialModels.id,
-          platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-          name: platformModelProviderCredentialModels.name,
-          reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
+          id: platformModels.id,
+          modelProvider: platformModels.modelProvider,
+          name: platformModels.name,
+          reasoningLevels: platformModels.reasoningLevels,
         })
-        .from(platformModelProviderCredentialModels)
+        .from(platformModels)
         .where(and(
-          eq(platformModelProviderCredentialModels.id, input.platformModelProviderCredentialModelId ?? ""),
-          eq(platformModelProviderCredentialModels.isAvailable, true),
+          eq(platformModels.id, input.platformModelId ?? ""),
+          eq(platformModels.isAvailable, true),
         )) as Array<{
           id: string;
+          modelProvider: ModelProviderId;
           name: string;
-          platformModelProviderCredentialId: string;
           reasoningLevels: string[] | null;
         }>;
       if (!modelRecord) {
         throw new Error("Platform provider model not found.");
       }
 
-      const [platformCredentialRecord] = await databaseTransaction
-        .select({
-          id: platformModelProviderCredentials.id,
-          modelProvider: platformModelProviderCredentials.modelProvider,
-        })
-        .from(platformModelProviderCredentials)
-        .where(eq(platformModelProviderCredentials.id, modelRecord.platformModelProviderCredentialId ?? "")) as PlatformCredentialRecord[];
-      if (!platformCredentialRecord) {
-        throw new Error("Platform provider credential not found.");
-      }
-
       return {
-        credentialRecord: platformCredentialRecord,
+        credentialRecord: {
+          id: modelRecord.id,
+          modelProvider: modelRecord.modelProvider,
+        },
         modelRecord: {
           ...modelRecord,
           modelCredentialSource: "platform",
-          modelProviderCredentialId: platformCredentialRecord.id,
-          platformModelProviderCredentialId: platformCredentialRecord.id,
+          modelProviderCredentialId: modelRecord.id,
+          platformModelProviderCredentialId: null,
         },
       };
     }
@@ -492,7 +480,8 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       id: agentRecord.id,
       name: agentRecord.name,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
-      platformModelProviderCredentialModelId: agentRecord.defaultPlatformModelProviderCredentialModelId,
+      platformModelId: agentRecord.defaultPlatformModelId,
+      platformModelProviderCredentialModelId: null,
       modelProviderCredentialId: modelRecord.modelCredentialSource === "user_provided" ? credentialRecord.id : null,
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord.modelProvider,
