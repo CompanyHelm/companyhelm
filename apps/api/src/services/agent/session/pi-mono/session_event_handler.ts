@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
 import pino, { type Logger as PinoLogger } from "pino";
-import { PlatformLlmCredentialAccess } from "../../../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../../../db/platform_admin_access.ts";
 import {
   agentSessions,
   messageContents,
@@ -1304,7 +1304,7 @@ export class PiMonoSessionEventHandler {
       }
 
       if (currentModelCredentialSource === "platform") {
-        await PlatformLlmCredentialAccess.enable(selectableDatabase);
+        await PlatformAdminAccess.enable(selectableDatabase);
       }
 
       const [credentialModelRecord] = currentModelCredentialSource === "platform"

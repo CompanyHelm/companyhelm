@@ -4,7 +4,7 @@ import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { PlatformLlmCredentialAccess } from "../../../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../../../db/platform_admin_access.ts";
 import {
   agentSessions,
   agents,
@@ -704,7 +704,7 @@ export class SessionProcessExecutionService {
     selectableDatabase: SelectableDatabase,
     platformModelProviderCredentialModelId: string,
   ): Promise<ModelRow[]> {
-    await PlatformLlmCredentialAccess.enable(selectableDatabase);
+    await PlatformAdminAccess.enable(selectableDatabase);
     return selectableDatabase
       .select({
         modelId: platformModelProviderCredentialModels.modelId,
@@ -720,7 +720,7 @@ export class SessionProcessExecutionService {
     selectableDatabase: SelectableDatabase,
     platformModelProviderCredentialId: string,
   ): Promise<CredentialRow[]> {
-    await PlatformLlmCredentialAccess.enable(selectableDatabase);
+    await PlatformAdminAccess.enable(selectableDatabase);
     return selectableDatabase
       .select({
         baseUrl: platformModelProviderCredentials.baseUrl,

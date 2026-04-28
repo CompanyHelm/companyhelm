@@ -1,5 +1,5 @@
 import { inject, injectable } from "inversify";
-import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import { platformModelProviderCredentialModels, platformModelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
 import {
@@ -35,7 +35,7 @@ export class PlatformModelProviderCredentialsQueryResolver {
     }
 
     return transactionProvider.transaction(async (tx) => {
-      await PlatformLlmCredentialAccess.enable(tx);
+      await PlatformAdminAccess.enable(tx);
       const credentials = await tx
         .select({
           id: platformModelProviderCredentials.id,

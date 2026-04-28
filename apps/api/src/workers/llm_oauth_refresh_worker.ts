@@ -92,7 +92,7 @@ export class LlmOauthRefreshWorker extends WorkerBase {
   }
 
   private async refreshPlatformCredentials(sql: Sql, refreshCutoff: string): Promise<void> {
-    await sql`SELECT set_config('app.platform_llm_credential_access', 'true', true)`;
+    await sql`SELECT set_config('app.platform_admin_access', 'true', true)`;
     const credentials = await sql<LlmOauthCredentialRow[]>`
         SELECT
           "id",

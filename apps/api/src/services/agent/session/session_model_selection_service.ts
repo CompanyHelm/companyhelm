@@ -8,7 +8,7 @@ import {
   platformModels,
   sessionTurns,
 } from "../../../db/schema.ts";
-import { PlatformLlmCredentialAccess } from "../../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../../db/platform_admin_access.ts";
 import type {
   AgentRecord,
   ExistingSessionRow,
@@ -163,7 +163,7 @@ export class SessionModelSelectionService {
     platformModelProviderCredentialId: string;
     platformModelProviderCredentialModelId: string;
   }> {
-    await PlatformLlmCredentialAccess.enable(selectableDatabase);
+    await PlatformAdminAccess.enable(selectableDatabase);
     const routeRecords = await selectableDatabase
       .select({
         createdAt: platformModelRoutes.createdAt,

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
   modelProviderCredentialModels,
   modelProviderCredentials,
@@ -117,7 +117,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      await PlatformLlmCredentialAccess.enable(tx);
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
       const platformCredentialRecords = await selectableDatabase
         .select({

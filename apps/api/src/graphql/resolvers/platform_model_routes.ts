@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
   platformModelProviderCredentialModels,
   platformModelProviderCredentials,
@@ -56,7 +56,7 @@ export class PlatformModelRoutesQueryResolver {
     }
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      await PlatformLlmCredentialAccess.enable(tx);
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as unknown as SelectableDatabase;
       const routeRecords = await selectableDatabase
         .select({

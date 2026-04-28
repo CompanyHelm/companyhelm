@@ -35,7 +35,7 @@ class LlmOauthRefreshWorkerTestHarness {
         values,
       });
 
-      if (query.includes("set_config('app.platform_llm_credential_access'")) {
+      if (query.includes("set_config('app.platform_admin_access'")) {
         return [];
       }
 

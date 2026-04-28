@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { PlatformLlmCredentialAccess } from "../../db/platform_llm_credential_access.ts";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import { platformModelProviderCredentialModels } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
 import {
@@ -49,7 +49,7 @@ export class SetDefaultPlatformModelProviderCredentialModelMutation extends Muta
     const now = new Date();
 
     return transactionProvider.transaction(async (tx) => {
-      await PlatformLlmCredentialAccess.enable(tx);
+      await PlatformAdminAccess.enable(tx);
       const [model] = await tx
         .select({
           description: platformModelProviderCredentialModels.description,
