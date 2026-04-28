@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DefaultAttachmentSection } from "./default_attachment_section";
+import { EnvironmentTemplateDefaultSelector } from "./environment_template_default_selector";
 import { SecretDefaultOptions } from "./secret_default_options";
 
 export type AgentCreateProviderOption = {
@@ -143,6 +144,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([]);
+  const environmentTemplateDefaultSelector = useMemo(() => new EnvironmentTemplateDefaultSelector(), []);
   const secretDefaultOptions = useMemo(() => new SecretDefaultOptions(), []);
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
@@ -290,8 +292,10 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       return;
     }
 
-    setEnvironmentTemplateId(selectedComputeProviderDefinitionOption.templates[0]?.templateId ?? "");
-  }, [environmentTemplateId, selectedComputeProviderDefinitionOption]);
+    setEnvironmentTemplateId(
+      environmentTemplateDefaultSelector.selectTemplateId(selectedComputeProviderDefinitionOption.templates),
+    );
+  }, [environmentTemplateDefaultSelector, environmentTemplateId, selectedComputeProviderDefinitionOption]);
 
   useEffect(() => {
     if (!selectedProviderOption) {
