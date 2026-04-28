@@ -3,7 +3,6 @@ import { injectable } from "inversify";
 import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
   platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
   platformModelRoutes,
   platformModels,
 } from "../../db/schema.ts";
@@ -102,36 +101,13 @@ export class SetPlatformModelRoutesMutation extends Mutation<
         const credentialModelRecords = await database
           .select({
             id: platformModelProviderCredentialModels.id,
-            modelId: platformModelProviderCredentialModels.modelId,
-            platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
           })
           .from(platformModelProviderCredentialModels)
           .where(inArray(platformModelProviderCredentialModels.id, routeModelIds)) as Array<{
             id: string;
-            modelId: string;
-            platformModelProviderCredentialId: string;
           }>;
         if (credentialModelRecords.length !== routeModelIds.length) {
           throw new Error("One or more credential models were not found.");
-        }
-
-        for (const credentialModelRecord of credentialModelRecords) {
-          if (credentialModelRecord.modelId !== platformModelRecord.modelId) {
-            throw new Error("Route credential models must match the platform model id.");
-          }
-
-          const [credentialRecord] = await database
-            .select({
-              modelProvider: platformModelProviderCredentials.modelProvider,
-            })
-            .from(platformModelProviderCredentials)
-            .where(eq(
-              platformModelProviderCredentials.id,
-              credentialModelRecord.platformModelProviderCredentialId,
-            )) as Array<{ modelProvider: string }>;
-          if (credentialRecord?.modelProvider !== platformModelRecord.modelProvider) {
-            throw new Error("Route credential models must match the platform model provider.");
-          }
         }
       }
 

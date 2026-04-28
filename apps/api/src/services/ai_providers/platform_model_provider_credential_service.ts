@@ -179,13 +179,11 @@ export class PlatformModelProviderCredentialService {
       }
 
       const refreshedModels = await this.loadStoredModels(selectableDatabase, input.platformModelProviderCredentialId);
-      await this.reconcilePlatformModelsAndRoutes({
-        insertableDatabase,
+      await this.reconcileStoredPlatformModelsAndRoutes({
         modelProvider: input.modelProvider,
         now,
-        selectableDatabase,
         storedModels: refreshedModels,
-        updatableDatabase,
+        transaction: tx,
       });
 
       return this.loadStoredModels(selectableDatabase, input.platformModelProviderCredentialId);
@@ -222,6 +220,22 @@ export class PlatformModelProviderCredentialService {
       createdAt: input.now,
       updatedAt: input.now,
     };
+  }
+
+  async reconcileStoredPlatformModelsAndRoutes(input: {
+    modelProvider: string;
+    now: Date;
+    storedModels: PlatformStoredModelRecord[];
+    transaction: unknown;
+  }): Promise<void> {
+    await this.reconcilePlatformModelsAndRoutes({
+      insertableDatabase: input.transaction as InsertableDatabase,
+      modelProvider: input.modelProvider,
+      now: input.now,
+      selectableDatabase: input.transaction as SelectableDatabase,
+      storedModels: input.storedModels,
+      updatableDatabase: input.transaction as UpdatableDatabase,
+    });
   }
 
   private async loadStoredModels(

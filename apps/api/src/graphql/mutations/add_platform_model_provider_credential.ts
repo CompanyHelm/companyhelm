@@ -7,11 +7,13 @@ import {
   ModelProviderAuthorizationType,
   ModelProviderService,
 } from "../../services/ai_providers/model_provider_service.ts";
-import { PlatformModelProviderCredentialService } from "../../services/ai_providers/platform_model_provider_credential_service.ts";
+import {
+  PlatformModelProviderCredentialService,
+  type PlatformStoredModelRecord,
+} from "../../services/ai_providers/platform_model_provider_credential_service.ts";
 import {
   PlatformModelProviderCredentialRecordPresenter,
   type GraphqlPlatformModelProviderCredentialRecord,
-  type PlatformModelProviderCredentialModelRecord,
   type PlatformModelProviderCredentialRecord,
 } from "../platform_model_provider_credential_record.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -212,6 +214,7 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
         .select({
           description: platformModelProviderCredentialModels.description,
           id: platformModelProviderCredentialModels.id,
+          isAvailable: platformModelProviderCredentialModels.isAvailable,
           isDefault: platformModelProviderCredentialModels.isDefault,
           modelId: platformModelProviderCredentialModels.modelId,
           name: platformModelProviderCredentialModels.name,
@@ -219,13 +222,20 @@ export class AddPlatformModelProviderCredentialMutation extends Mutation<
           reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
           reasoningLevels: platformModelProviderCredentialModels.reasoningLevels,
           createdAt: platformModelProviderCredentialModels.createdAt,
+          unavailableAt: platformModelProviderCredentialModels.unavailableAt,
           updatedAt: platformModelProviderCredentialModels.updatedAt,
         })
         .from(platformModelProviderCredentialModels)
         .where(eq(
           platformModelProviderCredentialModels.platformModelProviderCredentialId,
           createdCredential.id,
-        )) as PlatformModelProviderCredentialModelRecord[];
+        )) as PlatformStoredModelRecord[];
+      await this.platformCredentialService.reconcileStoredPlatformModelsAndRoutes({
+        modelProvider,
+        now,
+        storedModels,
+        transaction: tx,
+      });
 
       return { credential, storedModels };
     });
