@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { RefreshCcwIcon, StarIcon } from "lucide-react";
+import { GaugeIcon, RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
@@ -59,6 +59,33 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
         periodStart
         remainingCostNanoUsd
         usedCostNanoUsd
+      }
+    }
+    CodexRateLimits(modelProviderCredentialId: $credentialId) {
+      isCodexCredential
+      modelProviderCredentialId
+      snapshots {
+        credits {
+          balance
+          hasCredits
+          unlimited
+        }
+        lastError
+        limitId
+        limitName
+        planType
+        primary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
+        rateLimitReachedType
+        refreshedAt
+        secondary {
+          resetsAt
+          usedPercent
+          windowMinutes
+        }
       }
     }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
@@ -212,6 +239,24 @@ function formatTimestamp(value: string | null | undefined): string {
   }).format(timestamp);
 }
 
+function formatPercent(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "Unknown";
+  }
+
+  return `${Math.round(value)}%`;
+}
+
+function formatWindow(value: {
+  readonly resetsAt: string | null | undefined;
+  readonly windowMinutes: number | null | undefined;
+}): string {
+  const windowLabel = typeof value.windowMinutes === "number"
+    ? `${value.windowMinutes} min`
+    : "Unknown window";
+  return `${windowLabel} · resets ${formatTimestamp(value.resetsAt)}`;
+}
+
 function formatReasoning(model: {
   reasoningSupported: boolean;
   reasoningLevels: ReadonlyArray<string>;
@@ -227,12 +272,115 @@ function formatReasoning(model: {
   return "Supported";
 }
 
+function CodexLimitUsageBar({ value }: { value: number | null | undefined }) {
+  const normalizedValue = typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(100, value))
+    : 0;
+
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-full rounded-full bg-foreground"
+        style={{ width: `${normalizedValue}%` }}
+      />
+    </div>
+  );
+}
+
+function CodexLimitPanel({
+  snapshots,
+}: {
+  snapshots: credentialDetailPageQuery["response"]["CodexRateLimits"]["snapshots"];
+}) {
+  if (snapshots.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+        <p className="text-sm font-medium text-foreground">No Codex limit snapshot yet</p>
+        <p className="mt-2 text-xs/relaxed text-muted-foreground">
+          The first snapshot is saved after the next completed assistant response.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {snapshots.map((snapshot) => (
+        <div key={snapshot.limitId} className="rounded-xl border border-border/70 bg-background p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <GaugeIcon className="size-4 text-muted-foreground" />
+                <p className="truncate text-sm font-medium text-foreground">
+                  {snapshot.limitName || snapshot.limitId}
+                </p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Refreshed {formatTimestamp(snapshot.refreshedAt)}
+              </p>
+            </div>
+            {snapshot.planType ? (
+              <Badge variant="secondary">{snapshot.planType}</Badge>
+            ) : null}
+          </div>
+
+          {snapshot.lastError ? (
+            <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {snapshot.lastError}
+            </div>
+          ) : null}
+
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium text-foreground">Primary</span>
+                <span className="text-muted-foreground">{formatPercent(snapshot.primary.usedPercent)}</span>
+              </div>
+              <CodexLimitUsageBar value={snapshot.primary.usedPercent} />
+              <p className="text-xs text-muted-foreground">{formatWindow(snapshot.primary)}</p>
+            </div>
+
+            {snapshot.secondary.usedPercent !== null || snapshot.secondary.windowMinutes !== null ? (
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-medium text-foreground">Secondary</span>
+                  <span className="text-muted-foreground">{formatPercent(snapshot.secondary.usedPercent)}</span>
+                </div>
+                <CodexLimitUsageBar value={snapshot.secondary.usedPercent} />
+                <p className="text-xs text-muted-foreground">{formatWindow(snapshot.secondary)}</p>
+              </div>
+            ) : null}
+
+            {snapshot.credits.hasCredits !== null || snapshot.credits.balance || snapshot.credits.unlimited !== null ? (
+              <div className="flex flex-wrap gap-2">
+                {snapshot.credits.hasCredits !== null ? (
+                  <Badge variant="outline">
+                    {snapshot.credits.hasCredits ? "Credits available" : "No credits"}
+                  </Badge>
+                ) : null}
+                {snapshot.credits.unlimited !== null ? (
+                  <Badge variant="outline">
+                    {snapshot.credits.unlimited ? "Unlimited" : "Metered"}
+                  </Badge>
+                ) : null}
+                {snapshot.credits.balance ? (
+                  <Badge variant="outline">Balance {snapshot.credits.balance}</Badge>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ModelProviderCredentialDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   const navigate = useNavigate();
   const { credentialId } = useParams({ strict: false }) as { credentialId?: string };
-  const search = useSearch({ strict: false }) as { tab?: "models" | "usage" };
+  const search = useSearch({ strict: false }) as { tab?: "limit" | "models" | "usage" };
   const organizationSlug = useCurrentOrganizationSlug();
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedCredentialId = String(credentialId || "").trim();
@@ -271,7 +419,12 @@ function ModelProviderCredentialDetailPageContent() {
     || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
   const isManagedCredential = currentCredential?.isManaged ?? false;
-  const selectedTab = search.tab === "usage" ? "usage" : "models";
+  const isCodexCredential = currentCredential?.modelProvider === "openai-codex";
+  const selectedTab = search.tab === "limit" && isCodexCredential
+    ? "limit"
+    : search.tab === "usage"
+      ? "usage"
+      : "models";
   const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
   const credentialStatus = isOauthCredential
     ? (currentCredential?.refreshedAt
@@ -306,6 +459,10 @@ function ModelProviderCredentialDetailPageContent() {
             key: "usage" as const,
             label: "Usage",
           },
+          ...(isCodexCredential ? [{
+            key: "limit" as const,
+            label: "Limit",
+          }] : []),
         ]}
         onSelect={(tab) => {
           void navigate({
@@ -445,7 +602,9 @@ function ModelProviderCredentialDetailPageContent() {
               {errorMessage}
             </div>
           ) : null}
-          {selectedTab === "usage" ? (
+          {selectedTab === "limit" ? (
+            <CodexLimitPanel snapshots={data.CodexRateLimits.snapshots} />
+          ) : selectedTab === "usage" ? (
             <div className="grid gap-6">
               {isManagedCredential ? (
                 <CompanyManagedLlmBudgetPanel

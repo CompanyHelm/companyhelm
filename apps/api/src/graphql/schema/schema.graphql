@@ -20,6 +20,7 @@ type Query {
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
   CompanyManagedLlmBudget: CompanyManagedLlmBudget!
+  CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String): PlatformAdminCompanyPage!
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
@@ -867,6 +868,36 @@ type ModelProviderCredential {
   refreshedAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type CodexRateLimits {
+  isCodexCredential: Boolean!
+  modelProviderCredentialId: ID!
+  snapshots: [CodexRateLimitSnapshot!]!
+}
+
+type CodexRateLimitSnapshot {
+  credits: CodexRateLimitCredits!
+  lastError: String
+  limitId: String!
+  limitName: String
+  planType: String
+  primary: CodexRateLimitWindow!
+  rateLimitReachedType: String
+  refreshedAt: String!
+  secondary: CodexRateLimitWindow!
+}
+
+type CodexRateLimitWindow {
+  resetsAt: String
+  usedPercent: Float
+  windowMinutes: Int
+}
+
+type CodexRateLimitCredits {
+  balance: String
+  hasCredits: Boolean
+  unlimited: Boolean
 }
 
 type PlatformModelProviderCredential {

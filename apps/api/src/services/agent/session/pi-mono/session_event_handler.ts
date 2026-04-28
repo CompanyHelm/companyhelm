@@ -15,6 +15,7 @@ import {
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
+import { CodexRateLimitService } from "../../../ai_providers/codex_rate_limit_service.ts";
 import {
   SessionTurnUsageService,
   type SessionTurnUsageCostKind,
@@ -134,9 +135,12 @@ type QueuedUserMessageDispatch = {
 
 type SessionAttribution = {
   agentId: string;
+  apiKey: string | null;
+  baseUrl: string | null;
   companyId: string;
   costKind: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
+  modelProvider: string | null;
 };
 
 type PersistedSessionMessageReference = {
@@ -151,6 +155,7 @@ type PiMonoSessionEventHandlerDependencies = {
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
   initialContextMessagesSnapshotAt?: Date | null;
   logger?: PinoLogger;
+  codexRateLimitService?: CodexRateLimitService;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
   sessionTurnUsageService?: SessionTurnUsageService;
   userSessionReadService?: UserSessionReadService;
@@ -172,6 +177,7 @@ export class PiMonoSessionEventHandler {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
   private readonly logger: PinoLogger;
+  private readonly codexRateLimitService: CodexRateLimitService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly userSessionReadService: UserSessionReadService;
@@ -187,8 +193,11 @@ export class PiMonoSessionEventHandler {
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private agentId?: string;
+  private modelProviderCredentialApiKey?: string;
+  private modelProviderCredentialBaseUrl?: string | null;
   private modelProviderCredentialCostKind?: SessionTurnUsageCostKind;
   private modelProviderCredentialId?: string;
+  private modelProviderCredentialProvider?: string;
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -216,6 +225,7 @@ export class PiMonoSessionEventHandler {
       maxContextTokens: null,
     }));
     this.lastContextMessagesSnapshotAtMilliseconds = dependencies.initialContextMessagesSnapshotAt?.getTime() ?? null;
+    this.codexRateLimitService = dependencies.codexRateLimitService ?? new CodexRateLimitService();
     this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
     this.sessionTurnUsageService = dependencies.sessionTurnUsageService ?? new SessionTurnUsageService();
     this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
@@ -471,6 +481,7 @@ export class PiMonoSessionEventHandler {
         const persistedMessageReference = await this.upsertSessionMessage("completed", sessionEvent);
         if (persistedMessageReference && sessionEvent.message) {
           await this.recordAssistantUsage(sessionEvent.message, persistedMessageReference);
+          await this.refreshCodexRateLimitsAfterAssistantMessage(persistedMessageReference);
         }
         await this.clearThinkingState(true, true);
         await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
@@ -589,6 +600,31 @@ export class PiMonoSessionEventHandler {
       turnId: persistedMessageReference.turnId,
       usage: message.usage,
     });
+  }
+
+  private async refreshCodexRateLimitsAfterAssistantMessage(
+    persistedMessageReference: PersistedSessionMessageReference,
+  ): Promise<void> {
+    try {
+      const attribution = await this.resolveSessionAttribution();
+      if (attribution.modelProvider !== "openai-codex" || !attribution.apiKey) {
+        return;
+      }
+
+      await this.codexRateLimitService.refreshCredentialLimits(this.transactionProvider, {
+        apiKey: attribution.apiKey,
+        baseUrl: attribution.baseUrl,
+        credentialId: attribution.modelProviderCredentialId,
+        credentialSource: "user_provided",
+        modelProvider: attribution.modelProvider,
+      }, persistedMessageReference.timestamp);
+    } catch (error: unknown) {
+      this.logger.error({
+        error,
+        logMessage: "failed to refresh codex rate limits after assistant message",
+        sessionId: this.sessionId,
+      });
+    }
   }
 
   private async handleToolExecutionStart(sessionEvent: SessionEvent): Promise<void> {
@@ -1191,12 +1227,20 @@ export class PiMonoSessionEventHandler {
   }
 
   private async resolveSessionAttribution(): Promise<SessionAttribution> {
-    if (this.companyId && this.agentId && this.modelProviderCredentialId && this.modelProviderCredentialCostKind) {
+    if (
+      this.companyId
+      && this.agentId
+      && this.modelProviderCredentialId
+      && this.modelProviderCredentialCostKind
+    ) {
       return {
         agentId: this.agentId,
+        apiKey: this.modelProviderCredentialApiKey ?? null,
+        baseUrl: this.modelProviderCredentialBaseUrl ?? null,
         companyId: this.companyId,
         costKind: this.modelProviderCredentialCostKind,
         modelProviderCredentialId: this.modelProviderCredentialId,
+        modelProvider: this.modelProviderCredentialProvider ?? null,
       };
     }
 
@@ -1230,9 +1274,12 @@ export class PiMonoSessionEventHandler {
       if (typeof companyId !== "string" || typeof currentModelCredentialSource !== "string") {
         return {
           agentId: sessionRecord?.agentId,
+          apiKey: null,
+          baseUrl: null,
           companyId,
           costKind: undefined,
           modelProviderCredentialId: undefined,
+          modelProvider: null,
         };
       }
 
@@ -1256,21 +1303,30 @@ export class PiMonoSessionEventHandler {
       if (typeof modelProviderCredentialId !== "string") {
         return {
           agentId: sessionRecord?.agentId,
+          apiKey: null,
+          baseUrl: null,
           companyId,
           costKind: undefined,
           modelProviderCredentialId,
+          modelProvider: null,
         };
       }
 
       const [credentialRecord] = currentModelCredentialSource === "platform"
         ? await selectableDatabase
           .select({
+            baseUrl: platformModelProviderCredentials.baseUrl,
+            encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
+            modelProvider: platformModelProviderCredentials.modelProvider,
             type: platformModelProviderCredentials.type,
           })
           .from(platformModelProviderCredentials)
           .where(eq(platformModelProviderCredentials.id, modelProviderCredentialId))
         : await selectableDatabase
           .select({
+            baseUrl: modelProviderCredentials.baseUrl,
+            encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+            modelProvider: modelProviderCredentials.modelProvider,
             type: modelProviderCredentials.type,
           })
           .from(modelProviderCredentials)
@@ -1281,6 +1337,8 @@ export class PiMonoSessionEventHandler {
 
       return {
         agentId: sessionRecord?.agentId,
+        apiKey: typeof credentialRecord?.encryptedApiKey === "string" ? credentialRecord.encryptedApiKey : null,
+        baseUrl: typeof credentialRecord?.baseUrl === "string" ? credentialRecord.baseUrl : null,
         companyId,
         costKind: currentModelCredentialSource === "platform"
           ? "virtual"
@@ -1288,13 +1346,17 @@ export class PiMonoSessionEventHandler {
           ? PiMonoSessionEventHandler.resolveCredentialCostKind(credentialRecord)
           : undefined,
         modelProviderCredentialId,
+        modelProvider: typeof credentialRecord?.modelProvider === "string" ? credentialRecord.modelProvider : null,
       };
     });
 
     const companyId = attribution.companyId;
     const agentId = attribution.agentId;
     const costKind = attribution.costKind;
+    const apiKey = attribution.apiKey;
+    const baseUrl = attribution.baseUrl;
     const modelProviderCredentialId = attribution.modelProviderCredentialId;
+    const modelProvider = attribution.modelProvider;
     if (
       typeof companyId !== "string"
       || typeof agentId !== "string"
@@ -1306,13 +1368,19 @@ export class PiMonoSessionEventHandler {
 
     this.companyId = companyId;
     this.agentId = agentId;
+    this.modelProviderCredentialApiKey = apiKey ?? undefined;
+    this.modelProviderCredentialBaseUrl = typeof baseUrl === "string" ? baseUrl : null;
     this.modelProviderCredentialCostKind = costKind;
     this.modelProviderCredentialId = modelProviderCredentialId;
+    this.modelProviderCredentialProvider = modelProvider ?? undefined;
     return {
       agentId,
+      apiKey,
+      baseUrl: this.modelProviderCredentialBaseUrl,
       companyId,
       costKind,
       modelProviderCredentialId,
+      modelProvider,
     };
   }
 

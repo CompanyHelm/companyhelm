@@ -79,7 +79,7 @@ type AgentDetailRouteSearch = {
 };
 
 type ModelProviderCredentialDetailRouteSearch = {
-  tab?: "models" | "usage";
+  tab?: "limit" | "models" | "usage";
 };
 
 type WorkflowDetailRouteSearch = {
@@ -151,7 +151,7 @@ function validateModelProviderCredentialDetailRouteSearch(
   search: Record<string, unknown>,
 ): ModelProviderCredentialDetailRouteSearch {
   return {
-    tab: search.tab === "usage" || search.tab === "models"
+    tab: search.tab === "limit" || search.tab === "usage" || search.tab === "models"
       ? search.tab
       : undefined,
   };
