@@ -6,15 +6,13 @@
 - do not check for null if the method/constructor argument is non-null in TS
 
 ## file structure
-
 - keep files grouped into directories if related
 - avoid directories with a lot of files, unless they are all truly unrelated
 - avoid directories with a single file, doesn't make sense, just keep the file 1 level up
-- keep files that are used by a particular implementation under that implementation folder e.g. /auth/providers/companyhelm/{implementation files here if only used by companyhelm implemenation}
+- keep files that are used by a particular implementation under that implementation folder e.g. /auth/providers/companyhelm/{implementation files here if only used by companyhelm implementation}
 - do not repeate the directory name in the file name, it is reduntant e.g. config/config_loader.ts should be config/loader.ts
 
 ## Object oriented programming
-
 - everything should be a class with methods, do not have files with top level functions
 - there should be only a single class in every file, file name should be related to the class name (apart from casing)
 - class name should be related to the file path
@@ -22,7 +20,6 @@
 - every class should have non trivial comments to explain what is the class doing
 
 ## Interfaces
-
 - everything should have a as simple as possible interface, with non-trivial documentation
 - interfaces should be in their own file named {interface_name}_interface.ts
 - interfaces should have comment for each method, non trivial comments need to have depth to it
@@ -30,9 +27,13 @@
 - omit interface file if there would be only 1 implementation of the interface, just keep the class (with comments)
 
 ## Tests
-
 - tests should not be trivial, e.g. testing the docs is stupid and should not be done
 - tests should be in a /tests directory, same level as /src directory
+
+
+# Comments
+- Add comments to any non trivial logic
+- Do not add comments if code is self explanatory
 
 ## Graphql
 
@@ -45,7 +46,3 @@
 # Application specific instructions
 - read the apps/*/AGENTS.md when making changes to the specific apps e.g. web or api and follow the instructions in the specific AGENTS.md
 - app specific instructions are additonal from this AGENTS.md
-
-# Comments
-- Add comments to any non trivial logic
-- Do not add comments if code is self explanatory
