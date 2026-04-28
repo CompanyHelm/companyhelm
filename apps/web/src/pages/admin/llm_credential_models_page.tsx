@@ -120,7 +120,6 @@ function AdminLlmCredentialModelsPageContent() {
               {credential
                 ? `${formatProviderLabel(credential.modelProvider, {
                   baseUrl: credential.baseUrl ?? null,
-                  isManaged: false,
                 })} model catalog`
                 : "Model catalog for this platform credential."}
             </CardDescription>

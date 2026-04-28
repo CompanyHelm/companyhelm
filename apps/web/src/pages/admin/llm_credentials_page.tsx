@@ -369,7 +369,6 @@ function PlatformCredentialTable(props: {
         {props.credentials.map((credential) => {
           const providerLabel = formatProviderLabel(credential.modelProvider, {
             baseUrl: credential.baseUrl ?? null,
-            isManaged: false,
           });
           const showRefreshFailure = hasCredentialRefreshFailure({
             errorMessage: credential.errorMessage ?? null,
