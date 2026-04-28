@@ -8,6 +8,8 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelRoutes,
+  platformModels,
   taskStages,
   workflowDefinitionInputs,
   workflowDefinitions,
@@ -54,7 +56,6 @@ type ModelProviderCredentialRow = {
   encryptedApiKey: string;
   id: string;
   isDefault: boolean;
-  isManaged: boolean;
   modelProvider: "openai" | "companyhelm";
   name: string;
   type: "api_key";
@@ -78,12 +79,26 @@ type AgentRow = {
   created_at: Date;
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
-  defaultModelProviderCredentialModelId: string;
+  defaultModelCredentialSource: "platform" | "user_provided";
+  defaultModelProviderCredentialModelId: string | null;
+  defaultPlatformModelId: string | null;
   default_reasoning_level: string | null;
   id: string;
   name: string;
   system_prompt: string | null;
   updated_at: Date;
+};
+
+type PlatformModelRow = {
+  id: string;
+  isDefault: boolean;
+  isAvailable: boolean;
+  modelId: string;
+  reasoningLevels: string[] | null;
+};
+
+type PlatformModelRouteRow = {
+  platformModelId: string;
 };
 
 type AgentSkillRow = {
@@ -162,6 +177,8 @@ class CompanyBootstrapServiceTestHarness {
   private readonly managedAvailableModelIds: string[] | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
+  private readonly platformModelRows: PlatformModelRow[];
+  private readonly platformRouteRows: PlatformModelRouteRow[];
   private readonly taskStageRows: TaskStageRow[];
   private readonly workflowDefinitionRows: WorkflowDefinitionRow[];
   private readonly workflowDefinitionInputRows: WorkflowDefinitionInputRow[];
@@ -176,6 +193,8 @@ class CompanyBootstrapServiceTestHarness {
     managedAvailableModelIds?: string[] | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
+    platformModelRows?: PlatformModelRow[];
+    platformRouteRows?: PlatformModelRouteRow[];
     taskStageRows?: TaskStageRow[];
     workflowDefinitionRows?: WorkflowDefinitionRow[];
     workflowDefinitionInputRows?: WorkflowDefinitionInputRow[];
@@ -191,6 +210,16 @@ class CompanyBootstrapServiceTestHarness {
     this.managedAvailableModelIds = params?.managedAvailableModelIds ?? null;
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
+    this.platformModelRows = [...(params?.platformModelRows ?? [{
+      id: "platform-model-1",
+      isAvailable: true,
+      isDefault: true,
+      modelId: "gpt-5.4",
+      reasoningLevels: ["low", "medium", "high", "xhigh"],
+    }])];
+    this.platformRouteRows = [...(params?.platformRouteRows ?? [{
+      platformModelId: "platform-model-1",
+    }])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
     this.workflowDefinitionRows = [...(params?.workflowDefinitionRows ?? [])];
     this.workflowDefinitionInputRows = [...(params?.workflowDefinitionInputRows ?? [])];
@@ -249,11 +278,12 @@ class CompanyBootstrapServiceTestHarness {
     const companyOnboardingRows = this.companyOnboardingRows;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
+    const platformModelRows = this.platformModelRows;
+    const platformRouteRows = this.platformRouteRows;
     const taskStageRows = this.taskStageRows;
     const workflowDefinitionRows = this.workflowDefinitionRows;
     const workflowDefinitionInputRows = this.workflowDefinitionInputRows;
     const workflowStepDefinitionRows = this.workflowStepDefinitionRows;
-    let modelCredentialSelectCount = 0;
 
     return {
       update(table: unknown) {
@@ -317,7 +347,9 @@ class CompanyBootstrapServiceTestHarness {
                   const agent = agentRows[0];
                   if (agent) {
                     agent.defaultComputeProviderDefinitionId = value.defaultComputeProviderDefinitionId as string;
-                    agent.defaultModelProviderCredentialModelId = value.defaultModelProviderCredentialModelId as string;
+                    agent.defaultModelCredentialSource = value.defaultModelCredentialSource as "platform" | "user_provided";
+                    agent.defaultModelProviderCredentialModelId = value.defaultModelProviderCredentialModelId as string | null;
+                    agent.defaultPlatformModelId = value.defaultPlatformModelId as string | null;
                     agent.default_reasoning_level = value.default_reasoning_level as string | null;
                     agent.updated_at = value.updated_at as Date;
                   }
@@ -375,37 +407,7 @@ class CompanyBootstrapServiceTestHarness {
             }
 
             if (table === modelProviderCredentials) {
-              if (Array.isArray(value)) {
-                throw new Error("Unexpected model credential batch insert.");
-              }
-
-              return {
-                onConflictDoNothing() {
-                  const existingCredential = modelCredentialRows.find((row) =>
-                    row.companyId === value.companyId && row.isManaged
-                  );
-                  if (!existingCredential) {
-                    modelCredentialRows.push({
-                      companyId: value.companyId as string,
-                      createdAt: value.createdAt as Date,
-                      encryptedApiKey: value.encryptedApiKey as string,
-                      id: "companyhelm-model-credential-1",
-                      isDefault: Boolean(value.isDefault),
-                      isManaged: Boolean(value.isManaged),
-                      modelProvider: value.modelProvider as "openai" | "companyhelm",
-                      name: value.name as string,
-                      type: value.type as "api_key",
-                      updatedAt: value.updatedAt as Date,
-                    });
-                  }
-
-                  return {
-                    async returning() {
-                      return modelCredentialRows.filter((row) => row.isManaged).slice(0, 1);
-                    },
-                  };
-                },
-              };
+              throw new Error("Company bootstrap must not provision model provider credentials.");
             }
 
             if (table === modelProviderCredentialModels) {
@@ -444,7 +446,9 @@ class CompanyBootstrapServiceTestHarness {
                 created_at: value.created_at as Date,
                 defaultComputeProviderDefinitionId: value.defaultComputeProviderDefinitionId as string,
                 defaultEnvironmentTemplateId: value.defaultEnvironmentTemplateId as string,
-                defaultModelProviderCredentialModelId: value.defaultModelProviderCredentialModelId as string,
+                defaultModelCredentialSource: value.defaultModelCredentialSource as "platform" | "user_provided",
+                defaultModelProviderCredentialModelId: value.defaultModelProviderCredentialModelId as string | null,
+                defaultPlatformModelId: value.defaultPlatformModelId as string | null,
                 default_reasoning_level: value.default_reasoning_level as string | null,
                 id: value.id as string,
                 name: value.name as string,
@@ -610,6 +614,12 @@ class CompanyBootstrapServiceTestHarness {
                 if (table === modelProviderCredentialModels) {
                   return Promise.resolve([...modelRows]);
                 }
+                if (table === platformModelRoutes) {
+                  return Promise.resolve([...platformRouteRows]);
+                }
+                if (table === platformModels) {
+                  return Promise.resolve(platformModelRows.filter((row) => row.isAvailable));
+                }
 
                 return {
                   async limit() {
@@ -620,12 +630,7 @@ class CompanyBootstrapServiceTestHarness {
                       return [...baseDefinitions].slice(0, 1);
                     }
                     if (table === modelProviderCredentials) {
-                      modelCredentialSelectCount += 1;
-                      if (modelCredentialSelectCount % 2 === 1) {
-                        return modelCredentialRows.filter((row) => row.isManaged).slice(0, 1);
-                      }
-
-                      return modelCredentialRows.filter((row) => row.isDefault).slice(0, 1);
+                      return modelCredentialRows.slice(0, 20);
                     }
                     if (table === workflowDefinitions) {
                       return workflowDefinitionRows
@@ -705,12 +710,8 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.equal(defaultDefinition?.description, "Managed by CompanyHelm");
   assert.equal(defaultDefinition?.provider, "e2b");
   assert.equal(defaultDefinition?.isDefault, true);
-  const [managedCredential] = harness.listModelCredentials();
-  assert.equal(managedCredential?.name, "CompanyHelm");
-  assert.equal(managedCredential?.modelProvider, "companyhelm");
-  assert.equal(managedCredential?.isManaged, true);
-  assert.equal(managedCredential?.isDefault, true);
-  assert.ok(harness.listModels().some((model) => model.modelId === "gpt-5.4" && model.isDefault));
+  assert.deepEqual(harness.listModelCredentials(), []);
+  assert.deepEqual(harness.listModels(), []);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
@@ -727,7 +728,6 @@ test("CompanyBootstrapService skips the CompanyHelm model provider when the Open
   assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
   assert.deepEqual(harness.listModelCredentials(), []);
   assert.deepEqual(harness.listModels(), []);
-  assert.deepEqual(harness.listAgents(), []);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
@@ -745,15 +745,16 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
 
   const [seedAgent] = harness.listAgents();
   const defaultDefinition = harness.loadDefaultDefinition();
-  const [managedCredential] = harness.listModelCredentials();
-  const defaultModel = harness.listModels().find((model) => model.isDefault);
 
   assert.equal(seedAgent?.companyId, "company-1");
   assert.equal(seedAgent?.name, "CEO");
   assert.equal(seedAgent?.defaultComputeProviderDefinitionId, defaultDefinition?.id);
   assert.equal(seedAgent?.defaultEnvironmentTemplateId, "medium");
-  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, defaultModel?.id);
-  assert.equal(defaultModel?.modelProviderCredentialId, managedCredential?.id);
+  assert.equal(seedAgent?.defaultModelCredentialSource, "platform");
+  assert.equal(seedAgent?.defaultPlatformModelId, "platform-model-1");
+  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, null);
+  assert.deepEqual(harness.listModelCredentials(), []);
+  assert.deepEqual(harness.listModels(), []);
   assert.equal(seedAgent?.default_reasoning_level, "high");
   assert.equal(seedAgent?.system_prompt, null);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
@@ -810,12 +811,11 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
     modelCredentialRows: [{
       companyId: "company-1",
       createdAt: now,
-      encryptedApiKey: "companyhelm-managed-openai-api-key",
-      id: "companyhelm-model-credential-1",
+      encryptedApiKey: "encrypted-openai-api-key",
+      id: "openai-model-credential-1",
       isDefault: true,
-      isManaged: true,
-      modelProvider: "companyhelm",
-      name: "CompanyHelm",
+      modelProvider: "openai",
+      name: "OpenAI",
       type: "api_key",
       updatedAt: now,
     }],
@@ -825,7 +825,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       id: "model-row-1",
       isDefault: true,
       modelId: "gpt-5.4",
-      modelProviderCredentialId: "companyhelm-model-credential-1",
+      modelProviderCredentialId: "openai-model-credential-1",
       name: "GPT-5.4",
       reasoningLevels: ["low", "medium", "high", "xhigh"],
       reasoningSupported: true,
@@ -835,7 +835,9 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       created_at: now,
       defaultComputeProviderDefinitionId: "companyhelm-definition-1",
       defaultEnvironmentTemplateId: "medium",
+      defaultModelCredentialSource: "user_provided",
       defaultModelProviderCredentialModelId: "model-row-1",
+      defaultPlatformModelId: null,
       default_reasoning_level: "high",
       id: "agent-row-1",
       name: "CEO",

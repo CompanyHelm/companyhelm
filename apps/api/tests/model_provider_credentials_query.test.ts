@@ -118,11 +118,29 @@ class ModelProviderCredentialsQueryTestHarness {
       refreshedAt: null,
       createdAt: new Date("2026-03-20T10:00:00.000Z"),
       updatedAt: new Date("2026-03-20T10:00:00.000Z"),
+    }, {
+      id: "credential-companyhelm",
+      companyId: "company-123",
+      isDefault: false,
+      name: "CompanyHelm",
+      modelProvider: "companyhelm",
+      type: "api_key",
+      status: "active",
+      errorMessage: null,
+      refreshToken: null,
+      refreshedAt: null,
+      createdAt: new Date("2026-03-21T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-21T10:00:00.000Z"),
     }];
     const modelRows = [{
       isDefault: true,
       modelId: "gpt-5.4",
       modelProviderCredentialId: "credential-1",
+      reasoningLevels: ["low", "medium", "high"],
+    }, {
+      isDefault: true,
+      modelId: "gpt-5.5",
+      modelProviderCredentialId: "credential-companyhelm",
       reasoningLevels: ["low", "medium", "high"],
     }];
     const scopedCompanyIds: string[] = [];
@@ -240,6 +258,20 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     refreshedAt: null,
     createdAt: "2026-03-20T10:00:00.000Z",
     updatedAt: "2026-03-20T10:00:00.000Z",
+  }, {
+    id: "credential-companyhelm",
+    companyId: "company-123",
+    isDefault: false,
+    name: "CompanyHelm",
+    modelProvider: "companyhelm",
+    defaultModelId: "gpt-5.5",
+    defaultReasoningLevel: "high",
+    type: "api_key",
+    status: "active",
+    errorMessage: null,
+    refreshedAt: null,
+    createdAt: "2026-03-21T10:00:00.000Z",
+    updatedAt: "2026-03-21T10:00:00.000Z",
   }]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
