@@ -55,7 +55,7 @@ class CompanyManagedLlmBudgetServiceTestHarness {
 test("CompanyManagedLlmBudgetService blocks free companies at the daily managed-provider cap", async () => {
   const service = new CompanyManagedLlmBudgetService();
   const harness = new CompanyManagedLlmBudgetServiceTestHarness({
-    dayCostNanoUsd: 2_000_000_000,
+    dayCostNanoUsd: 5_000_000_000,
   });
 
   const status = await service.checkWithinPlatformBudgetInTransaction(harness.createDatabase() as never, {
@@ -66,8 +66,8 @@ test("CompanyManagedLlmBudgetService blocks free companies at the daily managed-
   assert.equal(status.allowed, false);
   if (!status.allowed) {
     assert.equal(status.period, "day");
-    assert.equal(status.limitCostNanoUsd, 2_000_000_000);
-    assert.equal(status.usedCostNanoUsd, 2_000_000_000);
+    assert.equal(status.limitCostNanoUsd, 5_000_000_000);
+    assert.equal(status.usedCostNanoUsd, 5_000_000_000);
     assert.equal(status.periodStart.toISOString(), "2026-04-22T00:00:00.000Z");
   }
 });
@@ -131,11 +131,11 @@ test("CompanyManagedLlmBudgetService returns remaining and overage values for ma
   assert.equal(snapshot.plan, "free");
   assert.deepEqual(snapshot.daily, {
     exhausted: false,
-    limitCostNanoUsd: 2_000_000_000,
+    limitCostNanoUsd: 5_000_000_000,
     overageCostNanoUsd: 0,
     period: "day",
     periodStart: new Date("2026-04-22T00:00:00.000Z"),
-    remainingCostNanoUsd: 750_000_000,
+    remainingCostNanoUsd: 3_750_000_000,
     usedCostNanoUsd: 1_250_000_000,
   });
   assert.deepEqual(snapshot.monthly, {

@@ -82,7 +82,7 @@ export class CompanyManagedLlmBudgetService {
   private static readonly nanoUsdPerUsd = 1_000_000_000;
   private static readonly entitlementsByPlan: Record<CompanySubscriptionPlan, CompanyManagedLlmBudgetEntitlements> = {
     free: {
-      dailyCapNanoUsd: 2 * CompanyManagedLlmBudgetService.nanoUsdPerUsd,
+      dailyCapNanoUsd: 5 * CompanyManagedLlmBudgetService.nanoUsdPerUsd,
       monthlyCapNanoUsd: 10 * CompanyManagedLlmBudgetService.nanoUsdPerUsd,
     },
     pro: {

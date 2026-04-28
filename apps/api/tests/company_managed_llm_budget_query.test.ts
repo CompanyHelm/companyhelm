@@ -27,11 +27,11 @@ test("CompanyManagedLlmBudgetQueryResolver serializes the authenticated company'
       return {
         daily: {
           exhausted: false,
-          limitCostNanoUsd: 2_000_000_000,
+          limitCostNanoUsd: 5_000_000_000,
           overageCostNanoUsd: 0,
           period: "day",
           periodStart: new Date("2026-04-22T00:00:00.000Z"),
-          remainingCostNanoUsd: 750_000_000,
+          remainingCostNanoUsd: 3_750_000_000,
           usedCostNanoUsd: 1_250_000_000,
         },
         monthly: {
@@ -57,11 +57,11 @@ test("CompanyManagedLlmBudgetQueryResolver serializes the authenticated company'
   assert.deepEqual(result, {
     daily: {
       exhausted: false,
-      limitCostNanoUsd: 2_000_000_000,
+      limitCostNanoUsd: 5_000_000_000,
       overageCostNanoUsd: 0,
       period: "day",
       periodStart: "2026-04-22T00:00:00.000Z",
-      remainingCostNanoUsd: 750_000_000,
+      remainingCostNanoUsd: 3_750_000_000,
       usedCostNanoUsd: 1_250_000_000,
     },
     monthly: {

@@ -1613,11 +1613,11 @@ test("SessionProcessExecutionService clears queued work when the managed provide
         budgetChecks.push(input);
         return {
           allowed: false,
-          limitCostNanoUsd: 2_000_000_000,
+          limitCostNanoUsd: 5_000_000_000,
           message: "CompanyHelm daily AI usage limit reached for this company.",
           period: "day",
           periodStart: new Date("2026-04-22T00:00:00.000Z"),
-          usedCostNanoUsd: 2_000_000_000,
+          usedCostNanoUsd: 5_000_000_000,
         };
       },
     } as never,
