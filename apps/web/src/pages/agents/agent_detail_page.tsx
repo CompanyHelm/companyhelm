@@ -249,6 +249,8 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
     UpdateAgent(input: $input) {
       id
       name
+      modelCredentialSource
+      platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
