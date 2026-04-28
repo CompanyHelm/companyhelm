@@ -3,13 +3,20 @@ import { injectable } from "inversify";
 import { llmUsageAggregates } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
-type LlmUsageAggregateScopeType = "company" | "provider" | "agent" | "session";
+type LlmUsageAggregateScopeType =
+  | "company"
+  | "managed_model_provider_credential"
+  | "model_provider_credential"
+  | "agent"
+  | "session";
 type LlmUsageAggregatePeriod = "total" | "day" | "month";
 
 type LlmUsageAggregatesInput = {
+  agentId?: string | null;
+  modelProviderCredentialId?: string | null;
   period?: LlmUsageAggregatePeriod | null;
   periodStartAfter?: string | null;
-  scopeId?: string | null;
+  sessionId?: string | null;
   scopeType: LlmUsageAggregateScopeType;
 };
 
@@ -36,7 +43,9 @@ type LlmUsageAggregateRecord = {
   period: LlmUsageAggregatePeriod;
   periodStart: Date;
   requestCount: number;
-  scopeId: string;
+  agentId: string | null;
+  modelProviderCredentialId: string | null;
+  sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
   totalCostNanoVirtualUsd: number;
@@ -63,7 +72,9 @@ type GraphqlLlmUsageAggregateRecord = {
   period: LlmUsageAggregatePeriod;
   periodStart: string;
   requestCount: number;
-  scopeId: string;
+  agentId: string | null;
+  modelProviderCredentialId: string | null;
+  sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
   totalCostNanoVirtualUsd: number;
@@ -100,7 +111,6 @@ export class LlmUsageAggregatesQueryResolver {
 
     const companyId = context.authSession.company.id;
     const input = arguments_.input;
-    const scopeId = this.resolveScopeId(companyId, input);
     const periodStartAfter = this.resolvePeriodStartAfter(input.periodStartAfter);
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
@@ -109,10 +119,8 @@ export class LlmUsageAggregatesQueryResolver {
         eq(llmUsageAggregates.companyId, companyId),
         eq(llmUsageAggregates.scopeType, input.scopeType),
       ];
+      this.appendScopeConditions(conditions, input);
 
-      if (scopeId) {
-        conditions.push(eq(llmUsageAggregates.scopeId, scopeId));
-      }
       if (input.period) {
         conditions.push(eq(llmUsageAggregates.period, input.period));
       }
@@ -140,7 +148,9 @@ export class LlmUsageAggregatesQueryResolver {
           period: llmUsageAggregates.period,
           periodStart: llmUsageAggregates.periodStart,
           requestCount: llmUsageAggregates.requestCount,
-          scopeId: llmUsageAggregates.scopeId,
+          agentId: llmUsageAggregates.agentId,
+          modelProviderCredentialId: llmUsageAggregates.modelProviderCredentialId,
+          sessionId: llmUsageAggregates.sessionId,
           scopeType: llmUsageAggregates.scopeType,
           totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
           totalCostNanoVirtualUsd: llmUsageAggregates.totalCostNanoVirtualUsd,
@@ -156,16 +166,30 @@ export class LlmUsageAggregatesQueryResolver {
     });
   };
 
-  private resolveScopeId(companyId: string, input: LlmUsageAggregatesInput): string | null {
-    if (input.scopeType === "company") {
-      if (input.scopeId && input.scopeId !== companyId) {
-        throw new Error("Cannot read usage for another company.");
+  private appendScopeConditions(conditions: SQL[], input: LlmUsageAggregatesInput): void {
+    if (input.scopeType === "model_provider_credential") {
+      if (input.modelProviderCredentialId) {
+        conditions.push(eq(llmUsageAggregates.modelProviderCredentialId, input.modelProviderCredentialId));
       }
-
-      return input.scopeId ?? companyId;
+      return;
     }
 
-    return input.scopeId ?? null;
+    if (input.scopeType === "agent") {
+      if (!input.agentId) {
+        throw new Error("agentId is required for agent usage.");
+      }
+
+      conditions.push(eq(llmUsageAggregates.agentId, input.agentId));
+      return;
+    }
+
+    if (input.scopeType === "session") {
+      if (!input.sessionId) {
+        throw new Error("sessionId is required for session usage.");
+      }
+
+      conditions.push(eq(llmUsageAggregates.sessionId, input.sessionId));
+    }
   }
 
   private resolvePeriodStartAfter(value: string | null | undefined): Date | null {

@@ -34,7 +34,6 @@ test("CompanyManagedLlmBudgetQueryResolver serializes the authenticated company'
           remainingCostNanoUsd: 750_000_000,
           usedCostNanoUsd: 1_250_000_000,
         },
-        managedCredentialId: "credential-1",
         monthly: {
           exhausted: true,
           limitCostNanoUsd: 10_000_000_000,
@@ -65,7 +64,6 @@ test("CompanyManagedLlmBudgetQueryResolver serializes the authenticated company'
       remainingCostNanoUsd: 750_000_000,
       usedCostNanoUsd: 1_250_000_000,
     },
-    managedCredentialId: "credential-1",
     monthly: {
       exhausted: true,
       limitCostNanoUsd: 10_000_000_000,

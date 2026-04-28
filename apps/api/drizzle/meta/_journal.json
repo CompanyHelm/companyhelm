@@ -981,6 +981,20 @@
       "when": 1777383000000,
       "tag": "0140_legacy_companyhelm_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1777384000000,
+      "tag": "0141_premium_mephistopheles",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1777385000000,
+      "tag": "0142_lucky_caretaker",
+      "breakpoints": true
     }
   ]
 }

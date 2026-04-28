@@ -55,7 +55,9 @@ class LlmUsageAggregatesQueryTestHarness {
       period: "total",
       periodStart: new Date(0),
       requestCount: 1,
-      scopeId: "company-1",
+      agentId: null,
+      modelProviderCredentialId: null,
+      sessionId: null,
       scopeType: "company",
       totalCostNanoUsd: 4_200,
       totalCostNanoVirtualUsd: 420,
@@ -100,7 +102,7 @@ test("LlmUsageAggregatesQueryResolver serializes aggregate rows for the authenti
   assert.equal(result[0]?.totalTokens, 35);
 });
 
-test("LlmUsageAggregatesQueryResolver rejects another company scope id", async () => {
+test("LlmUsageAggregatesQueryResolver requires scope ids for scoped aggregate reads", async () => {
   const resolver = new LlmUsageAggregatesQueryResolver();
 
   await assert.rejects(
@@ -108,13 +110,12 @@ test("LlmUsageAggregatesQueryResolver rejects another company scope id", async (
       null,
       {
         input: {
-          scopeId: "company-2",
-          scopeType: "company",
+          scopeType: "agent",
         },
       },
       LlmUsageAggregatesQueryTestHarness.createContext([]),
     ),
-    /Cannot read usage for another company/,
+    /agentId is required for agent usage/,
   );
 });
 
@@ -127,7 +128,7 @@ test("LlmUsageAggregatesQueryResolver rejects invalid periodStartAfter values", 
       {
         input: {
           periodStartAfter: "not-a-date",
-          scopeType: "provider",
+          scopeType: "model_provider_credential",
         },
       },
       LlmUsageAggregatesQueryTestHarness.createContext([]),

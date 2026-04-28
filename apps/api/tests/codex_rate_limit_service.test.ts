@@ -9,6 +9,7 @@ import type { TransactionProviderInterface } from "../src/db/transaction_provide
 type FakeUpsertCall = {
   record: Record<string, unknown>;
   set: Record<string, unknown>;
+  table: unknown;
 };
 
 type FakeTransactionProvider = TransactionProviderInterface & {
@@ -21,6 +22,7 @@ class CodexRateLimitServiceTestFactory {
     return {
       apiKey: this.createJwt("account-123"),
       baseUrl: null,
+      companyId: "11111111-1111-4111-8111-111111111111",
       credentialId: "22222222-2222-4222-8222-222222222222",
       credentialSource: "user_provided",
       modelProvider: "openai-codex",
@@ -39,12 +41,13 @@ class CodexRateLimitServiceTestFactory {
               transactionProvider.deleteCount += 1;
             },
           }),
-          insert: () => ({
+          insert: (table: unknown) => ({
             values: (record: Record<string, unknown>) => ({
               onConflictDoUpdate: async (config: { set: Record<string, unknown> }) => {
                 transactionProvider.upserts.push({
                   record,
                   set: config.set,
+                  table,
                 });
               },
             }),
@@ -132,7 +135,7 @@ test("CodexRateLimitService stores Codex usage snapshots with account-scoped hea
   });
   expect(transactionProvider.upserts).toHaveLength(2);
   expect(transactionProvider.upserts[0]?.record).toMatchObject({
-    credentialSource: "user_provided",
+    companyId: "11111111-1111-4111-8111-111111111111",
     limitId: "codex",
     planType: "pro",
     primaryUsedPercent: 30,
@@ -143,6 +146,37 @@ test("CodexRateLimitService stores Codex usage snapshots with account-scoped hea
     limitName: "Apply Patch",
     primaryUsedPercent: 15,
   });
+  expect(transactionProvider.deleteCount).toBe(1);
+});
+
+test("CodexRateLimitService stores platform credential snapshots in the platform table", async () => {
+  const factory = new CodexRateLimitServiceTestFactory();
+  const service = new CodexRateLimitService();
+  const transactionProvider = factory.createTransactionProvider();
+  factory.mockCodexUsageResponse({
+    rate_limit: {
+      primary_window: {
+        used_percent: 10,
+      },
+    },
+  });
+
+  await service.refreshCredentialLimits(
+    transactionProvider,
+    factory.createCredential({
+      credentialId: "33333333-3333-4333-8333-333333333333",
+      credentialSource: "platform",
+    }),
+    new Date("2026-04-28T10:00:00.000Z"),
+  );
+
+  expect(transactionProvider.upserts).toHaveLength(1);
+  expect(transactionProvider.upserts[0]?.record).toMatchObject({
+    platformModelProviderCredentialId: "33333333-3333-4333-8333-333333333333",
+    limitId: "codex",
+    primaryUsedPercent: 10,
+  });
+  expect(transactionProvider.upserts[0]?.record).not.toHaveProperty("companyId");
   expect(transactionProvider.deleteCount).toBe(1);
 });
 

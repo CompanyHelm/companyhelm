@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import { sql } from "drizzle-orm/sql";
 import { llmUsageAggregates, sessionTurns } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
@@ -50,13 +50,15 @@ type NormalizedUsage = {
   totalTokens: number;
 };
 
-type AggregateScopeType = "company" | "provider" | "agent" | "session";
+type AggregateScopeType = "company" | "managed_model_provider_credential" | "model_provider_credential" | "agent" | "session";
 type AggregatePeriod = "total" | "day" | "month";
 
 type AggregateRecord = {
+  agentId: string | null;
+  modelProviderCredentialId: string | null;
   period: AggregatePeriod;
   periodStart: Date;
-  scopeId: string;
+  sessionId: string | null;
   scopeType: AggregateScopeType;
 };
 
@@ -106,6 +108,7 @@ export class SessionTurnUsageService {
         ));
 
       for (const aggregateRecord of this.buildAggregateRecords(input)) {
+        const conflictTarget = this.resolveAggregateConflictTarget(aggregateRecord);
         await tx
           .insert(llmUsageAggregates)
           .values({
@@ -124,10 +127,12 @@ export class SessionTurnUsageService {
             outputCostNanoUsd: usage.outputCostNanoUsd,
             outputCostNanoVirtualUsd: usage.outputCostNanoVirtualUsd,
             outputTokens: usage.outputTokens,
+            agentId: aggregateRecord.agentId,
+            modelProviderCredentialId: aggregateRecord.modelProviderCredentialId,
             period: aggregateRecord.period,
             periodStart: aggregateRecord.periodStart,
             requestCount: 1,
-            scopeId: aggregateRecord.scopeId,
+            sessionId: aggregateRecord.sessionId,
             scopeType: aggregateRecord.scopeType,
             totalCostNanoUsd: usage.totalCostNanoUsd,
             totalCostNanoVirtualUsd: usage.totalCostNanoVirtualUsd,
@@ -135,13 +140,8 @@ export class SessionTurnUsageService {
             updatedAt: input.recordedAt,
           })
           .onConflictDoUpdate({
-            target: [
-              llmUsageAggregates.companyId,
-              llmUsageAggregates.scopeType,
-              llmUsageAggregates.scopeId,
-              llmUsageAggregates.period,
-              llmUsageAggregates.periodStart,
-            ],
+            target: conflictTarget.target as never,
+            targetWhere: conflictTarget.targetWhere,
             set: {
               cacheReadCostNanoUsd: sql`${llmUsageAggregates.cacheReadCostNanoUsd} + ${usage.cacheReadCostNanoUsd}`,
               cacheReadCostNanoVirtualUsd: sql`${llmUsageAggregates.cacheReadCostNanoVirtualUsd} + ${usage.cacheReadCostNanoVirtualUsd}`,
@@ -227,69 +227,152 @@ export class SessionTurnUsageService {
   private buildAggregateRecords(input: SessionTurnUsageRecordInput): AggregateRecord[] {
     const dayPeriodStart = this.resolveUtcDayPeriodStart(input.recordedAt);
     const monthPeriodStart = this.resolveUtcMonthPeriodStart(input.recordedAt);
+    const modelProviderScopeType = input.costKind === "virtual"
+      ? "managed_model_provider_credential"
+      : "model_provider_credential";
 
     return [
       {
+        agentId: null,
+        modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
-        scopeId: input.sessionId,
+        sessionId: input.sessionId,
         scopeType: "session",
       },
       {
+        agentId: input.agentId,
+        modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
-        scopeId: input.agentId,
+        sessionId: null,
         scopeType: "agent",
       },
       {
+        agentId: input.agentId,
+        modelProviderCredentialId: null,
         period: "day",
         periodStart: dayPeriodStart,
-        scopeId: input.agentId,
+        sessionId: null,
         scopeType: "agent",
       },
       {
+        agentId: input.agentId,
+        modelProviderCredentialId: null,
         period: "month",
         periodStart: monthPeriodStart,
-        scopeId: input.agentId,
+        sessionId: null,
         scopeType: "agent",
       },
       {
+        agentId: null,
+        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
+          ? input.modelProviderCredentialId
+          : null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
-        scopeId: input.modelProviderCredentialId,
-        scopeType: "provider",
+        sessionId: null,
+        scopeType: modelProviderScopeType,
       },
       {
+        agentId: null,
+        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
+          ? input.modelProviderCredentialId
+          : null,
         period: "day",
         periodStart: dayPeriodStart,
-        scopeId: input.modelProviderCredentialId,
-        scopeType: "provider",
+        sessionId: null,
+        scopeType: modelProviderScopeType,
       },
       {
+        agentId: null,
+        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
+          ? input.modelProviderCredentialId
+          : null,
         period: "month",
         periodStart: monthPeriodStart,
-        scopeId: input.modelProviderCredentialId,
-        scopeType: "provider",
+        sessionId: null,
+        scopeType: modelProviderScopeType,
       },
       {
+        agentId: null,
+        modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
-        scopeId: input.companyId,
+        sessionId: null,
         scopeType: "company",
       },
       {
+        agentId: null,
+        modelProviderCredentialId: null,
         period: "day",
         periodStart: dayPeriodStart,
-        scopeId: input.companyId,
+        sessionId: null,
         scopeType: "company",
       },
       {
+        agentId: null,
+        modelProviderCredentialId: null,
         period: "month",
         periodStart: monthPeriodStart,
-        scopeId: input.companyId,
+        sessionId: null,
         scopeType: "company",
       },
     ];
+  }
+
+  private resolveAggregateConflictTarget(aggregateRecord: AggregateRecord): {
+    target: unknown[];
+    targetWhere: SQL;
+  } {
+    if (
+      aggregateRecord.scopeType === "company"
+      || aggregateRecord.scopeType === "managed_model_provider_credential"
+    ) {
+      return {
+        target: [
+          llmUsageAggregates.companyId,
+          llmUsageAggregates.scopeType,
+          llmUsageAggregates.period,
+          llmUsageAggregates.periodStart,
+        ],
+        targetWhere: sql`${llmUsageAggregates.scopeType} IN ('company', 'managed_model_provider_credential')`,
+      };
+    }
+
+    if (aggregateRecord.scopeType === "model_provider_credential") {
+      return {
+        target: [
+          llmUsageAggregates.companyId,
+          llmUsageAggregates.modelProviderCredentialId,
+          llmUsageAggregates.period,
+          llmUsageAggregates.periodStart,
+        ],
+        targetWhere: sql`${llmUsageAggregates.scopeType} = 'model_provider_credential'`,
+      };
+    }
+
+    if (aggregateRecord.scopeType === "agent") {
+      return {
+        target: [
+          llmUsageAggregates.companyId,
+          llmUsageAggregates.agentId,
+          llmUsageAggregates.period,
+          llmUsageAggregates.periodStart,
+        ],
+        targetWhere: sql`${llmUsageAggregates.scopeType} = 'agent'`,
+      };
+    }
+
+    return {
+      target: [
+        llmUsageAggregates.companyId,
+        llmUsageAggregates.sessionId,
+        llmUsageAggregates.period,
+        llmUsageAggregates.periodStart,
+      ],
+      targetWhere: sql`${llmUsageAggregates.scopeType} = 'session'`,
+    };
   }
 
   private resolveUtcDayPeriodStart(recordedAt: Date): Date {

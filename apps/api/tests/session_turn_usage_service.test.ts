@@ -83,7 +83,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
     return row.scopeType === "company" && row.period === "month";
   });
   const providerDay = harness.aggregateRows.find((row) => {
-    return row.scopeType === "provider" && row.period === "day";
+    return row.scopeType === "model_provider_credential" && row.period === "day";
   });
 
   assert.ok(sessionTotal);
@@ -108,7 +108,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.ok(agentDay);
   assert.equal((agentDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(providerDay);
-  assert.equal(providerDay.scopeId, "00000000-0000-0000-0000-000000000005");
+  assert.equal(providerDay.modelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
   assert.equal((providerDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(companyMonth);
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
@@ -158,6 +158,12 @@ test("SessionTurnUsageService stores subscription costs as virtual spend", async
   assert.equal(sessionTotal.cacheWriteCostNanoVirtualUsd, 4);
   assert.equal(sessionTotal.totalCostNanoVirtualUsd, 10);
   assert.equal(sessionTotal.totalTokens, 220);
+
+  const managedDay = harness.aggregateRows.find((row) => {
+    return row.scopeType === "managed_model_provider_credential" && row.period === "day";
+  });
+  assert.ok(managedDay);
+  assert.equal(managedDay.modelProviderCredentialId, null);
 });
 
 test("SessionTurnUsageService skips empty usage payloads", async () => {

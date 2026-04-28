@@ -166,7 +166,7 @@ const agentDetailPageQueryNode = graphql`
         templateId
       }
     }
-    agentTotal: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: total }) {
+    agentTotal: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: total }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -182,13 +182,16 @@ const agentDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
       totalTokens
     }
-    agentDaily: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: day, periodStartAfter: $dailyStart }) {
+    agentDaily: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -204,13 +207,16 @@ const agentDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
       totalTokens
     }
-    agentMonthly: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: month, periodStartAfter: $monthlyStart }) {
+    agentMonthly: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -226,7 +232,10 @@ const agentDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd

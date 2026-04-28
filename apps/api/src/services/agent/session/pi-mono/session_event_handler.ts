@@ -624,8 +624,9 @@ export class PiMonoSessionEventHandler {
       await this.codexRateLimitService.refreshCredentialLimits(this.transactionProvider, {
         apiKey: attribution.apiKey,
         baseUrl: attribution.baseUrl,
+        companyId: attribution.companyId,
         credentialId: attribution.modelProviderCredentialId,
-        credentialSource: "user_provided",
+        credentialSource: attribution.platformModelProviderCredentialId ? "platform" : "user_provided",
         modelProvider: attribution.modelProvider,
       }, persistedMessageReference.timestamp);
     } catch (error: unknown) {

@@ -748,7 +748,8 @@ type SessionTurn {
 
 enum LlmUsageAggregateScope {
   company
-  provider
+  managed_model_provider_credential
+  model_provider_credential
   agent
   session
 }
@@ -761,7 +762,9 @@ enum LlmUsageAggregatePeriod {
 
 input LlmUsageAggregatesInput {
   scopeType: LlmUsageAggregateScope!
-  scopeId: ID
+  modelProviderCredentialId: ID
+  agentId: ID
+  sessionId: ID
   period: LlmUsageAggregatePeriod
   periodStartAfter: String
 }
@@ -770,7 +773,9 @@ type LlmUsageAggregate {
   id: ID!
   companyId: ID!
   scopeType: LlmUsageAggregateScope!
-  scopeId: ID!
+  modelProviderCredentialId: ID
+  agentId: ID
+  sessionId: ID
   period: LlmUsageAggregatePeriod!
   periodStart: String!
   requestCount: Float!
@@ -805,7 +810,6 @@ type CompanyManagedLlmBudgetPeriod {
 
 type CompanyManagedLlmBudget {
   plan: CompanySubscriptionPlan!
-  managedCredentialId: ID
   daily: CompanyManagedLlmBudgetPeriod!
   monthly: CompanyManagedLlmBudgetPeriod!
 }

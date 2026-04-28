@@ -24,7 +24,6 @@ type CompanyManagedLlmBudgetPeriodRecord = {
 
 type CompanyManagedLlmBudgetRecord = {
   daily: CompanyManagedLlmBudgetPeriodRecord;
-  managedCredentialId: string | null | undefined;
   monthly: CompanyManagedLlmBudgetPeriodRecord;
   plan: string;
 };
@@ -99,9 +98,7 @@ export function UsageSection(props: UsageSectionProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">{formatPlanLabel(props.budget.plan)} plan</Badge>
-          <Badge variant={props.budget.managedCredentialId ? "outline" : "warning"}>
-            {props.budget.managedCredentialId ? "Managed provider ready" : "Managed provider missing"}
-          </Badge>
+          <Badge variant="outline">Managed provider</Badge>
           <Badge variant={props.budget.daily.exhausted ? "destructive" : "outline"}>
             Daily budget: {formatRemainingLabel(props.budget.daily.remainingCostNanoUsd)}
           </Badge>

@@ -18,7 +18,7 @@ import {
 import { sql } from "drizzle-orm/sql";
 
 import { modelCredentialSourceEnum } from "./ai_common.ts";
-import { agents, modelProviderCredentialModels } from "./agents.ts";
+import { agents, modelProviderCredentialModels, modelProviderCredentials } from "./agents.ts";
 import { companySecrets, companies, users } from "./company.ts";
 import { platformModelProviderCredentialModels, platformModelProviderCredentials, platformModels } from "./platform_ai.ts";
 
@@ -35,7 +35,8 @@ export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", [
   "company",
-  "provider",
+  "managed_model_provider_credential",
+  "model_provider_credential",
   "agent",
   "session",
 ]);
@@ -148,7 +149,12 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   scopeType: llmUsageAggregateScopeEnum("scope_type").notNull(),
-  scopeId: uuid("scope_id").notNull(),
+  modelProviderCredentialId: uuid("model_provider_credential_id")
+    .references(() => modelProviderCredentials.id, { onDelete: "cascade" }),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" }),
+  sessionId: uuid("session_id")
+    .references((): AnyPgColumn => agentSessions.id, { onDelete: "cascade" }),
   period: llmUsageAggregatePeriodEnum("period").notNull(),
   periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
   requestCount: bigint("request_count", { mode: "number" }).default(0).notNull(),
@@ -170,10 +176,38 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
+  agentScopeIndex: index("llm_usage_aggregates_agent_scope_idx")
+    .on(table.companyId, table.agentId),
   companyScopeIndex: index("llm_usage_aggregates_company_scope_idx")
-    .on(table.companyId, table.scopeType, table.scopeId),
+    .on(table.companyId, table.scopeType),
+  modelProviderCredentialScopeIndex: index("llm_usage_aggregates_model_provider_credential_scope_idx")
+    .on(table.companyId, table.modelProviderCredentialId),
+  sessionScopeIndex: index("llm_usage_aggregates_session_scope_idx")
+    .on(table.companyId, table.sessionId),
   companyScopePeriodUnique: uniqueIndex("llm_usage_aggregates_company_scope_period_uidx")
-    .on(table.companyId, table.scopeType, table.scopeId, table.period, table.periodStart),
+    .on(table.companyId, table.scopeType, table.period, table.periodStart)
+    .where(sql`${table.scopeType} IN ('company', 'managed_model_provider_credential')`),
+  modelProviderCredentialScopePeriodUnique: uniqueIndex("llm_usage_aggregates_model_provider_credential_scope_period_uidx")
+    .on(table.companyId, table.modelProviderCredentialId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'model_provider_credential'`),
+  agentScopePeriodUnique: uniqueIndex("llm_usage_aggregates_agent_scope_period_uidx")
+    .on(table.companyId, table.agentId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'agent'`),
+  sessionScopePeriodUnique: uniqueIndex("llm_usage_aggregates_session_scope_period_uidx")
+    .on(table.companyId, table.sessionId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'session'`),
+  scopeReferenceCheck: check(
+    "llm_usage_aggregates_scope_reference_check",
+    sql`(
+      (${table.scopeType} IN ('company', 'managed_model_provider_credential') AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      OR
+      (${table.scopeType} = 'model_provider_credential' AND ${table.modelProviderCredentialId} IS NOT NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      OR
+      (${table.scopeType} = 'agent' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NOT NULL AND ${table.sessionId} IS NULL)
+      OR
+      (${table.scopeType} = 'session' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NOT NULL)
+    )`,
+  ),
 }));
 
 export const userSessionReads = pgTable("user_session_reads", {

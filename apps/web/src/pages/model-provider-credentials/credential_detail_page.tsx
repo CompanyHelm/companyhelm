@@ -72,7 +72,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       reasoningSupported
       reasoningLevels
     }
-    providerTotal: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: total }) {
+    providerTotal: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: total }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -88,13 +88,16 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
       totalTokens
     }
-    providerDaily: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: day, periodStartAfter: $dailyStart }) {
+    providerDaily: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -110,13 +113,16 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
       totalTokens
     }
-    providerMonthly: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: month, periodStartAfter: $monthlyStart }) {
+    providerMonthly: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -132,7 +138,10 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -579,7 +588,7 @@ function ModelProviderCredentialDetailPageContent() {
                 aggregates={providerUsageAggregates}
                 description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
                 scopeId={normalizedCredentialId}
-                scopeType="provider"
+                scopeType="model_provider_credential"
                 spendKind={isOauthCredential ? "virtual" : "actual"}
                 title={`${currentCredential?.name ?? providerLabel} usage`}
               />

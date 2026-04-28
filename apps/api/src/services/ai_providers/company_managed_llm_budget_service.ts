@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { companies, llmUsageAggregates, platformModelProviderCredentials } from "../../db/schema.ts";
+import { companies, llmUsageAggregates } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 
 export type CompanySubscriptionPlan = "free" | "pro";
@@ -15,7 +15,6 @@ type CompanyManagedLlmBudgetInput = {
 type PlatformManagedLlmBudgetInput = {
   companyId: string;
   now?: Date;
-  platformModelProviderCredentialId: string | null;
 };
 
 type CompanyManagedLlmBudgetSnapshotInput = {
@@ -51,13 +50,8 @@ export type CompanyManagedLlmBudgetPeriodSnapshot = {
 
 export type CompanyManagedLlmBudgetSnapshot = {
   daily: CompanyManagedLlmBudgetPeriodSnapshot;
-  managedCredentialId: string | null;
   monthly: CompanyManagedLlmBudgetPeriodSnapshot;
   plan: CompanySubscriptionPlan;
-};
-
-type ManagedCredentialRecord = {
-  id: string;
 };
 
 type CompanyRecord = {
@@ -150,9 +144,6 @@ export class CompanyManagedLlmBudgetService {
     database: SelectableDatabase,
     input: PlatformManagedLlmBudgetInput,
   ): Promise<CompanyManagedLlmBudgetStatus> {
-    if (!input.platformModelProviderCredentialId) {
-      return { allowed: true };
-    }
     const company = await this.loadCompany(database, input.companyId);
     const entitlements = this.resolveEntitlements(company.plan);
     const now = input.now ?? new Date();
@@ -162,7 +153,6 @@ export class CompanyManagedLlmBudgetService {
     const dailyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.dailyCapNanoUsd,
       companyId: input.companyId,
-      modelProviderCredentialId: input.platformModelProviderCredentialId,
       period: "day",
       periodStart: dayPeriodStart,
     });
@@ -173,7 +163,6 @@ export class CompanyManagedLlmBudgetService {
     const monthlyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.monthlyCapNanoUsd,
       companyId: input.companyId,
-      modelProviderCredentialId: input.platformModelProviderCredentialId,
       period: "month",
       periodStart: monthPeriodStart,
     });
@@ -200,7 +189,6 @@ export class CompanyManagedLlmBudgetService {
     input: CompanyManagedLlmBudgetSnapshotInput,
   ): Promise<CompanyManagedLlmBudgetSnapshot> {
     const company = await this.loadCompany(database, input.companyId);
-    const managedCredentialId = await this.loadManagedCredentialId(database, input.companyId);
     const entitlements = this.resolveEntitlements(company.plan);
     const now = input.now ?? new Date();
     const dailyPeriodStart = this.resolveUtcDayPeriodStart(now);
@@ -210,15 +198,12 @@ export class CompanyManagedLlmBudgetService {
       daily: await this.loadOptionalCredentialPeriodBudget(database, {
         capNanoUsd: entitlements.dailyCapNanoUsd,
         companyId: input.companyId,
-        modelProviderCredentialId: managedCredentialId,
         period: "day",
         periodStart: dailyPeriodStart,
       }),
-      managedCredentialId,
       monthly: await this.loadOptionalCredentialPeriodBudget(database, {
         capNanoUsd: entitlements.monthlyCapNanoUsd,
         companyId: input.companyId,
-        modelProviderCredentialId: managedCredentialId,
         period: "month",
         periodStart: monthlyPeriodStart,
       }),
@@ -231,7 +216,6 @@ export class CompanyManagedLlmBudgetService {
     input: {
       capNanoUsd: number | null;
       companyId: string;
-      modelProviderCredentialId: string;
       period: LlmUsageAggregatePeriod;
       periodStart: Date;
     },
@@ -245,34 +229,11 @@ export class CompanyManagedLlmBudgetService {
     input: {
       capNanoUsd: number | null;
       companyId: string;
-      modelProviderCredentialId: string | null;
       period: LlmUsageAggregatePeriod;
       periodStart: Date;
     },
   ): Promise<CompanyManagedLlmBudgetPeriodSnapshot> {
-    if (!input.modelProviderCredentialId) {
-      return this.buildPeriodSnapshot(input.period, input.periodStart, input.capNanoUsd, 0);
-    }
-
-    return this.loadPeriodBudget(database, {
-      ...input,
-      modelProviderCredentialId: input.modelProviderCredentialId,
-    });
-  }
-
-  private async loadManagedCredentialId(
-    database: SelectableDatabase,
-    _companyId: string,
-  ): Promise<string | null> {
-    void _companyId;
-    const [credential] = await database
-      .select({
-        id: platformModelProviderCredentials.id,
-      })
-      .from(platformModelProviderCredentials)
-      .where(eq(platformModelProviderCredentials.isDefault, true)) as ManagedCredentialRecord[];
-
-    return credential?.id ?? null;
+    return this.loadPeriodBudget(database, input);
   }
 
   private async loadCompany(
@@ -296,7 +257,6 @@ export class CompanyManagedLlmBudgetService {
     database: SelectableDatabase,
     input: {
       companyId: string;
-      modelProviderCredentialId: string;
       period: LlmUsageAggregatePeriod;
       periodStart: Date;
     },
@@ -308,8 +268,7 @@ export class CompanyManagedLlmBudgetService {
       .from(llmUsageAggregates)
       .where(and(
         eq(llmUsageAggregates.companyId, input.companyId),
-        eq(llmUsageAggregates.scopeType, "provider"),
-        eq(llmUsageAggregates.scopeId, input.modelProviderCredentialId),
+        eq(llmUsageAggregates.scopeType, "managed_model_provider_credential"),
         eq(llmUsageAggregates.period, input.period),
         eq(llmUsageAggregates.periodStart, input.periodStart),
       )) as UsageAggregateRecord[];

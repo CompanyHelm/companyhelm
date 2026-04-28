@@ -169,7 +169,6 @@ export class SessionLifecycleService {
     if (selectedModelRecord.modelCredentialSource === "platform") {
       await this.companyManagedLlmBudgetService.assertWithinPlatformBudgetInTransaction(selectableDatabase, {
         companyId,
-        platformModelProviderCredentialId: selectedModelRecord.platformModelProviderCredentialId,
       });
     }
     const preparedPrompt = this.sessionPromptService.prepareQueuedPrompt(userMessage, options.images);

@@ -39,7 +39,10 @@ type GraphqlUsageAggregateRecord = {
   period: string;
   periodStart: string;
   requestCount: number;
-  scopeId: string;
+  agentId: string | null | undefined;
+  companyId: string;
+  modelProviderCredentialId: string | null | undefined;
+  sessionId: string | null | undefined;
   scopeType: string;
   totalCostNanoUsd: number;
   totalCostNanoVirtualUsd: number;
@@ -76,13 +79,27 @@ export class UsageMetrics {
         period,
         periodStart: record.periodStart,
         requestCount: record.requestCount,
-        scopeId: record.scopeId,
+        scopeId: UsageMetrics.resolveGraphqlScopeId(record),
         scopeType: record.scopeType,
         totalCostNanoUsd: record.totalCostNanoUsd,
         totalCostNanoVirtualUsd: record.totalCostNanoVirtualUsd,
         totalTokens: record.totalTokens,
       }];
     });
+  }
+
+  private static resolveGraphqlScopeId(record: GraphqlUsageAggregateRecord): string {
+    if (record.scopeType === "model_provider_credential") {
+      return record.modelProviderCredentialId ?? "";
+    }
+    if (record.scopeType === "agent") {
+      return record.agentId ?? "";
+    }
+    if (record.scopeType === "session") {
+      return record.sessionId ?? "";
+    }
+
+    return record.companyId;
   }
 
   static emptyAggregate(

@@ -24,7 +24,6 @@ const usagePageQueryNode = graphql`
     }
     CompanyManagedLlmBudget {
       plan
-      managedCredentialId
       daily {
         exhausted
         limitCostNanoUsd
@@ -60,7 +59,10 @@ const usagePageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -82,7 +84,10 @@ const usagePageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -104,13 +109,16 @@ const usagePageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
       totalTokens
     }
-    providerTotals: LlmUsageAggregates(input: { scopeType: provider, period: total }) {
+    providerTotals: LlmUsageAggregates(input: { scopeType: model_provider_credential, period: total }) {
       cacheReadCostNanoUsd
       cacheReadCostNanoVirtualUsd
       cacheReadTokens
@@ -126,7 +134,10 @@ const usagePageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -181,7 +192,7 @@ function UsagePageContent() {
   }, [data.providerTotals]);
   const providerRows = useMemo(() => {
     return data.ModelProviderCredentials.map((credential) => {
-      const total = UsageMetrics.findTotalAggregate(providerTotals, "provider", credential.id);
+      const total = UsageMetrics.findTotalAggregate(providerTotals, "model_provider_credential", credential.id);
 
       return {
         credential,

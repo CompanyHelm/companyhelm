@@ -17,7 +17,6 @@ type GraphqlCompanyManagedLlmBudgetPeriod = {
 
 type GraphqlCompanyManagedLlmBudget = {
   daily: GraphqlCompanyManagedLlmBudgetPeriod;
-  managedCredentialId: string | null;
   monthly: GraphqlCompanyManagedLlmBudgetPeriod;
   plan: string;
 };
@@ -63,7 +62,6 @@ export class CompanyManagedLlmBudgetQueryResolver {
   private serializeSnapshot(snapshot: CompanyManagedLlmBudgetSnapshot): GraphqlCompanyManagedLlmBudget {
     return {
       daily: this.serializePeriod(snapshot.daily),
-      managedCredentialId: snapshot.managedCredentialId,
       monthly: this.serializePeriod(snapshot.monthly),
       plan: snapshot.plan,
     };

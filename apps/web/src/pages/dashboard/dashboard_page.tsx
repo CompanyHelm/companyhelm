@@ -70,7 +70,6 @@ const dashboardPageQueryNode = graphql`
     }
     CompanyManagedLlmBudget {
       plan
-      managedCredentialId
       daily {
         exhausted
         limitCostNanoUsd
@@ -106,7 +105,10 @@ const dashboardPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -128,7 +130,10 @@ const dashboardPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd
@@ -150,7 +155,10 @@ const dashboardPageQueryNode = graphql`
       period
       periodStart
       requestCount
-      scopeId
+      companyId
+      agentId
+      modelProviderCredentialId
+      sessionId
       scopeType
       totalCostNanoUsd
       totalCostNanoVirtualUsd

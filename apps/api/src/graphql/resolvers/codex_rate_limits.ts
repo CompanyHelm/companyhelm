@@ -87,7 +87,7 @@ export class CodexRateLimitsQueryResolver {
         .select()
         .from(codexRateLimitSnapshots)
         .where(and(
-          eq(codexRateLimitSnapshots.credentialSource, "user_provided"),
+          eq(codexRateLimitSnapshots.companyId, companyId),
           eq(codexRateLimitSnapshots.credentialId, credentialId),
         ))
         .orderBy(asc(codexRateLimitSnapshots.limitId));

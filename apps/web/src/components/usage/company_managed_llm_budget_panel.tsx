@@ -14,7 +14,6 @@ type CompanyManagedLlmBudgetPeriodRecord = {
 
 export type CompanyManagedLlmBudgetRecord = {
   daily: CompanyManagedLlmBudgetPeriodRecord;
-  managedCredentialId: string | null | undefined;
   monthly: CompanyManagedLlmBudgetPeriodRecord;
   plan: string;
 };
@@ -108,11 +107,7 @@ export function CompanyManagedLlmBudgetPanel(props: CompanyManagedLlmBudgetPanel
             {props.title ?? "CompanyHelm included usage"}
           </h2>
           <Badge variant="secondary">{formatPlanLabel(props.budget.plan)} plan</Badge>
-          {props.budget.managedCredentialId ? (
-            <Badge variant="outline">Managed provider</Badge>
-          ) : (
-            <Badge variant="warning">Not provisioned</Badge>
-          )}
+          <Badge variant="outline">Managed provider</Badge>
         </div>
         {props.description ? (
           <p className="max-w-3xl text-sm text-muted-foreground">{props.description}</p>
