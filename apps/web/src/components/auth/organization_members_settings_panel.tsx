@@ -5,14 +5,15 @@ import { config } from "@/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type InvitationRole = "org:admin" | "org:member";
+const DEFAULT_INVITATION_ROLE = "org:admin";
 
 type OrganizationMemberRecord = {
   createdAt: Date;
@@ -32,8 +33,6 @@ type OrganizationMemberRecord = {
     identifier: string;
     lastName: string | null;
   };
-  role: string;
-  roleName: string;
 };
 
 type OrganizationInvitationRecord = {
@@ -41,24 +40,17 @@ type OrganizationInvitationRecord = {
   emailAddress: string;
   id: string;
   revoke: () => Promise<unknown>;
-  role: string;
-  roleName: string;
   status: string;
 };
 
-const INVITATION_ROLE_OPTIONS: Array<{
-  label: string;
-  value: InvitationRole;
-}> = [
-  {
-    label: "Member",
-    value: "org:member",
-  },
-  {
-    label: "Admin",
-    value: "org:admin",
-  },
-];
+type OrganizationMemberTableRecord = {
+  createdAt: Date;
+  emailAddress: string;
+  id: string;
+  name: string;
+  revoke?: () => Promise<unknown>;
+  status: "active" | "invited";
+};
 
 /**
  * Hosts CompanyHelm's safe organization member management surface. Clerk remains the source of
@@ -77,9 +69,9 @@ function ClerkOrganizationMembersSettingsPanel() {
   const organizationState = useClerkOrganization();
   const [emailAddress, setEmailAddress] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [invitationRole, setInvitationRole] = useState<InvitationRole>("org:member");
   const [invitations, setInvitations] = useState<OrganizationInvitationRecord[]>([]);
   const [isInviting, setInviting] = useState(false);
+  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const [members, setMembers] = useState<OrganizationMemberRecord[]>([]);
   const [revokingInvitationId, setRevokingInvitationId] = useState<string | null>(null);
@@ -134,9 +126,10 @@ function ClerkOrganizationMembersSettingsPanel() {
     try {
       await organization.inviteMember({
         emailAddress,
-        role: invitationRole,
+        role: DEFAULT_INVITATION_ROLE,
       });
       setEmailAddress("");
+      setInviteDialogOpen(false);
       setSuccessMessage(`Invitation sent to ${emailAddress}.`);
       await loadMembers();
     } catch (error) {
@@ -145,6 +138,24 @@ function ClerkOrganizationMembersSettingsPanel() {
       setInviting(false);
     }
   }
+
+  const tableRows = [
+    ...members.map((member): OrganizationMemberTableRecord => ({
+      createdAt: member.createdAt,
+      emailAddress: member.publicUserData?.identifier ?? "No email",
+      id: member.id,
+      name: formatMemberName(member),
+      status: "active",
+    })),
+    ...invitations.map((invitation): OrganizationMemberTableRecord => ({
+      createdAt: invitation.createdAt,
+      emailAddress: invitation.emailAddress,
+      id: invitation.id,
+      name: invitation.emailAddress,
+      revoke: invitation.revoke,
+      status: "invited",
+    })),
+  ];
 
   async function revokeInvitation(invitation: OrganizationInvitationRecord) {
     if (revokingInvitationId) {
@@ -193,58 +204,17 @@ function ClerkOrganizationMembersSettingsPanel() {
           <div className="min-w-0">
             <CardTitle>Members</CardTitle>
             <CardDescription>
-              Invite teammates and review active Clerk organization access.
+              Invite teammates and review Clerk organization access.
             </CardDescription>
           </div>
           <CardAction>
-            <Button disabled={isLoading} onClick={() => void loadMembers()} size="sm" type="button" variant="outline">
-              <RefreshCwIcon className={isLoading ? "animate-spin" : undefined} />
-              Refresh
+            <Button onClick={() => setInviteDialogOpen(true)} size="sm" type="button">
+              <MailPlusIcon />
+              Invite
             </Button>
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <form className="grid gap-3 rounded-xl border border-border/70 bg-background/90 p-4" onSubmit={handleInvite}>
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <MailPlusIcon className="size-4 text-muted-foreground" />
-              <span>Invite member</span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-center">
-              <Input
-                autoComplete="email"
-                disabled={isInviting}
-                onChange={(event) => setEmailAddress(event.target.value)}
-                placeholder="teammate@company.com"
-                type="email"
-                value={emailAddress}
-              />
-              <Select<InvitationRole>
-                disabled={isInviting}
-                onValueChange={(value) => {
-                  if (value) {
-                    setInvitationRole(value);
-                  }
-                }}
-                value={invitationRole}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVITATION_ROLE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button disabled={isInviting} type="submit">
-                <MailPlusIcon />
-                Invite
-              </Button>
-            </div>
-          </form>
-
           {successMessage ? (
             <div className="rounded-md border border-[var(--success)]/30 bg-[var(--success-bg)] px-3 py-2 text-xs text-[var(--success)]">
               {successMessage}
@@ -256,45 +226,60 @@ function ClerkOrganizationMembersSettingsPanel() {
               {errorMessage}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle>Active members</CardTitle>
-            <CardDescription>
-              People who can currently access {organization.name}.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {members.length === 0 ? (
-            <EmptyMembersState label="No active members found." />
+          {isLoading ? (
+            <div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">
+              <RefreshCwIcon className="mr-2 size-4 animate-spin" />
+              Loading members...
+            </div>
+          ) : tableRows.length === 0 ? (
+            <EmptyMembersState label="No members or invitations found." />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Member</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Added</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.id}>
+                {tableRows.map((row) => (
+                  <TableRow key={`${row.status}:${row.id}`}>
                     <TableCell>
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{formatMemberName(member)}</p>
-                        <p className="truncate text-xs text-muted-foreground">{member.publicUserData?.identifier ?? "No email"}</p>
+                        <p className="truncate font-medium text-foreground">{row.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{row.emailAddress}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={member.role === "org:admin" ? "secondary" : "outline"}>
-                        {member.roleName || formatRole(member.role)}
+                      <Badge variant={row.status === "active" ? "positive" : "outline"}>
+                        {row.status === "active" ? "Active" : "Invited"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDate(member.createdAt)}</TableCell>
+                    <TableCell>{formatDate(row.createdAt)}</TableCell>
+                    <TableCell className="text-right">
+                      {row.status === "invited" && row.revoke ? (
+                        <Button
+                          disabled={revokingInvitationId !== null}
+                          onClick={() => void revokeInvitation({
+                            createdAt: row.createdAt,
+                            emailAddress: row.emailAddress,
+                            id: row.id,
+                            revoke: row.revoke as () => Promise<unknown>,
+                            status: "pending",
+                          })}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <RotateCcwIcon className={revokingInvitationId === row.id ? "animate-spin" : undefined} />
+                          Revoke
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -303,62 +288,40 @@ function ClerkOrganizationMembersSettingsPanel() {
         </CardContent>
       </Card>
 
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle>Pending invitations</CardTitle>
-            <CardDescription>
-              Invites that have been sent but not accepted.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {invitations.length === 0 ? (
-            <EmptyMembersState label="No pending invitations." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Sent</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{invitation.emailAddress}</p>
-                        <p className="text-xs text-muted-foreground">{invitation.status}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={invitation.role === "org:admin" ? "secondary" : "outline"}>
-                        {invitation.roleName || formatRole(invitation.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(invitation.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        disabled={revokingInvitationId !== null}
-                        onClick={() => void revokeInvitation(invitation)}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        <RotateCcwIcon className={revokingInvitationId === invitation.id ? "animate-spin" : undefined} />
-                        Revoke
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <Dialog
+        open={isInviteDialogOpen}
+        onOpenChange={(open) => {
+          setInviteDialogOpen(open);
+          if (!open) {
+            setEmailAddress("");
+          }
+        }}
+      >
+        <DialogContent className="w-[min(92vw,30rem)]">
+          <form className="grid gap-4" onSubmit={handleInvite}>
+            <DialogHeader>
+              <DialogTitle>Invite member</DialogTitle>
+              <DialogDescription>
+                Send a Clerk organization invitation. New members are added as organization admins.
+              </DialogDescription>
+            </DialogHeader>
+            <Input
+              autoComplete="email"
+              disabled={isInviting}
+              onChange={(event) => setEmailAddress(event.target.value)}
+              placeholder="teammate@company.com"
+              type="email"
+              value={emailAddress}
+            />
+            <DialogFooter>
+              <Button disabled={isInviting} type="submit">
+                <MailPlusIcon />
+                Invite
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -407,8 +370,4 @@ function formatMemberName(member: OrganizationMemberRecord): string {
   const lastName = member.publicUserData?.lastName;
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
   return fullName.length > 0 ? fullName : member.publicUserData?.identifier ?? "Member";
-}
-
-function formatRole(role: string): string {
-  return role === "org:admin" ? "Admin" : "Member";
 }
