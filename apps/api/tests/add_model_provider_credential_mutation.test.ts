@@ -606,6 +606,13 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
         description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
         reasoningSupported: false,
         reasoningLevels: null,
+      }, {
+        provider: "openai-compatible",
+        modelId: "nvidia/nemotron-3-super-120b-a12b",
+        name: "nvidia/nemotron-3-super-120b-a12b",
+        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        reasoningSupported: false,
+        reasoningLevels: null,
       }];
     },
   };
@@ -679,8 +686,16 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
     modelProvider: "openai-compatible",
   });
   assert.equal(database.insertedValues[0]?.baseUrl, "https://integrate.api.nvidia.com/v1");
-  assert.equal(database.insertedValues[1]?.modelId, "llama3.1:8b");
-  assert.equal(database.insertedValues[2]?.modelId, "nvidia/nemotron-3-super-120b-a12b");
+  assert.deepEqual(
+    database.insertedValues
+      .filter((value) => value.modelProviderCredentialId === "credential-1")
+      .filter((value) => "modelId" in value)
+      .map((value) => value.modelId),
+    [
+      "llama3.1:8b",
+      "nvidia/nemotron-3-super-120b-a12b",
+    ],
+  );
   assert.deepEqual(modelManager.calls, [{
     provider: "openai-compatible",
     apiKey: "ollama",

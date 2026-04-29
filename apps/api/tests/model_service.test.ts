@@ -46,6 +46,14 @@ class NvidiaCompatibleRefreshingModelService extends ModelService {
         reasoningSupported: false,
         reasoningLevels: null,
       }),
+      new ModelProviderModel({
+        provider: "openai-compatible",
+        modelId: "nvidia/nemotron-3-super-120b-a12b",
+        name: "nvidia/nemotron-3-super-120b-a12b",
+        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        reasoningSupported: false,
+        reasoningLevels: null,
+      }),
     ];
   }
 }
@@ -471,6 +479,9 @@ test("ModelService fetchModels uses the configured OpenAI-compatible base URL", 
 
     return new Response(JSON.stringify({
       data: [
+        {
+          id: "llama3.1:8b",
+        },
         {
           id: "llama3.1:8b",
         },

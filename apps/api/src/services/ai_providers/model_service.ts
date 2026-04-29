@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { ModelRegistry } from "./model_registry.js";
+import { ModelProviderModelCollection } from "./model_provider_model_collection.js";
 import { ModelProviderModel } from "./model_provider_model.js";
 import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
 import { GoogleGeminiCliModelAdapter } from "../providers/models-adapters/google_gemini_cli_model_adapter.js";
@@ -103,7 +104,9 @@ export class ModelService {
       throw new Error(`Unsupported model provider: ${normalizedProvider}`);
     }
 
-    return adapter.fetchModels(normalizedApiKey, options);
+    return ModelProviderModelCollection.deduplicateByModelId(
+      await adapter.fetchModels(normalizedApiKey, options),
+    );
   }
 
   async refreshStoredModels(input: {
@@ -114,9 +117,11 @@ export class ModelService {
     modelProviderCredentialId: string;
     transactionProvider: TransactionProviderInterface;
   }): Promise<StoredModelRecord[]> {
-    const fetchedModels = await this.fetchModels(input.modelProvider, input.apiKey, {
-      baseUrl: input.baseUrl,
-    });
+    const fetchedModels = ModelProviderModelCollection.deduplicateByModelId(
+      await this.fetchModels(input.modelProvider, input.apiKey, {
+        baseUrl: input.baseUrl,
+      }),
+    );
 
     return input.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as unknown as SelectableDatabase;

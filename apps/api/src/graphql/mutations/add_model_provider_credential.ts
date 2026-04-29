@@ -7,6 +7,7 @@ import {
 } from "../../db/schema.ts";
 import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
+import { ModelProviderModelCollection } from "../../services/ai_providers/model_provider_model_collection.js";
 import {
   ModelProviderAuthorizationType,
   ModelProviderService,
@@ -150,9 +151,11 @@ export class AddModelProviderCredentialMutation extends Mutation<
       arguments_.input.baseUrl,
       modelProvider,
     );
-    const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken, {
-      baseUrl,
-    });
+    const models = ModelProviderModelCollection.deduplicateByModelId(
+      await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken, {
+        baseUrl,
+      }),
+    );
     const defaultModelId = AddModelProviderCredentialMutation.resolveDefaultModelId(
       this.modelRegistry,
       this.openAiCompatibleDefaultModelService,

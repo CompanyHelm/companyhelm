@@ -132,6 +132,8 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
   credentialDefaultUnique: uniqueIndex("model_provider_credential_models_credential_default_uidx")
     .on(table.modelProviderCredentialId)
     .where(sql`${table.isDefault}`),
+  credentialModelUnique: uniqueIndex("model_provider_credential_models_credential_model_uidx")
+    .on(table.modelProviderCredentialId, table.modelId),
 }));
 
 export const agentDefaultSecrets = pgTable("agent_default_secrets", {

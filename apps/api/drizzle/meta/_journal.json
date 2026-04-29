@@ -1037,6 +1037,13 @@
       "when": 1777474000000,
       "tag": "0148_platform_admin_agent_model_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1777475000000,
+      "tag": "0149_model_provider_credential_model_unique_ids",
+      "breakpoints": true
     }
   ]
 }
