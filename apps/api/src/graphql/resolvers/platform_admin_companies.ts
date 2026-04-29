@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { companies, companyMembers } from "../../db/schema.ts";
 import {
@@ -11,6 +11,7 @@ type PlatformAdminCompaniesArguments = {
   page: number;
   pageSize: number;
   search?: string | null;
+  userId?: string | null;
 };
 
 type PlatformAdminCompanyRow = {
@@ -79,23 +80,23 @@ export class PlatformAdminCompaniesQueryResolver {
     const page = this.normalizePage(arguments_.page);
     const pageSize = this.normalizePageSize(arguments_.pageSize);
     const offset = (page - 1) * pageSize;
-    const searchCondition = this.buildSearchCondition(arguments_.search);
+    const filterCondition = this.buildFilterCondition(arguments_.search, arguments_.userId);
 
     const companyPage = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const countRows = searchCondition
+      const countRows = filterCondition
         ? await tx
           .select({
             totalCount: sql<number>`count(*)::int`,
           })
           .from(companies)
-          .where(searchCondition) as PlatformAdminCompanyCountRow[]
+          .where(filterCondition) as PlatformAdminCompanyCountRow[]
         : await tx
           .select({
             totalCount: sql<number>`count(*)::int`,
           })
           .from(companies) as PlatformAdminCompanyCountRow[];
       const totalCount = countRows[0]?.totalCount ?? 0;
-      const companyRows = searchCondition
+      const companyRows = filterCondition
         ? await tx
           .select({
             clerkOrganizationId: companies.clerkOrganizationId,
@@ -107,7 +108,7 @@ export class PlatformAdminCompaniesQueryResolver {
           })
           .from(companies)
           .leftJoin(companyMembers, eq(companyMembers.companyId, companies.id))
-          .where(searchCondition)
+          .where(filterCondition)
           .groupBy(
             companies.clerkOrganizationId,
             companies.id,
@@ -163,6 +164,19 @@ export class PlatformAdminCompaniesQueryResolver {
     };
   };
 
+  private buildFilterCondition(search: string | null | undefined, userId: string | null | undefined) {
+    const conditions = [
+      this.buildSearchCondition(search),
+      this.buildUserMembershipCondition(userId),
+    ].filter((condition) => condition !== null);
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    return and(...conditions);
+  }
+
   private buildSearchCondition(search: string | null | undefined) {
     const trimmedSearch = search?.trim() ?? "";
     if (trimmedSearch.length === 0) {
@@ -175,6 +189,22 @@ export class PlatformAdminCompaniesQueryResolver {
       or coalesce(${companies.slug}, '') ilike ${searchPattern}
       or ${companies.id}::text ilike ${searchPattern}
       or coalesce(${companies.clerkOrganizationId}, '') ilike ${searchPattern}
+    `;
+  }
+
+  private buildUserMembershipCondition(userId: string | null | undefined) {
+    const trimmedUserId = userId?.trim() ?? "";
+    if (trimmedUserId.length === 0) {
+      return null;
+    }
+
+    return sql<boolean>`
+      exists (
+        select 1
+        from ${companyMembers}
+        where ${companyMembers.companyId} = ${companies.id}
+          and ${companyMembers.userId} = ${trimmedUserId}
+      )
     `;
   }
 

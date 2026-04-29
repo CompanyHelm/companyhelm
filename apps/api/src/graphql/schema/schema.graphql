@@ -23,7 +23,7 @@ type Query {
   CompanyManagedLlmBudget: CompanyManagedLlmBudget!
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
-  PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String): PlatformAdminCompanyPage!
+  PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String, userId: ID): PlatformAdminCompanyPage!
   PlatformModels: [PlatformModel!]!
   PlatformModelRoutes(platformModelId: ID!): [PlatformModelRoute!]!
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!

@@ -153,6 +153,23 @@ test("PlatformAdminCompanies query lists searchable paginated companies for plat
   assert.deepEqual(harness.enhancedLoggingCompanyIds, ["company-1"]);
 });
 
+test("PlatformAdminCompanies query filters companies by member user id", async () => {
+  const harness = new PlatformAdminCompaniesQueryTestHarness();
+  const resolver = harness.createResolver();
+  const contextHarness = PlatformAdminCompaniesQueryTestHarness.createContext(true);
+
+  const result = await resolver.execute(null, {
+    page: 1,
+    pageSize: 25,
+    userId: "user-member-1",
+  }, contextHarness.context);
+
+  assert.equal(result.nodes[0]?.id, "company-1");
+  assert.equal(result.nodes[0]?.memberCount, 3);
+  assert.equal(contextHarness.whereConditions.length, 2);
+  assert.deepEqual(harness.enhancedLoggingCompanyIds, ["company-1"]);
+});
+
 test("PlatformAdminCompanies query rejects non-platform-admin users", async () => {
   const resolver = new PlatformAdminCompaniesQueryResolver();
   const harness = PlatformAdminCompaniesQueryTestHarness.createContext(false);

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6a463e4c305bb392ec35ed47eabbcb28>>
+ * @generated SignedSource<<d2d6c810de251d500478af3a32ea5c25>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type companiesPageQuery$variables = {
   page: number;
   pageSize: number;
   search?: string | null | undefined;
+  userId?: string | null | undefined;
 };
 export type companiesPageQuery$data = {
   readonly PlatformAdminCompanies: {
@@ -59,6 +60,11 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "search"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "userId"
   }
 ],
 v1 = [
@@ -79,6 +85,11 @@ v1 = [
         "kind": "Variable",
         "name": "search",
         "variableName": "search"
+      },
+      {
+        "kind": "Variable",
+        "name": "userId",
+        "variableName": "userId"
       }
     ],
     "concreteType": "PlatformAdminCompanyPage",
@@ -235,16 +246,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e968af42c7671686113ffdf899830bb6",
+    "cacheID": "2eba46e3ddb36eada170aad5151ef6dd",
     "id": null,
     "metadata": {},
     "name": "companiesPageQuery",
     "operationKind": "query",
-    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      clerkOrganizationId\n      memberCount\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
+    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n  $userId: ID\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search, userId: $userId) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      clerkOrganizationId\n      memberCount\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5a08fbc4dd3f54be5de83ab506a04029";
+(node as any).hash = "680c37b002295ab9317a6e6c50220d82";
 
 export default node;

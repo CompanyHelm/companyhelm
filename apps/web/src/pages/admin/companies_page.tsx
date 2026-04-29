@@ -33,8 +33,8 @@ const ENHANCED_LOGGING_TTL_OPTIONS = [{ label: "15 minutes", seconds: 15 * 60 },
 }];
 
 const companiesPageQueryNode = graphql`
-  query companiesPageQuery($page: Int!, $pageSize: Int!, $search: String) {
-    PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {
+  query companiesPageQuery($page: Int!, $pageSize: Int!, $search: String, $userId: ID) {
+    PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search, userId: $userId) {
       page
       pageSize
       totalCount
@@ -123,6 +123,22 @@ function formatCompanyCount(count: number): string {
   return count === 1 ? "1 company" : `${count} companies`;
 }
 
+function formatActiveFilterSummary(count: number, search: string, userId: string): string {
+  if (search.length > 0 && userId.length > 0) {
+    return `${formatCompanyCount(count)} matching “${search}” with member ${userId}.`;
+  }
+
+  if (search.length > 0) {
+    return `${formatCompanyCount(count)} matching “${search}”.`;
+  }
+
+  if (userId.length > 0) {
+    return `${formatCompanyCount(count)} with member ${userId}.`;
+  }
+
+  return `${formatCompanyCount(count)} total across CompanyHelm.`;
+}
+
 /**
  * Renders the global CompanyHelm company directory for platform admins with server-side search so
  * the pagination controls always reflect the filtered company set rather than the current page.
@@ -139,6 +155,8 @@ function AdminCompaniesPageContent() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [userIdInput, setUserIdInput] = useState("");
+  const [userIdFilter, setUserIdFilter] = useState("");
   const [selectedEnhancedLoggingCompany, setSelectedEnhancedLoggingCompany] = useState<PlatformAdminCompany | null>(null);
   const [selectedDeleteCompany, setSelectedDeleteCompany] = useState<PlatformAdminCompany | null>(null);
   const [deleteConfirmationName, setDeleteConfirmationName] = useState("");
@@ -154,13 +172,14 @@ function AdminCompaniesPageContent() {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setSearch(searchInput.trim());
+      setUserIdFilter(userIdInput.trim());
       setPage(1);
     }, 300);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [searchInput]);
+  }, [searchInput, userIdInput]);
 
   const data = useLazyLoadQuery<companiesPageQuery>(
     companiesPageQueryNode,
@@ -168,6 +187,7 @@ function AdminCompaniesPageContent() {
       page,
       pageSize: COMPANIES_PAGE_SIZE,
       search: search.length > 0 ? search : null,
+      userId: userIdFilter.length > 0 ? userIdFilter : null,
     },
     {
       fetchPolicy: "store-and-network",
@@ -178,6 +198,8 @@ function AdminCompaniesPageContent() {
   const canGoBack = companyPage.page > 1;
   const canGoForward = companyPage.page < companyPage.totalPages;
   const hasSearch = search.length > 0;
+  const hasUserIdFilter = userIdFilter.length > 0;
+  const hasActiveFilter = hasSearch || hasUserIdFilter;
 
   const refreshCompanies = () => {
     setRefreshKey((currentRefreshKey) => currentRefreshKey + 1);
@@ -268,9 +290,8 @@ function AdminCompaniesPageContent() {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">Platform companies</h1>
         <p className="text-sm text-muted-foreground">
-          {hasSearch
-            ? `${formatCompanyCount(companyPage.totalCount)} matching “${search}”.`
-            : `${formatCompanyCount(companyPage.totalCount)} total across CompanyHelm.`} Page {companyPage.page} of {companyPage.totalPages}.
+          {formatActiveFilterSummary(companyPage.totalCount, search, userIdFilter)} Page {companyPage.page} of{" "}
+          {companyPage.totalPages}.
         </p>
       </header>
       {enhancedLoggingErrorMessage && !selectedEnhancedLoggingCompany ? (
@@ -284,28 +305,38 @@ function AdminCompaniesPageContent() {
           <div className="space-y-1">
             <CardTitle>Company directory</CardTitle>
             <CardDescription>
-              Search by company name, slug, company ID, or Clerk organization ID.
+              Search by company metadata, or filter to companies that include a specific member user ID.
             </CardDescription>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-            <Input
-              className="h-9 sm:w-80"
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search companies"
-              type="search"
-              value={searchInput}
-            />
-            {searchInput.length > 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchInput("");
-                }}
-              >
-                Clear
-              </Button>
-            ) : null}
+          <div className="flex w-full flex-col gap-2 lg:w-auto">
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+              <Input
+                className="h-9 sm:w-80"
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search companies"
+                type="search"
+                value={searchInput}
+              />
+              <Input
+                className="h-9 sm:w-80"
+                onChange={(event) => setUserIdInput(event.target.value)}
+                placeholder="Filter by member user ID"
+                type="search"
+                value={userIdInput}
+              />
+              {searchInput.length > 0 || userIdInput.length > 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchInput("");
+                    setUserIdInput("");
+                  }}
+                >
+                  Clear
+                </Button>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -329,7 +360,7 @@ function AdminCompaniesPageContent() {
         <CardContent>
           {companyPage.nodes.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-              {hasSearch ? `No companies matched “${search}”.` : "No companies found for this page."}
+              {hasActiveFilter ? "No companies matched the current filters." : "No companies found for this page."}
             </div>
           ) : (
             <Table>
