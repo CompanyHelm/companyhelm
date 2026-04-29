@@ -595,6 +595,7 @@ export class TaskService {
       .from(companyMembers)
       .where(and(
         eq(companyMembers.companyId, companyId),
+        eq(companyMembers.status, "active"),
         eq(companyMembers.userId, assignedUserId),
       )) as Array<{ userId: string }>;
     if (!membershipRecord) {

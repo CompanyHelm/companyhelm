@@ -122,6 +122,7 @@ export class CompleteMcpServerOauthMutation extends Mutation<
       .from(companyMembers)
       .where(and(
         eq(companyMembers.companyId, input.companyId),
+        eq(companyMembers.status, "active"),
         eq(companyMembers.userId, input.userId),
       ))
       .limit(1) as Array<{ userId: string }>;

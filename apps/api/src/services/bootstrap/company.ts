@@ -235,11 +235,61 @@ export class CompanyBootstrapService {
       userId: string;
     },
   ): Promise<void> {
+    const [existingMembership] = await transaction
+      .select({
+        role: companyMembers.role,
+        status: companyMembers.status,
+      })
+      .from(companyMembers)
+      .where(and(
+        eq(companyMembers.companyId, params.companyId),
+        eq(companyMembers.userId, params.userId),
+      ))
+      .limit(1) as Array<{
+      role: "admin" | "member";
+      status: "active" | "invited";
+    }>;
+    if (existingMembership) {
+      if (existingMembership.status === "invited") {
+        if (!transaction.update) {
+          throw new Error("Configured database does not support membership updates.");
+        }
+
+        await transaction
+          .update(companyMembers)
+          .set({
+            clerkInvitationId: null,
+            status: "active",
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(companyMembers.companyId, params.companyId),
+            eq(companyMembers.userId, params.userId),
+          ));
+      }
+
+      return;
+    }
+
+    const existingCompanyMembers = await transaction
+      .select({
+        userId: companyMembers.userId,
+      })
+      .from(companyMembers)
+      .where(eq(companyMembers.companyId, params.companyId))
+      .limit(1) as Array<{
+      userId: string;
+    }>;
+    const now = new Date();
     const insertableDatabase = transaction as BootstrapInsertableDatabase;
     const insertOperation = insertableDatabase
       .insert(companyMembers)
       .values({
         companyId: params.companyId,
+        createdAt: now,
+        role: existingCompanyMembers.length === 0 ? "admin" : "member",
+        status: "active",
+        updatedAt: now,
         userId: params.userId,
       }) as BootstrapInsertOperation;
     await insertOperation.onConflictDoNothing();

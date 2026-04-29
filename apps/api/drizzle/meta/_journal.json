@@ -1058,6 +1058,13 @@
       "when": 1777477000000,
       "tag": "0151_company_members_platform_admin_access",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1777478000000,
+      "tag": "0152_company_member_roles",
+      "breakpoints": true
     }
   ]
 }

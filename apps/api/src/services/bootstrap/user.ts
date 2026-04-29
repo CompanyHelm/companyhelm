@@ -63,6 +63,13 @@ export class UserBootstrapService {
       loadedUser.email,
     );
     if (existingUserByEmail) {
+      if (!existingUserByEmail.clerk_user_id) {
+        return this.attachClerkUserId(transaction, {
+          providerSubject: params.providerSubject,
+          user: existingUserByEmail,
+        });
+      }
+
       return existingUserByEmail;
     }
 
@@ -133,5 +140,30 @@ export class UserBootstrapService {
       .limit(1) as UserRecord[];
 
     return existingUser ?? null;
+  }
+
+  private async attachClerkUserId(
+    transaction: DatabaseTransactionInterface,
+    input: {
+      providerSubject: string;
+      user: UserRecord;
+    },
+  ): Promise<UserRecord> {
+    if (!transaction.update) {
+      throw new Error("Configured database does not support user updates.");
+    }
+
+    await transaction
+      .update(users)
+      .set({
+        clerkUserId: input.providerSubject,
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, input.user.id));
+
+    return {
+      ...input.user,
+      clerk_user_id: input.providerSubject,
+    };
   }
 }

@@ -495,7 +495,10 @@ export class LocalAuthService {
       })
       .from(companyMembers)
       .innerJoin(companies, eq(companyMembers.companyId, companies.id))
-      .where(eq(companyMembers.userId, userId))
+      .where(and(
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.status, "active"),
+      ))
       .orderBy(asc(companies.name))
       .limit(1) as LocalAuthCompanyRecord[];
 

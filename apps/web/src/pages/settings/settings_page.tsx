@@ -26,6 +26,9 @@ type SettingsPageSearch = {
 const settingsPageQueryNode = graphql`
   query settingsPageQuery {
     Me {
+      companyEntitlements {
+        canDeleteCompany
+      }
       company {
         id
         name
@@ -436,7 +439,7 @@ function SettingsPageContent() {
               </div>
               <Button
                 className="w-full sm:w-auto"
-                disabled={deletionRequestStatus !== null}
+                disabled={deletionRequestStatus !== null || !data.Me.companyEntitlements.canDeleteCompany}
                 onClick={() => {
                   setCompanyErrorMessage(null);
                   setDeleteCompanyDialogOpen(true);

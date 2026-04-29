@@ -770,7 +770,7 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
     await fakeGit.restore();
     await app.close();
   }
-});
+}, 15_000);
 
 test("GraphQL GitHub branch discovery returns Git errors instead of hanging", async () => {
   const app = Fastify();

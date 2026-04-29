@@ -1,7 +1,6 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useOrganization as useClerkOrganization } from "@clerk/react";
-import { MailPlusIcon, RefreshCwIcon, RotateCcwIcon, UsersIcon } from "lucide-react";
-import { config } from "@/config";
+import { FormEvent, useState } from "react";
+import { MailPlusIcon, RotateCcwIcon, UsersIcon } from "lucide-react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,96 +28,123 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { organizationMembersSettingsPanelInviteMutation } from "./__generated__/organizationMembersSettingsPanelInviteMutation.graphql";
+import type { organizationMembersSettingsPanelQuery } from "./__generated__/organizationMembersSettingsPanelQuery.graphql";
+import type { organizationMembersSettingsPanelRevokeMutation } from "./__generated__/organizationMembersSettingsPanelRevokeMutation.graphql";
+import type { organizationMembersSettingsPanelUpdateRoleMutation } from "./__generated__/organizationMembersSettingsPanelUpdateRoleMutation.graphql";
 
-const DEFAULT_INVITATION_ROLE = "org:admin";
-
-type OrganizationMemberRecord = {
-  createdAt: Date;
-  id: string;
-  publicUserData?: {
-    firstName: string | null;
-    identifier: string;
-    lastName: string | null;
-  };
-};
-
-type OrganizationInvitationRecord = {
-  createdAt: Date;
-  emailAddress: string;
-  id: string;
-  revoke: () => Promise<unknown>;
-  status: string;
-};
+type CompanyMemberRole = "admin" | "member";
+type CompanyMemberStatus = "active" | "invited";
 
 type OrganizationMemberTableRecord = {
-  createdAt: Date;
+  createdAt: string;
   emailAddress: string;
   id: string;
   name: string;
-  revoke?: () => Promise<unknown>;
-  status: "active" | "invited";
+  role: CompanyMemberRole;
+  status: CompanyMemberStatus;
+  updatedAt: string;
 };
 
+const organizationMembersSettingsPanelQueryNode = graphql`
+  query organizationMembersSettingsPanelQuery {
+    Me {
+      companyEntitlements {
+        canInviteMembers
+        canManageMemberRoles
+      }
+    }
+    CompanyMembers {
+      id
+      createdAt
+      emailAddress
+      name
+      role
+      status
+      updatedAt
+    }
+  }
+`;
+
+const organizationMembersSettingsPanelInviteMutationNode = graphql`
+  mutation organizationMembersSettingsPanelInviteMutation($input: InviteCompanyMemberInput!) {
+    InviteCompanyMember(input: $input) {
+      id
+      createdAt
+      emailAddress
+      role
+      status
+    }
+  }
+`;
+
+const organizationMembersSettingsPanelRevokeMutationNode = graphql`
+  mutation organizationMembersSettingsPanelRevokeMutation($input: RevokeCompanyMemberInvitationInput!) {
+    RevokeCompanyMemberInvitation(input: $input) {
+      id
+    }
+  }
+`;
+
+const organizationMembersSettingsPanelUpdateRoleMutationNode = graphql`
+  mutation organizationMembersSettingsPanelUpdateRoleMutation($input: UpdateCompanyMemberRoleInput!) {
+    UpdateCompanyMemberRole(input: $input) {
+      id
+      createdAt
+      emailAddress
+      name
+      role
+      status
+      updatedAt
+    }
+  }
+`;
+
 /**
- * Hosts CompanyHelm's safe organization member management surface. Clerk remains the source of
- * truth for memberships and invitation delivery, but this component avoids mounting Clerk's full
- * organization profile where admin users can reach native organization deletion.
+ * Hosts CompanyHelm's member management surface using the API-backed company_members table as the
+ * source of truth while Clerk remains only the outbound invitation transport.
  */
 export function OrganizationMembersSettingsPanel() {
-  if (config.authProvider !== "clerk") {
-    return <OrganizationMembersUnavailablePanel />;
-  }
-
-  return <ClerkOrganizationMembersSettingsPanel />;
-}
-
-function ClerkOrganizationMembersSettingsPanel() {
-  const organizationState = useClerkOrganization();
+  const data = useLazyLoadQuery<organizationMembersSettingsPanelQuery>(
+    organizationMembersSettingsPanelQueryNode,
+    {},
+    {
+      fetchPolicy: "network-only",
+    },
+  );
   const [emailAddress, setEmailAddress] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [invitations, setInvitations] = useState<OrganizationInvitationRecord[]>([]);
+  const [inviteRole, setInviteRole] = useState<CompanyMemberRole>("member");
   const [isInviting, setInviting] = useState(false);
   const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [isLoading, setLoading] = useState(false);
-  const [members, setMembers] = useState<OrganizationMemberRecord[]>([]);
-  const [revokingInvitationId, setRevokingInvitationId] = useState<string | null>(null);
+  const [members, setMembers] = useState<OrganizationMemberTableRecord[]>(() =>
+    data.CompanyMembers.map((member) => ({
+      createdAt: member.createdAt,
+      emailAddress: member.emailAddress,
+      id: member.id,
+      name: member.name,
+      role: coerceRole(member.role),
+      status: coerceStatus(member.status),
+      updatedAt: member.updatedAt,
+    })));
+  const [revokingMemberId, setRevokingMemberId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const organization = organizationState.organization;
-
-  const loadMembers = useCallback(async () => {
-    if (!organization) {
-      return;
-    }
-
-    setLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const [membershipResponse, invitationResponse] = await Promise.all([
-        organization.getMemberships({
-          pageSize: 100,
-        }),
-        organization.getInvitations({
-          pageSize: 100,
-          status: ["pending"],
-        }),
-      ]);
-      setMembers(membershipResponse.data);
-      setInvitations(invitationResponse.data);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to load organization members.");
-    } finally {
-      setLoading(false);
-    }
-  }, [organization]);
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
+  const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState<string | null>(null);
+  const [commitInviteMember] = useMutation<organizationMembersSettingsPanelInviteMutation>(
+    organizationMembersSettingsPanelInviteMutationNode,
+  );
+  const [commitRevokeInvitation] = useMutation<organizationMembersSettingsPanelRevokeMutation>(
+    organizationMembersSettingsPanelRevokeMutationNode,
+  );
+  const [commitUpdateRole] = useMutation<organizationMembersSettingsPanelUpdateRoleMutation>(
+    organizationMembersSettingsPanelUpdateRoleMutationNode,
+  );
+  const canInviteMembers = data.Me.companyEntitlements.canInviteMembers;
+  const canManageMemberRoles = data.Me.companyEntitlements.canManageMemberRoles;
 
   async function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!organization || isInviting) {
+    if (isInviting) {
       return;
     }
     if (emailAddress.length === 0) {
@@ -124,14 +157,39 @@ function ClerkOrganizationMembersSettingsPanel() {
     setSuccessMessage(null);
 
     try {
-      await organization.inviteMember({
-        emailAddress,
-        role: DEFAULT_INVITATION_ROLE,
+      const invitedMember = await new Promise<OrganizationMemberTableRecord>((resolve, reject) => {
+        commitInviteMember({
+          variables: {
+            input: {
+              emailAddress,
+              role: inviteRole,
+            },
+          },
+          onCompleted: (response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve({
+              createdAt: response.InviteCompanyMember.createdAt,
+              emailAddress: response.InviteCompanyMember.emailAddress,
+              id: response.InviteCompanyMember.id,
+              name: response.InviteCompanyMember.emailAddress,
+              role: coerceRole(response.InviteCompanyMember.role),
+              status: coerceStatus(response.InviteCompanyMember.status),
+              updatedAt: response.InviteCompanyMember.createdAt,
+            });
+          },
+          onError: reject,
+        });
       });
+      setMembers((currentMembers) => upsertMember(currentMembers, invitedMember));
       setEmailAddress("");
       setInviteDialogOpen(false);
+      setInviteRole("member");
       setSuccessMessage(`Invitation sent to ${emailAddress}.`);
-      await loadMembers();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to send invitation.");
     } finally {
@@ -139,62 +197,87 @@ function ClerkOrganizationMembersSettingsPanel() {
     }
   }
 
-  const tableRows = [
-    ...members.map((member): OrganizationMemberTableRecord => ({
-      createdAt: member.createdAt,
-      emailAddress: member.publicUserData?.identifier ?? "No email",
-      id: member.id,
-      name: formatMemberName(member),
-      status: "active",
-    })),
-    ...invitations.map((invitation): OrganizationMemberTableRecord => ({
-      createdAt: invitation.createdAt,
-      emailAddress: invitation.emailAddress,
-      id: invitation.id,
-      name: invitation.emailAddress,
-      revoke: invitation.revoke,
-      status: "invited",
-    })),
-  ];
-
-  async function revokeInvitation(invitation: OrganizationInvitationRecord) {
-    if (revokingInvitationId) {
+  async function revokeInvitation(member: OrganizationMemberTableRecord) {
+    if (revokingMemberId) {
       return;
     }
 
-    setRevokingInvitationId(invitation.id);
+    setRevokingMemberId(member.id);
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    try {
-      await invitation.revoke();
-      setSuccessMessage(`Invitation revoked for ${invitation.emailAddress}.`);
-      await loadMembers();
-    } catch (error) {
+    await new Promise<void>((resolve, reject) => {
+      commitRevokeInvitation({
+        variables: {
+          input: {
+            userId: member.id,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      setMembers((currentMembers) => currentMembers.filter((currentMember) => currentMember.id !== member.id));
+      setSuccessMessage(`Invitation revoked for ${member.emailAddress}.`);
+    }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to revoke invitation.");
-    } finally {
-      setRevokingInvitationId(null);
+    }).finally(() => {
+      setRevokingMemberId(null);
+    });
+  }
+
+  async function updateRole(member: OrganizationMemberTableRecord, role: CompanyMemberRole) {
+    if (updatingRoleMemberId || member.role === role) {
+      return;
     }
-  }
 
-  if (!organizationState.isLoaded) {
-    return (
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardContent className="flex min-h-44 items-center justify-center text-sm text-muted-foreground">
-          Loading members...
-        </CardContent>
-      </Card>
-    );
-  }
+    setUpdatingRoleMemberId(member.id);
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-  if (!organization) {
-    return (
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardContent className="flex min-h-44 items-center justify-center text-sm text-muted-foreground">
-          Select a company before managing members.
-        </CardContent>
-      </Card>
-    );
+    await new Promise<OrganizationMemberTableRecord>((resolve, reject) => {
+      commitUpdateRole({
+        variables: {
+          input: {
+            role,
+            userId: member.id,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve({
+            createdAt: response.UpdateCompanyMemberRole.createdAt,
+            emailAddress: response.UpdateCompanyMemberRole.emailAddress,
+            id: response.UpdateCompanyMemberRole.id,
+            name: response.UpdateCompanyMemberRole.name,
+            role: coerceRole(response.UpdateCompanyMemberRole.role),
+            status: coerceStatus(response.UpdateCompanyMemberRole.status),
+            updatedAt: response.UpdateCompanyMemberRole.updatedAt,
+          });
+        },
+        onError: reject,
+      });
+    }).then((updatedMember) => {
+      setMembers((currentMembers) => upsertMember(currentMembers, updatedMember));
+      setSuccessMessage(`Updated ${updatedMember.emailAddress}.`);
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update member role.");
+    }).finally(() => {
+      setUpdatingRoleMemberId(null);
+    });
   }
 
   return (
@@ -204,11 +287,11 @@ function ClerkOrganizationMembersSettingsPanel() {
           <div className="min-w-0">
             <CardTitle>Members</CardTitle>
             <CardDescription>
-              Invite teammates and review Clerk organization access.
+              Invite teammates and review CompanyHelm access.
             </CardDescription>
           </div>
           <CardAction>
-            <Button onClick={() => setInviteDialogOpen(true)} size="sm" type="button">
+            <Button disabled={!canInviteMembers} onClick={() => setInviteDialogOpen(true)} size="sm" type="button">
               <MailPlusIcon />
               Invite
             </Button>
@@ -226,12 +309,8 @@ function ClerkOrganizationMembersSettingsPanel() {
               {errorMessage}
             </div>
           ) : null}
-          {isLoading ? (
-            <div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">
-              <RefreshCwIcon className="mr-2 size-4 animate-spin" />
-              Loading members...
-            </div>
-          ) : tableRows.length === 0 ? (
+
+          {members.length === 0 ? (
             <EmptyMembersState label="No members or invitations found." />
           ) : (
             <Table>
@@ -239,41 +318,51 @@ function ClerkOrganizationMembersSettingsPanel() {
                 <TableRow>
                   <TableHead>Member</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead>Added</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tableRows.map((row) => (
-                  <TableRow key={`${row.status}:${row.id}`}>
+                {members.map((member) => (
+                  <TableRow key={`${member.status}:${member.id}`}>
                     <TableCell>
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{row.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{row.emailAddress}</p>
+                        <p className="truncate font-medium text-foreground">{member.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{member.emailAddress}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={row.status === "active" ? "positive" : "outline"}>
-                        {row.status === "active" ? "Active" : "Invited"}
+                      <Badge variant={member.status === "active" ? "positive" : "outline"}>
+                        {member.status === "active" ? "Active" : "Invited"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDate(row.createdAt)}</TableCell>
+                    <TableCell className="w-40">
+                      <Select
+                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null}
+                        onValueChange={(value) => void updateRole(member, value as CompanyMemberRole)}
+                        value={member.role}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="member">Member</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>{formatDate(member.createdAt)}</TableCell>
                     <TableCell className="text-right">
-                      {row.status === "invited" && row.revoke ? (
+                      {member.status === "invited" && canInviteMembers ? (
                         <Button
-                          disabled={revokingInvitationId !== null}
-                          onClick={() => void revokeInvitation({
-                            createdAt: row.createdAt,
-                            emailAddress: row.emailAddress,
-                            id: row.id,
-                            revoke: row.revoke as () => Promise<unknown>,
-                            status: "pending",
-                          })}
+                          disabled={revokingMemberId !== null}
+                          onClick={() => void revokeInvitation(member)}
                           size="sm"
                           type="button"
                           variant="outline"
                         >
-                          <RotateCcwIcon className={revokingInvitationId === row.id ? "animate-spin" : undefined} />
+                          <RotateCcwIcon className={revokingMemberId === member.id ? "animate-spin" : undefined} />
                           Revoke
                         </Button>
                       ) : (
@@ -294,6 +383,7 @@ function ClerkOrganizationMembersSettingsPanel() {
           setInviteDialogOpen(open);
           if (!open) {
             setEmailAddress("");
+            setInviteRole("member");
           }
         }}
       >
@@ -302,7 +392,7 @@ function ClerkOrganizationMembersSettingsPanel() {
             <DialogHeader>
               <DialogTitle>Invite member</DialogTitle>
               <DialogDescription>
-                Send a Clerk organization invitation. New members are added as organization admins.
+                Send a company invitation and choose the member's CompanyHelm role.
               </DialogDescription>
             </DialogHeader>
             <Input
@@ -313,6 +403,19 @@ function ClerkOrganizationMembersSettingsPanel() {
               type="email"
               value={emailAddress}
             />
+            <Select
+              disabled={isInviting}
+              onValueChange={(value) => setInviteRole(value as CompanyMemberRole)}
+              value={inviteRole}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
             <DialogFooter>
               <Button disabled={isInviting} type="submit">
                 <MailPlusIcon />
@@ -323,24 +426,6 @@ function ClerkOrganizationMembersSettingsPanel() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function OrganizationMembersUnavailablePanel() {
-  return (
-    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-      <CardHeader>
-        <div className="min-w-0">
-          <CardTitle>Members</CardTitle>
-          <CardDescription>
-            Clerk invitations are available when the app is running with Clerk authentication.
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <EmptyMembersState label="Member invitations are not available for this auth provider." />
-      </CardContent>
-    </Card>
   );
 }
 
@@ -357,17 +442,32 @@ function EmptyMembersState(props: {
   );
 }
 
-function formatDate(value: Date): string {
+function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(value);
+  }).format(new Date(value));
 }
 
-function formatMemberName(member: OrganizationMemberRecord): string {
-  const firstName = member.publicUserData?.firstName;
-  const lastName = member.publicUserData?.lastName;
-  const fullName = [firstName, lastName].filter(Boolean).join(" ");
-  return fullName.length > 0 ? fullName : member.publicUserData?.identifier ?? "Member";
+function upsertMember(
+  members: OrganizationMemberTableRecord[],
+  member: OrganizationMemberTableRecord,
+): OrganizationMemberTableRecord[] {
+  const existingIndex = members.findIndex((currentMember) => currentMember.id === member.id);
+  if (existingIndex === -1) {
+    return [...members, member];
+  }
+
+  const nextMembers = [...members];
+  nextMembers[existingIndex] = member;
+  return nextMembers;
+}
+
+function coerceRole(value: string): CompanyMemberRole {
+  return value === "admin" ? "admin" : "member";
+}
+
+function coerceStatus(value: string): CompanyMemberStatus {
+  return value === "active" ? "active" : "invited";
 }

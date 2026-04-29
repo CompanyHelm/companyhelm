@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
 import { companyMembers, users } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -43,7 +43,10 @@ export class TaskAssignableUsersQueryResolver extends Resolver<GraphqlTaskAssign
           userId: companyMembers.userId,
         })
         .from(companyMembers)
-        .where(eq(companyMembers.companyId, context.authSession!.company!.id)) as MembershipRow[];
+        .where(and(
+          eq(companyMembers.companyId, context.authSession!.company!.id),
+          eq(companyMembers.status, "active"),
+        )) as MembershipRow[];
       if (membershipRows.length === 0) {
         return [];
       }

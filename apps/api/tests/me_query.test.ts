@@ -76,7 +76,21 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
-    new MeQueryResolver(),
+    new MeQueryResolver({
+      buildEntitlements() {
+        return {
+          canDeleteCompany: true,
+          canInviteMembers: true,
+          canManageMemberRoles: true,
+        };
+      },
+      async getMembership() {
+        return {
+          role: "admin",
+          status: "active",
+        };
+      },
+    } as never),
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
   ).register(app);

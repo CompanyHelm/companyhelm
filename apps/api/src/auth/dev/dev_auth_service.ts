@@ -215,7 +215,10 @@ export class DevAuthService {
         companySlug: companies.slug,
       })
       .from(users)
-      .leftJoin(companyMembers, eq(companyMembers.userId, users.id))
+      .leftJoin(companyMembers, and(
+        eq(companyMembers.userId, users.id),
+        eq(companyMembers.status, "active"),
+      ))
       .leftJoin(companies, eq(companyMembers.companyId, companies.id))
       .orderBy(asc(users.first_name), asc(users.last_name), asc(users.email)) as Array<{
       companyId: string | null;
@@ -398,6 +401,7 @@ export class DevAuthService {
       .where(and(
         eq(companyMembers.companyId, input.companyId),
         eq(companyMembers.userId, input.userId),
+        eq(companyMembers.status, "active"),
       ))
       .limit(1) as DevAuthCompanyMembershipRecord[];
 
@@ -425,7 +429,10 @@ export class DevAuthService {
       })
       .from(companyMembers)
       .innerJoin(companies, eq(companyMembers.companyId, companies.id))
-      .where(eq(companyMembers.userId, userId))
+      .where(and(
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.status, "active"),
+      ))
       .orderBy(asc(companies.name)) as DevAuthCompanyRecord[];
   }
 

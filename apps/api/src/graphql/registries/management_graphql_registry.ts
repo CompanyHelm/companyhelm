@@ -41,15 +41,18 @@ import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onb
 import { GrantPlatformAdminMutation } from "../mutations/grant_platform_admin.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { ImportPlatformModelMutation } from "../mutations/import_platform_model.ts";
+import { InviteCompanyMemberMutation } from "../mutations/invite_company_member.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
 import { RefreshPlatformCodexRateLimitsMutation } from "../mutations/refresh_platform_codex_rate_limits.ts";
 import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
 import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
+import { RevokeCompanyMemberInvitationMutation } from "../mutations/revoke_company_member_invitation.ts";
 import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
 import { SetPlatformModelRoutesMutation } from "../mutations/set_platform_model_routes.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
 import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
+import { UpdateCompanyMemberRoleMutation } from "../mutations/update_company_member_role.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdatePlatformAdminCompanyEnhancedLoggingMutation } from "../mutations/update_platform_admin_company_enhanced_logging.ts";
 import { UpdatePlatformModelMutation } from "../mutations/update_platform_model.ts";
@@ -61,6 +64,7 @@ import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CodexRateLimitsQueryResolver } from "../resolvers/codex_rate_limits.ts";
 import { CompanyManagedLlmBudgetQueryResolver } from "../resolvers/company_managed_llm_budget.ts";
+import { CompanyMembersQueryResolver } from "../resolvers/company_members.ts";
 import { FreeCompanyCreationEligibilityQueryResolver } from "../resolvers/free_company_creation_eligibility.ts";
 import { CompanyOnboardingFieldResolver } from "../resolvers/company_onboarding.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
@@ -91,6 +95,7 @@ import { McpAuthTypeDetectionService } from "../../services/mcp/auth_type_detect
 import { McpOauthClientCredentialsConnectionService } from "../../services/mcp/oauth/client_credentials_connection.ts";
 import { McpOauthDiscoveryService } from "../../services/mcp/oauth/discovery.ts";
 import { McpOauthTokenService } from "../../services/mcp/oauth/token_service.ts";
+import { CompanyMemberInvitationService } from "../../services/company_member_invitation_service.ts";
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
 
 /**
@@ -103,6 +108,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
   private readonly codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver;
   private readonly companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver;
+  private readonly companyMembersQueryResolver: CompanyMembersQueryResolver;
   private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly connectMcpServerOauthClientCredentialsMutation: ConnectMcpServerOauthClientCredentialsMutation;
@@ -140,6 +146,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
   private readonly importPlatformModelMutation: ImportPlatformModelMutation;
+  private readonly inviteCompanyMemberMutation: InviteCompanyMemberMutation;
   private readonly llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver;
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
@@ -154,6 +161,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
   private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
   private readonly refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation;
+  private readonly revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
   private readonly mcpServersQueryResolver: McpServersQueryResolver;
@@ -165,6 +173,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation;
   private readonly setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
+  private readonly updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation;
   private readonly updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation;
   private readonly updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation;
   private readonly updatePlatformModelMutation: UpdatePlatformModelMutation;
@@ -364,6 +373,18 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(UpdatePlatformAdminCompanyEnhancedLoggingMutation)
     updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation =
       new UpdatePlatformAdminCompanyEnhancedLoggingMutation(),
+    @inject(InviteCompanyMemberMutation)
+    inviteCompanyMemberMutation: InviteCompanyMemberMutation =
+      new InviteCompanyMemberMutation(new CompanyMemberInvitationService(config)),
+    @inject(CompanyMembersQueryResolver)
+    companyMembersQueryResolver: CompanyMembersQueryResolver =
+      new CompanyMembersQueryResolver(new CompanyMemberInvitationService(config)),
+    @inject(RevokeCompanyMemberInvitationMutation)
+    revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation =
+      new RevokeCompanyMemberInvitationMutation(new CompanyMemberInvitationService(config)),
+    @inject(UpdateCompanyMemberRoleMutation)
+    updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
+      new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService(config)),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -383,6 +404,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
     this.codexRateLimitsQueryResolver = codexRateLimitsQueryResolver;
     this.companyManagedLlmBudgetQueryResolver = companyManagedLlmBudgetQueryResolver;
+    this.companyMembersQueryResolver = companyMembersQueryResolver;
     this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.connectMcpServerOauthClientCredentialsMutation = connectMcpServerOauthClientCredentialsMutation
@@ -429,6 +451,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.importGithubSkillsMutation = importGithubSkillsMutation
       ?? new ImportGithubSkillsMutation(defaultSkillGithubCatalog);
     this.importPlatformModelMutation = importPlatformModelMutation;
+    this.inviteCompanyMemberMutation = inviteCompanyMemberMutation;
     this.llmUsageAggregatesQueryResolver = llmUsageAggregatesQueryResolver;
     this.mcpServerAuthTypeQueryResolver = mcpServerAuthTypeQueryResolver
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
@@ -442,6 +465,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.refreshPlatformCodexRateLimitsMutation = refreshPlatformCodexRateLimitsMutation;
+    this.revokeCompanyMemberInvitationMutation = revokeCompanyMemberInvitationMutation;
     this.refreshPlatformModelProviderCredentialModelsMutation = refreshPlatformModelProviderCredentialModelsMutation;
     this.refreshPlatformModelProviderCredentialTokenMutation = refreshPlatformModelProviderCredentialTokenMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
@@ -465,6 +489,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.setDefaultPlatformModelProviderCredentialModelMutation = setDefaultPlatformModelProviderCredentialModelMutation;
     this.setPlatformModelRoutesMutation = setPlatformModelRoutesMutation;
     this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
+    this.updateCompanyMemberRoleMutation = updateCompanyMemberRoleMutation;
     this.updatePlatformAdminCompanyEnhancedLoggingMutation = updatePlatformAdminCompanyEnhancedLoggingMutation;
     this.updatePlatformModelMutation = updatePlatformModelMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
@@ -510,14 +535,17 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         GrantPlatformAdmin: this.grantPlatformAdminMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         ImportPlatformModel: this.importPlatformModelMutation.execute,
+        InviteCompanyMember: this.inviteCompanyMemberMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
         RefreshPlatformCodexRateLimits: this.refreshPlatformCodexRateLimitsMutation.execute,
         RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
         RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
+        RevokeCompanyMemberInvitation: this.revokeCompanyMemberInvitationMutation.execute,
         SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
         SetPlatformModelRoutes: this.setPlatformModelRoutesMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
         UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
+        UpdateCompanyMemberRole: this.updateCompanyMemberRoleMutation.execute,
         UpdatePlatformAdminCompanyEnhancedLogging: this.updatePlatformAdminCompanyEnhancedLoggingMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdatePlatformModel: this.updatePlatformModelMutation.execute,
@@ -531,6 +559,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       Query: {
         CodexRateLimits: this.codexRateLimitsQueryResolver.execute,
         CompanyManagedLlmBudget: this.companyManagedLlmBudgetQueryResolver.execute,
+        CompanyMembers: this.companyMembersQueryResolver.execute,
         FreeCompanyCreationEligibility: this.freeCompanyCreationEligibilityQueryResolver.execute,
         CompanySettings: this.companySettingsQueryResolver.execute,
         GithubAppConfig: this.githubAppConfigQueryResolver.execute,

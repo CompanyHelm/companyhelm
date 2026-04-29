@@ -148,8 +148,8 @@ export class CompanyCreationService {
         }
 
         await sql.unsafe([
-          "insert into company_members (company_id, user_id)",
-          "values ($1, $2)",
+          "insert into company_members (company_id, user_id, role, status, created_at, updated_at)",
+          "values ($1, $2, 'admin', 'active', now(), now())",
           "on conflict do nothing",
         ].join("\n"), [company.id, input.userId]);
 

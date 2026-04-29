@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3255b7e2f0e66326fc633fcb9f4e544d>>
+ * @generated SignedSource<<951b7bb51a0af456dee0955ed2573154>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,9 @@ export type settingsPageQuery$data = {
     readonly company: {
       readonly id: string;
       readonly name: string;
+    };
+    readonly companyEntitlements: {
+      readonly canDeleteCompany: boolean;
     };
   };
   readonly TaskStages: ReadonlyArray<{
@@ -59,6 +62,24 @@ v2 = [
     "name": "Me",
     "plural": false,
     "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "MeCompanyEntitlements",
+        "kind": "LinkedField",
+        "name": "companyEntitlements",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "canDeleteCompany",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -160,16 +181,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "831d79392d6d88da8d3a44a63b832eba",
+    "cacheID": "ceeab6e22c4fe9fd2c53db5705e3a787",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d3405185ef61ae326abf94e7a041709a";
+(node as any).hash = "f583628ae5ee60afc0cc24a2d8de19c9";
 
 export default node;

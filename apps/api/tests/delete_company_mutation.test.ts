@@ -8,6 +8,12 @@ import type { CompanyDeletionRequestRecord } from "../src/services/company_delet
  * Builds the authenticated GraphQL context needed by the destructive company deletion mutation.
  */
 class DeleteCompanyMutationTestHarness {
+  static createPermissionService() {
+    return {
+      requireActiveAdmin: vi.fn(async () => {}),
+    };
+  }
+
   static createContext(): GraphqlRequestContext {
     return {
       app_runtime_transaction_provider: {} as never,
@@ -62,6 +68,8 @@ test("DeleteCompanyMutation requires exact company name confirmation before crea
     {
       dispatchRequest,
     } as never,
+    undefined,
+    DeleteCompanyMutationTestHarness.createPermissionService() as never,
   );
 
   await assert.rejects(
@@ -91,6 +99,8 @@ test("DeleteCompanyMutation persists the request and dispatches the shared compa
     {
       dispatchRequest,
     } as never,
+    undefined,
+    DeleteCompanyMutationTestHarness.createPermissionService() as never,
   );
 
   const result = await mutation.execute(
@@ -134,6 +144,8 @@ test("DeleteCompanyMutation returns the durable request when immediate dispatch 
     {
       dispatchRequest,
     } as never,
+    undefined,
+    DeleteCompanyMutationTestHarness.createPermissionService() as never,
   );
 
   const result = await mutation.execute(

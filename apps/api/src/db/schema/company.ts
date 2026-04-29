@@ -27,6 +27,16 @@ export const companyDeletionRequestStatusEnum = pgEnum("company_deletion_request
   "failed",
 ]);
 
+export const companyMemberRoleEnum = pgEnum("company_member_role", [
+  "admin",
+  "member",
+]);
+
+export const companyMemberStatusEnum = pgEnum("company_member_status", [
+  "active",
+  "invited",
+]);
+
 export const companies = pgTable("companies", {
   id: uuid("id")
     .primaryKey()
@@ -85,9 +95,15 @@ export const companyMembers = pgTable("company_members", {
   userId: uuid("user_id")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
+  role: companyMemberRoleEnum("role").default("member").notNull(),
+  status: companyMemberStatusEnum("status").default("active").notNull(),
+  clerkInvitationId: text("clerk_invitation_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.companyId, table.userId] }),
   companyIdIndex: index("company_members_company_id_idx").on(table.companyId),
+  clerkInvitationIdUnique: uniqueIndex("company_members_clerk_invitation_id_uidx").on(table.clerkInvitationId),
   userIdIndex: index("company_members_user_id_idx").on(table.userId),
 }));
 

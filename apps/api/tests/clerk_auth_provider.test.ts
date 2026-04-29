@@ -39,7 +39,7 @@ class ClerkAuthProviderTestHarness {
       },
       select() {
         selectCallCount += 1;
-        if (selectCallCount <= 5) {
+        if (selectCallCount <= 7) {
           return {
             from() {
               return {
@@ -126,8 +126,44 @@ class ClerkAuthProviderTestHarness {
       async execute() {
         return [];
       },
-      select() {
+      select(selection: Record<string, unknown>) {
         selectCallCount += 1;
+        if ("role" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      role: "admin",
+                      status: "active",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+        if ("provider" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      companyId: "local-company-9",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-9",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
         if (selectCallCount === 1) {
           return {
             from() {
@@ -167,6 +203,40 @@ class ClerkAuthProviderTestHarness {
         }
 
         if (selectCallCount === 3) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      role: "admin",
+                      status: "active",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 4) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      role: "admin",
+                      status: "active",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 5) {
           return {
             from() {
               return {
@@ -238,8 +308,44 @@ class ClerkAuthProviderTestHarness {
       async execute() {
         return [];
       },
-      select() {
+      select(selection: Record<string, unknown>) {
         selectCallCount += 1;
+        if ("role" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      role: "admin",
+                      status: "active",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+        if ("provider" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      companyId: "local-company-9",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-9",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
         if (selectCallCount === 1) {
           return {
             from() {
@@ -368,8 +474,54 @@ class ClerkAuthProviderTestHarness {
       async execute() {
         return [];
       },
-      select() {
+      select(selection: Record<string, unknown>) {
         selectCallCount += 1;
+        if ("role" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+        if ("userId" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+        if ("provider" in selection) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      companyId: "local-company-race",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-race",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
         if (selectCallCount === 1 || selectCallCount === 2) {
           return {
             from() {
@@ -436,7 +588,21 @@ class ClerkAuthProviderTestHarness {
           };
         }
 
-        if (selectCallCount === 6) {
+        if (selectCallCount === 6 || selectCallCount === 7) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 8) {
           return {
             from() {
               return {

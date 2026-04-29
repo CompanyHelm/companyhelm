@@ -285,6 +285,7 @@ export class AddGithubInstallationMutation extends Mutation<
       .from(companyMembers)
       .where(and(
         eq(companyMembers.companyId, installationTarget.companyId),
+        eq(companyMembers.status, "active"),
         eq(companyMembers.userId, installationTarget.userId),
       ))
       .limit(1)) as Array<{ userId: string }>;

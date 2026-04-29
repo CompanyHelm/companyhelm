@@ -6,6 +6,7 @@ import {
   CompanyDeletionRequestService,
   type CompanyDeletionRequestStatus,
 } from "../../services/company_deletions/request_service.ts";
+import { CompanyMemberPermissionService } from "../../services/company_member_permission_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -36,6 +37,7 @@ export class DeleteCompanyMutation extends Mutation<
 > {
   private readonly dispatcher: CompanyDeletionDispatcher;
   private readonly logger: PinoLogger | null;
+  private readonly permissionService: CompanyMemberPermissionService;
   private readonly requestService: CompanyDeletionRequestService;
 
   constructor(
@@ -46,12 +48,15 @@ export class DeleteCompanyMutation extends Mutation<
       async dispatchRequest() {},
     } as never,
     @inject(ApiLogger) logger?: ApiLogger,
+    @inject(CompanyMemberPermissionService)
+    permissionService: CompanyMemberPermissionService = new CompanyMemberPermissionService(),
   ) {
     super();
     this.dispatcher = dispatcher;
     this.logger = logger?.child({
       mutation: "delete_company",
     }) ?? null;
+    this.permissionService = permissionService;
     this.requestService = requestService;
   }
 
@@ -68,6 +73,12 @@ export class DeleteCompanyMutation extends Mutation<
     if (arguments_.input.confirmationName !== context.authSession.company.name) {
       throw new Error("Type the company name exactly to delete this company.");
     }
+    await this.permissionService.requireActiveAdmin({
+      action: "delete companies",
+      companyId: context.authSession.company.id,
+      transactionProvider: context.app_runtime_transaction_provider,
+      userId: context.authSession.user.id,
+    });
 
     const request = await this.requestService.createDeletionRequest(
       context.app_runtime_transaction_provider,

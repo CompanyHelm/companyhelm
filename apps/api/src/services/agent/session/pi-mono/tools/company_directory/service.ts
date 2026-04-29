@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { agents, companyMembers, users } from "../../../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
 
@@ -65,7 +65,10 @@ export class AgentCompanyDirectoryToolService {
           userId: companyMembers.userId,
         })
         .from(companyMembers)
-        .where(eq(companyMembers.companyId, this.companyId)) as MembershipRow[];
+        .where(and(
+          eq(companyMembers.companyId, this.companyId),
+          eq(companyMembers.status, "active"),
+        )) as MembershipRow[];
       if (membershipRows.length === 0) {
         return [];
       }

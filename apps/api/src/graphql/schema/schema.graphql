@@ -10,6 +10,7 @@ type Query {
     after: String
   ): AgentConversationMessageConnection!
   CompanySettings: CompanySettings!
+  CompanyMembers: [CompanyMemberAccess!]!
   FreeCompanyCreationEligibility: FreeCompanyCreationEligibility!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
@@ -87,8 +88,11 @@ type Mutation {
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
+  InviteCompanyMember(input: InviteCompanyMemberInput!): CompanyMemberInvitation!
+  RevokeCompanyMemberInvitation(input: RevokeCompanyMemberInvitationInput!): CompanyMemberInvitation!
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
+  UpdateCompanyMemberRole(input: UpdateCompanyMemberRoleInput!): CompanyMemberAccess!
   UpdatePlatformAdminCompanyEnhancedLogging(
     input: UpdatePlatformAdminCompanyEnhancedLoggingInput!
   ): PlatformAdminCompanyEnhancedLogging!
@@ -321,6 +325,34 @@ type CreatedCompany {
   clerkOrganizationId: String
 }
 
+type CompanyMemberInvitation {
+  id: ID!
+  createdAt: String!
+  emailAddress: String!
+  role: CompanyMemberRole!
+  status: CompanyMemberStatus!
+}
+
+type CompanyMemberAccess {
+  id: ID!
+  createdAt: String!
+  emailAddress: String!
+  name: String!
+  role: CompanyMemberRole!
+  status: CompanyMemberStatus!
+  updatedAt: String!
+}
+
+enum CompanyMemberRole {
+  admin
+  member
+}
+
+enum CompanyMemberStatus {
+  active
+  invited
+}
+
 enum CompanyDeletionRequestStatus {
   requested
   processing
@@ -520,9 +552,22 @@ type MeUser {
   lastName: String
 }
 
+type MeCompanyMembership {
+  role: CompanyMemberRole!
+  status: CompanyMemberStatus!
+}
+
+type MeCompanyEntitlements {
+  canDeleteCompany: Boolean!
+  canInviteMembers: Boolean!
+  canManageMemberRoles: Boolean!
+}
+
 type Me {
   user: MeUser!
   company: AuthenticatedCompany!
+  companyMembership: MeCompanyMembership
+  companyEntitlements: MeCompanyEntitlements!
   serverVersion: String!
 }
 
@@ -1328,6 +1373,20 @@ input UpdateCompanySettingsInput {
 
 input CreateCompanyInput {
   name: String!
+}
+
+input InviteCompanyMemberInput {
+  emailAddress: String!
+  role: CompanyMemberRole!
+}
+
+input RevokeCompanyMemberInvitationInput {
+  userId: ID!
+}
+
+input UpdateCompanyMemberRoleInput {
+  role: CompanyMemberRole!
+  userId: ID!
 }
 
 input UpdatePlatformAdminCompanyEnhancedLoggingInput {
