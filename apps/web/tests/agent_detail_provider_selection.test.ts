@@ -19,19 +19,19 @@ function makeProviderOption(
   };
 }
 
-test("agent detail provider select submits credential ids instead of projection ids", () => {
+test("agent detail provider select submits provider option ids", () => {
   const providerOption = makeProviderOption();
 
   assert.deepEqual(
     AgentDetailProviderSelection.toFieldOptions([providerOption]),
     [{
       label: "OpenAI subscription",
-      value: "credential-1",
+      value: "agent-create-provider-option:credential-1",
     }],
   );
   assert.equal(
     AgentDetailProviderSelection.resolveFieldValue(providerOption),
-    "credential-1",
+    "agent-create-provider-option:credential-1",
   );
 });
 

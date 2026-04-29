@@ -85,6 +85,7 @@ test("AddAgentMutation attaches skill groups and skills after creating the agent
       input: {
         defaultComputeProviderDefinitionId: "compute-provider-definition-1",
         defaultEnvironmentTemplateId: "e2b/desktop",
+        llmModelId: "model-row-1",
         modelProviderCredentialId: "credential-1",
         modelProviderCredentialModelId: "model-row-1",
         name: "Research Agent",
@@ -129,8 +130,10 @@ test("AddAgentMutation attaches skill groups and skills after creating the agent
                     return {
                       async where() {
                         return [{
-                          id: "credential-1",
-                          modelProvider: "openai",
+                          id: "model-row-1",
+                          modelProviderCredentialId: "credential-1",
+                          name: "GPT-5.4",
+                          reasoningLevels: ["low", "medium", "high"],
                         }];
                       },
                     };
@@ -144,10 +147,8 @@ test("AddAgentMutation attaches skill groups and skills after creating the agent
                     return {
                       async where() {
                         return [{
-                          id: "model-row-1",
-                          modelProviderCredentialId: "credential-1",
-                          name: "GPT-5.4",
-                          reasoningLevels: ["low", "medium", "high"],
+                          id: "credential-1",
+                          modelProvider: "openai",
                         }];
                       },
                     };
