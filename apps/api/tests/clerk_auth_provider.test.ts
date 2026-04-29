@@ -661,6 +661,57 @@ test("clerk auth provider reuses existing local user and company when already pr
   assert.deepEqual(db.scopedCompanyIds, ["local-company-9"]);
 });
 
+test("clerk auth provider allows signed-in users without an active organization", async () => {
+  const db = ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock();
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
+    {
+      clerkClient: {
+        async authenticateRequest() {
+          return {
+            isAuthenticated: true,
+            toAuth() {
+              return {
+                isAuthenticated: true,
+                userId: "user_clerk_9",
+                orgId: null,
+                sessionClaims: {},
+              };
+            },
+          };
+        },
+        users: {
+          async getUser() {
+            throw new Error("No Clerk user fetch expected.");
+          },
+        },
+      },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
+        },
+      },
+    },
+  );
+
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
+
+  assert.deepEqual(session, {
+    token: "clerk-token",
+    user: {
+      id: "local-user-9",
+      email: "existing@example.com",
+      firstName: "Existing",
+      isPlatformAdmin: undefined,
+      lastName: null,
+      provider: "clerk",
+      providerSubject: "user_clerk_9",
+    },
+    company: null,
+  });
+  assert.deepEqual(db.scopedCompanyIds, []);
+});
+
 test("clerk auth provider rejects unauthenticated request states from Clerk", async () => {
   const provider = ClerkAuthProvider.createForTest(
     ClerkAuthProviderTestHarness.createConfigMock(),

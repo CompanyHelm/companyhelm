@@ -16,6 +16,7 @@ import { AddGithubInstallationMutation } from "../mutations/add_github_installat
 import { AddPlatformModelProviderCredentialMutation } from "../mutations/add_platform_model_provider_credential.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateGithubRepositoryProvisioningMutation } from "../mutations/create_github_repository_provisioning.ts";
+import { CreateCompanyMutation } from "../mutations/create_company.ts";
 import { CreatePlatformModelMutation } from "../mutations/create_platform_model.ts";
 import { CreateSecretMutation } from "../mutations/create_secret.ts";
 import { CreateSecretGroupMutation } from "../mutations/create_secret_group.ts";
@@ -59,6 +60,7 @@ import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CodexRateLimitsQueryResolver } from "../resolvers/codex_rate_limits.ts";
 import { CompanyManagedLlmBudgetQueryResolver } from "../resolvers/company_managed_llm_budget.ts";
+import { FreeCompanyCreationEligibilityQueryResolver } from "../resolvers/free_company_creation_eligibility.ts";
 import { CompanyOnboardingFieldResolver } from "../resolvers/company_onboarding.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
@@ -103,6 +105,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly connectMcpServerOauthClientCredentialsMutation: ConnectMcpServerOauthClientCredentialsMutation;
+  private readonly createCompanyMutation: CreateCompanyMutation;
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
   private readonly createGithubRepositoryProvisioningMutation: CreateGithubRepositoryProvisioningMutation;
   private readonly createPlatformModelMutation: CreatePlatformModelMutation;
@@ -130,6 +133,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly githubRepositoryProvisioningsQueryResolver: GithubRepositoryProvisioningsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
   private readonly githubSkillBranchesQueryResolver: GithubSkillBranchesQueryResolver;
+  private readonly freeCompanyCreationEligibilityQueryResolver: FreeCompanyCreationEligibilityQueryResolver;
   private readonly grantPlatformAdminMutation: GrantPlatformAdminMutation;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
@@ -289,9 +293,14 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new DeletePlatformModelProviderCredentialMutation(),
     @inject(DeleteCompanyMutation)
     deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
+    @inject(CreateCompanyMutation)
+    createCompanyMutation: CreateCompanyMutation = new CreateCompanyMutation({} as never),
     @inject(CompanyManagedLlmBudgetQueryResolver)
     companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver =
       new CompanyManagedLlmBudgetQueryResolver(),
+    @inject(FreeCompanyCreationEligibilityQueryResolver)
+    freeCompanyCreationEligibilityQueryResolver: FreeCompanyCreationEligibilityQueryResolver =
+      new FreeCompanyCreationEligibilityQueryResolver({} as never),
     @inject(CodexRateLimitsQueryResolver)
     codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver = new CodexRateLimitsQueryResolver(),
     @inject(CompanyOnboardingFieldResolver)
@@ -376,6 +385,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         defaultMcpService,
         defaultMcpOauthClientCredentialsConnectionService,
       );
+    this.createCompanyMutation = createCompanyMutation;
     this.completeMcpServerOauthMutation = completeMcpServerOauthMutation
       ?? new CompleteMcpServerOauthMutation({} as never, {} as never, {} as never, defaultMcpService, {} as never);
     this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
@@ -406,6 +416,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.githubSkillBranchesQueryResolver = githubSkillBranchesQueryResolver
       ?? new GithubSkillBranchesQueryResolver(defaultSkillGithubCatalog);
+    this.freeCompanyCreationEligibilityQueryResolver = freeCompanyCreationEligibilityQueryResolver;
     this.grantPlatformAdminMutation = grantPlatformAdminMutation;
     this.healthQueryResolver = healthQueryResolver;
     this.createPlatformModelMutation = createPlatformModelMutation;
@@ -473,6 +484,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         StartMcpServerOAuth: this.startMcpServerOauthMutation.execute,
         CompleteMcpServerOAuth: this.completeMcpServerOauthMutation.execute,
         CreateGithubRepositoryProvisioning: this.createGithubRepositoryProvisioningMutation.execute,
+        CreateCompany: this.createCompanyMutation.execute,
         CreatePlatformModel: this.createPlatformModelMutation.execute,
         CreateSkill: this.createSkillMutation.execute,
         CreateSkillGroup: this.createSkillGroupMutation.execute,
@@ -512,6 +524,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       Query: {
         CodexRateLimits: this.codexRateLimitsQueryResolver.execute,
         CompanyManagedLlmBudget: this.companyManagedLlmBudgetQueryResolver.execute,
+        FreeCompanyCreationEligibility: this.freeCompanyCreationEligibilityQueryResolver.execute,
         CompanySettings: this.companySettingsQueryResolver.execute,
         GithubAppConfig: this.githubAppConfigQueryResolver.execute,
         GithubDiscoveredSkills: this.githubDiscoveredSkillsQueryResolver.execute,

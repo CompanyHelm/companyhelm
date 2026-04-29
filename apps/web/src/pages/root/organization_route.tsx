@@ -116,6 +116,8 @@ export function OrganizationRoute() {
         <OrganizationList
           afterCreateOrganizationUrl="/orgs/:slug"
           afterSelectOrganizationUrl="/orgs/:slug"
+          createOrganizationMode="navigation"
+          createOrganizationUrl="/companies/new"
           hidePersonal
         />
       </div>

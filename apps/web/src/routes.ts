@@ -15,6 +15,7 @@ import { AdminModelDetailPage } from "./pages/admin/model_detail_page";
 import { AdminModelsPage } from "./pages/admin/models_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
 import { CompaniesRoute } from "./pages/auth/companies_route";
+import { CompanyCreationPage } from "./pages/company_creation_page";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
@@ -561,6 +562,12 @@ const companiesRoute = createRoute({
   component: CompaniesAuthRoute,
 });
 
+const companyCreationRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/companies/new",
+  component: CompanyCreationPage,
+});
+
 const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
@@ -617,6 +624,7 @@ const routeTree = rootRoute.addChildren([
     terminalOrganizationRoute.addChildren([
       environmentTerminalRoute,
     ]),
+    companyCreationRoute,
   ]),
   signInRoute,
   signUpRoute,

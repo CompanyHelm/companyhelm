@@ -139,11 +139,9 @@ export class ClerkAuthProvider extends AuthProvider {
     ClerkAuthProvider.verifyStatus(claims.sts);
     const providerSubject = this.requireClaim(authenticatedRequest.userId, "Clerk bearer token is missing a subject.");
     const organizationSubject = this.resolveOrganizationSubject(claims, authenticatedRequest.orgId);
-    if (!organizationSubject) {
-      throw new Error("Clerk bearer token is missing an active organization claim.");
-    }
-
-    const organizationName = this.resolveOrganizationName(claims, organizationSubject);
+    const organizationName = organizationSubject
+      ? this.resolveOrganizationName(claims, organizationSubject)
+      : null;
 
     return db.transaction(async (transaction) => {
       const user = await this.userBootstrapService.findOrCreateUser(transaction, {
@@ -160,6 +158,22 @@ export class ClerkAuthProvider extends AuthProvider {
         },
         providerSubject,
       });
+      if (!organizationSubject || !organizationName) {
+        return {
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.first_name,
+            isPlatformAdmin: user.is_platform_admin,
+            lastName: user.last_name,
+            provider: "clerk",
+            providerSubject,
+          },
+          company: null,
+        };
+      }
+
       const company = await this.companyBootstrapService.findOrCreateCompany(transaction, {
         providerSubject: organizationSubject,
         name: organizationName,

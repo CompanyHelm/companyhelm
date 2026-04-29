@@ -66,23 +66,31 @@ export function useOrganizationList(options?: unknown) {
 export function OrganizationSwitcher(props: {
   afterCreateOrganizationUrl?: string;
   afterSelectOrganizationUrl?: string;
+  createOrganizationMode?: "modal" | "navigation";
+  createOrganizationUrl?: string;
 }) {
   void props.afterCreateOrganizationUrl;
   void props.afterSelectOrganizationUrl;
+  void props.createOrganizationMode;
+  void props.createOrganizationUrl;
   return config.authProvider === "local"
     ? <LocalOrganizationSwitcher />
     : config.authProvider === "dev"
       ? <DevOrganizationSwitcher />
-    : <ClerkOrganizationSwitcher {...props} />;
+    : <ClerkOrganizationSwitcher {...(props as never as Record<string, unknown>)} />;
 }
 
 export function OrganizationList(props: {
   afterCreateOrganizationUrl?: string;
   afterSelectOrganizationUrl?: string;
+  createOrganizationMode?: "modal" | "navigation";
+  createOrganizationUrl?: string;
   hidePersonal?: boolean;
 }) {
   void props.afterCreateOrganizationUrl;
   void props.afterSelectOrganizationUrl;
+  void props.createOrganizationMode;
+  void props.createOrganizationUrl;
   void props.hidePersonal;
   return config.authProvider === "local"
     ? <LocalOrganizationList />

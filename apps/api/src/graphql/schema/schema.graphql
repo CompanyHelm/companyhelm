@@ -10,6 +10,7 @@ type Query {
     after: String
   ): AgentConversationMessageConnection!
   CompanySettings: CompanySettings!
+  FreeCompanyCreationEligibility: FreeCompanyCreationEligibility!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
@@ -84,6 +85,7 @@ type Mutation {
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
+  CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
   UpdatePlatformAdminCompanyEnhancedLogging(
@@ -307,6 +309,20 @@ type CompanySettings {
   companyId: ID!
   baseSystemPrompt: String
   defaultManagedPlatformModelId: ID
+}
+
+type FreeCompanyCreationEligibility {
+  allowed: Boolean!
+  currentFreeCompanyCount: Int!
+  limit: Int!
+  reason: String
+}
+
+type CreatedCompany {
+  id: ID!
+  name: String!
+  slug: String!
+  clerkOrganizationId: String
 }
 
 enum CompanyDeletionRequestStatus {
@@ -1314,6 +1330,10 @@ input UpdateAgentInput {
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
   defaultManagedPlatformModelId: ID
+}
+
+input CreateCompanyInput {
+  name: String!
 }
 
 input UpdatePlatformAdminCompanyEnhancedLoggingInput {

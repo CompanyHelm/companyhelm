@@ -128,6 +128,8 @@ export function ApplicationSidebar(props: {
             <OrganizationSwitcher
               afterCreateOrganizationUrl="/orgs/:slug"
               afterSelectOrganizationUrl="/orgs/:slug"
+              createOrganizationMode="navigation"
+              createOrganizationUrl="/companies/new"
             />
           </div>
         </div>

@@ -1,0 +1,254 @@
+import { createClerkClient } from "@clerk/backend";
+import { inject, injectable } from "inversify";
+import type { TransactionSql } from "postgres";
+import { Config } from "../../config/schema.ts";
+import { AdminDatabase } from "../../db/admin_database.ts";
+
+export type FreeCompanyCreationEligibility = {
+  allowed: boolean;
+  currentFreeCompanyCount: number;
+  limit: number;
+  reason: string | null;
+};
+
+export type CreatedCompanyRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  clerkOrganizationId: string | null;
+};
+
+type ClerkOrganizationRecord = {
+  id: string;
+  slug: string;
+};
+
+type ClerkClientDependency = {
+  organizations: {
+    createOrganization(params: {
+      createdBy?: string;
+      name: string;
+      slug: string;
+    }): Promise<ClerkOrganizationRecord>;
+    deleteOrganization(organizationId: string): Promise<unknown>;
+  };
+};
+
+type CompanyInsertRow = {
+  id: string;
+  slug: string;
+};
+
+type CompanyUpdateRow = {
+  clerk_organization_id: string | null;
+};
+
+type CountRow = {
+  count: string;
+};
+
+/**
+ * Owns user-initiated company creation so the application database remains the source of truth for
+ * names, slugs, plans, and membership limits while Clerk receives a mirrored organization record.
+ */
+@injectable()
+export class CompanyCreationService {
+  private static readonly FREE_COMPANY_LIMIT = 3;
+  private static readonly FREE_COMPANY_LIMIT_REASON = "Free accounts can belong to at most 3 free companies.";
+
+  private readonly adminDatabase: AdminDatabase;
+  private readonly config: Config;
+  private clerkClient: ClerkClientDependency | null = null;
+
+  constructor(
+    @inject(Config) config: Config,
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
+  ) {
+    this.adminDatabase = adminDatabase;
+    this.config = config;
+  }
+
+  static createForTest(
+    config: Config,
+    adminDatabase: AdminDatabase,
+    clerkClient: ClerkClientDependency,
+  ): CompanyCreationService {
+    const service = new CompanyCreationService(config, adminDatabase);
+    service.clerkClient = clerkClient;
+    return service;
+  }
+
+  async getFreeCompanyCreationEligibility(userId: string): Promise<FreeCompanyCreationEligibility> {
+    const sql = this.adminDatabase.getSqlClient();
+    const [countRow] = await sql<CountRow[]>`
+      select count(*)::text as count
+      from company_members
+      join companies on companies.id = company_members.company_id
+      where company_members.user_id = ${userId}
+        and companies.plan = 'free'
+        and companies.deletion_status = 'active'
+    `;
+
+    return this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
+  }
+
+  async createCompany(input: {
+    clerkUserId: string | null;
+    name: string;
+    userId: string;
+  }): Promise<CreatedCompanyRecord> {
+    const companyName = this.normalizeCompanyName(input.name);
+    let createdClerkOrganizationId: string | null = null;
+    try {
+      return await this.adminDatabase.getSqlClient().begin(async (sql) => {
+        await sql.unsafe("select pg_advisory_xact_lock(hashtextextended($1, 0))", [input.userId]);
+        const [countRow] = await sql.unsafe<CountRow[]>([
+          "select count(*)::text as count",
+          "from company_members",
+          "join companies on companies.id = company_members.company_id",
+          "where company_members.user_id = $1",
+          "and companies.plan = 'free'",
+          "and companies.deletion_status = 'active'",
+        ].join("\n"), [input.userId]);
+        const eligibility = this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
+        if (!eligibility.allowed) {
+          throw new Error(eligibility.reason ?? CompanyCreationService.FREE_COMPANY_LIMIT_REASON);
+        }
+
+        const slug = await this.createUniqueCompanySlug(sql, companyName);
+        const [company] = await sql.unsafe<CompanyInsertRow[]>([
+          "insert into companies (name, slug, plan)",
+          "values ($1, $2, 'free')",
+          "returning id, slug",
+        ].join("\n"), [companyName, slug]);
+        if (!company) {
+          throw new Error("Failed to create the company.");
+        }
+
+        await sql.unsafe([
+          "insert into company_members (company_id, user_id)",
+          "values ($1, $2)",
+          "on conflict do nothing",
+        ].join("\n"), [company.id, input.userId]);
+
+        const clerkOrganization = await this.createClerkOrganization({
+          clerkUserId: input.clerkUserId,
+          name: companyName,
+          slug: company.slug,
+        });
+        createdClerkOrganizationId = clerkOrganization?.id ?? null;
+
+        const [updatedCompany] = await sql.unsafe<CompanyUpdateRow[]>([
+          "update companies",
+          "set clerk_organization_id = $1",
+          "where id = $2",
+          "returning clerk_organization_id",
+        ].join("\n"), [createdClerkOrganizationId, company.id]);
+        if (createdClerkOrganizationId && updatedCompany?.clerk_organization_id !== createdClerkOrganizationId) {
+          throw new Error("Failed to link the Clerk organization to the company.");
+        }
+
+        return {
+          id: company.id,
+          name: companyName,
+          slug: company.slug,
+          clerkOrganizationId: updatedCompany?.clerk_organization_id ?? null,
+        };
+      });
+    } catch (error) {
+      await this.deleteCreatedClerkOrganization(createdClerkOrganizationId);
+      throw error;
+    }
+  }
+
+  private buildEligibility(currentFreeCompanyCount: number): FreeCompanyCreationEligibility {
+    const allowed = currentFreeCompanyCount < CompanyCreationService.FREE_COMPANY_LIMIT;
+    return {
+      allowed,
+      currentFreeCompanyCount,
+      limit: CompanyCreationService.FREE_COMPANY_LIMIT,
+      reason: allowed ? null : CompanyCreationService.FREE_COMPANY_LIMIT_REASON,
+    };
+  }
+
+  private async createClerkOrganization(input: {
+    clerkUserId: string | null;
+    name: string;
+    slug: string;
+  }): Promise<ClerkOrganizationRecord | null> {
+    if (this.config.auth.provider !== "clerk") {
+      return null;
+    }
+
+    return this.getClerkClient().organizations.createOrganization({
+      createdBy: input.clerkUserId ?? undefined,
+      name: input.name,
+      slug: input.slug,
+    });
+  }
+
+  private async createUniqueCompanySlug(
+    sql: TransactionSql,
+    companyName: string,
+  ): Promise<string> {
+    const baseSlug = this.createSlugBase(companyName);
+    for (let suffix = 0; suffix < 100; suffix += 1) {
+      const slug = suffix === 0 ? baseSlug : `${baseSlug}-${suffix + 1}`;
+      const existingRows = await sql.unsafe<Array<{ id: string }>>([
+        "select id",
+        "from companies",
+        "where slug = $1",
+        "limit 1",
+      ].join("\n"), [slug]);
+      if (existingRows.length === 0) {
+        return slug;
+      }
+    }
+
+    throw new Error("Failed to allocate a unique company slug.");
+  }
+
+  private createSlugBase(companyName: string): string {
+    const slug = companyName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gu, "-")
+      .replace(/^-|-$/gu, "");
+    return slug || "company";
+  }
+
+  private async deleteCreatedClerkOrganization(clerkOrganizationId: string | null): Promise<void> {
+    if (!clerkOrganizationId || this.config.auth.provider !== "clerk") {
+      return;
+    }
+
+    await this.getClerkClient().organizations.deleteOrganization(clerkOrganizationId);
+  }
+
+  private getClerkClient(): ClerkClientDependency {
+    if (!this.clerkClient) {
+      if (this.config.auth.provider !== "clerk") {
+        throw new Error("Clerk organization creation requires Clerk auth configuration.");
+      }
+
+      this.clerkClient = createClerkClient({
+        publishableKey: this.config.auth.clerk.publishable_key,
+        secretKey: this.config.auth.clerk.secret_key,
+      }) as unknown as ClerkClientDependency;
+    }
+
+    return this.clerkClient;
+  }
+
+  private normalizeCompanyName(rawName: string): string {
+    const companyName = rawName.trim();
+    if (companyName.length === 0) {
+      throw new Error("Company name is required.");
+    }
+    if (companyName.length > 255) {
+      throw new Error("Company name must be 255 characters or fewer.");
+    }
+
+    return companyName;
+  }
+}
