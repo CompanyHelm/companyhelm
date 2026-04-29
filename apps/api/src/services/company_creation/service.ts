@@ -53,8 +53,8 @@ type CountRow = {
  */
 @injectable()
 export class CompanyCreationService {
-  private static readonly FREE_COMPANY_LIMIT = 3;
-  private static readonly FREE_COMPANY_LIMIT_REASON = "Free accounts can belong to at most 3 free companies.";
+  private static readonly PLATFORM_ADMIN_FREE_COMPANY_LIMIT = 1000;
+  private static readonly STANDARD_FREE_COMPANY_LIMIT = 3;
 
   private readonly adminDatabase: AdminDatabase;
   private readonly config: Config;
@@ -78,13 +78,16 @@ export class CompanyCreationService {
     return service;
   }
 
-  async getFreeCompanyCreationEligibility(userId: string): Promise<FreeCompanyCreationEligibility> {
+  async getFreeCompanyCreationEligibility(input: {
+    isPlatformAdmin: boolean;
+    userId: string;
+  }): Promise<FreeCompanyCreationEligibility> {
     const sql = this.adminDatabase.getSqlClient();
     const [countRow] = await sql<CountRow[]>`
       select count(*)::text as count
       from company_members
       join companies on companies.id = company_members.company_id
-      where company_members.user_id = ${userId}
+      where company_members.user_id = ${input.userId}
         and companies.plan = 'free'
         and not exists (
           select 1
@@ -94,11 +97,15 @@ export class CompanyCreationService {
         )
     `;
 
-    return this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
+    return this.buildEligibility({
+      currentFreeCompanyCount: Number.parseInt(countRow?.count ?? "0", 10),
+      isPlatformAdmin: input.isPlatformAdmin,
+    });
   }
 
   async createCompany(input: {
     clerkUserId: string | null;
+    isPlatformAdmin: boolean;
     name: string;
     userId: string;
   }): Promise<CreatedCompanyRecord> {
@@ -120,9 +127,12 @@ export class CompanyCreationService {
           "    and company_deletion_requests.status in ('requested', 'processing', 'failed')",
           ")",
         ].join("\n"), [input.userId]);
-        const eligibility = this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
+        const eligibility = this.buildEligibility({
+          currentFreeCompanyCount: Number.parseInt(countRow?.count ?? "0", 10),
+          isPlatformAdmin: input.isPlatformAdmin,
+        });
         if (!eligibility.allowed) {
-          throw new Error(eligibility.reason ?? CompanyCreationService.FREE_COMPANY_LIMIT_REASON);
+          throw new Error(eligibility.reason ?? this.buildFreeCompanyLimitReason(eligibility.limit));
         }
 
         const slug = await this.createUniqueCompanySlug(sql, companyName);
@@ -171,14 +181,28 @@ export class CompanyCreationService {
     }
   }
 
-  private buildEligibility(currentFreeCompanyCount: number): FreeCompanyCreationEligibility {
-    const allowed = currentFreeCompanyCount < CompanyCreationService.FREE_COMPANY_LIMIT;
+  private buildEligibility(input: {
+    currentFreeCompanyCount: number;
+    isPlatformAdmin: boolean;
+  }): FreeCompanyCreationEligibility {
+    const limit = this.resolveFreeCompanyLimit(input.isPlatformAdmin);
+    const allowed = input.currentFreeCompanyCount < limit;
     return {
       allowed,
-      currentFreeCompanyCount,
-      limit: CompanyCreationService.FREE_COMPANY_LIMIT,
-      reason: allowed ? null : CompanyCreationService.FREE_COMPANY_LIMIT_REASON,
+      currentFreeCompanyCount: input.currentFreeCompanyCount,
+      limit,
+      reason: allowed ? null : this.buildFreeCompanyLimitReason(limit),
     };
+  }
+
+  private resolveFreeCompanyLimit(isPlatformAdmin: boolean): number {
+    return isPlatformAdmin
+      ? CompanyCreationService.PLATFORM_ADMIN_FREE_COMPANY_LIMIT
+      : CompanyCreationService.STANDARD_FREE_COMPANY_LIMIT;
+  }
+
+  private buildFreeCompanyLimitReason(limit: number): string {
+    return `Free accounts can belong to at most ${limit} free companies.`;
   }
 
   private async createClerkOrganization(input: {

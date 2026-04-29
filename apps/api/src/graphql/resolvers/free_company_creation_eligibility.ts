@@ -29,6 +29,9 @@ export class FreeCompanyCreationEligibilityQueryResolver extends Resolver<FreeCo
       throw new Error("Authentication required.");
     }
 
-    return this.companyCreationService.getFreeCompanyCreationEligibility(context.authSession.user.id);
+    return this.companyCreationService.getFreeCompanyCreationEligibility({
+      isPlatformAdmin: context.authSession.user.isPlatformAdmin === true,
+      userId: context.authSession.user.id,
+    });
   };
 }
