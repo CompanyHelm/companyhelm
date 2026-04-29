@@ -130,6 +130,8 @@ export function ApplicationSidebar(props: {
               afterSelectOrganizationUrl="/orgs/:slug"
               createOrganizationMode="navigation"
               createOrganizationUrl="/companies/new"
+              organizationProfileMode="navigation"
+              organizationProfileUrl={`${OrganizationPath.href(organizationSlug, "/settings")}?tab=company`}
             />
           </div>
         </div>

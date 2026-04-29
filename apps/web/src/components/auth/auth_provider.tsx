@@ -68,11 +68,15 @@ export function OrganizationSwitcher(props: {
   afterSelectOrganizationUrl?: string;
   createOrganizationMode?: "modal" | "navigation";
   createOrganizationUrl?: string;
+  organizationProfileMode?: "modal" | "navigation";
+  organizationProfileUrl?: string;
 }) {
   void props.afterCreateOrganizationUrl;
   void props.afterSelectOrganizationUrl;
   void props.createOrganizationMode;
   void props.createOrganizationUrl;
+  void props.organizationProfileMode;
+  void props.organizationProfileUrl;
   return config.authProvider === "local"
     ? <LocalOrganizationSwitcher />
     : config.authProvider === "dev"
