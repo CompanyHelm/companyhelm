@@ -745,7 +745,7 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.equal(seedAgent?.defaultModelProviderCredentialModelId, null);
   assert.deepEqual(harness.listModelCredentials(), []);
   assert.deepEqual(harness.listModels(), []);
-  assert.equal(seedAgent?.default_reasoning_level, "high");
+  assert.equal(seedAgent?.default_reasoning_level, "medium");
   assert.equal(seedAgent?.system_prompt, null);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
 
@@ -926,6 +926,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
   assert.equal(harness.listModelCredentials().length, 1);
   assert.equal(harness.listModels().filter((model) => model.modelId === "gpt-5.4").length, 1);
   assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
+  assert.equal(harness.listAgents()[0]?.default_reasoning_level, "medium");
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
   assert.equal(harness.listWorkflowDefinitions().length, 1);
   assert.equal(harness.listWorkflowInputs().length, 0);

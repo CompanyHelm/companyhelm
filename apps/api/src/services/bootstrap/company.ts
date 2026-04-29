@@ -113,6 +113,7 @@ export class CompanyBootstrapService {
   static readonly SEED_AGENT_NAME = "CEO";
   static readonly SEED_ONBOARDING_WORKFLOW_NAME = "Company onboarding";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
+  private static readonly SEED_AGENT_REASONING_LEVEL = "medium";
   private static readonly SEED_ONBOARDING_WORKFLOW_DESCRIPTION =
     "Guides a new company through repository discovery, skill options, and first agent recommendations.";
   private static readonly SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS = [
@@ -604,7 +605,11 @@ export class CompanyBootstrapService {
     return models.find((model) => model.isDefault) ?? null;
   }
 
-  private resolveCompanyHelmDefaultReasoningLevel(reasoningLevels: string[]): string | null {
+  private resolveSeedAgentDefaultReasoningLevel(reasoningLevels: string[]): string | null {
+    if (reasoningLevels.includes(CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL)) {
+      return CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL;
+    }
+
     const defaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider("companyhelm");
     if (defaultReasoningLevel && reasoningLevels.includes(defaultReasoningLevel)) {
       return defaultReasoningLevel;
@@ -634,7 +639,7 @@ export class CompanyBootstrapService {
           defaultModelCredentialSource: "platform",
           defaultPlatformModelId: platformModel.id,
           defaultModelProviderCredentialModelId: null,
-          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(platformModel.reasoningLevels ?? []),
+          defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(platformModel.reasoningLevels ?? []),
         };
       }
     }
@@ -651,7 +656,7 @@ export class CompanyBootstrapService {
           defaultModelCredentialSource: "user_provided",
           defaultPlatformModelId: null,
           defaultModelProviderCredentialModelId: preferredModel.id,
-          defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
+          defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
         };
       }
     }
@@ -662,7 +667,7 @@ export class CompanyBootstrapService {
         defaultModelCredentialSource: "platform",
         defaultPlatformModelId: fallbackPlatformModel.id,
         defaultModelProviderCredentialModelId: null,
-        defaultReasoningLevel: this.resolveCompanyHelmDefaultReasoningLevel(fallbackPlatformModel.reasoningLevels ?? []),
+        defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(fallbackPlatformModel.reasoningLevels ?? []),
       };
     }
 
