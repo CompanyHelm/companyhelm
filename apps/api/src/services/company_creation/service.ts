@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClerkClient } from "@clerk/backend";
 import { inject, injectable } from "inversify";
 import type { TransactionSql } from "postgres";
@@ -135,12 +136,13 @@ export class CompanyCreationService {
           throw new Error(eligibility.reason ?? this.buildFreeCompanyLimitReason(eligibility.limit));
         }
 
+        const companyId = this.createCompanyId();
         const slug = await this.createUniqueCompanySlug(sql, companyName);
         const [company] = await sql.unsafe<CompanyInsertRow[]>([
-          "insert into companies (name, slug, plan)",
-          "values ($1, $2, 'free')",
+          "insert into companies (id, name, slug, plan)",
+          "values ($1, $2, $3, 'free')",
           "returning id, slug",
-        ].join("\n"), [companyName, slug]);
+        ].join("\n"), [companyId, companyName, slug]);
         if (!company) {
           throw new Error("Failed to create the company.");
         }
@@ -203,6 +205,10 @@ export class CompanyCreationService {
 
   private buildFreeCompanyLimitReason(limit: number): string {
     return `Free accounts can belong to at most ${limit} free companies.`;
+  }
+
+  private createCompanyId(): string {
+    return randomUUID();
   }
 
   private async createClerkOrganization(input: {

@@ -41,6 +41,58 @@ class CompanyCreationLimitsTestHarness {
       },
     } as never);
   }
+
+  static createServiceForCompanyCreation() {
+    const unsafeCalls: Array<{
+      parameters?: unknown[];
+      query: string;
+    }> = [];
+    const transaction = {
+      unsafe: vi.fn(async (query: string, parameters?: unknown[]) => {
+        unsafeCalls.push({
+          parameters,
+          query,
+        });
+        if (query.includes("select count(*)::text as count")) {
+          return [{ count: "0" }];
+        }
+        if (query.includes("select id") && query.includes("where slug = $1")) {
+          return [];
+        }
+        if (query.includes("insert into companies")) {
+          return [{
+            id: String(parameters?.[0] ?? ""),
+            slug: String(parameters?.[2] ?? ""),
+          }];
+        }
+        if (query.includes("insert into company_members")) {
+          return [];
+        }
+        if (query.includes("update companies")) {
+          return [{ clerk_organization_id: null }];
+        }
+
+        return [];
+      }),
+    };
+    const sql = {
+      begin: vi.fn(async (callback: (transaction: typeof transaction) => Promise<unknown>) => callback(transaction)),
+    };
+    const service = new CompanyCreationService({
+      auth: {
+        provider: "local",
+      },
+    } as never, {
+      getSqlClient() {
+        return sql;
+      },
+    } as never);
+
+    return {
+      service,
+      unsafeCalls,
+    };
+  }
 }
 
 test("CompanyCreationService allows platform admins up to one thousand active free companies", async () => {
@@ -113,4 +165,22 @@ test("CreateCompanyMutation forwards platform admin status to company creation",
     name: "Acme",
     userId: "user-1",
   }]);
+});
+
+test("CompanyCreationService supplies an id when creating companies through raw SQL", async () => {
+  const harness = CompanyCreationLimitsTestHarness.createServiceForCompanyCreation();
+
+  const company = await harness.service.createCompany({
+    clerkUserId: null,
+    isPlatformAdmin: false,
+    name: "Acme",
+    userId: "user-1",
+  });
+
+  const insertCompanyCall = harness.unsafeCalls.find((call) => call.query.includes("insert into companies"));
+  assert.match(insertCompanyCall?.query ?? "", /insert into companies \(id, name, slug, plan\)/u);
+  assert.equal(typeof insertCompanyCall?.parameters?.[0], "string");
+  assert.notEqual(insertCompanyCall?.parameters?.[0], "");
+  assert.deepEqual(insertCompanyCall?.parameters?.slice(1), ["Acme", "acme"]);
+  assert.equal(company.id, insertCompanyCall?.parameters?.[0]);
 });
