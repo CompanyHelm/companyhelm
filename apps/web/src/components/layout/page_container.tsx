@@ -102,6 +102,10 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   const [onboardingErrorMessage, setOnboardingErrorMessage] = useState<string | null>(null);
   const onboarding = data.Me.company.onboarding;
   const isPlatformAdmin = data.Me.user.isPlatformAdmin;
+  if (!onboarding) {
+    return <PageContainerOrganizationFallback />;
+  }
+
   const isOnboardingFocused = onboarding.status === "not_started" || onboarding.status === "in_progress";
   const normalizedPathname = OrganizationPath.stripPrefix(props.pathname);
   const isAdminPage = normalizedPathname === "/admin" || normalizedPathname.startsWith("/admin/");

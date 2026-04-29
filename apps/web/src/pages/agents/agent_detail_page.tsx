@@ -34,6 +34,8 @@ const agentDetailPageQueryNode = graphql`
       id
       name
       modelCredentialSource
+      modelCredentialKind
+      modelOptionId
       platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -105,6 +107,9 @@ const agentDetailPageQueryNode = graphql`
     AgentCreateOptions {
       id
       modelCredentialSource
+      modelCredentialKind
+      managed
+      modelCredentialId
       modelProviderCredentialId
       isDefault
       label
@@ -114,6 +119,8 @@ const agentDetailPageQueryNode = graphql`
       models {
         id
         modelCredentialSource
+        modelCredentialKind
+        modelOptionId
         platformModelId
         modelProviderCredentialModelId
         modelId
@@ -250,6 +257,8 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       id
       name
       modelCredentialSource
+      modelCredentialKind
+      modelOptionId
       platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -321,12 +330,10 @@ function resolveProviderOption(
 
 function resolveModelOption(
   providerOption: AgentCreateProviderOption,
-  modelId: string | null | undefined,
+  modelOptionId: string | null | undefined,
 ) {
-  if (modelId) {
-    const exactMatch = providerOption.models.find((option) =>
-      option.modelProviderCredentialModelId === modelId || option.platformModelId === modelId
-    );
+  if (modelOptionId) {
+    const exactMatch = providerOption.models.find((option) => option.modelOptionId === modelOptionId);
     if (exactMatch) {
       return exactMatch;
     }
@@ -470,6 +477,9 @@ function AgentDetailPageContent() {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
       modelCredentialSource: providerOption.modelCredentialSource as "platform" | "user_provided",
+      modelCredentialKind: providerOption.modelCredentialKind as "managed" | "user_provided",
+      managed: providerOption.managed,
+      modelCredentialId: providerOption.modelCredentialId,
       modelProviderCredentialId: providerOption.modelProviderCredentialId,
       isDefault: providerOption.isDefault,
       label: providerOption.label,
@@ -480,6 +490,8 @@ function AgentDetailPageContent() {
         id: modelOption.id,
         description: modelOption.description,
         modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
+        modelCredentialKind: modelOption.modelCredentialKind as "managed" | "user_provided",
+        modelOptionId: modelOption.modelOptionId,
         platformModelId: modelOption.platformModelId,
         modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
         modelId: modelOption.modelId,
@@ -517,7 +529,7 @@ function AgentDetailPageContent() {
   const selectedProviderOption = agent.modelCredentialSource === "platform"
     ? providerOptions.find((option) =>
       option.modelCredentialSource === "platform"
-        && option.models.some((modelOption) => modelOption.platformModelId === agent.platformModelId)
+        && option.models.some((modelOption) => modelOption.modelOptionId === agent.modelOptionId)
     ) ?? null
     : agent.modelProviderCredentialId
     ? providerOptions.find((option) => option.modelProviderCredentialId === agent.modelProviderCredentialId) ?? null
@@ -528,8 +540,7 @@ function AgentDetailPageContent() {
   const selectedModelOption = selectedProviderOption
     ? selectedProviderOption.models.find(
       (option) =>
-        option.modelProviderCredentialModelId === agent.modelProviderCredentialModelId
-        || option.platformModelId === agent.platformModelId,
+        option.modelOptionId === agent.modelOptionId,
     ) ?? null
     : null;
   const archivedChats = data.Sessions.filter((session) => {
@@ -556,8 +567,7 @@ function AgentDetailPageContent() {
     defaultComputeProviderDefinitionId?: string;
     defaultEnvironmentTemplateId?: string;
     providerOptionId?: string;
-    platformModelId?: string | null;
-    modelProviderCredentialModelId?: string | null;
+    modelOptionId?: string | null;
     name?: string;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
@@ -590,7 +600,7 @@ function AgentDetailPageContent() {
     const nextProviderOption = resolveProviderOption(providerOptions, nextProviderOptionId);
     const nextModelOption = resolveModelOption(
       nextProviderOption,
-      patch.modelProviderCredentialModelId ?? patch.platformModelId ?? agent.modelProviderCredentialModelId ?? agent.platformModelId,
+      patch.modelOptionId ?? agent.modelOptionId,
     );
     if (!nextModelOption) {
       throw new Error("Selected provider does not have any models.");
@@ -611,9 +621,7 @@ function AgentDetailPageContent() {
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
             name: patch.name ?? agent.name,
             modelCredentialSource: nextModelOption.modelCredentialSource,
-            platformModelId: nextModelOption.platformModelId,
-            modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
-            modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
+            modelOptionId: nextModelOption.modelOptionId,
             reasoningLevel: nextReasoningLevel,
             systemPrompt: patch.systemPrompt === undefined
               ? agent.systemPrompt
@@ -702,8 +710,7 @@ function AgentDetailPageContent() {
                       const nextModelOption = resolveModelOption(nextProviderOption, null);
                       await saveAgent({
                         providerOptionId: nextProviderOption.id,
-                        platformModelId: nextModelOption?.platformModelId,
-                        modelProviderCredentialModelId: nextModelOption?.modelProviderCredentialModelId,
+                        modelOptionId: nextModelOption?.modelOptionId,
                         reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
                       });
                     }}
@@ -723,8 +730,7 @@ function AgentDetailPageContent() {
                       }
 
                       await saveAgent({
-                        platformModelId: nextModelOption.platformModelId,
-                        modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
+                        modelOptionId: nextModelOption.modelOptionId,
                       });
                     }}
                     options={(selectedProviderOption?.models ?? []).map((modelOption) => ({

@@ -55,6 +55,7 @@ export class AgentManagementResultFormatter {
       `modelProviderCredentialId: ${agent.modelProviderCredentialId ?? "(none)"}`,
       `modelProviderCredentialLabel: ${agent.modelProviderCredentialLabel ?? "(none)"}`,
       `modelProviderCredentialModelId: ${agent.modelProviderCredentialModelId ?? "(none)"}`,
+      `modelCredentialKind: ${agent.modelCredentialKind ?? "(none)"}`,
       `modelId: ${agent.modelId ?? "(none)"}`,
       `modelName: ${agent.modelName ?? "(none)"}`,
       `modelDescription: ${agent.modelDescription ?? "(none)"}`,
@@ -123,6 +124,8 @@ export class AgentManagementResultFormatter {
       `id: ${option.id}`,
       `label: ${option.label}`,
       `isDefault: ${option.isDefault}`,
+      `managed: ${option.managed}`,
+      `modelCredentialKind: ${option.modelCredentialKind}`,
       `modelProvider: ${option.modelProvider}`,
       `defaultModelId: ${option.defaultModelId ?? "(none)"}`,
       `defaultReasoningLevel: ${option.defaultReasoningLevel ?? "(none)"}`,
@@ -153,6 +156,7 @@ export class AgentManagementResultFormatter {
     return models.map((model) => {
       return AgentManagementResultFormatter.indentBlock([
         `id: ${model.id}`,
+        `modelCredentialKind: ${model.modelCredentialKind}`,
         `modelId: ${model.modelId}`,
         `name: ${model.name}`,
         `description: ${model.description}`,

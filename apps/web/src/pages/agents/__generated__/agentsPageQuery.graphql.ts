@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c2cc98935941b0b2762b139041e78e97>>
+ * @generated SignedSource<<2881b159790f309bdba3a1bfbc131a65>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,14 +18,19 @@ export type agentsPageQuery$data = {
     readonly id: string;
     readonly isDefault: boolean;
     readonly label: string;
+    readonly managed: boolean;
+    readonly modelCredentialId: string | null | undefined;
+    readonly modelCredentialKind: string;
     readonly modelCredentialSource: string;
     readonly modelProvider: string;
     readonly modelProviderCredentialId: string | null | undefined;
     readonly models: ReadonlyArray<{
       readonly description: string;
       readonly id: string;
+      readonly modelCredentialKind: string;
       readonly modelCredentialSource: string;
       readonly modelId: string;
+      readonly modelOptionId: string;
       readonly modelProviderCredentialModelId: string | null | undefined;
       readonly name: string;
       readonly platformModelId: string | null | undefined;
@@ -125,21 +130,28 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isDefault",
+  "name": "modelCredentialKind",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "isDefault",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v6 = [
+v7 = [
   (v0/*: any*/),
   (v1/*: any*/)
 ],
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -199,6 +211,21 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v3/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "managed",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelCredentialId",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -206,7 +233,7 @@ v7 = [
         "name": "modelProviderCredentialId",
         "storageKey": null
       },
-      (v4/*: any*/),
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -239,6 +266,14 @@ v7 = [
         "selections": [
           (v0/*: any*/),
           (v3/*: any*/),
+          (v4/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "modelOptionId",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -246,7 +281,7 @@ v7 = [
             "name": "platformModelId",
             "storageKey": null
           },
-          (v5/*: any*/),
+          (v6/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -292,7 +327,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -317,7 +352,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "SecretGroups",
     "plural": true,
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   },
   {
@@ -327,7 +362,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "SkillGroups",
     "plural": true,
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   },
   {
@@ -340,7 +375,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -368,7 +403,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -395,7 +430,7 @@ v7 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
-      (v4/*: any*/),
+      (v5/*: any*/),
       (v1/*: any*/),
       {
         "alias": null,
@@ -461,7 +496,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentsPageQuery",
-    "selections": (v7/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -470,19 +505,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "agentsPageQuery",
-    "selections": (v7/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "427b4c198ad342d63be68a6717305330",
+    "cacheID": "9797d1d2d8bcfdb2490623ede9506a7e",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      description\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    modelCredentialKind\n    managed\n    modelCredentialId\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      modelCredentialKind\n      modelOptionId\n      platformModelId\n      description\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ce4d8fe05321ed8fc42f5dcc38612fa0";
+(node as any).hash = "be44666f6a60410e14b388f734841874";
 
 export default node;

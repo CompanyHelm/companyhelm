@@ -569,6 +569,8 @@ type Agent {
   id: ID!
   name: String!
   modelCredentialSource: String!
+  modelCredentialKind: String!
+  modelOptionId: ID
   platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
@@ -643,6 +645,9 @@ type E2bComputeProviderDefinition {
 type AgentCreateProviderOption {
   id: ID!
   modelCredentialSource: String!
+  modelCredentialKind: String!
+  managed: Boolean!
+  modelCredentialId: ID
   platformModelProviderCredentialId: ID
   modelProviderCredentialId: ID
   isDefault: Boolean!
@@ -656,6 +661,8 @@ type AgentCreateProviderOption {
 type AgentCreateModelOption {
   id: ID!
   modelCredentialSource: String!
+  modelCredentialKind: String!
+  modelOptionId: ID!
   platformModelId: ID
   platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
@@ -1288,6 +1295,7 @@ input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
   name: String!
+  modelOptionId: ID
   modelCredentialSource: String
   platformModelId: ID
   platformModelProviderCredentialModelId: ID
@@ -1307,6 +1315,7 @@ input UpdateAgentInput {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
+  modelOptionId: ID
   modelCredentialSource: String
   platformModelId: ID
   platformModelProviderCredentialModelId: ID

@@ -41,6 +41,7 @@ const sampleAgent = {
   modelProviderCredentialId: "credential-1",
   modelProviderCredentialLabel: "OpenAI",
   modelProviderCredentialModelId: "model-1",
+  modelCredentialKind: "user_provided" as const,
   name: "Operator",
   reasoningLevel: "medium",
   secrets: [{
@@ -108,10 +109,13 @@ test("AgentListAgentsTool renders full agent management state", async () => {
           defaultReasoningLevel: "medium",
           id: "credential-1",
           label: "OpenAI",
+          managed: false,
+          modelCredentialKind: "user_provided",
           modelProvider: "openai" as const,
           models: [{
             description: "Fast reasoning model",
             id: "model-1",
+            modelCredentialKind: "user_provided",
             modelId: "gpt-5.4",
             name: "GPT-5.4",
             reasoningSupported: true,
@@ -135,6 +139,7 @@ test("AgentListAgentsTool renders full agent management state", async () => {
   assert.equal(result.details?.currentAgentId, "agent-1");
   assert.match(result.content[0]?.text ?? "", /currentAgentId: agent-1/);
   assert.match(result.content[0]?.text ?? "", /availableComputeProviderDefinitions:/);
+  assert.match(result.content[0]?.text ?? "", /modelCredentialKind: user_provided/);
   assert.match(result.content[0]?.text ?? "", /defaultSecrets:/);
 });
 

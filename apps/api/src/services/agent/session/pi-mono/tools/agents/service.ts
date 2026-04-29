@@ -1,13 +1,17 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { PlatformAdminAccess } from "../../../../../../db/platform_admin_access.ts";
 import {
   agentDefaultSecrets,
   agents,
   companyModelProviderDefaults,
+  companyManagedModelProviderSettings,
   companySecrets,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
+  platformModelRoutes,
+  platformModels,
 } from "../../../../../../db/schema.ts";
 import type {
   AppRuntimeTransaction,
@@ -55,6 +59,7 @@ export type AgentManagementToolAgent = {
   modelProviderCredentialId: string | null;
   modelProviderCredentialLabel: string | null;
   modelProviderCredentialModelId: string | null;
+  modelCredentialKind: "managed" | "user_provided" | null;
   name: string;
   reasoningLevel: string | null;
   secrets: AgentManagementToolSecret[];
@@ -66,6 +71,7 @@ export type AgentManagementToolAgent = {
 export type AgentManagementToolCredentialModelOption = {
   description: string;
   id: string;
+  modelCredentialKind: "managed" | "user_provided";
   modelId: string;
   name: string;
   reasoningSupported: boolean;
@@ -78,6 +84,8 @@ export type AgentManagementToolCredentialOption = {
   id: string;
   isDefault: boolean;
   label: string;
+  managed: boolean;
+  modelCredentialKind: "managed" | "user_provided";
   modelProvider: ModelProviderId;
   models: AgentManagementToolCredentialModelOption[];
 };
@@ -133,6 +141,8 @@ type AgentBaseRecord = {
   createdAt: Date;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
+  defaultModelCredentialSource: "platform" | "user_provided";
+  defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultReasoningLevel: string | null;
   id: string;
@@ -175,6 +185,29 @@ type ModelRecord = {
   name: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
+};
+
+type PlatformModelRecord = {
+  description: string;
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+  modelProvider: ModelProviderId;
+  name: string;
+  reasoningSupported: boolean;
+  reasoningLevels: string[] | null;
+};
+
+type ManagedProviderSettingsRecord = {
+  defaultPlatformModelId: string | null;
+};
+
+type ResolvedModelSelection = {
+  credential: CredentialRecord;
+  model: ModelRecord;
+  modelCredentialSource: "platform" | "user_provided";
+  platformModelId: string | null;
+  userProvidedModelId: string | null;
 };
 
 type SelectableDatabase = {
@@ -262,6 +295,7 @@ export class AgentManagementToolService {
     }
 
     return this.transactionProvider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       const scopedTransactionProvider = this.createScopedTransactionProvider(tx);
@@ -294,7 +328,9 @@ export class AgentManagementToolService {
           created_at: now,
           defaultComputeProviderDefinitionId: computeProviderDefinition.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
-          defaultModelProviderCredentialModelId: resolvedModelSelection.model.id,
+          defaultModelCredentialSource: resolvedModelSelection.modelCredentialSource,
+          defaultModelProviderCredentialModelId: resolvedModelSelection.userProvidedModelId,
+          defaultPlatformModelId: resolvedModelSelection.platformModelId,
           default_reasoning_level: reasoningLevel,
           name: input.name,
           system_prompt: this.resolveSystemPrompt(input.systemPrompt),
@@ -348,6 +384,7 @@ export class AgentManagementToolService {
     }
 
     return this.transactionProvider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
       const scopedTransactionProvider = this.createScopedTransactionProvider(tx);
@@ -357,7 +394,7 @@ export class AgentManagementToolService {
         ? existingAgent.systemPrompt
         : this.resolveSystemPrompt(input.systemPrompt);
       const nextModelId = input.modelProviderCredentialModelId === undefined
-        ? existingAgent.defaultModelProviderCredentialModelId
+        ? existingAgent.defaultModelProviderCredentialModelId ?? existingAgent.defaultPlatformModelId
         : input.modelProviderCredentialModelId;
       if (!nextModelId) {
         throw new Error("modelProviderCredentialModelId is required.");
@@ -400,7 +437,10 @@ export class AgentManagementToolService {
       const reasoningLevel = this.resolveReasoningLevel(
         input.reasoningLevel === undefined
           ? (
-            resolvedModelSelection.model.id === existingAgent.defaultModelProviderCredentialModelId
+            (
+              resolvedModelSelection.userProvidedModelId === existingAgent.defaultModelProviderCredentialModelId
+              && resolvedModelSelection.platformModelId === existingAgent.defaultPlatformModelId
+            )
               ? existingAgent.defaultReasoningLevel
               : undefined
           )
@@ -414,7 +454,9 @@ export class AgentManagementToolService {
         .set({
           defaultComputeProviderDefinitionId: computeProviderDefinition.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
-          defaultModelProviderCredentialModelId: resolvedModelSelection.model.id,
+          defaultModelCredentialSource: resolvedModelSelection.modelCredentialSource,
+          defaultModelProviderCredentialModelId: resolvedModelSelection.userProvidedModelId,
+          defaultPlatformModelId: resolvedModelSelection.platformModelId,
           default_reasoning_level: reasoningLevel,
           name: nextName,
           system_prompt: nextSystemPrompt,
@@ -452,6 +494,8 @@ export class AgentManagementToolService {
       createdAt: agents.created_at,
       defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
       defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
+      defaultModelCredentialSource: agents.defaultModelCredentialSource,
+      defaultPlatformModelId: agents.defaultPlatformModelId,
       defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
       defaultReasoningLevel: agents.default_reasoning_level,
       id: agents.id,
@@ -463,6 +507,7 @@ export class AgentManagementToolService {
 
   private async loadAllAgents(): Promise<AgentManagementToolAgent[]> {
     return this.transactionProvider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       return this.loadAgentSummaries(
         tx as SelectableDatabase,
         this.createScopedTransactionProvider(tx),
@@ -494,6 +539,7 @@ export class AgentManagementToolService {
 
   private async loadProviderOptions(): Promise<AgentManagementToolCredentialOption[]> {
     return this.transactionProvider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const selectableDatabase = tx as SelectableDatabase;
       const [defaultProviderSelectionRecord] = await selectableDatabase
         .select({
@@ -524,7 +570,7 @@ export class AgentManagementToolService {
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, this.companyId)) as ModelRecord[];
 
-      return credentialRecords
+      const userProvidedOptions = credentialRecords
         .map((credentialRecord) => {
           const credentialModelRecords = modelRecords
             .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
@@ -532,6 +578,7 @@ export class AgentManagementToolService {
             .map((modelRecord) => ({
               description: modelRecord.description,
               id: modelRecord.id,
+              modelCredentialKind: "user_provided" as const,
               modelId: modelRecord.modelId,
               name: modelRecord.name,
               reasoningSupported: modelRecord.reasoningSupported,
@@ -557,13 +604,99 @@ export class AgentManagementToolService {
             isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
               && defaultProviderSelectionRecord.modelProviderCredentialId === credentialRecord.id,
             label: this.resolveCredentialLabel(credentialRecord),
+            managed: false,
+            modelCredentialKind: "user_provided" as const,
             modelProvider: credentialRecord.modelProvider,
             models: credentialModels,
           };
         })
         .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((credentialRecord) => credentialRecord.models.length > 0);
+      const managedOption = await this.loadManagedProviderOption(
+        selectableDatabase,
+        defaultProviderSelectionRecord ?? null,
+      );
+
+      return managedOption ? [managedOption, ...userProvidedOptions] : userProvidedOptions;
     });
+  }
+
+  private async loadManagedProviderOption(
+    selectableDatabase: SelectableDatabase,
+    defaultProviderSelectionRecord: DefaultProviderSelectionRecord | null,
+  ): Promise<AgentManagementToolCredentialOption | null> {
+    const platformModelRecords = await selectableDatabase
+      .select({
+        description: platformModels.description,
+        id: platformModels.id,
+        isDefault: platformModels.isDefault,
+        modelId: platformModels.modelId,
+        modelProvider: platformModels.modelProvider,
+        name: platformModels.name,
+        reasoningSupported: platformModels.reasoningSupported,
+        reasoningLevels: platformModels.reasoningLevels,
+      })
+      .from(platformModels)
+      .where(eq(platformModels.isAvailable, true)) as PlatformModelRecord[];
+    const routeRecords = await selectableDatabase
+      .select({
+        platformModelId: platformModelRoutes.platformModelId,
+      })
+      .from(platformModelRoutes)
+      .where(eq(platformModelRoutes.platformModelId, platformModelRoutes.platformModelId)) as Array<{
+        platformModelId: string;
+      }>;
+    const platformModelIdsWithRoutes = new Set(routeRecords.map((routeRecord) => routeRecord.platformModelId));
+    const modelOptions = platformModelRecords
+      .filter((modelRecord) => platformModelIdsWithRoutes.has(modelRecord.id))
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((modelRecord) => ({
+        description: modelRecord.description,
+        id: modelRecord.id,
+        modelCredentialKind: "managed" as const,
+        modelId: modelRecord.modelId,
+        name: modelRecord.name,
+        reasoningSupported: modelRecord.reasoningSupported,
+        reasoningLevels: modelRecord.reasoningLevels ?? [],
+      }));
+    if (modelOptions.length === 0) {
+      return null;
+    }
+
+    const [managedProviderSettingsRecord] = await selectableDatabase
+      .select({
+        defaultPlatformModelId: companyManagedModelProviderSettings.defaultPlatformModelId,
+      })
+      .from(companyManagedModelProviderSettings)
+      .where(and(
+        eq(companyManagedModelProviderSettings.companyId, this.companyId),
+        eq(companyManagedModelProviderSettings.providerKey, "companyhelm"),
+      )) as ManagedProviderSettingsRecord[];
+    const defaultModelRecord = modelOptions
+      .find((modelRecord) => modelRecord.id === managedProviderSettingsRecord?.defaultPlatformModelId)
+      ?? modelOptions.find((modelRecord) =>
+        modelRecord.modelId === this.modelRegistry.getDefaultModelForProvider("companyhelm")
+      )
+      ?? modelOptions[0]
+      ?? null;
+    const providerDefaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider("companyhelm");
+
+    return {
+      defaultModelId: defaultModelRecord?.modelId ?? null,
+      defaultReasoningLevel: providerDefaultReasoningLevel
+        && defaultModelRecord?.reasoningLevels.includes(providerDefaultReasoningLevel)
+        ? providerDefaultReasoningLevel
+        : (defaultModelRecord?.reasoningLevels[0] ?? null),
+      id: "managed:companyhelm",
+      isDefault: defaultProviderSelectionRecord
+        ? defaultProviderSelectionRecord.modelCredentialSource === "platform"
+        : true,
+      label: "CompanyHelm",
+      managed: true,
+      modelCredentialKind: "managed",
+      modelProvider: "companyhelm",
+      models: modelOptions,
+    };
   }
 
   private async loadRequiredAgentFromDatabase(
@@ -648,6 +781,11 @@ export class AgentManagementToolService {
         .map((agent) => agent.defaultModelProviderCredentialModelId)
         .filter((value): value is string => typeof value === "string"),
     )];
+    const platformModelIds = [...new Set(
+      baseAgents
+        .map((agent) => agent.defaultPlatformModelId)
+        .filter((value): value is string => typeof value === "string"),
+    )];
     const modelRecords = modelIds.length === 0
       ? []
       : await selectableDatabase
@@ -665,6 +803,21 @@ export class AgentManagementToolService {
           eq(modelProviderCredentialModels.companyId, this.companyId),
           inArray(modelProviderCredentialModels.id, modelIds),
         )) as ModelRecord[];
+    const platformModelRecords = platformModelIds.length === 0
+      ? []
+      : await selectableDatabase
+        .select({
+          description: platformModels.description,
+          id: platformModels.id,
+          isDefault: platformModels.isDefault,
+          modelId: platformModels.modelId,
+          modelProvider: platformModels.modelProvider,
+          name: platformModels.name,
+          reasoningSupported: platformModels.reasoningSupported,
+          reasoningLevels: platformModels.reasoningLevels,
+        })
+        .from(platformModels)
+        .where(inArray(platformModels.id, platformModelIds)) as PlatformModelRecord[];
     const credentialIds = [...new Set(modelRecords.map((modelRecord) => modelRecord.modelProviderCredentialId))];
     const credentialRecords = credentialIds.length === 0
       ? []
@@ -701,6 +854,7 @@ export class AgentManagementToolService {
       secretIdsByAgentId.set(record.agentId, currentSecretIds);
     }
     const modelById = new Map(modelRecords.map((record) => [record.id, record]));
+    const platformModelById = new Map(platformModelRecords.map((record) => [record.id, record]));
     const credentialById = new Map(credentialRecords.map((record) => [record.id, record]));
     const computeProviderDefinitionById = new Map(
       computeProviderDefinitionRecords.map((record) => [record.id, record]),
@@ -709,12 +863,15 @@ export class AgentManagementToolService {
     return [...baseAgents]
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((agent) => {
-        const model = agent.defaultModelProviderCredentialModelId
-          ? modelById.get(agent.defaultModelProviderCredentialModelId) ?? null
-          : null;
-        const credential = model
+        const model = agent.defaultModelCredentialSource === "platform"
+          ? (agent.defaultPlatformModelId ? platformModelById.get(agent.defaultPlatformModelId) ?? null : null)
+          : (agent.defaultModelProviderCredentialModelId
+            ? modelById.get(agent.defaultModelProviderCredentialModelId) ?? null
+            : null);
+        const credential = model && "modelProviderCredentialId" in model
           ? credentialById.get(model.modelProviderCredentialId) ?? null
           : null;
+        const platformModelProvider = model && "modelProvider" in model ? model.modelProvider : null;
         const computeProviderDefinition = agent.defaultComputeProviderDefinitionId
           ? computeProviderDefinitionById.get(agent.defaultComputeProviderDefinitionId) ?? null
           : null;
@@ -739,10 +896,11 @@ export class AgentManagementToolService {
           modelDescription: model?.description ?? null,
           modelId: model?.modelId ?? null,
           modelName: model?.name ?? null,
-          modelProvider: credential?.modelProvider ?? null,
+          modelProvider: credential?.modelProvider ?? platformModelProvider,
           modelProviderCredentialId: credential?.id ?? null,
-          modelProviderCredentialLabel: credential ? this.resolveCredentialLabel(credential) : null,
-          modelProviderCredentialModelId: agent.defaultModelProviderCredentialModelId,
+          modelProviderCredentialLabel: credential ? this.resolveCredentialLabel(credential) : (model ? "CompanyHelm" : null),
+          modelProviderCredentialModelId: agent.defaultModelProviderCredentialModelId ?? agent.defaultPlatformModelId,
+          modelCredentialKind: agent.defaultModelCredentialSource === "platform" ? "managed" : "user_provided",
           name: agent.name,
           reasoningLevel: agent.defaultReasoningLevel,
           secrets: attachedSecrets,
@@ -960,7 +1118,7 @@ export class AgentManagementToolService {
       modelProviderCredentialId: string | null;
       modelProviderCredentialModelId: string;
     },
-  ): Promise<{ credential: CredentialRecord; model: ModelRecord }> {
+  ): Promise<ResolvedModelSelection> {
     const [model] = await selectableDatabase
       .select({
         description: modelProviderCredentialModels.description,
@@ -976,34 +1134,86 @@ export class AgentManagementToolService {
         eq(modelProviderCredentialModels.companyId, this.companyId),
         eq(modelProviderCredentialModels.id, input.modelProviderCredentialModelId),
       )) as ModelRecord[];
-    if (!model) {
+    if (model) {
+      const credentialId = input.modelProviderCredentialId && input.modelProviderCredentialId.length > 0
+        ? input.modelProviderCredentialId
+        : model.modelProviderCredentialId;
+      const [credential] = await selectableDatabase
+        .select({
+          id: modelProviderCredentials.id,
+          modelProvider: modelProviderCredentials.modelProvider,
+          name: modelProviderCredentials.name,
+        })
+        .from(modelProviderCredentials)
+        .where(and(
+          eq(modelProviderCredentials.companyId, this.companyId),
+          eq(modelProviderCredentials.id, credentialId),
+        )) as CredentialRecord[];
+      if (!credential) {
+        throw new Error("Provider credential not found.");
+      }
+      if (model.modelProviderCredentialId !== credential.id) {
+        throw new Error("Provider model does not belong to the selected credential.");
+      }
+
+      return {
+        credential,
+        model,
+        modelCredentialSource: "user_provided",
+        platformModelId: null,
+        userProvidedModelId: model.id,
+      };
+    }
+
+    const [platformModel] = await selectableDatabase
+      .select({
+        description: platformModels.description,
+        id: platformModels.id,
+        isDefault: platformModels.isDefault,
+        modelId: platformModels.modelId,
+        modelProvider: platformModels.modelProvider,
+        name: platformModels.name,
+        reasoningSupported: platformModels.reasoningSupported,
+        reasoningLevels: platformModels.reasoningLevels,
+      })
+      .from(platformModels)
+      .where(and(
+        eq(platformModels.id, input.modelProviderCredentialModelId),
+        eq(platformModels.isAvailable, true),
+      )) as PlatformModelRecord[];
+    if (!platformModel) {
       throw new Error("Provider model not found.");
     }
 
-    const credentialId = input.modelProviderCredentialId && input.modelProviderCredentialId.length > 0
-      ? input.modelProviderCredentialId
-      : model.modelProviderCredentialId;
-    const [credential] = await selectableDatabase
+    const [routeRecord] = await selectableDatabase
       .select({
-        id: modelProviderCredentials.id,
-        modelProvider: modelProviderCredentials.modelProvider,
-        name: modelProviderCredentials.name,
+        platformModelId: platformModelRoutes.platformModelId,
       })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, this.companyId),
-        eq(modelProviderCredentials.id, credentialId),
-      )) as CredentialRecord[];
-    if (!credential) {
-      throw new Error("Provider credential not found.");
-    }
-    if (model.modelProviderCredentialId !== credential.id) {
-      throw new Error("Provider model does not belong to the selected credential.");
+      .from(platformModelRoutes)
+      .where(eq(platformModelRoutes.platformModelId, platformModel.id)) as Array<{ platformModelId: string }>;
+    if (!routeRecord) {
+      throw new Error("Managed provider model has no available route.");
     }
 
     return {
-      credential,
-      model,
+      credential: {
+        id: "managed:companyhelm",
+        modelProvider: "companyhelm",
+        name: "CompanyHelm",
+      },
+      model: {
+        description: platformModel.description,
+        id: platformModel.id,
+        isDefault: platformModel.isDefault,
+        modelId: platformModel.modelId,
+        modelProviderCredentialId: "managed:companyhelm",
+        name: platformModel.name,
+        reasoningSupported: platformModel.reasoningSupported,
+        reasoningLevels: platformModel.reasoningLevels,
+      },
+      modelCredentialSource: "platform",
+      platformModelId: platformModel.id,
+      userProvidedModelId: null,
     };
   }
 

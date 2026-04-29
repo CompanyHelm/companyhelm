@@ -1,6 +1,3 @@
-import { useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { ChatsPageContent } from "@/pages/chats/chats_page_content";
 import {
   OnboardingCompleteState,
@@ -8,14 +5,12 @@ import {
   OnboardingPageMessageState,
   OnboardingPageSuspense,
   OnboardingSkippedState,
-  navigateToOnboardingStep,
-  resolveCurrentStep,
   useOnboardingFlowController,
 } from "./flow";
 
 /**
- * Hosts the CEO onboarding chat as the fourth onboarding step, after static setup inputs have
- * been resolved and the onboarding workflow has provisioned its dedicated agent session.
+ * Hosts the CEO onboarding chat as the first onboarding experience after the workflow has
+ * provisioned its dedicated agent session.
  */
 export class CreateAgentsPagePresenter {
   static resolveLoadingMessage(input: {
@@ -39,43 +34,9 @@ export function CreateAgentsPage() {
 }
 
 function CreateAgentsPageContent() {
-  const navigate = useNavigate();
-  const organizationSlug = useCurrentOrganizationSlug();
   const controller = useOnboardingFlowController({
     ensureOnboardingStart: true,
   });
-
-  useEffect(() => {
-    if (
-      controller.errorMessage
-      || controller.onboarding.status === "completed"
-      || controller.onboarding.status === "skipped"
-      || controller.onboarding.status === "in_progress"
-      || controller.setupResolved
-    ) {
-      return;
-    }
-
-    navigateToOnboardingStep({
-      navigate,
-      organizationSlug,
-      replace: true,
-      step: resolveCurrentStep({
-        githubResolved: controller.githubResolved,
-        llmResolved: controller.llmResolved,
-        missionResolved: controller.missionResolved,
-      }),
-    });
-  }, [
-    controller.errorMessage,
-    controller.githubResolved,
-    controller.llmResolved,
-    controller.missionResolved,
-    controller.onboarding.status,
-    controller.setupResolved,
-    navigate,
-    organizationSlug,
-  ]);
 
   if (controller.errorMessage) {
     return (

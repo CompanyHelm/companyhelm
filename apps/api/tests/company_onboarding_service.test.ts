@@ -326,23 +326,32 @@ test("CompanyOnboardingService requires third-party LLM credentials when managed
   assert.equal(harness.loadOnboarding()?.llmSetupStatus, "pending");
 });
 
-test("CompanyOnboardingService blocks CEO provisioning until the static steps are resolved", async () => {
+test("CompanyOnboardingService resolves first-run static setup defaults before CEO provisioning", async () => {
   const harness = new CompanyOnboardingServiceTestHarness();
   const service = harness.buildService();
 
   await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
 
-  await assert.rejects(
-    service.ensureOnboarding(
-      harness.buildTransactionProvider() as never,
-      {
-        companyId: "company-1",
-        userId: "user-1",
-      },
-    ),
-    /Complete the onboarding setup steps before starting the CEO chat/,
+  const onboarding = await service.ensureOnboarding(
+    harness.buildTransactionProvider() as never,
+    {
+      companyId: "company-1",
+      userId: "user-1",
+    },
   );
-  assert.equal(harness.listWorkflowCalls().length, 0);
+
+  assert.equal(onboarding.status, "in_progress");
+  assert.equal(onboarding.companyMission, null);
+  assert.equal(onboarding.githubSetupStatus, "skipped");
+  assert.equal(onboarding.llmSetupStatus, "company_managed");
+  assert.ok(onboarding.missionSkippedAt instanceof Date);
+  assert.ok(onboarding.githubSkippedAt instanceof Date);
+  assert.ok(onboarding.llmCompletedAt instanceof Date);
+  assert.deepEqual(harness.listEnsureOnboardingAssetCalls(), [{
+    companyId: "company-1",
+    llmSetupStatus: "company_managed",
+  }]);
+  assert.deepEqual(harness.listWorkflowCalls()[0]?.inputValues, []);
 });
 
 test("CompanyOnboardingService starts the CEO workflow without static setup input values", async () => {

@@ -56,6 +56,8 @@ type GraphqlAgentRecord = {
   id: string;
   name: string;
   modelCredentialSource: "platform" | "user_provided";
+  modelCredentialKind: "managed" | "user_provided";
+  modelOptionId: string | null;
   platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
@@ -235,6 +237,8 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
       id: agentRecord.id,
       name: agentRecord.name,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
+      modelCredentialKind: agentRecord.defaultModelCredentialSource === "platform" ? "managed" : "user_provided",
+      modelOptionId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
       platformModelId: agentRecord.defaultPlatformModelId,
       platformModelProviderCredentialModelId: null,
       modelProviderCredentialId: modelRecord && "modelProviderCredentialId" in modelRecord ? modelRecord.modelProviderCredentialId : null,

@@ -25,6 +25,9 @@ import { SecretDefaultOptions } from "./secret_default_options";
 export type AgentCreateProviderOption = {
   id: string;
   modelCredentialSource: "platform" | "user_provided";
+  modelCredentialKind: "managed" | "user_provided";
+  managed: boolean;
+  modelCredentialId: string | null | undefined;
   modelProviderCredentialId: string | null | undefined;
   isDefault: boolean;
   label: string;
@@ -35,6 +38,8 @@ export type AgentCreateProviderOption = {
     id: string;
     description: string | null | undefined;
     modelCredentialSource: "platform" | "user_provided";
+    modelCredentialKind: "managed" | "user_provided";
+    modelOptionId: string;
     platformModelId: string | null | undefined;
     modelProviderCredentialModelId: string | null | undefined;
     modelId: string;
@@ -108,10 +113,7 @@ interface CreateAgentDialogProps {
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
-    modelCredentialSource: "platform" | "user_provided";
-    platformModelId?: string | null;
-    modelProviderCredentialId?: string | null;
-    modelProviderCredentialModelId?: string | null;
+    modelOptionId: string;
     name: string;
     reasoningLevel?: string;
     secretGroupIds?: string[];
@@ -815,10 +817,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               await props.onCreate({
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
-                modelCredentialSource: selectedModelOption.modelCredentialSource,
-                platformModelId: selectedModelOption.platformModelId ?? undefined,
-                modelProviderCredentialId: selectedProviderOption.modelProviderCredentialId ?? undefined,
-                modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId ?? undefined,
+                modelOptionId: selectedModelOption.modelOptionId,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretGroupIds: selectedSecretGroupIds.length > 0 ? selectedSecretGroupIds : undefined,

@@ -273,20 +273,18 @@ export class CompanyOnboardingService {
         startedSessionId = existingOnboarding.sessionId;
         return existingOnboarding;
       }
-      if (!this.isStaticSetupResolved(existingOnboarding)) {
-        throw new Error("Complete the onboarding setup steps before starting the CEO chat.");
-      }
+      const onboardingReadyForChat = await this.ensureDirectSetupResolved(tx, existingOnboarding);
 
       await this.companyBootstrapService.ensureOnboardingAssets(tx, {
         companyId: input.companyId,
-        llmSetupStatus: existingOnboarding.llmSetupStatus,
+        llmSetupStatus: onboardingReadyForChat.llmSetupStatus,
       });
       const agent = await this.requireSeedAgent(tx, input.companyId);
       const workflow = await this.requireSeedWorkflow(tx, input.companyId);
       const startedRun = await this.workflowService.startWorkflowRunInTransaction(tx, {
         agentId: agent.id,
         companyId: input.companyId,
-        inputValues: this.createWorkflowInputValues(existingOnboarding),
+        inputValues: this.createWorkflowInputValues(onboardingReadyForChat),
         startedByUserId: input.userId,
         workflowDefinitionId: workflow.id,
       });
@@ -382,6 +380,59 @@ export class CompanyOnboardingService {
       .returning(this.selection()) as CompanyOnboardingRow[];
     if (!updatedOnboarding) {
       throw new Error("Failed to start company onboarding.");
+    }
+
+    return updatedOnboarding;
+  }
+
+  private async ensureDirectSetupResolved(
+    tx: AppRuntimeTransaction,
+    onboarding: CompanyOnboardingRecord,
+  ): Promise<CompanyOnboardingRecord> {
+    if (this.isStaticSetupResolved(onboarding)) {
+      return onboarding;
+    }
+
+    const values: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+    let hasChanges = false;
+
+    if (!onboarding.companyMission?.trim() && !onboarding.missionSkippedAt) {
+      values.companyMission = null;
+      values.missionSkippedAt = new Date();
+      hasChanges = true;
+    }
+
+    if (onboarding.githubSetupStatus === "pending") {
+      values.githubCompletedAt = null;
+      values.githubSetupStatus = "skipped";
+      values.githubSkippedAt = new Date();
+      hasChanges = true;
+    }
+
+    if (onboarding.llmSetupStatus === "pending") {
+      if (!await this.hasCompanyManagedPlatformModel(tx)) {
+        throw new Error("CompanyHelm-managed model access is unavailable.");
+      }
+
+      values.llmCompletedAt = new Date();
+      values.llmSetupStatus = "company_managed";
+      values.llmSkippedAt = null;
+      hasChanges = true;
+    }
+
+    if (!hasChanges) {
+      return onboarding;
+    }
+
+    const [updatedOnboarding] = await tx
+      .update(companyOnboardings)
+      .set(values)
+      .where(eq(companyOnboardings.companyId, onboarding.companyId))
+      .returning(this.selection()) as CompanyOnboardingRow[];
+    if (!updatedOnboarding) {
+      throw new Error("Failed to prepare company onboarding.");
     }
 
     return updatedOnboarding;

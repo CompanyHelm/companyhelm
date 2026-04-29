@@ -297,7 +297,7 @@ export function useOnboardingFlowController(options?: {
         })),
     );
   }, [data.ModelProviders]);
-  const needsOnboardingStart = setupResolved && (
+  const needsOnboardingStart = (
     onboarding.status === "not_started"
     || (onboarding.status === "in_progress" && (!onboarding.agentId || !onboarding.sessionId))
   );
@@ -315,9 +315,6 @@ export function useOnboardingFlowController(options?: {
       onboarding.companyId,
       onboarding.status,
       onboarding.updatedAt,
-      onboarding.githubSetupStatus,
-      onboarding.llmSetupStatus,
-      onboarding.companyMission ?? "",
     ].join(":");
     if (ensureRequestKeyRef.current === requestKey) {
       return;
@@ -354,9 +351,6 @@ export function useOnboardingFlowController(options?: {
     isEnsureCompanyOnboardingInFlight,
     needsOnboardingStart,
     onboarding.companyId,
-    onboarding.companyMission,
-    onboarding.githubSetupStatus,
-    onboarding.llmSetupStatus,
     onboarding.status,
     onboarding.updatedAt,
     options?.ensureOnboardingStart,

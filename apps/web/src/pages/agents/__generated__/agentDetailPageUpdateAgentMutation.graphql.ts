@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a50a6bc624b37e00716649171d284243>>
+ * @generated SignedSource<<f66e9e87deba89bfe031837653a52454>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type UpdateAgentInput = {
   defaultEnvironmentTemplateId: string;
   id: string;
   modelCredentialSource?: string | null | undefined;
+  modelOptionId?: string | null | undefined;
   modelProviderCredentialId?: string | null | undefined;
   modelProviderCredentialModelId?: string | null | undefined;
   name: string;
@@ -41,8 +42,10 @@ export type agentDetailPageUpdateAgentMutation$data = {
       readonly templateId: string;
     };
     readonly id: string;
+    readonly modelCredentialKind: string;
     readonly modelCredentialSource: string;
     readonly modelName: string | null | undefined;
+    readonly modelOptionId: string | null | undefined;
     readonly modelProvider: string | null | undefined;
     readonly modelProviderCredentialId: string | null | undefined;
     readonly modelProviderCredentialModelId: string | null | undefined;
@@ -101,6 +104,20 @@ v2 = [
         "args": null,
         "kind": "ScalarField",
         "name": "modelCredentialSource",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelCredentialKind",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelOptionId",
         "storageKey": null
       },
       {
@@ -263,16 +280,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "f9533fc79a5b4a089e860cc4bb05fa93",
+    "cacheID": "45976764f5f22fd3518cf038033b505c",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageUpdateAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelCredentialSource\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelCredentialSource\n    modelCredentialKind\n    modelOptionId\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "35f1589c1c83ebda9a1915df04573552";
+(node as any).hash = "503a64986507307af88b811152e9cce1";
 
 export default node;

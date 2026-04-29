@@ -34,6 +34,9 @@ const agentsPageQueryNode = graphql`
     AgentCreateOptions {
       id
       modelCredentialSource
+      modelCredentialKind
+      managed
+      modelCredentialId
       modelProviderCredentialId
       isDefault
       label
@@ -43,6 +46,8 @@ const agentsPageQueryNode = graphql`
       models {
         id
         modelCredentialSource
+        modelCredentialKind
+        modelOptionId
         platformModelId
         description
         modelProviderCredentialModelId
@@ -180,6 +185,9 @@ function AgentsPageContent() {
   const providerOptions: AgentCreateProviderOption[] = data.AgentCreateOptions.map((providerOption) => ({
     id: providerOption.id,
     modelCredentialSource: providerOption.modelCredentialSource as "platform" | "user_provided",
+    modelCredentialKind: providerOption.modelCredentialKind as "managed" | "user_provided",
+    managed: providerOption.managed,
+    modelCredentialId: providerOption.modelCredentialId,
     modelProviderCredentialId: providerOption.modelProviderCredentialId,
     isDefault: providerOption.isDefault,
     label: providerOption.label,
@@ -190,6 +198,8 @@ function AgentsPageContent() {
       id: modelOption.id,
       description: modelOption.description,
       modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
+      modelCredentialKind: modelOption.modelCredentialKind as "managed" | "user_provided",
+      modelOptionId: modelOption.modelOptionId,
       platformModelId: modelOption.platformModelId,
       modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
       modelId: modelOption.modelId,
