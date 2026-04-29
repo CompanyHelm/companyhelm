@@ -5,7 +5,7 @@ import { SearchableSelectionDialog } from "@/components/searchable_selection_dia
 export type ModelSelectionOption = {
   description?: string | null;
   id: string;
-  modelId: string;
+  modelId?: string;
   name: string;
   providerId?: string;
   providerLabel: string;
@@ -45,7 +45,7 @@ export function ModelSelectionDialog(props: ModelSelectionDialogProps) {
         id: modelOption.id,
         searchText: [
           modelOption.name,
-          modelOption.modelId,
+          modelOption.modelId ?? "",
           modelOption.providerId ?? "",
           modelOption.providerLabel,
           modelOption.description ?? "",

@@ -32,7 +32,6 @@ class AgentCreateOptionsQueryTestHarness {
   }
 
   static createDatabaseMock(input?: {
-    platformCredentialRecords?: Array<Record<string, unknown>>;
     platformModelRecords?: Array<Record<string, unknown>>;
     platformRouteRecords?: Array<Record<string, unknown>>;
     managedProviderSettingsRecords?: Array<Record<string, unknown>>;
@@ -42,7 +41,6 @@ class AgentCreateOptionsQueryTestHarness {
   }) {
     let selectCallCount = 0;
     const selectResults = [
-      input?.platformCredentialRecords ?? [],
       input?.platformModelRecords ?? [],
       input?.platformRouteRecords ?? [],
       input?.managedProviderSettingsRecords ?? [],
@@ -158,10 +156,12 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
             label
             modelProvider
             defaultModelId
+            defaultLlmModelId
             defaultReasoningLevel
             models {
               id
               modelCredentialSource
+              llmModelId
               platformModelProviderCredentialModelId
               modelProviderCredentialModelId
               modelId
@@ -188,10 +188,12 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
     label: "OpenAI / Codex",
     modelProvider: "openai",
     defaultModelId: "gpt-5.4",
+    defaultLlmModelId: "model-row-1",
     defaultReasoningLevel: "high",
     models: [{
       id: "agent-create-model-option:model-row-1",
       modelCredentialSource: "user_provided",
+      llmModelId: "model-row-1",
       platformModelProviderCredentialModelId: null,
       modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
@@ -209,12 +211,6 @@ test("GraphQL AgentCreateOptions exposes only one default across managed and use
   const app = Fastify();
   const config = AgentCreateOptionsQueryTestHarness.createConfigMock();
   const database = AgentCreateOptionsQueryTestHarness.createDatabaseMock({
-    platformCredentialRecords: [{
-      id: "platform-credential-1",
-      isDefault: true,
-      modelProvider: "openai",
-      name: "Platform OpenAI",
-    }],
     platformModelRecords: [{
       id: "platform-model-1",
       isDefault: true,

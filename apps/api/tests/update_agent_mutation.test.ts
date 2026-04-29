@@ -72,8 +72,10 @@ class UpdateAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "credential-2",
-                        modelProvider: "anthropic",
+                        id: "model-row-2",
+                        modelProviderCredentialId: "credential-2",
+                        name: "Claude Opus 4.6",
+                        reasoningLevels: null,
                       }];
                     },
                   };
@@ -87,10 +89,8 @@ class UpdateAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "model-row-2",
-                        modelProviderCredentialId: "credential-2",
-                        name: "Claude Opus 4.6",
-                        reasoningLevels: null,
+                        id: "credential-2",
+                        modelProvider: "anthropic",
                       }];
                     },
                   };
@@ -258,9 +258,8 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
           id: "agent-1",
           defaultComputeProviderDefinitionId: "compute-provider-definition-1",
           defaultEnvironmentTemplateId: "e2b/desktop",
+          llmModelId: "model-row-2",
           name: "Executive Agent",
-          modelProviderCredentialId: "credential-2",
-          modelProviderCredentialModelId: "model-row-2",
           systemPrompt: "Handle complex work.",
         },
       },

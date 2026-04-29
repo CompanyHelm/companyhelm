@@ -54,8 +54,7 @@ type DefaultProviderSelectionRecord = {
 type GraphqlAgentCreateModelOption = {
   id: string;
   modelCredentialSource: "platform" | "user_provided";
-  modelCredentialKind: "managed" | "user_provided";
-  modelOptionId: string;
+  llmModelId: string;
   platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
@@ -69,15 +68,13 @@ type GraphqlAgentCreateModelOption = {
 type GraphqlAgentCreateProviderOption = {
   id: string;
   modelCredentialSource: "platform" | "user_provided";
-  modelCredentialKind: "managed" | "user_provided";
-  managed: boolean;
-  modelCredentialId: string | null;
   platformModelProviderCredentialId: string | null;
   modelProviderCredentialId: string | null;
   isDefault: boolean;
   label: string;
   modelProvider: string;
   defaultModelId: string | null;
+  defaultLlmModelId: string | null;
   defaultReasoningLevel: string | null;
   models: GraphqlAgentCreateModelOption[];
 };
@@ -198,8 +195,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             .map((modelRecord) => ({
               id: this.createModelOptionId(modelRecord.id),
               modelCredentialSource: "user_provided" as const,
-              modelCredentialKind: "user_provided" as const,
-              modelOptionId: modelRecord.id,
+              llmModelId: modelRecord.id,
               platformModelId: null,
               platformModelProviderCredentialModelId: null,
               modelProviderCredentialModelId: modelRecord.id,
@@ -227,15 +223,13 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           return {
             id: this.createProviderOptionId(credentialRecord.id),
             modelCredentialSource: "user_provided" as const,
-            modelCredentialKind: "user_provided" as const,
-            managed: false,
-            modelCredentialId: credentialRecord.id,
             platformModelProviderCredentialId: null,
             modelProviderCredentialId: credentialRecord.id,
             isDefault: this.isDefaultUserProvidedOption(credentialRecord, defaultProviderSelectionRecord ?? null),
             label: this.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
             defaultModelId: defaultModelRecord?.modelId ?? null,
+            defaultLlmModelId: defaultModelRecord?.id ?? null,
             defaultReasoningLevel,
             models: credentialModels,
           };
@@ -271,8 +265,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       .map((modelRecord) => ({
         id: this.createPlatformModelOptionId(modelRecord.id),
         modelCredentialSource: "platform" as const,
-        modelCredentialKind: "managed" as const,
-        modelOptionId: modelRecord.id,
+        llmModelId: modelRecord.id,
         platformModelId: modelRecord.id,
         platformModelProviderCredentialModelId: null,
         modelProviderCredentialModelId: null,
@@ -286,11 +279,16 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       return null;
     }
 
-    const defaultModelId = credentialModels.find((modelRecord) => modelRecord.platformModelId === defaultPlatformModelId)?.modelId
-      ?? this.modelRegistry.getDefaultModelForProvider("companyhelm")
-      ?? credentialModels[0]?.modelId
-      ?? null;
-    const defaultModelRecord = credentialModels.find((modelRecord) => modelRecord.modelId === defaultModelId)
+    const registryDefaultProviderModelId = this.modelRegistry.getDefaultModelForProvider("companyhelm");
+    const registryDefaultPlatformModelRecord = platformModelRecords.find((modelRecord) => {
+      return modelRecord.modelId === registryDefaultProviderModelId;
+    }) ?? null;
+    const defaultModelRecord = credentialModels.find((modelRecord) => modelRecord.llmModelId === defaultPlatformModelId)
+      ?? (
+        registryDefaultPlatformModelRecord
+          ? credentialModels.find((modelRecord) => modelRecord.llmModelId === registryDefaultPlatformModelRecord.id)
+          : null
+      )
       ?? credentialModels[0]
       ?? null;
     const supportedReasoningLevels = defaultModelRecord?.reasoningLevels ?? [];
@@ -303,15 +301,13 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     return {
       id: "agent-create-provider-option:platform:companyhelm",
       modelCredentialSource: "platform",
-      modelCredentialKind: "managed",
-      managed: true,
-      modelCredentialId: "managed:companyhelm",
       platformModelProviderCredentialId: null,
       modelProviderCredentialId: null,
       isDefault: false,
       label: "CompanyHelm",
       modelProvider: "companyhelm",
       defaultModelId: defaultModelRecord?.modelId ?? null,
+      defaultLlmModelId: defaultModelRecord?.llmModelId ?? null,
       defaultReasoningLevel,
       models: credentialModels,
     };

@@ -24,25 +24,15 @@ import { SecretDefaultOptions } from "./secret_default_options";
 
 export type AgentCreateProviderOption = {
   id: string;
-  modelCredentialSource: "platform" | "user_provided";
-  modelCredentialKind: "managed" | "user_provided";
-  managed: boolean;
-  modelCredentialId: string | null | undefined;
-  modelProviderCredentialId: string | null | undefined;
   isDefault: boolean;
   label: string;
   modelProvider: string;
-  defaultModelId: string | null | undefined;
+  defaultLlmModelId: string | null | undefined;
   defaultReasoningLevel: string | null | undefined;
   models: Array<{
     id: string;
     description: string | null | undefined;
-    modelCredentialSource: "platform" | "user_provided";
-    modelCredentialKind: "managed" | "user_provided";
-    modelOptionId: string;
-    platformModelId: string | null | undefined;
-    modelProviderCredentialModelId: string | null | undefined;
-    modelId: string;
+    llmModelId: string;
     name: string;
     reasoningSupported: boolean;
     reasoningLevels: string[];
@@ -113,7 +103,7 @@ interface CreateAgentDialogProps {
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
-    modelOptionId: string;
+    llmModelId: string;
     name: string;
     reasoningLevel?: string;
     secretGroupIds?: string[];
@@ -138,7 +128,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
   const [environmentTemplateId, setEnvironmentTemplateId] = useState("");
   const [providerOptionId, setProviderOptionId] = useState("");
-  const [modelOptionId, setModelOptionId] = useState("");
+  const [selectedModelRecordId, setSelectedModelRecordId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedSecretGroupIds, setSelectedSecretGroupIds] = useState<string[]>([]);
@@ -157,8 +147,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     );
   }, [computeProviderDefinitionId, props.computeProviderDefinitionOptions]);
   const selectedModelOption = useMemo(() => {
-    return selectedProviderOption?.models.find((modelOption) => modelOption.id === modelOptionId);
-  }, [modelOptionId, selectedProviderOption]);
+    return selectedProviderOption?.models.find((modelOption) => modelOption.id === selectedModelRecordId);
+  }, [selectedModelRecordId, selectedProviderOption]);
   const selectedEnvironmentTemplateOption = useMemo(() => {
     return selectedComputeProviderDefinitionOption?.templates.find(
       (templateOption) => templateOption.templateId === environmentTemplateId,
@@ -208,7 +198,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   }, [props.providerOptions, providerOptionId]);
   const orderedModelOptions = useMemo(() => {
     const defaultModelOptionId = selectedProviderOption?.models.find(
-      (modelOption) => modelOption.modelId === selectedProviderOption.defaultModelId,
+      (modelOption) => modelOption.llmModelId === selectedProviderOption.defaultLlmModelId,
     )?.id;
 
     return (selectedProviderOption?.models ?? [])
@@ -217,8 +207,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         modelOption,
       }))
       .sort((left, right) => {
-        const leftIsSelected = left.modelOption.id === modelOptionId;
-        const rightIsSelected = right.modelOption.id === modelOptionId;
+        const leftIsSelected = left.modelOption.id === selectedModelRecordId;
+        const rightIsSelected = right.modelOption.id === selectedModelRecordId;
         if (leftIsSelected !== rightIsSelected) {
           return leftIsSelected ? -1 : 1;
         }
@@ -232,7 +222,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         return left.index - right.index;
       })
       .map(({ modelOption }) => modelOption);
-  }, [modelOptionId, selectedProviderOption]);
+  }, [selectedModelRecordId, selectedProviderOption]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
 
   useEffect(() => {
@@ -243,7 +233,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setComputeProviderDefinitionId("");
       setEnvironmentTemplateId("");
       setProviderOptionId("");
-      setModelOptionId("");
+      setSelectedModelRecordId("");
       setReasoningLevel("");
       setSystemPrompt("");
       setSelectedSecretGroupIds([]);
@@ -301,21 +291,21 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
   useEffect(() => {
     if (!selectedProviderOption) {
-      setModelOptionId("");
+      setSelectedModelRecordId("");
       setReasoningLevel("");
       return;
     }
 
-    if (selectedProviderOption.models.some((modelOption) => modelOption.id === modelOptionId)) {
+    if (selectedProviderOption.models.some((modelOption) => modelOption.id === selectedModelRecordId)) {
       return;
     }
 
     const defaultModelOption = selectedProviderOption.models.find(
-      (modelOption) => modelOption.modelId === selectedProviderOption.defaultModelId,
+      (modelOption) => modelOption.llmModelId === selectedProviderOption.defaultLlmModelId,
     );
-    setModelOptionId(defaultModelOption?.id ?? selectedProviderOption.models[0]?.id ?? "");
+    setSelectedModelRecordId(defaultModelOption?.id ?? selectedProviderOption.models[0]?.id ?? "");
     setReasoningLevel("");
-  }, [modelOptionId, selectedProviderOption]);
+  }, [selectedModelRecordId, selectedProviderOption]);
 
   useEffect(() => {
     if (selectedReasoningLevels.length === 0) {
@@ -459,7 +449,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     || computeProviderDefinitionId.length === 0
     || environmentTemplateId.length === 0
     || providerOptionId.length === 0
-    || modelOptionId.length === 0
+    || selectedModelRecordId.length === 0
     || (isReasoningLevelRequired && reasoningLevel.length === 0);
 
   return (
@@ -603,19 +593,18 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               noItemsMessage="No models are available for the selected provider."
               onOpenChange={setIsModelDialogOpen}
               onSelect={(selectedModelOptionId) => {
-                setModelOptionId(selectedModelOptionId);
+                setSelectedModelRecordId(selectedModelOptionId);
                 setIsModelDialogOpen(false);
               }}
               open={isModelDialogOpen}
               options={orderedModelOptions.map((modelOption) => ({
                 description: modelOption.description,
                 id: modelOption.id,
-                modelId: modelOption.modelId,
                 name: modelOption.name,
                 providerId: selectedProviderOption?.modelProvider,
                 providerLabel: selectedProviderOption?.label ?? "",
               }))}
-              selectedOptionId={modelOptionId}
+              selectedOptionId={selectedModelRecordId}
             />
           </div>
 
@@ -817,7 +806,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               await props.onCreate({
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
-                modelOptionId: selectedModelOption.modelOptionId,
+                llmModelId: selectedModelOption.llmModelId,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretGroupIds: selectedSecretGroupIds.length > 0 ? selectedSecretGroupIds : undefined,

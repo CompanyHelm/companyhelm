@@ -22,12 +22,7 @@ type AddAgentMutationArguments = {
   input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
-    modelOptionId?: string | null;
-    modelCredentialSource?: "platform" | "user_provided" | null;
-    platformModelId?: string | null;
-    platformModelProviderCredentialModelId?: string | null;
-    modelProviderCredentialId?: string | null;
-    modelProviderCredentialModelId?: string | null;
+    llmModelId: string;
     name: string;
     reasoningLevel?: string | null;
     secretGroupIds?: string[] | null;
@@ -82,8 +77,7 @@ type GraphqlAgentRecord = {
   id: string;
   name: string;
   modelCredentialSource: "platform" | "user_provided";
-  modelCredentialKind: "managed" | "user_provided";
-  modelOptionId: string | null;
+  llmModelId: string | null;
   platformModelId: string | null;
   platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
@@ -344,67 +338,30 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     return reasoningLevel;
   }
 
-  private static resolveModelCredentialSource(input: AddAgentMutationArguments["input"]): "platform" | "user_provided" {
-    if (input.modelCredentialSource === "platform" || input.platformModelId || input.platformModelProviderCredentialModelId) {
-      if (!input.platformModelId && !input.platformModelProviderCredentialModelId) {
-        throw new Error("platformModelId is required.");
-      }
-
-      return "platform";
-    }
-
-    if (!input.modelProviderCredentialModelId) {
-      throw new Error("modelProviderCredentialModelId is required.");
-    }
-
-    return "user_provided";
-  }
-
   private async loadModelSelection(
     databaseTransaction: DatabaseTransaction,
     companyId: string,
     input: AddAgentMutationArguments["input"],
   ): Promise<{ credentialRecord: CredentialRecord; modelRecord: ModelRecord }> {
-    const unifiedModelOptionId = input.modelOptionId ?? null;
-    if (unifiedModelOptionId) {
-      const userProvidedSelection = await this.loadUserProvidedModelSelection(
-        databaseTransaction,
-        companyId,
-        unifiedModelOptionId,
-      );
-      if (userProvidedSelection) {
-        return userProvidedSelection;
-      }
-
-      const platformSelection = await this.loadPlatformModelSelection(databaseTransaction, unifiedModelOptionId);
-      if (platformSelection) {
-        return platformSelection;
-      }
-
-      throw new Error("Provider model not found.");
-    }
-
-    const modelCredentialSource = AddAgentMutation.resolveModelCredentialSource(input);
-    if (modelCredentialSource === "platform") {
-      const platformSelection = await this.loadPlatformModelSelection(databaseTransaction, input.platformModelId ?? "");
-      if (!platformSelection) {
-        throw new Error("Platform provider model not found.");
-      }
-
-      return platformSelection;
+    if (input.llmModelId.length === 0) {
+      throw new Error("llmModelId is required.");
     }
 
     const userProvidedSelection = await this.loadUserProvidedModelSelection(
       databaseTransaction,
       companyId,
-      input.modelProviderCredentialModelId ?? "",
-      input.modelProviderCredentialId ?? null,
+      input.llmModelId,
     );
-    if (!userProvidedSelection) {
-      throw new Error("Provider model not found.");
+    if (userProvidedSelection) {
+      return userProvidedSelection;
     }
 
-    return userProvidedSelection;
+    const platformSelection = await this.loadPlatformModelSelection(databaseTransaction, input.llmModelId);
+    if (platformSelection) {
+      return platformSelection;
+    }
+
+    throw new Error("Provider model not found.");
   }
 
   private async loadPlatformModelSelection(
@@ -450,8 +407,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   private async loadUserProvidedModelSelection(
     databaseTransaction: DatabaseTransaction,
     companyId: string,
-    modelProviderCredentialModelId: string,
-    expectedCredentialId: string | null = null,
+    llmModelId: string,
   ): Promise<{ credentialRecord: CredentialRecord; modelRecord: ModelRecord } | null> {
     const [modelRecord] = await databaseTransaction
       .select({
@@ -465,7 +421,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       .from(modelProviderCredentialModels)
       .where(and(
         eq(modelProviderCredentialModels.companyId, companyId),
-        eq(modelProviderCredentialModels.id, modelProviderCredentialModelId),
+        eq(modelProviderCredentialModels.id, llmModelId),
       )) as Array<ModelRecord & { modelCredentialSource: string }>;
     if (!modelRecord) {
       return null;
@@ -484,10 +440,6 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     if (!credentialRecord) {
       throw new Error("Provider credential not found.");
     }
-    if (expectedCredentialId && modelRecord.modelProviderCredentialId !== expectedCredentialId) {
-      throw new Error("Provider model does not belong to the selected credential.");
-    }
-
     return {
       credentialRecord,
       modelRecord: {
@@ -534,8 +486,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       id: agentRecord.id,
       name: agentRecord.name,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
-      modelCredentialKind: agentRecord.defaultModelCredentialSource === "platform" ? "managed" : "user_provided",
-      modelOptionId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
+      llmModelId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
       platformModelId: agentRecord.defaultPlatformModelId,
       platformModelProviderCredentialModelId: null,
       modelProviderCredentialId: modelRecord.modelCredentialSource === "user_provided" ? credentialRecord.id : null,

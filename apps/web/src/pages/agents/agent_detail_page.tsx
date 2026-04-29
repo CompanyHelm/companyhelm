@@ -34,8 +34,7 @@ const agentDetailPageQueryNode = graphql`
       id
       name
       modelCredentialSource
-      modelCredentialKind
-      modelOptionId
+      llmModelId
       platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -106,24 +105,14 @@ const agentDetailPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
-      modelCredentialSource
-      modelCredentialKind
-      managed
-      modelCredentialId
-      modelProviderCredentialId
       isDefault
       label
       modelProvider
-      defaultModelId
+      defaultLlmModelId
       defaultReasoningLevel
       models {
         id
-        modelCredentialSource
-        modelCredentialKind
-        modelOptionId
-        platformModelId
-        modelProviderCredentialModelId
-        modelId
+        llmModelId
         name
         description
         reasoningSupported
@@ -257,8 +246,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       id
       name
       modelCredentialSource
-      modelCredentialKind
-      modelOptionId
+      llmModelId
       platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -330,17 +318,17 @@ function resolveProviderOption(
 
 function resolveModelOption(
   providerOption: AgentCreateProviderOption,
-  modelOptionId: string | null | undefined,
+  llmModelId: string | null | undefined,
 ) {
-  if (modelOptionId) {
-    const exactMatch = providerOption.models.find((option) => option.modelOptionId === modelOptionId);
+  if (llmModelId) {
+    const exactMatch = providerOption.models.find((option) => option.llmModelId === llmModelId);
     if (exactMatch) {
       return exactMatch;
     }
   }
 
   const defaultModelOption = providerOption.models.find(
-    (option) => option.modelId === providerOption.defaultModelId,
+    (option) => option.llmModelId === providerOption.defaultLlmModelId,
   );
   return defaultModelOption ?? providerOption.models[0] ?? null;
 }
@@ -476,25 +464,15 @@ function AgentDetailPageContent() {
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
-      modelCredentialSource: providerOption.modelCredentialSource as "platform" | "user_provided",
-      modelCredentialKind: providerOption.modelCredentialKind as "managed" | "user_provided",
-      managed: providerOption.managed,
-      modelCredentialId: providerOption.modelCredentialId,
-      modelProviderCredentialId: providerOption.modelProviderCredentialId,
       isDefault: providerOption.isDefault,
       label: providerOption.label,
       modelProvider: providerOption.modelProvider,
-      defaultModelId: providerOption.defaultModelId ?? null,
+      defaultLlmModelId: providerOption.defaultLlmModelId ?? null,
       defaultReasoningLevel: providerOption.defaultReasoningLevel ?? null,
       models: providerOption.models.map((modelOption) => ({
         id: modelOption.id,
         description: modelOption.description,
-        modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
-        modelCredentialKind: modelOption.modelCredentialKind as "managed" | "user_provided",
-        modelOptionId: modelOption.modelOptionId,
-        platformModelId: modelOption.platformModelId,
-        modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
-        modelId: modelOption.modelId,
+        llmModelId: modelOption.llmModelId,
         name: modelOption.name,
         reasoningSupported: modelOption.reasoningSupported,
         reasoningLevels: [...modelOption.reasoningLevels],
@@ -526,21 +504,16 @@ function AgentDetailPageContent() {
     };
   }, [agent.name, setDetailLabel]);
 
-  const selectedProviderOption = agent.modelCredentialSource === "platform"
-    ? providerOptions.find((option) =>
-      option.modelCredentialSource === "platform"
-        && option.models.some((modelOption) => modelOption.modelOptionId === agent.modelOptionId)
-    ) ?? null
-    : agent.modelProviderCredentialId
-    ? providerOptions.find((option) => option.modelProviderCredentialId === agent.modelProviderCredentialId) ?? null
-    : null;
+  const selectedProviderOption = providerOptions.find((option) => {
+    return option.models.some((modelOption) => modelOption.llmModelId === agent.llmModelId);
+  }) ?? null;
   const selectedComputeProviderDefinitionOption = agent.defaultComputeProviderDefinitionId
     ? computeProviderDefinitionOptions.find((option) => option.id === agent.defaultComputeProviderDefinitionId) ?? null
     : null;
   const selectedModelOption = selectedProviderOption
     ? selectedProviderOption.models.find(
       (option) =>
-        option.modelOptionId === agent.modelOptionId,
+        option.llmModelId === agent.llmModelId,
     ) ?? null
     : null;
   const archivedChats = data.Sessions.filter((session) => {
@@ -567,7 +540,7 @@ function AgentDetailPageContent() {
     defaultComputeProviderDefinitionId?: string;
     defaultEnvironmentTemplateId?: string;
     providerOptionId?: string;
-    modelOptionId?: string | null;
+    llmModelId?: string | null;
     name?: string;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
@@ -600,7 +573,7 @@ function AgentDetailPageContent() {
     const nextProviderOption = resolveProviderOption(providerOptions, nextProviderOptionId);
     const nextModelOption = resolveModelOption(
       nextProviderOption,
-      patch.modelOptionId ?? agent.modelOptionId,
+      patch.llmModelId ?? agent.llmModelId,
     );
     if (!nextModelOption) {
       throw new Error("Selected provider does not have any models.");
@@ -620,8 +593,7 @@ function AgentDetailPageContent() {
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
             name: patch.name ?? agent.name,
-            modelCredentialSource: nextModelOption.modelCredentialSource,
-            modelOptionId: nextModelOption.modelOptionId,
+            llmModelId: nextModelOption.llmModelId,
             reasoningLevel: nextReasoningLevel,
             systemPrompt: patch.systemPrompt === undefined
               ? agent.systemPrompt
@@ -710,7 +682,7 @@ function AgentDetailPageContent() {
                       const nextModelOption = resolveModelOption(nextProviderOption, null);
                       await saveAgent({
                         providerOptionId: nextProviderOption.id,
-                        modelOptionId: nextModelOption?.modelOptionId,
+                        llmModelId: nextModelOption?.llmModelId,
                         reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
                       });
                     }}
@@ -730,13 +702,12 @@ function AgentDetailPageContent() {
                       }
 
                       await saveAgent({
-                        modelOptionId: nextModelOption.modelOptionId,
+                        llmModelId: nextModelOption.llmModelId,
                       });
                     }}
                     options={(selectedProviderOption?.models ?? []).map((modelOption) => ({
                       description: modelOption.description,
                       id: modelOption.id,
-                      modelId: modelOption.modelId,
                       name: modelOption.name,
                       providerId: selectedProviderOption?.modelProvider,
                       providerLabel: selectedProviderOption?.label ?? "",

@@ -54,8 +54,10 @@ class AddAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "credential-1",
-                        modelProvider: "openai",
+                        id: "model-row-1",
+                        modelProviderCredentialId: "credential-1",
+                        name: "GPT-5.4",
+                        reasoningLevels: ["low", "medium", "high"],
                       }];
                     },
                   };
@@ -69,10 +71,8 @@ class AddAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "model-row-1",
-                        modelProviderCredentialId: "credential-1",
-                        name: "GPT-5.4",
-                        reasoningLevels: ["low", "medium", "high"],
+                        id: "credential-1",
+                        modelProvider: "openai",
                       }];
                     },
                   };
@@ -293,9 +293,8 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
         input: {
           defaultComputeProviderDefinitionId: "compute-provider-definition-1",
           defaultEnvironmentTemplateId: "e2b/desktop",
+          llmModelId: "model-row-1",
           name: "Research Agent",
-          modelProviderCredentialId: "credential-1",
-          modelProviderCredentialModelId: "model-row-1",
           reasoningLevel: "high",
           secretIds: ["secret-1"],
           systemPrompt: "You are concise.",
@@ -413,8 +412,10 @@ test("AddAgentMutation attaches each secret group once when secretGroupIds are p
                 return {
                   async where() {
                     return [{
-                      id: "credential-1",
-                      modelProvider: "openai",
+                      id: "model-row-1",
+                      modelProviderCredentialId: "credential-1",
+                      name: "GPT-5.4",
+                      reasoningLevels: ["low", "medium", "high"],
                     }];
                   },
                 };
@@ -428,10 +429,8 @@ test("AddAgentMutation attaches each secret group once when secretGroupIds are p
                 return {
                   async where() {
                     return [{
-                      id: "model-row-1",
-                      modelProviderCredentialId: "credential-1",
-                      name: "GPT-5.4",
-                      reasoningLevels: ["low", "medium", "high"],
+                      id: "credential-1",
+                      modelProvider: "openai",
                     }];
                   },
                 };
@@ -488,8 +487,7 @@ test("AddAgentMutation attaches each secret group once when secretGroupIds are p
       input: {
         defaultComputeProviderDefinitionId: "compute-provider-definition-1",
         defaultEnvironmentTemplateId: "e2b/desktop",
-        modelProviderCredentialId: "credential-1",
-        modelProviderCredentialModelId: "model-row-1",
+        llmModelId: "model-row-1",
         name: "Research Agent",
         reasoningLevel: "high",
         secretGroupIds: ["group-1", "group-1"],

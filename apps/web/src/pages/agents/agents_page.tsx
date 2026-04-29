@@ -33,25 +33,15 @@ const agentsPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
-      modelCredentialSource
-      modelCredentialKind
-      managed
-      modelCredentialId
-      modelProviderCredentialId
       isDefault
       label
       modelProvider
-      defaultModelId
+      defaultLlmModelId
       defaultReasoningLevel
       models {
         id
-        modelCredentialSource
-        modelCredentialKind
-        modelOptionId
-        platformModelId
+        llmModelId
         description
-        modelProviderCredentialModelId
-        modelId
         name
         reasoningSupported
         reasoningLevels
@@ -184,25 +174,15 @@ function AgentsPageContent() {
   }));
   const providerOptions: AgentCreateProviderOption[] = data.AgentCreateOptions.map((providerOption) => ({
     id: providerOption.id,
-    modelCredentialSource: providerOption.modelCredentialSource as "platform" | "user_provided",
-    modelCredentialKind: providerOption.modelCredentialKind as "managed" | "user_provided",
-    managed: providerOption.managed,
-    modelCredentialId: providerOption.modelCredentialId,
-    modelProviderCredentialId: providerOption.modelProviderCredentialId,
     isDefault: providerOption.isDefault,
     label: providerOption.label,
     modelProvider: providerOption.modelProvider,
-    defaultModelId: providerOption.defaultModelId,
+    defaultLlmModelId: providerOption.defaultLlmModelId,
     defaultReasoningLevel: providerOption.defaultReasoningLevel,
     models: providerOption.models.map((modelOption) => ({
       id: modelOption.id,
       description: modelOption.description,
-      modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
-      modelCredentialKind: modelOption.modelCredentialKind as "managed" | "user_provided",
-      modelOptionId: modelOption.modelOptionId,
-      platformModelId: modelOption.platformModelId,
-      modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
-      modelId: modelOption.modelId,
+      llmModelId: modelOption.llmModelId,
       name: modelOption.name,
       reasoningSupported: modelOption.reasoningSupported,
       reasoningLevels: [...modelOption.reasoningLevels],

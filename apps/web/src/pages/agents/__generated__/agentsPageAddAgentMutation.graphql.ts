@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f6a33fc0d670be118554a0864001e5e9>>
+ * @generated SignedSource<<2fc9ebe1d1d7d9f9ceae32dda89093b0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,14 +12,9 @@ import { ConcreteRequest } from 'relay-runtime';
 export type AddAgentInput = {
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
+  llmModelId: string;
   mcpServerIds?: ReadonlyArray<string> | null | undefined;
-  modelCredentialSource?: string | null | undefined;
-  modelOptionId?: string | null | undefined;
-  modelProviderCredentialId?: string | null | undefined;
-  modelProviderCredentialModelId?: string | null | undefined;
   name: string;
-  platformModelId?: string | null | undefined;
-  platformModelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   secretGroupIds?: ReadonlyArray<string> | null | undefined;
   secretIds?: ReadonlyArray<string> | null | undefined;
