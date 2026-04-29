@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import { InviteCompanyMemberMutation } from "../src/graphql/mutations/invite_company_member.ts";
+import { UpdateCompanyMemberRoleMutation } from "../src/graphql/mutations/update_company_member_role.ts";
 import type { GraphqlRequestContext } from "../src/graphql/graphql_request_context.ts";
 import { CompanyMemberInvitationService } from "../src/services/company_member_invitation_service.ts";
 
@@ -184,4 +185,35 @@ test("InviteCompanyMemberMutation invites against the authenticated company cont
     role: "member",
     transactionProvider: context.app_runtime_transaction_provider,
   }]);
+});
+
+test("UpdateCompanyMemberRoleMutation rejects changes to the current user's own role", async () => {
+  const updateMemberRole = vi.fn(async () => ({
+    createdAt: "2026-04-29T12:00:00.000Z",
+    emailAddress: "founder@example.com",
+    id: "user-1",
+    name: "Ada",
+    role: "member",
+    status: "active",
+    updatedAt: "2026-04-29T12:00:00.000Z",
+  }));
+  const requireActiveAdmin = vi.fn(async () => {});
+  const mutation = new UpdateCompanyMemberRoleMutation({
+    updateMemberRole,
+  } as never, {
+    requireActiveAdmin,
+  } as never);
+  const context = CompanyMemberInvitationServiceTestHarness.createContext();
+
+  await assert.rejects(
+    () => mutation.execute(null, {
+      input: {
+        role: "member",
+        userId: "user-1",
+      },
+    }, context),
+    /You cannot change your own company role/u,
+  );
+  assert.equal(requireActiveAdmin.mock.calls.length, 0);
+  assert.equal(updateMemberRole.mock.calls.length, 0);
 });

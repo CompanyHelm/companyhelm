@@ -49,6 +49,9 @@ type OrganizationMemberTableRecord = {
 const organizationMembersSettingsPanelQueryNode = graphql`
   query organizationMembersSettingsPanelQuery {
     Me {
+      user {
+        id
+      }
       companyEntitlements {
         canInviteMembers
         canManageMemberRoles
@@ -141,6 +144,7 @@ export function OrganizationMembersSettingsPanel() {
   );
   const canInviteMembers = data.Me.companyEntitlements.canInviteMembers;
   const canManageMemberRoles = data.Me.companyEntitlements.canManageMemberRoles;
+  const currentUserId = data.Me.user.id;
 
   async function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -339,7 +343,7 @@ export function OrganizationMembersSettingsPanel() {
                     </TableCell>
                     <TableCell className="w-40">
                       <Select
-                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null}
+                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null || member.id === currentUserId}
                         onValueChange={(value) => void updateRole(member, value as CompanyMemberRole)}
                         value={member.role}
                       >

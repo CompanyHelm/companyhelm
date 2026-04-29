@@ -47,6 +47,9 @@ export class UpdateCompanyMemberRoleMutation extends Mutation<
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    if (arguments_.input.userId === context.authSession.user.id) {
+      throw new Error("You cannot change your own company role.");
+    }
     await this.permissionService.requireActiveAdmin({
       action: "manage member roles",
       companyId: context.authSession.company.id,

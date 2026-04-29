@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c075fc1d986b14f1a4db78b112745e88>>
+ * @generated SignedSource<<29a24a27c3f0539049c7562f27ef869e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,6 +27,9 @@ export type organizationMembersSettingsPanelQuery$data = {
       readonly canInviteMembers: boolean;
       readonly canManageMemberRoles: boolean;
     };
+    readonly user: {
+      readonly id: string;
+    };
   };
 };
 export type organizationMembersSettingsPanelQuery = {
@@ -35,7 +38,14 @@ export type organizationMembersSettingsPanelQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v1 = [
   {
     "alias": null,
     "args": null,
@@ -44,6 +54,18 @@ var v0 = [
     "name": "Me",
     "plural": false,
     "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "MeUser",
+        "kind": "LinkedField",
+        "name": "user",
+        "plural": false,
+        "selections": [
+          (v0/*: any*/)
+        ],
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -80,13 +102,7 @@ var v0 = [
     "name": "CompanyMembers",
     "plural": true,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
+      (v0/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -139,7 +155,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "organizationMembersSettingsPanelQuery",
-    "selections": (v0/*: any*/),
+    "selections": (v1/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -148,19 +164,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "organizationMembersSettingsPanelQuery",
-    "selections": (v0/*: any*/)
+    "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "df49a79ec4910af64ce61fd05898d287",
+    "cacheID": "d5256738b0e8882a1c7a19929bbcd63e",
     "id": null,
     "metadata": {},
     "name": "organizationMembersSettingsPanelQuery",
     "operationKind": "query",
-    "text": "query organizationMembersSettingsPanelQuery {\n  Me {\n    companyEntitlements {\n      canInviteMembers\n      canManageMemberRoles\n    }\n  }\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n  }\n}\n"
+    "text": "query organizationMembersSettingsPanelQuery {\n  Me {\n    user {\n      id\n    }\n    companyEntitlements {\n      canInviteMembers\n      canManageMemberRoles\n    }\n  }\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5a03f780a8fd448729777b014f137e7c";
+(node as any).hash = "c020eda4ab406480265be4d6c25f940e";
 
 export default node;
