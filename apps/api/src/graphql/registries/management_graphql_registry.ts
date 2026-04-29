@@ -26,6 +26,7 @@ import { CreateSkillMutation } from "../mutations/create_skill.ts";
 import { ConnectMcpServerOauthClientCredentialsMutation } from "../mutations/connect_mcp_server_oauth_client_credentials.ts";
 import { CompleteMcpServerOauthMutation } from "../mutations/complete_mcp_server_oauth.ts";
 import { DeleteCompanyMutation } from "../mutations/delete_company.ts";
+import { DeletePlatformAdminCompanyMutation } from "../mutations/delete_platform_admin_company.ts";
 import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
 import { DeleteGithubRepositoryProvisioningMutation } from "../mutations/delete_github_repository_provisioning.ts";
 import { DeletePlatformModelMutation } from "../mutations/delete_platform_model.ts";
@@ -124,6 +125,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteSecretGroupMutation: DeleteSecretGroupMutation;
   private readonly deleteMcpServerMutation: DeleteMcpServerMutation;
   private readonly deleteCompanyMutation: DeleteCompanyMutation;
+  private readonly deletePlatformAdminCompanyMutation: DeletePlatformAdminCompanyMutation;
   private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation;
@@ -293,6 +295,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new DeletePlatformModelProviderCredentialMutation(),
     @inject(DeleteCompanyMutation)
     deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
+    @inject(DeletePlatformAdminCompanyMutation)
+    deletePlatformAdminCompanyMutation: DeletePlatformAdminCompanyMutation =
+      new DeletePlatformAdminCompanyMutation(),
     @inject(CreateCompanyMutation)
     createCompanyMutation: CreateCompanyMutation = new CreateCompanyMutation({} as never),
     @inject(CompanyManagedLlmBudgetQueryResolver)
@@ -405,6 +410,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteSecretGroupMutation = deleteSecretGroupMutation ?? new DeleteSecretGroupMutation(defaultSecretService);
     this.deleteMcpServerMutation = deleteMcpServerMutation ?? new DeleteMcpServerMutation(defaultMcpService);
     this.deleteCompanyMutation = deleteCompanyMutation;
+    this.deletePlatformAdminCompanyMutation = deletePlatformAdminCompanyMutation;
     this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.ensureCompanyOnboardingMutation = ensureCompanyOnboardingMutation;
@@ -494,6 +500,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         DeletePlatformModelProviderCredential: this.deletePlatformModelProviderCredentialMutation.execute,
         DisconnectMcpServerOAuth: this.disconnectMcpServerOauthMutation.execute,
         DeleteCompany: this.deleteCompanyMutation.execute,
+        DeletePlatformAdminCompany: this.deletePlatformAdminCompanyMutation.execute,
         DeleteSecret: this.deleteSecretMutation.execute,
         DeleteSecretGroup: this.deleteSecretGroupMutation.execute,
         DeleteMcpServer: this.deleteMcpServerMutation.execute,

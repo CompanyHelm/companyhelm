@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { companiesPageDeleteCompanyMutation } from "./__generated__/companiesPageDeleteCompanyMutation.graphql";
 import type { companiesPageQuery } from "./__generated__/companiesPageQuery.graphql";
 import type { companiesPageUpdateEnhancedLoggingMutation } from "./__generated__/companiesPageUpdateEnhancedLoggingMutation.graphql";
 
@@ -64,6 +66,15 @@ const companiesPageUpdateEnhancedLoggingMutationNode = graphql`
       ttlSeconds
       components
       sessionIds
+    }
+  }
+`;
+
+const companiesPageDeleteCompanyMutationNode = graphql`
+  mutation companiesPageDeleteCompanyMutation($input: DeletePlatformAdminCompanyInput!) {
+    DeletePlatformAdminCompany(input: $input) {
+      id
+      name
     }
   }
 `;
@@ -129,11 +140,16 @@ function AdminCompaniesPageContent() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selectedEnhancedLoggingCompany, setSelectedEnhancedLoggingCompany] = useState<PlatformAdminCompany | null>(null);
+  const [selectedDeleteCompany, setSelectedDeleteCompany] = useState<PlatformAdminCompany | null>(null);
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState("");
+  const [deleteCompanyErrorMessage, setDeleteCompanyErrorMessage] = useState<string | null>(null);
   const [selectedTtlSeconds, setSelectedTtlSeconds] = useState(String(ENHANCED_LOGGING_TTL_OPTIONS[1]!.seconds));
   const [enhancedLoggingErrorMessage, setEnhancedLoggingErrorMessage] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [commitUpdateEnhancedLogging, isUpdateEnhancedLoggingInFlight] =
     useMutation<companiesPageUpdateEnhancedLoggingMutation>(companiesPageUpdateEnhancedLoggingMutationNode);
+  const [commitDeleteCompany, isDeleteCompanyInFlight] =
+    useMutation<companiesPageDeleteCompanyMutation>(companiesPageDeleteCompanyMutationNode);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -165,6 +181,12 @@ function AdminCompaniesPageContent() {
 
   const refreshCompanies = () => {
     setRefreshKey((currentRefreshKey) => currentRefreshKey + 1);
+  };
+
+  const closeDeleteCompanyDialog = () => {
+    setSelectedDeleteCompany(null);
+    setDeleteConfirmationName("");
+    setDeleteCompanyErrorMessage(null);
   };
 
   const closeEnhancedLoggingDialog = () => {
@@ -211,6 +233,32 @@ function AdminCompaniesPageContent() {
       onCompleted: refreshCompanies,
       onError: (error) => {
         setEnhancedLoggingErrorMessage(error.message);
+      },
+    });
+  };
+
+  const deleteSelectedCompany = () => {
+    if (!selectedDeleteCompany) {
+      return;
+    }
+
+    setDeleteCompanyErrorMessage(null);
+    commitDeleteCompany({
+      variables: {
+        input: {
+          companyId: selectedDeleteCompany.id,
+          confirmationName: deleteConfirmationName,
+        },
+      },
+      onCompleted: () => {
+        closeDeleteCompanyDialog();
+        if (companyPage.nodes.length === 1 && page > 1) {
+          setPage((currentPage) => Math.max(1, currentPage - 1));
+        }
+        refreshCompanies();
+      },
+      onError: (error) => {
+        setDeleteCompanyErrorMessage(error.message);
       },
     });
   };
@@ -292,6 +340,7 @@ function AdminCompaniesPageContent() {
                   <TableHead>Members</TableHead>
                   <TableHead>Enhanced logging</TableHead>
                   <TableHead>Clerk org</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,6 +395,21 @@ function AdminCompaniesPageContent() {
                       </div>
                     </TableCell>
                     <TableCell>{formatOptionalValue(company.clerkOrganizationId)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        disabled={isDeleteCompanyInFlight}
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setDeleteCompanyErrorMessage(null);
+                          setDeleteConfirmationName("");
+                          setSelectedDeleteCompany(company);
+                        }}
+                      >
+                        <Trash2 data-icon="inline-start" />
+                        Delete
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -407,6 +471,60 @@ function AdminCompaniesPageContent() {
             </Button>
             <Button size="sm" disabled={isUpdateEnhancedLoggingInFlight} onClick={enableEnhancedLogging}>
               Enable logging
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={selectedDeleteCompany !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeDeleteCompanyDialog();
+          }
+        }}
+      >
+        <DialogContent className="w-[min(92vw,30rem)]">
+          <DialogHeader>
+            <DialogTitle>Delete company</DialogTitle>
+            <DialogDescription>
+              This permanently deletes {selectedDeleteCompany?.name ?? "this company"} and its CompanyHelm data. Type
+              the company name to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="delete-company-confirmation">
+              Company name
+            </label>
+            <Input
+              aria-invalid={deleteCompanyErrorMessage ? true : undefined}
+              disabled={isDeleteCompanyInFlight}
+              id="delete-company-confirmation"
+              onChange={(event) => setDeleteConfirmationName(event.target.value)}
+              placeholder={selectedDeleteCompany?.name ?? "Company name"}
+              value={deleteConfirmationName}
+            />
+            {deleteCompanyErrorMessage ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {deleteCompanyErrorMessage}
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={closeDeleteCompanyDialog}>
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                !selectedDeleteCompany
+                || deleteConfirmationName !== selectedDeleteCompany.name
+                || isDeleteCompanyInFlight
+              }
+              size="sm"
+              variant="destructive"
+              onClick={deleteSelectedCompany}
+            >
+              <Trash2 data-icon="inline-start" />
+              Delete company
             </Button>
           </DialogFooter>
         </DialogContent>

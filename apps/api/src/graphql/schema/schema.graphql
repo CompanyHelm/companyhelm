@@ -85,6 +85,7 @@ type Mutation {
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
+  DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
@@ -1350,6 +1351,16 @@ input UpdateCompanyOnboardingInput {
 
 input DeleteCompanyInput {
   confirmationName: String!
+}
+
+input DeletePlatformAdminCompanyInput {
+  companyId: ID!
+  confirmationName: String!
+}
+
+type PlatformAdminCompanyDeletionPayload {
+  id: ID!
+  name: String!
 }
 
 input DeleteModelProviderCredentialInput {
