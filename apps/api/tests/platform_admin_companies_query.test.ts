@@ -23,9 +23,14 @@ class PlatformAdminCompaniesQueryTestHarness {
   }
 
   static createContext(isPlatformAdmin: boolean) {
+    let platformAdminAccessEnabled = false;
     let selectCallCount = 0;
     const whereConditions: unknown[] = [];
     const tx = {
+      async execute(query: unknown) {
+        void query;
+        platformAdminAccessEnabled = true;
+      },
       select() {
         selectCallCount += 1;
         if (selectCallCount === 1) {
@@ -88,7 +93,7 @@ class PlatformAdminCompaniesQueryTestHarness {
       },
     };
 
-    return {
+    const contextHarness = {
       context: {
         authSession: {
           token: "jwt-token",
@@ -112,8 +117,12 @@ class PlatformAdminCompaniesQueryTestHarness {
           },
         },
       } as GraphqlRequestContext,
+      get platformAdminAccessEnabled() {
+        return platformAdminAccessEnabled;
+      },
       whereConditions,
     };
+    return contextHarness;
   }
 }
 
@@ -150,6 +159,7 @@ test("PlatformAdminCompanies query lists searchable paginated companies for plat
     totalPages: 1,
   });
   assert.equal(contextHarness.whereConditions.length, 2);
+  assert.equal(contextHarness.platformAdminAccessEnabled, true);
   assert.deepEqual(harness.enhancedLoggingCompanyIds, ["company-1"]);
 });
 
@@ -167,6 +177,7 @@ test("PlatformAdminCompanies query filters companies by member user id", async (
   assert.equal(result.nodes[0]?.id, "company-1");
   assert.equal(result.nodes[0]?.memberCount, 3);
   assert.equal(contextHarness.whereConditions.length, 2);
+  assert.equal(contextHarness.platformAdminAccessEnabled, true);
   assert.deepEqual(harness.enhancedLoggingCompanyIds, ["company-1"]);
 });
 

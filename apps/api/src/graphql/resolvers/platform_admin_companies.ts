@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import { companies, companyMembers } from "../../db/schema.ts";
 import {
   EnhancedLoggingAdminService,
@@ -83,6 +84,7 @@ export class PlatformAdminCompaniesQueryResolver {
     const filterCondition = this.buildFilterCondition(arguments_.search, arguments_.userId);
 
     const companyPage = await context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const countRows = filterCondition
         ? await tx
           .select({
