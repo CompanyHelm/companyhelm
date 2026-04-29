@@ -120,58 +120,49 @@ export class CompanyBootstrapService {
     "Run this workflow in the CEO onboarding chat for newly created companies.",
     "Keep the conversation focused and ask only one question at a time.",
     "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
-    "Use the static onboarding inputs as ground truth for mission capture, GitHub setup, and model provider readiness.",
-    "Do not create agents or import skills without user confirmation. Explain to the user what you will do before doing it.",
+    "Assume CompanyHelm-managed model access is active for the first conversation unless the user says otherwise.",
+    "Treat GitHub access, custom LLM credentials, skill imports, agent creation, and task creation as just-in-time setup.",
+    "Do not create agents, import skills, connect GitHub, or create tasks without explicit user confirmation. Explain what will happen before doing it.",
   ].join("\n");
-  private static readonly SEED_ONBOARDING_WORKFLOW_INPUTS = [{
-    defaultValue: "",
-    description: "Business goals captured during static onboarding. This should guide the CEO's recommendations.",
-    isRequired: true,
-    name: "companyMission",
-  }, {
-    defaultValue: "pending",
-    description: "Whether GitHub was connected, skipped, or left pending during static onboarding.",
-    isRequired: true,
-    name: "githubSetupStatus",
-  }, {
-    defaultValue: "pending",
-    description: "Whether LLM provider setup was completed with third-party credentials, CompanyHelm-managed access, or skipped.",
-    isRequired: true,
-    name: "llmSetupStatus",
-  }] as const;
+  private static readonly SEED_ONBOARDING_WORKFLOW_INPUTS: Array<{
+    defaultValue: string;
+    description: string;
+    isRequired: boolean;
+    name: string;
+  }> = [];
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
-      "Welcome the user to CompanyHelm as their CEO and explicitly reference the static onboarding inputs.",
-      "Summarize the current setup state using companyMission, githubSetupStatus, and llmSetupStatus.",
-      "Reflect the companyMission back in one or two sentences as the business outcome CompanyHelm should optimize for.",
-      "Ask one question: whether the user wants to configure additional agents now.",
-      "Explain that the next steps are repository inspection, skill options, and a concrete agent recommendation set.",
+      "Welcome the user to CompanyHelm as their CEO.",
+      "Explain briefly that CompanyHelm-managed model access is already available for this setup conversation.",
+      "Ask exactly one question: what does their business do, and what goal do they want to make progress on today?",
+      "Use the answer as the working business context for later recommendations in this chat.",
+      "Do not ask about GitHub, skills, agents, or tasks until the user has answered the business-and-goal question.",
     ].join("\n"),
-    name: "Frame the onboarding goals",
-    stepId: "frame-onboarding-goals",
+    name: "Understand the business goal",
+    stepId: "understand-business-goal",
   }, {
     instructions: [
-      "Use githubSetupStatus to decide the next question.",
-      "If githubSetupStatus is completed, ask which connected repositories the CEO should inspect first and whether the user wants those repos pulled into the workspace for review.",
-      "If githubSetupStatus is skipped, explain the limitation clearly and ask whether the user wants to continue with goal-based agent planning only.",
-      "Ask specifically about importing or mirroring useful agent and skill patterns from public references such as msitarzewski/agency-agents, obra/superpowers, and bmad-code-org/BMAD-METHOD.",
-      "If the user wants skill help, activate the Manage skills system skill and inspect public repositories before proposing imports. Only call skill.github.import after you know the exact directories to import and the user approves it.",
-      "If the user wants repository access but GitHub is still not connected, explain that they should return to the static onboarding step or repositories page to connect it before the CEO can inspect private repos.",
+      "Ask whether the user has a GitHub repository that matters for today's goal.",
+      "If the user says yes, activate the Manage GitHub installations system skill and call github.installation.list.",
+      "If no installation is connected, ask for confirmation before calling github.installation.start, then present the returned installationUrl.",
+      "If GitHub is already connected, ask which repository should be inspected first.",
+      "If the user says no or wants to skip GitHub, continue with goal-based setup without treating GitHub as required.",
     ].join("\n"),
-    name: "Inspect repos and skill options",
-    stepId: "inspect-repos-and-skills",
+    name: "Connect repo if useful",
+    stepId: "connect-repo-if-useful",
   }, {
     instructions: [
-      "Propose a small first team of 3 to 5 agents based on the company mission, repository context if available, and the user's stated priorities.",
-      "Give the user options, not just one answer. Include at least one conservative setup and one more ambitious setup.",
-      "Ask which additional agents the user wants to create now versus later, then tie the options to that answer.",
-      "For each proposed agent include name, responsibility, why it exists, model or compute assumptions, useful skills, and the first task it should own.",
-      "When repositories are available, tailor the recommendation to the actual stack and call out which repos the team should check out first.",
-      "Discuss whether Superpowers-style development skills, BMAD-style role specialization, or imported public skill packages would make those agents more effective.",
-      "Ask for confirmation before creating agents. After approval, activate the Manage agents system skill and use agent.create plus agent.skill.attach or agent.skill_group.attach as needed.",
+      "Ask whether the user wants to create an Engineer agent for implementation work.",
+      "Ask whether they already use particular engineering skills, playbooks, or development workflows.",
+      "If they do not have a preference, propose a Superpowers-style development skill set for the Engineer and explain why it helps.",
+      "Recommend a model before creating the Engineer: prefer GPT-5.5 with high reasoning for coding-heavy work, or GPT-5.5 with medium reasoning when speed and cost matter more.",
+      "Ask for explicit confirmation before importing or creating skills, creating the Engineer agent, or attaching skills to it.",
+      "After confirmation, activate Manage skills and Manage agents as needed, then use skill.list, skill.github.import or skill.create, agent.list, agent.create, and agent.skill.attach.",
+      "Ask whether the user wants to create the first task and assign it to the Engineer.",
+      "If confirmed, use create_task with assignedAgentId. Use status draft unless the user asks to start the task immediately, in which case use in_progress.",
     ].join("\n"),
-    name: "Recommend the first agent team",
-    stepId: "propose-starter-agents",
+    name: "Create engineer and first task",
+    stepId: "create-engineer-and-first-task",
   }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly modelRegistry: ModelRegistry;

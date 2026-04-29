@@ -345,7 +345,7 @@ test("CompanyOnboardingService blocks CEO provisioning until the static steps ar
   assert.equal(harness.listWorkflowCalls().length, 0);
 });
 
-test("CompanyOnboardingService starts the CEO workflow with mission and setup input values", async () => {
+test("CompanyOnboardingService starts the CEO workflow without static setup input values", async () => {
   const harness = new CompanyOnboardingServiceTestHarness({
     githubInstallations: [{ companyId: "company-1" }],
     modelCredentials: [{
@@ -395,16 +395,7 @@ test("CompanyOnboardingService starts the CEO workflow with mission and setup in
   assert.deepEqual(harness.listWorkflowCalls(), [{
     agentId: "agent-1",
     companyId: "company-1",
-    inputValues: [{
-      name: "companyMission",
-      value: "Help agencies deploy repo-aware delivery agents.",
-    }, {
-      name: "githubSetupStatus",
-      value: "completed",
-    }, {
-      name: "llmSetupStatus",
-      value: "third_party",
-    }],
+    inputValues: [],
     startedByUserId: "user-1",
     workflowDefinitionId: "workflow-1",
   }]);
@@ -451,14 +442,5 @@ test("CompanyOnboardingService starts the CEO workflow when mission is skipped",
   );
 
   assert.equal(onboarding.status, "in_progress");
-  assert.deepEqual(harness.listWorkflowCalls()[0]?.inputValues, [{
-    name: "companyMission",
-    value: "",
-  }, {
-    name: "githubSetupStatus",
-    value: "skipped",
-  }, {
-    name: "llmSetupStatus",
-    value: "skipped",
-  }]);
+  assert.deepEqual(harness.listWorkflowCalls()[0]?.inputValues, []);
 });

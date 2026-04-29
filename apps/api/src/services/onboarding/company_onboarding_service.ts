@@ -429,16 +429,8 @@ export class CompanyOnboardingService {
   }
 
   private createWorkflowInputValues(onboarding: CompanyOnboardingRecord): WorkflowRunInputValue[] {
-    return [{
-      name: "companyMission",
-      value: onboarding.companyMission ?? "",
-    }, {
-      name: "githubSetupStatus",
-      value: onboarding.githubSetupStatus,
-    }, {
-      name: "llmSetupStatus",
-      value: onboarding.llmSetupStatus,
-    }];
+    void onboarding;
+    return [];
   }
 
   private async hasLinkedGithubInstallation(tx: AppRuntimeTransaction, companyId: string): Promise<boolean> {

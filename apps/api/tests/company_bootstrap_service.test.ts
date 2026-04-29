@@ -756,23 +756,19 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.match(workflow?.description ?? "", /repository discovery/);
 
   const workflowInputs = harness.listWorkflowInputs();
-  assert.deepEqual(workflowInputs.map((input) => input.name), [
-    "companyMission",
-    "githubSetupStatus",
-    "llmSetupStatus",
-  ]);
+  assert.deepEqual(workflowInputs.map((input) => input.name), []);
 
   const workflowSteps = harness.listWorkflowSteps();
   assert.deepEqual(workflowSteps.map((step) => step.name), [
-    "Frame the onboarding goals",
-    "Inspect repos and skill options",
-    "Recommend the first agent team",
+    "Understand the business goal",
+    "Connect repo if useful",
+    "Create engineer and first task",
   ]);
-  assert.match(workflowSteps[0]?.instructions_template ?? "", /companyMission/);
-  assert.match(workflowSteps[1]?.instructions_template ?? "", /bmad-code-org\/BMAD-METHOD/);
-  assert.match(workflowSteps[1]?.instructions_template ?? "", /skill\.github\.import/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /3 to 5 agents/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /additional agents/);
+  assert.match(workflowSteps[0]?.instructions_template ?? "", /what does their business do/);
+  assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /Superpowers-style/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /GPT-5\.5 with high reasoning/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /create_task/);
 
   assert.deepEqual(harness.listCompanyOnboardings(), []);
 });
@@ -866,25 +862,9 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       companyId: "company-1",
       createdAt: now,
       defaultValue: "",
-      description: "Business goals captured during static onboarding. This should guide the CEO's recommendations.",
+      description: "Legacy static onboarding input.",
       isRequired: true,
       name: "companyMission",
-      workflowDefinitionId: "workflow-1",
-    }, {
-      companyId: "company-1",
-      createdAt: now,
-      defaultValue: "pending",
-      description: "Whether GitHub was connected, skipped, or left pending during static onboarding.",
-      isRequired: true,
-      name: "githubSetupStatus",
-      workflowDefinitionId: "workflow-1",
-    }, {
-      companyId: "company-1",
-      createdAt: now,
-      defaultValue: "pending",
-      description: "Whether LLM provider setup was completed with third-party credentials, CompanyHelm-managed access, or skipped.",
-      isRequired: true,
-      name: "llmSetupStatus",
       workflowDefinitionId: "workflow-1",
     }],
     workflowStepDefinitionRows: [{
@@ -948,7 +928,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
   assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
   assert.equal(harness.listWorkflowDefinitions().length, 1);
-  assert.equal(harness.listWorkflowInputs().length, 3);
+  assert.equal(harness.listWorkflowInputs().length, 0);
   assert.equal(harness.listWorkflowSteps().length, 3);
   assert.equal(harness.listCompanyOnboardings().length, 1);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
