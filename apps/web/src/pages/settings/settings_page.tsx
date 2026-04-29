@@ -7,8 +7,10 @@ import { OrganizationMembersSettingsPanel } from "@/components/auth/organization
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
+import { ClerkChooseOrganizationTaskUrl } from "@/lib/clerk_choose_organization_task_url";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { SelectedOrganizationStorage } from "@/pages/root/selected_organization_storage";
 import { DeleteCompanyDialog } from "./delete_company_dialog";
 import { TaskStageDialog } from "./task_stage_dialog";
 import type { settingsPageCreateTaskStageMutation } from "./__generated__/settingsPageCreateTaskStageMutation.graphql";
@@ -526,6 +528,8 @@ function SettingsPageContent() {
             });
           }).then(() => {
             setDeleteCompanyDialogOpen(false);
+            SelectedOrganizationStorage.clearOrganizationId();
+            ClerkChooseOrganizationTaskUrl.redirectCurrentWindow();
           }).catch((error: unknown) => {
             setCompanyErrorMessage(error instanceof Error ? error.message : "Failed to delete company.");
           });

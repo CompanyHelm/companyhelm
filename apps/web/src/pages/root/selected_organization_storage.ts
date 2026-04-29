@@ -41,6 +41,19 @@ export class SelectedOrganizationStorage {
     }
   }
 
+  static clearOrganizationId(storage?: Pick<Storage, "removeItem">): void {
+    const targetStorage = storage ?? SelectedOrganizationStorage.resolveStorage();
+    if (!targetStorage) {
+      return;
+    }
+
+    try {
+      targetStorage.removeItem(SelectedOrganizationStorage.STORAGE_KEY);
+    } catch {
+      return;
+    }
+  }
+
   private static resolveStorage(): Storage | undefined {
     if (typeof window === "undefined") {
       return undefined;

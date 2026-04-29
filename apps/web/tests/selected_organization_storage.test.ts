@@ -12,6 +12,10 @@ class MemoryStorage {
   setItem(key: string, value: string): void {
     this.values.set(key, value);
   }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
 }
 
 test("SelectedOrganizationStorage persists the selected company id", () => {
@@ -36,6 +40,15 @@ test("SelectedOrganizationStorage tolerates unavailable browser storage", () => 
       throw new Error("storage unavailable");
     },
   };
+
+  assert.equal(SelectedOrganizationStorage.readOrganizationId(storage), null);
+});
+
+test("SelectedOrganizationStorage clears the selected company id", () => {
+  const storage = new MemoryStorage();
+
+  SelectedOrganizationStorage.writeOrganizationId("org_2", storage);
+  SelectedOrganizationStorage.clearOrganizationId(storage);
 
   assert.equal(SelectedOrganizationStorage.readOrganizationId(storage), null);
 });
