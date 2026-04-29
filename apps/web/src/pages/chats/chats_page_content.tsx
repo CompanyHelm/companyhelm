@@ -1989,6 +1989,14 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
     : "Untitled chat";
   const selectedSessionTask = selectedSession?.associatedTask ?? null;
+  const shouldUseCenteredNewChatLayout = Boolean(
+    selectedAgent
+      && !selectedSession
+      && !isFixedSessionMode
+      && !routeSessionId
+      && !pendingCreatedSessionId
+      && !isCreateSessionInFlight,
+  );
   const chatsHeaderTitle = props.headerTitle ?? (selectedSession
     ? selectedSessionTask?.name ?? selectedSessionTitle
     : selectedAgent
@@ -2154,6 +2162,70 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       title="Start a new chat"
     />
   ) : null;
+  const chatComposer = selectedAgent && (!isFixedSessionMode || selectedSession) ? (
+    <ChatComposerPane
+      canForkLatestSession={canForkLatestSession}
+      canInterruptSelectedSession={canInterruptSelectedSession}
+      canSubmitDraft={canSubmitDraft}
+      composerModelOptionId={composerModelOptionId}
+      composerModelOptions={composerModelOptions}
+      composerReasoningLevel={composerReasoningLevel}
+      canManuallyResizeDraftTextarea={
+        !shouldUseCenteredNewChatLayout && shouldEnableDraftTextareaManualResize(isMobile)
+      }
+      deletingQueuedMessageId={deletingQueuedMessageId}
+      draftImageFileInputRef={draftImageFileInputRef}
+      draftImages={draftImages}
+      draftMessage={draftMessage}
+      draftSubmitAriaLabel={draftSubmitAriaLabel}
+      draftTextareaRef={draftTextareaRef}
+      hasDraftInput={hasDraftInput}
+      isForkingLatestSession={isForkingLatestSession}
+      isComposerDragActive={isComposerDragActive}
+      isDismissInboxHumanQuestionInFlight={isDismissInboxHumanQuestionInFlight}
+      isResolveInboxHumanQuestionInFlight={isResolveInboxHumanQuestionInFlight}
+      onComposerDragEnter={handleComposerDragEnter}
+      onComposerDragLeave={handleComposerDragLeave}
+      onComposerDragOver={handleComposerDragOver}
+      onComposerDrop={handleComposerDrop}
+      onDeleteQueuedMessage={(queuedMessageId) => {
+        void deleteQueuedMessage(queuedMessageId);
+      }}
+      onDismissHumanQuestion={(inboxItemId) => {
+        void dismissHumanQuestion(inboxItemId);
+      }}
+      onDraftImageInputChange={handleDraftImageInputChange}
+      onDraftMessageChange={setDraftMessage}
+      onModelChange={setComposerModelOptionId}
+      onOpenDraftImagePicker={openDraftImagePicker}
+      onQueueDraft={() => {
+        void queueDraftMessage();
+      }}
+      onForkLatestSession={() => {
+        void forkLatestSessionContext();
+      }}
+      onReasoningLevelChange={setComposerReasoningLevel}
+      onRemoveDraftImage={removeDraftImage}
+      onResolveHumanQuestion={(input) => {
+        void resolveHumanQuestion(input);
+      }}
+      onStartDraftTextareaResize={startDraftTextareaResize}
+      onSteerQueuedMessage={(queuedMessageId) => {
+        void steerQueuedMessage(queuedMessageId);
+      }}
+      onSubmitDraft={() => {
+        void submitDraft();
+      }}
+      queueDraftAriaLabel={queueDraftAriaLabel}
+      queuedMessages={queuedMessages}
+      selectedSession={selectedSession}
+      selectedSessionHumanQuestion={selectedSessionHumanQuestion}
+      shouldShowInterruptComposerAction={shouldShowInterruptComposerAction}
+      shouldShowQueueComposerAction={shouldShowQueueComposerAction}
+      shouldUseCompactComposerSettings={shouldUseCompactComposerSettings}
+      steeringQueuedMessageId={steeringQueuedMessageId}
+    />
+  ) : null;
 
   return (
     <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -2231,37 +2303,24 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           </CardContent>
         ) : null}
 
-        {selectedAgent && !selectedSession ? (
+        {selectedAgent && !selectedSession && shouldUseCenteredNewChatLayout ? (
+          <CardContent className="flex flex-1 items-center justify-center px-3 py-8 md:px-6">
+            <div className="flex w-full max-w-3xl flex-col items-center gap-8">
+              <h1 className="text-center text-4xl font-medium tracking-normal text-foreground md:text-5xl">
+                What should we build?
+              </h1>
+              <div className="w-full">
+                {chatComposer}
+              </div>
+            </div>
+          </CardContent>
+        ) : null}
+
+        {selectedAgent && !selectedSession && !shouldUseCenteredNewChatLayout ? (
           <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
-            <div className="max-w-xl text-center">
-              {isFixedSessionMode ? (
-                <>
-                  <p className="text-sm font-medium text-foreground">Opening chat</p>
-                  <p className="mt-2 text-sm/relaxed text-muted-foreground">
-                    Waiting for the selected session to become available.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
-                  <p className="mt-2 text-sm/relaxed text-muted-foreground">
-                    Sending this message creates the session and moves this page to the session URL.
-                  </p>
-                  <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
-                    <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
-                    <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                      {selectedComposerModelOption
-                        ? [
-                          selectedComposerModelOption.providerLabel,
-                          selectedComposerModelOption.name,
-                          composerReasoningLevel || null,
-                        ].filter(Boolean).join(" • ")
-                        : formatAgentMeta(selectedAgent)}
-                    </p>
-                  </div>
-                </>
-              )}
+            <div className="flex max-w-sm items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" />
+              <span>Opening chat</span>
             </div>
           </CardContent>
         ) : null}
@@ -2282,68 +2341,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           </CardContent>
         ) : null}
 
-        {selectedAgent && (!isFixedSessionMode || selectedSession) ? (
-          <ChatComposerPane
-            canForkLatestSession={canForkLatestSession}
-            canInterruptSelectedSession={canInterruptSelectedSession}
-            canSubmitDraft={canSubmitDraft}
-            composerModelOptionId={composerModelOptionId}
-            composerModelOptions={composerModelOptions}
-            composerReasoningLevel={composerReasoningLevel}
-            canManuallyResizeDraftTextarea={shouldEnableDraftTextareaManualResize(isMobile)}
-            deletingQueuedMessageId={deletingQueuedMessageId}
-            draftImageFileInputRef={draftImageFileInputRef}
-            draftImages={draftImages}
-            draftMessage={draftMessage}
-            draftSubmitAriaLabel={draftSubmitAriaLabel}
-            draftTextareaRef={draftTextareaRef}
-            hasDraftInput={hasDraftInput}
-            isForkingLatestSession={isForkingLatestSession}
-            isComposerDragActive={isComposerDragActive}
-            isDismissInboxHumanQuestionInFlight={isDismissInboxHumanQuestionInFlight}
-            isResolveInboxHumanQuestionInFlight={isResolveInboxHumanQuestionInFlight}
-            onComposerDragEnter={handleComposerDragEnter}
-            onComposerDragLeave={handleComposerDragLeave}
-            onComposerDragOver={handleComposerDragOver}
-            onComposerDrop={handleComposerDrop}
-            onDeleteQueuedMessage={(queuedMessageId) => {
-              void deleteQueuedMessage(queuedMessageId);
-            }}
-            onDismissHumanQuestion={(inboxItemId) => {
-              void dismissHumanQuestion(inboxItemId);
-            }}
-            onDraftImageInputChange={handleDraftImageInputChange}
-            onDraftMessageChange={setDraftMessage}
-            onModelChange={setComposerModelOptionId}
-            onOpenDraftImagePicker={openDraftImagePicker}
-            onQueueDraft={() => {
-              void queueDraftMessage();
-            }}
-            onForkLatestSession={() => {
-              void forkLatestSessionContext();
-            }}
-            onReasoningLevelChange={setComposerReasoningLevel}
-            onRemoveDraftImage={removeDraftImage}
-            onResolveHumanQuestion={(input) => {
-              void resolveHumanQuestion(input);
-            }}
-            onStartDraftTextareaResize={startDraftTextareaResize}
-            onSteerQueuedMessage={(queuedMessageId) => {
-              void steerQueuedMessage(queuedMessageId);
-            }}
-            onSubmitDraft={() => {
-              void submitDraft();
-            }}
-            queueDraftAriaLabel={queueDraftAriaLabel}
-            queuedMessages={queuedMessages}
-            selectedSession={selectedSession}
-            selectedSessionHumanQuestion={selectedSessionHumanQuestion}
-            shouldShowInterruptComposerAction={shouldShowInterruptComposerAction}
-            shouldShowQueueComposerAction={shouldShowQueueComposerAction}
-            shouldUseCompactComposerSettings={shouldUseCompactComposerSettings}
-            steeringQueuedMessageId={steeringQueuedMessageId}
-          />
-        ) : null}
+        {!shouldUseCenteredNewChatLayout ? chatComposer : null}
       </Card>
 
       {isDesktopChatListVisible ? (
