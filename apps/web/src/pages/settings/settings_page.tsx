@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Building2Icon, Loader2Icon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
+import { OrganizationMembersSettingsPanel } from "@/components/auth/organization_members_settings_panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
@@ -17,7 +18,7 @@ import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphq
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI" | "company";
+  tab?: "tasks" | "AI" | "company" | "members";
 };
 
 const settingsPageQueryNode = graphql`
@@ -153,7 +154,7 @@ function SettingsPageContent() {
   const [commitDeleteCompany, isDeleteCompanyInFlight] = useMutation<settingsPageDeleteCompanyMutation>(
     settingsPageDeleteCompanyMutationNode,
   );
-  const selectedTab = search.tab === "AI" || search.tab === "company"
+  const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "members"
     ? search.tab
     : "tasks";
   const companyName = data.Me.company.name;
@@ -184,6 +185,10 @@ function SettingsPageContent() {
             {
               key: "company" as const,
               label: "Company",
+            },
+            {
+              key: "members" as const,
+              label: "Members",
             },
           ]}
           onSelect={(tab) => {
@@ -443,6 +448,10 @@ function SettingsPageContent() {
             </div>
           </CardContent>
         </Card>
+      ) : null}
+
+      {selectedTab === "members" ? (
+        <OrganizationMembersSettingsPanel />
       ) : null}
 
       <TaskStageDialog
