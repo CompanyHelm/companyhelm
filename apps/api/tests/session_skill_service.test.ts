@@ -71,14 +71,29 @@ class SessionSkillServiceTestHarness {
         }
 
         return {
-          async values(value: Record<string, unknown>) {
-            activeSkillRecords.push({
-              activatedAt: value.activatedAt as Date,
-              companyId: String(value.companyId),
-              sessionId: String(value.sessionId),
-              skillId: value.skillId ? String(value.skillId) : null,
-              systemSkillKey: value.systemSkillKey ? String(value.systemSkillKey) : null,
-            });
+          values(value: Record<string, unknown>) {
+            return {
+              async onConflictDoNothing() {
+                const skillId = value.skillId ? String(value.skillId) : null;
+                const systemSkillKey = value.systemSkillKey ? String(value.systemSkillKey) : null;
+                const alreadyActive = activeSkillRecords.some((record) =>
+                  record.sessionId === value.sessionId
+                  && record.skillId === skillId
+                  && record.systemSkillKey === systemSkillKey
+                );
+                if (alreadyActive) {
+                  return;
+                }
+
+                activeSkillRecords.push({
+                  activatedAt: value.activatedAt as Date,
+                  companyId: String(value.companyId),
+                  sessionId: String(value.sessionId),
+                  skillId,
+                  systemSkillKey,
+                });
+              },
+            };
           },
         };
       },

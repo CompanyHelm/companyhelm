@@ -18,7 +18,9 @@ type DeletableDatabase = {
 
 type InsertableDatabase = {
   insert(table: unknown): {
-    values(value: Record<string, unknown>): Promise<unknown>;
+    values(value: Record<string, unknown>): {
+      onConflictDoNothing(): Promise<unknown>;
+    };
   };
 };
 
@@ -90,7 +92,8 @@ export class SessionSkillService {
             sessionId: input.sessionId,
             skillId: customSkill.id,
             systemSkillKey: null,
-          });
+          })
+          .onConflictDoNothing();
       }
 
       return {
@@ -277,7 +280,8 @@ export class SessionSkillService {
           sessionId,
           skillId: null,
           systemSkillKey: systemSkill.systemKey,
-        });
+        })
+        .onConflictDoNothing();
     }
 
     return {

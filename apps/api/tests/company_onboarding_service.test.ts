@@ -411,6 +411,47 @@ test("CompanyOnboardingService starts the CEO workflow without static setup inpu
   assert.equal(harness.getFinalizeCount(), 1);
 });
 
+test("CompanyOnboardingService returns existing in-progress onboarding without finalizing again", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness({
+    onboardingRows: [{
+      agentId: "agent-1",
+      companyMission: null,
+      companyId: "company-1",
+      completedAt: null,
+      createdAt: new Date("2026-04-22T10:00:00.000Z"),
+      githubCompletedAt: null,
+      githubSetupStatus: "skipped",
+      githubSkippedAt: new Date("2026-04-22T10:05:00.000Z"),
+      llmCompletedAt: new Date("2026-04-22T10:06:00.000Z"),
+      llmSetupStatus: "company_managed",
+      llmSkippedAt: null,
+      missionSkippedAt: new Date("2026-04-22T10:07:00.000Z"),
+      sessionId: "session-1",
+      skippedAt: null,
+      skippedByUserId: null,
+      startedAt: new Date("2026-04-22T10:08:00.000Z"),
+      status: "in_progress",
+      updatedAt: new Date("2026-04-22T10:08:00.000Z"),
+      workflowRunId: "run-1",
+    }],
+  });
+  const service = harness.buildService();
+
+  const onboarding = await service.ensureOnboarding(
+    harness.buildTransactionProvider() as never,
+    {
+      companyId: "company-1",
+      userId: "user-1",
+    },
+  );
+
+  assert.equal(onboarding.status, "in_progress");
+  assert.equal(onboarding.sessionId, "session-1");
+  assert.deepEqual(harness.listEnsureOnboardingAssetCalls(), []);
+  assert.deepEqual(harness.listWorkflowCalls(), []);
+  assert.equal(harness.getFinalizeCount(), 0);
+});
+
 test("CompanyOnboardingService starts the CEO workflow when mission is skipped", async () => {
   const harness = new CompanyOnboardingServiceTestHarness({
     githubInstallations: [{ companyId: "company-1" }],

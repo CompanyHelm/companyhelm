@@ -270,7 +270,6 @@ export class CompanyOnboardingService {
         && existingOnboarding.sessionId
         && existingOnboarding.workflowRunId
       ) {
-        startedSessionId = existingOnboarding.sessionId;
         return existingOnboarding;
       }
       const onboardingReadyForChat = await this.ensureDirectSetupResolved(tx, existingOnboarding);
