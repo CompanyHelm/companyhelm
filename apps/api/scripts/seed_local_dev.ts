@@ -302,7 +302,6 @@ export class LocalDevSeedScript {
       await (transaction as LocalDevMutableDatabase)
         .update(companies)
         .set({
-          deletionStatus: "active",
           name: "CompanyHelm Local",
           plan: "pro",
         })

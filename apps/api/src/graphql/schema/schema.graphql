@@ -257,11 +257,6 @@ enum CompanySubscriptionPlan {
   pro
 }
 
-enum CompanyDeletionStatus {
-  active
-  deletion_requested
-}
-
 enum CompanyOnboardingStatus {
   not_started
   in_progress
@@ -554,10 +549,8 @@ type PlatformAdminCompany {
   name: String!
   slug: String
   plan: CompanySubscriptionPlan!
-  deletionStatus: CompanyDeletionStatus!
   clerkOrganizationId: String
   memberCount: Int!
-  deletionRequestedAt: String
   enhancedLogging: PlatformAdminCompanyEnhancedLogging!
 }
 

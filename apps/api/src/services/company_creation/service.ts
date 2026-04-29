@@ -86,7 +86,12 @@ export class CompanyCreationService {
       join companies on companies.id = company_members.company_id
       where company_members.user_id = ${userId}
         and companies.plan = 'free'
-        and companies.deletion_status = 'active'
+        and not exists (
+          select 1
+          from company_deletion_requests
+          where company_deletion_requests.company_id = companies.id
+            and company_deletion_requests.status in ('requested', 'processing', 'failed')
+        )
     `;
 
     return this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
@@ -108,7 +113,12 @@ export class CompanyCreationService {
           "join companies on companies.id = company_members.company_id",
           "where company_members.user_id = $1",
           "and companies.plan = 'free'",
-          "and companies.deletion_status = 'active'",
+          "and not exists (",
+          "  select 1",
+          "  from company_deletion_requests",
+          "  where company_deletion_requests.company_id = companies.id",
+          "    and company_deletion_requests.status in ('requested', 'processing', 'failed')",
+          ")",
         ].join("\n"), [input.userId]);
         const eligibility = this.buildEligibility(Number.parseInt(countRow?.count ?? "0", 10));
         if (!eligibility.allowed) {

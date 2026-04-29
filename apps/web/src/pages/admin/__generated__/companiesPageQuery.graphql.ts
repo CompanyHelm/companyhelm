@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b84708b69fdfdab393f49b1af0d1e5ac>>
+ * @generated SignedSource<<6a463e4c305bb392ec35ed47eabbcb28>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,6 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanyDeletionStatus = "active" | "deletion_requested" | "%future added value";
 export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
 export type companiesPageQuery$variables = {
   page: number;
@@ -20,8 +19,6 @@ export type companiesPageQuery$data = {
   readonly PlatformAdminCompanies: {
     readonly nodes: ReadonlyArray<{
       readonly clerkOrganizationId: string | null | undefined;
-      readonly deletionRequestedAt: string | null | undefined;
-      readonly deletionStatus: CompanyDeletionStatus;
       readonly enhancedLogging: {
         readonly components: ReadonlyArray<string>;
         readonly enabled: boolean;
@@ -157,13 +154,6 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "deletionStatus",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "clerkOrganizationId",
             "storageKey": null
           },
@@ -172,13 +162,6 @@ v1 = [
             "args": null,
             "kind": "ScalarField",
             "name": "memberCount",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "deletionRequestedAt",
             "storageKey": null
           },
           {
@@ -252,16 +235,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "44a831d24877f9f53bdb8f531e18e91b",
+    "cacheID": "e968af42c7671686113ffdf899830bb6",
     "id": null,
     "metadata": {},
     "name": "companiesPageQuery",
     "operationKind": "query",
-    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      deletionStatus\n      clerkOrganizationId\n      memberCount\n      deletionRequestedAt\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
+    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      clerkOrganizationId\n      memberCount\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ec0941953414e99e986dcaf3a2a7cd5e";
+(node as any).hash = "5a08fbc4dd3f54be5de83ab506a04029";
 
 export default node;

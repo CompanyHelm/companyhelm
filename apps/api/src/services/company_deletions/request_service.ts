@@ -83,14 +83,6 @@ export class CompanyDeletionRequestService {
       }
 
       const now = new Date();
-      await transaction
-        .update(companies)
-        .set({
-          deletionRequestedAt: now,
-          deletionStatus: "deletion_requested",
-        })
-        .where(eq(companies.id, company.id));
-
       const existingRequest = await this.loadOpenRequestForCompany(transaction, company.id);
       if (existingRequest) {
         return existingRequest;

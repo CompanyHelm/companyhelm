@@ -1,5 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MutableRefObject, TouchEvent as ReactTouchEvent, UIEvent } from "react";
+import type {
+  DragEvent as ReactDragEvent,
+  MutableRefObject,
+  TouchEvent as ReactTouchEvent,
+  UIEvent,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
@@ -993,10 +998,15 @@ const WorkflowRunProgressStripContent = memo(function WorkflowRunProgressStripCo
 WorkflowRunProgressStripContent.displayName = "WorkflowRunProgressStripContent";
 
 type ChatTranscriptPaneProps = {
+  isFileDropActive: boolean;
   isTranscriptStuckToBottom: boolean;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
   organizationSlug: string;
+  onFileDragEnter: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onFileDragLeave: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onFileDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
+  onFileDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
   onJumpToLatest: () => void;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
   session: SessionRecord;
@@ -1009,10 +1019,15 @@ type ChatTranscriptPaneProps = {
  * keystrokes from remounting historical assistant output when none of the transcript inputs changed.
  */
 export function areChatTranscriptPanePropsEqual(previousProps: ChatTranscriptPaneProps, nextProps: ChatTranscriptPaneProps) {
-  return previousProps.isTranscriptStuckToBottom === nextProps.isTranscriptStuckToBottom
+  return previousProps.isFileDropActive === nextProps.isFileDropActive
+    && previousProps.isTranscriptStuckToBottom === nextProps.isTranscriptStuckToBottom
     && previousProps.isLoadingOlderMessages === nextProps.isLoadingOlderMessages
     && previousProps.isLoadingTranscript === nextProps.isLoadingTranscript
     && previousProps.organizationSlug === nextProps.organizationSlug
+    && previousProps.onFileDragEnter === nextProps.onFileDragEnter
+    && previousProps.onFileDragLeave === nextProps.onFileDragLeave
+    && previousProps.onFileDragOver === nextProps.onFileDragOver
+    && previousProps.onFileDrop === nextProps.onFileDrop
     && previousProps.onJumpToLatest === nextProps.onJumpToLatest
     && previousProps.onScroll === nextProps.onScroll
     && previousProps.session === nextProps.session
@@ -1021,10 +1036,15 @@ export function areChatTranscriptPanePropsEqual(previousProps: ChatTranscriptPan
 }
 
 function ChatTranscriptPaneComponent({
+  isFileDropActive,
   isTranscriptStuckToBottom,
   isLoadingOlderMessages,
   isLoadingTranscript,
   organizationSlug,
+  onFileDragEnter,
+  onFileDragLeave,
+  onFileDragOver,
+  onFileDrop,
   onJumpToLatest,
   onScroll,
   session,
@@ -1104,8 +1124,22 @@ function ChatTranscriptPaneComponent({
   }, [onScroll, updateTimestampTooltipBoundary]);
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
+    <div
+      className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden"
+      onDragEnter={onFileDragEnter}
+      onDragLeave={onFileDragLeave}
+      onDragOver={onFileDragOver}
+      onDrop={onFileDrop}
+    >
       <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
+      {isFileDropActive ? (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border border-primary/30 bg-background/70 px-6 text-center shadow-inner backdrop-blur-sm">
+          <div className="grid gap-1 rounded-lg border border-border/70 bg-background/95 px-4 py-3 shadow-lg">
+            <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images into this chat</p>
+            <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
+          </div>
+        </div>
+      ) : null}
       <div
         ref={setTranscriptScrollElement}
         className={transcriptViewportClassName}

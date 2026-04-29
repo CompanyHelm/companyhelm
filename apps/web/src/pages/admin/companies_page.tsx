@@ -42,10 +42,8 @@ const companiesPageQueryNode = graphql`
         name
         slug
         plan
-        deletionStatus
         clerkOrganizationId
         memberCount
-        deletionRequestedAt
         enhancedLogging {
           enabled
           expiresAt
@@ -97,10 +95,6 @@ function formatTimestamp(value: string | null | undefined): string {
 
 function formatPlanLabel(plan: string): string {
   return plan === "pro" ? "Pro" : "Free";
-}
-
-function formatDeletionStatusLabel(status: string): string {
-  return status === "deletion_requested" ? "Deletion requested" : "Active";
 }
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -296,10 +290,8 @@ function AdminCompaniesPageContent() {
                   <TableHead>Company</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Members</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Enhanced logging</TableHead>
                   <TableHead>Clerk org</TableHead>
-                  <TableHead>Deletion requested</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -314,11 +306,6 @@ function AdminCompaniesPageContent() {
                       <Badge variant="outline">{formatPlanLabel(company.plan)}</Badge>
                     </TableCell>
                     <TableCell>{company.memberCount}</TableCell>
-                    <TableCell>
-                      {company.deletionStatus === "active"
-                        ? <Badge variant="outline">{formatDeletionStatusLabel(company.deletionStatus)}</Badge>
-                        : <Badge>{formatDeletionStatusLabel(company.deletionStatus)}</Badge>}
-                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-2">
                         {company.enhancedLogging.enabled ? (
@@ -359,7 +346,6 @@ function AdminCompaniesPageContent() {
                       </div>
                     </TableCell>
                     <TableCell>{formatOptionalValue(company.clerkOrganizationId)}</TableCell>
-                    <TableCell>{formatTimestamp(company.deletionRequestedAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

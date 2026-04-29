@@ -15,7 +15,6 @@ type DevAuthUserRecord = {
 };
 
 type DevAuthCompanyRecord = {
-  deletion_status: "active" | "deletion_requested";
   id: string;
   name: string;
   slug: string | null;
@@ -157,7 +156,6 @@ export class DevAuthService {
           slug: companySlug,
         })
         .returning({
-          deletion_status: companies.deletionStatus,
           id: companies.id,
           name: companies.name,
           slug: companies.slug,
@@ -218,10 +216,7 @@ export class DevAuthService {
       })
       .from(users)
       .leftJoin(companyMembers, eq(companyMembers.userId, users.id))
-      .leftJoin(companies, and(
-        eq(companyMembers.companyId, companies.id),
-        eq(companies.deletionStatus, "active"),
-      ))
+      .leftJoin(companies, eq(companyMembers.companyId, companies.id))
       .orderBy(asc(users.first_name), asc(users.last_name), asc(users.email)) as Array<{
       companyId: string | null;
       companyName: string | null;
@@ -384,7 +379,6 @@ export class DevAuthService {
     };
     const [company] = await database
       .select({
-        deletion_status: companies.deletionStatus,
         id: companies.id,
         name: companies.name,
         slug: companies.slug,
@@ -404,7 +398,6 @@ export class DevAuthService {
       .where(and(
         eq(companyMembers.companyId, input.companyId),
         eq(companyMembers.userId, input.userId),
-        eq(companies.deletionStatus, "active"),
       ))
       .limit(1) as DevAuthCompanyMembershipRecord[];
 
@@ -426,17 +419,13 @@ export class DevAuthService {
 
     return await database
       .select({
-        deletion_status: companies.deletionStatus,
         id: companies.id,
         name: companies.name,
         slug: companies.slug,
       })
       .from(companyMembers)
       .innerJoin(companies, eq(companyMembers.companyId, companies.id))
-      .where(and(
-        eq(companyMembers.userId, userId),
-        eq(companies.deletionStatus, "active"),
-      ))
+      .where(eq(companyMembers.userId, userId))
       .orderBy(asc(companies.name)) as DevAuthCompanyRecord[];
   }
 

@@ -130,7 +130,7 @@ function SettingsPageContent() {
   const search = useSearch({ strict: false }) as SettingsPageSearch;
   const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
   const [companyErrorMessage, setCompanyErrorMessage] = useState<string | null>(null);
-  const [companyDeletionStatus, setCompanyDeletionStatus] = useState<string | null>(null);
+  const [deletionRequestStatus, setDeletionRequestStatus] = useState<string | null>(null);
   const [isTaskStageDialogOpen, setTaskStageDialogOpen] = useState(false);
   const [isDeleteCompanyDialogOpen, setDeleteCompanyDialogOpen] = useState(false);
   const [deletingTaskStageId, setDeletingTaskStageId] = useState<string | null>(null);
@@ -408,9 +408,9 @@ function SettingsPageContent() {
               </div>
             </div>
 
-            {companyDeletionStatus ? (
+            {deletionRequestStatus ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                Company deletion request created. Status: {companyDeletionStatus}
+                Company deletion request created. Status: {deletionRequestStatus}
               </div>
             ) : null}
 
@@ -429,7 +429,7 @@ function SettingsPageContent() {
               </div>
               <Button
                 className="w-full sm:w-auto"
-                disabled={companyDeletionStatus !== null}
+                disabled={deletionRequestStatus !== null}
                 onClick={() => {
                   setCompanyErrorMessage(null);
                   setDeleteCompanyDialogOpen(true);
@@ -510,7 +510,7 @@ function SettingsPageContent() {
                   return;
                 }
 
-                setCompanyDeletionStatus(response.DeleteCompany.status);
+                setDeletionRequestStatus(response.DeleteCompany.status);
                 resolve();
               },
               onError: reject,

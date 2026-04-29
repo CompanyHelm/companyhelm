@@ -70,7 +70,6 @@ class ClerkAuthProviderTestHarness {
               }]
               : insertCallCount === 2
               ? [{
-                deletion_status: "active",
                 id: "local-company-1",
                 clerk_organization_id: "org_clerk_1",
                 name: "Example Org",
@@ -158,7 +157,6 @@ class ClerkAuthProviderTestHarness {
                     limit: async () => [{
                       id: "local-company-9",
                       clerk_organization_id: "org_clerk_9",
-                      deletion_status: "active",
                       name: "Existing Org",
                     }],
                   };
@@ -285,7 +283,6 @@ class ClerkAuthProviderTestHarness {
                     limit: async () => [{
                       id: "local-company-9",
                       clerk_organization_id: "org_clerk_9",
-                      deletion_status: "active",
                       name: "Existing Org",
                     }],
                   };
@@ -430,7 +427,6 @@ class ClerkAuthProviderTestHarness {
                     limit: async () => [{
                       id: "local-company-race",
                       clerk_organization_id: "org_clerk_race",
-                      deletion_status: "active",
                       name: "Race Org",
                     }],
                   };

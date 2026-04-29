@@ -15,8 +15,6 @@ type PlatformAdminCompaniesArguments = {
 
 type PlatformAdminCompanyRow = {
   clerkOrganizationId: string | null;
-  deletionRequestedAt: Date | null;
-  deletionStatus: "active" | "deletion_requested";
   id: string;
   memberCount: number;
   name: string;
@@ -30,8 +28,6 @@ type PlatformAdminCompanyCountRow = {
 
 type GraphqlPlatformAdminCompany = {
   clerkOrganizationId: string | null;
-  deletionRequestedAt: string | null;
-  deletionStatus: "active" | "deletion_requested";
   enhancedLogging: EnhancedLoggingAdminCompanyState;
   id: string;
   memberCount: number;
@@ -103,8 +99,6 @@ export class PlatformAdminCompaniesQueryResolver {
         ? await tx
           .select({
             clerkOrganizationId: companies.clerkOrganizationId,
-            deletionRequestedAt: companies.deletionRequestedAt,
-            deletionStatus: companies.deletionStatus,
             id: companies.id,
             memberCount: sql<number>`count(${companyMembers.userId})::int`.as("member_count"),
             name: companies.name,
@@ -116,8 +110,6 @@ export class PlatformAdminCompaniesQueryResolver {
           .where(searchCondition)
           .groupBy(
             companies.clerkOrganizationId,
-            companies.deletionRequestedAt,
-            companies.deletionStatus,
             companies.id,
             companies.name,
             companies.plan,
@@ -129,8 +121,6 @@ export class PlatformAdminCompaniesQueryResolver {
         : await tx
           .select({
             clerkOrganizationId: companies.clerkOrganizationId,
-            deletionRequestedAt: companies.deletionRequestedAt,
-            deletionStatus: companies.deletionStatus,
             id: companies.id,
             memberCount: sql<number>`count(${companyMembers.userId})::int`.as("member_count"),
             name: companies.name,
@@ -141,8 +131,6 @@ export class PlatformAdminCompaniesQueryResolver {
           .leftJoin(companyMembers, eq(companyMembers.companyId, companies.id))
           .groupBy(
             companies.clerkOrganizationId,
-            companies.deletionRequestedAt,
-            companies.deletionStatus,
             companies.id,
             companies.name,
             companies.plan,
@@ -165,8 +153,6 @@ export class PlatformAdminCompaniesQueryResolver {
       ...companyPage,
       nodes: await Promise.all(companyPage.nodes.map(async (companyRow) => ({
         clerkOrganizationId: companyRow.clerkOrganizationId,
-        deletionRequestedAt: companyRow.deletionRequestedAt?.toISOString() ?? null,
-        deletionStatus: companyRow.deletionStatus,
         enhancedLogging: await this.enhancedLoggingAdminService.getCompanyState(companyRow.id),
         id: companyRow.id,
         memberCount: companyRow.memberCount,

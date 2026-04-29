@@ -20,7 +20,6 @@ export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
   "pro",
 ]);
 
-export const companyDeletionStatusEnum = pgEnum("company_deletion_status", ["active", "deletion_requested"]);
 export const companyDeletionRequestStatusEnum = pgEnum("company_deletion_request_status", [
   "requested",
   "processing",
@@ -34,8 +33,6 @@ export const companies = pgTable("companies", {
     .$defaultFn(() => randomUUID()),
   clerkOrganizationId: text("clerk_organization_id"),
   slug: text("slug"),
-  deletionStatus: companyDeletionStatusEnum("deletion_status").notNull().default("active"),
-  deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }),
   name: text("name").notNull(),
   plan: companySubscriptionPlanEnum("plan").notNull(),
 }, (table) => ({

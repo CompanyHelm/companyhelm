@@ -1044,6 +1044,13 @@
       "when": 1777475000000,
       "tag": "0149_model_provider_credential_model_unique_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1777476000000,
+      "tag": "0150_remove_company_deletion_status",
+      "breakpoints": true
     }
   ]
 }

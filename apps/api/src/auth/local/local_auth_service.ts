@@ -25,7 +25,6 @@ type LocalAuthUserRecord = {
 };
 
 type LocalAuthCompanyRecord = {
-  deletion_status: "active" | "deletion_requested";
   id: string;
   name: string;
   slug: string | null;
@@ -161,7 +160,6 @@ export class LocalAuthService {
           slug: companySlug,
         })
         .returning({
-          deletion_status: companies.deletionStatus,
           id: companies.id,
           name: companies.name,
           slug: companies.slug,
@@ -368,7 +366,6 @@ export class LocalAuthService {
     };
     const [sessionRecord] = await database
       .select({
-        deletion_status: companies.deletionStatus,
         email: users.email,
         expiresAt: localAuthSessions.expiresAt,
         first_name: users.first_name,
@@ -399,9 +396,6 @@ export class LocalAuthService {
     }>;
     if (!sessionRecord?.slug) {
       throw new Error("Local auth session is invalid.");
-    }
-    if (sessionRecord.deletion_status !== "active") {
-      throw new Error("Company is no longer available.");
     }
     if (sessionRecord.revokedAt) {
       throw new Error("Local auth session has been revoked.");
@@ -495,17 +489,13 @@ export class LocalAuthService {
     };
     const [company] = await database
       .select({
-        deletion_status: companies.deletionStatus,
         id: companies.id,
         name: companies.name,
         slug: companies.slug,
       })
       .from(companyMembers)
       .innerJoin(companies, eq(companyMembers.companyId, companies.id))
-      .where(and(
-        eq(companyMembers.userId, userId),
-        eq(companies.deletionStatus, "active"),
-      ))
+      .where(eq(companyMembers.userId, userId))
       .orderBy(asc(companies.name))
       .limit(1) as LocalAuthCompanyRecord[];
 

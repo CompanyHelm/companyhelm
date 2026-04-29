@@ -91,6 +91,7 @@ import {
   compareSessionsByLatestActivity,
   filterStoreRecords,
   formatAgentMeta,
+  hasDraggedFiles,
   isArchivedSession,
   loadChatListWidth,
   removeRootLinkedRecord,
@@ -203,7 +204,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
   const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
-  const [isComposerDragActive, setIsComposerDragActive] = useState(false);
+  const [isAttachmentDragActive, setIsAttachmentDragActive] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>(
     () => ChatsPagePreferenceStorage.loadCollapsedAgentIds(),
@@ -215,7 +216,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
-  const composerDragDepthRef = useRef(0);
+  const attachmentDragDepthRef = useRef(0);
   const composerSelectionTargetKeyRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const queuedMessagesRequestIdRef = useRef(0);
@@ -1347,18 +1348,18 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     event.target.value = "";
   }, [addDraftImageFiles]);
 
-  const handleComposerDragEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!(event.dataTransfer.files.length > 0 || Array.from(event.dataTransfer.types).includes("Files"))) {
+  const handleAttachmentDragEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
     event.preventDefault();
-    composerDragDepthRef.current += 1;
-    setIsComposerDragActive(true);
+    attachmentDragDepthRef.current += 1;
+    setIsAttachmentDragActive(true);
   }, []);
 
-  const handleComposerDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!(event.dataTransfer.files.length > 0 || Array.from(event.dataTransfer.types).includes("Files"))) {
+  const handleAttachmentDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
@@ -1366,26 +1367,26 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     event.dataTransfer.dropEffect = "copy";
   }, []);
 
-  const handleComposerDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!(event.dataTransfer.files.length > 0 || Array.from(event.dataTransfer.types).includes("Files"))) {
+  const handleAttachmentDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
     event.preventDefault();
-    composerDragDepthRef.current = Math.max(0, composerDragDepthRef.current - 1);
-    if (composerDragDepthRef.current === 0) {
-      setIsComposerDragActive(false);
+    attachmentDragDepthRef.current = Math.max(0, attachmentDragDepthRef.current - 1);
+    if (attachmentDragDepthRef.current === 0) {
+      setIsAttachmentDragActive(false);
     }
   }, []);
 
-  const handleComposerDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!(event.dataTransfer.files.length > 0 || Array.from(event.dataTransfer.types).includes("Files"))) {
+  const handleAttachmentDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
     event.preventDefault();
-    composerDragDepthRef.current = 0;
-    setIsComposerDragActive(false);
+    attachmentDragDepthRef.current = 0;
+    setIsAttachmentDragActive(false);
     void addDraftImageFiles(Array.from(event.dataTransfer.files));
   }, [addDraftImageFiles]);
 
@@ -2181,13 +2182,13 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       draftTextareaRef={draftTextareaRef}
       hasDraftInput={hasDraftInput}
       isForkingLatestSession={isForkingLatestSession}
-      isComposerDragActive={isComposerDragActive}
+      isComposerDragActive={isAttachmentDragActive}
       isDismissInboxHumanQuestionInFlight={isDismissInboxHumanQuestionInFlight}
       isResolveInboxHumanQuestionInFlight={isResolveInboxHumanQuestionInFlight}
-      onComposerDragEnter={handleComposerDragEnter}
-      onComposerDragLeave={handleComposerDragLeave}
-      onComposerDragOver={handleComposerDragOver}
-      onComposerDrop={handleComposerDrop}
+      onComposerDragEnter={handleAttachmentDragEnter}
+      onComposerDragLeave={handleAttachmentDragLeave}
+      onComposerDragOver={handleAttachmentDragOver}
+      onComposerDrop={handleAttachmentDrop}
       onDeleteQueuedMessage={(queuedMessageId) => {
         void deleteQueuedMessage(queuedMessageId);
       }}
@@ -2331,7 +2332,12 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
               isTranscriptStuckToBottom={isTranscriptStuckToBottom}
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
+              isFileDropActive={isAttachmentDragActive}
               onJumpToLatest={jumpToLatestMessage}
+              onFileDragEnter={handleAttachmentDragEnter}
+              onFileDragLeave={handleAttachmentDragLeave}
+              onFileDragOver={handleAttachmentDragOver}
+              onFileDrop={handleAttachmentDrop}
               onScroll={handleTranscriptScroll}
               organizationSlug={organizationSlug}
               session={selectedSession}

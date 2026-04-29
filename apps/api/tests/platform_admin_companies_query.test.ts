@@ -63,8 +63,6 @@ class PlatformAdminCompaniesQueryTestHarness {
                         async offset() {
                           return [{
                             clerkOrganizationId: "org_clerk_123",
-                            deletionRequestedAt: null,
-                            deletionStatus: "active",
                             id: "company-1",
                             memberCount: 3,
                             name: "Acme Workspace",
@@ -136,10 +134,8 @@ test("PlatformAdminCompanies query lists searchable paginated companies for plat
       name: "Acme Workspace",
       slug: "acme",
       plan: "pro",
-      deletionStatus: "active",
       clerkOrganizationId: "org_clerk_123",
       memberCount: 3,
-      deletionRequestedAt: null,
       enhancedLogging: {
         components: ["session_process_cleanup"],
         enabled: true,
