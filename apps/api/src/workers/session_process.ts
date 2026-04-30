@@ -1,9 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { inject, injectable } from "inversify";
-import type { Logger as PinoLogger } from "pino";
 import { Redis as IORedis } from "ioredis";
 import { Worker } from "bullmq";
 import { Config } from "../config/schema.ts";
 import { ApiLogger } from "../log/api_logger.ts";
+import { SessionPipelineLogger } from "../log/session_pipeline_logger.ts";
 import { SessionProcessExecutionService } from "../services/agent/session/process/execution.ts";
 import type { SessionWakeJobPayload } from "../services/agent/session/process/queue.ts";
 import { SessionProcessQueuedNames } from "../services/agent/session/process/queued_names.ts";
@@ -16,9 +17,10 @@ import { drainLocalWork } from "./local_drain.ts";
 @injectable()
 export class SessionProcessWorker {
   private readonly config: Config;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly sessionProcessExecutionService: SessionProcessExecutionService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly workerId: string;
   private readonly activeJobIds = new Set<string>();
   private connection?: IORedis;
   private worker?: Worker<SessionWakeJobPayload>;
@@ -31,8 +33,11 @@ export class SessionProcessWorker {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
   ) {
     this.config = config;
-    this.logger = logger.child({
+    this.workerId = randomUUID();
+    this.logger = new SessionPipelineLogger(logger.child({
       worker: "session_process",
+    }), {
+      worker_id: this.workerId,
     });
     this.sessionProcessExecutionService = sessionProcessExecutionService;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
@@ -54,15 +59,24 @@ export class SessionProcessWorker {
       this.sessionProcessQueuedNames.getWakeQueueName(),
       async (job) => {
         const activeJobId = String(job.id ?? `${job.data.companyId}:${job.data.sessionId}`);
+        const traceId = String(job.id ?? activeJobId);
+        const jobLogger = this.logger.child({
+          companyId: job.data.companyId,
+          session_id: job.data.sessionId,
+          trace_id: traceId,
+        });
         this.activeJobIds.add(activeJobId);
         try {
-          this.logger.debug({
-            companyId: job.data.companyId,
-            sessionId: job.data.sessionId,
+          jobLogger.debug({
+            event: "session_wake_job_started",
           }, "processing session wake job");
-          await this.sessionProcessExecutionService.execute(job.data.companyId, job.data.sessionId);
+          await this.sessionProcessExecutionService.execute(job.data.companyId, job.data.sessionId, {
+            trace_id: traceId,
+            worker_id: this.workerId,
+          });
         } catch (error) {
-          this.logger.error({
+          jobLogger.error({
+            event: "session_wake_job_failed",
             companyId: job.data.companyId,
             err: error,
             sessionId: job.data.sessionId,
@@ -72,9 +86,8 @@ export class SessionProcessWorker {
           this.activeJobIds.delete(activeJobId);
         }
 
-        this.logger.debug({
-          companyId: job.data.companyId,
-          sessionId: job.data.sessionId,
+        jobLogger.debug({
+          event: "session_wake_job_completed",
         }, "completed session wake job");
       },
       {
@@ -84,6 +97,7 @@ export class SessionProcessWorker {
     );
     this.worker.on("error", (error) => {
       this.logger.error({
+        event: "session_process_worker_failed",
         error,
       }, "session process worker failed");
     });

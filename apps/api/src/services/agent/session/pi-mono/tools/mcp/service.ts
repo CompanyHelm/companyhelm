@@ -1,6 +1,6 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import type { Logger as PinoLogger } from "pino";
 import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
+import { SessionPipelineLogger } from "../../../../../../log/session_pipeline_logger.ts";
 import { McpRuntimeClient } from "../../../../../mcp/runtime/client.ts";
 import { McpService, type McpServerRecord } from "../../../../../mcp/service.ts";
 
@@ -21,7 +21,7 @@ export type AgentMcpToolDescriptor = {
 export class AgentMcpToolService {
   private readonly companyId: string;
   private readonly agentId: string;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly mcpService: McpService;
   private readonly runtimeClient: McpRuntimeClient;
   private readonly transactionProvider: TransactionProviderInterface;
@@ -30,7 +30,7 @@ export class AgentMcpToolService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     agentId: string,
-    logger: PinoLogger,
+    logger: SessionPipelineLogger,
     mcpService: McpService,
     runtimeClient: McpRuntimeClient = new McpRuntimeClient(),
   ) {
@@ -127,6 +127,7 @@ export class AgentMcpToolService {
         {
           agentId: this.agentId,
           companyId: this.companyId,
+          event: "mcp_tool_discovery_failed",
           error: error instanceof Error ? error.message : String(error),
           mcpServerId: server.id,
           mcpServerName: server.name,

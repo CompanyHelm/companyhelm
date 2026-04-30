@@ -1,7 +1,7 @@
-import type { Logger as PinoLogger } from "pino";
 import { GithubClient } from "../../../../../github/client.ts";
 import { GithubInstallationStateService } from "../../../../../github/installation_state_service.ts";
 import { Config } from "../../../../../config/schema.ts";
+import { SessionPipelineLogger } from "../../../../../log/session_pipeline_logger.ts";
 import { ArtifactService } from "../../../../artifact_service.ts";
 import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
@@ -39,7 +39,7 @@ type DefaultAgentSessionModuleRegistryInput = {
   exaWebClient: ExaWebClient;
   githubClient: GithubClient;
   inboxService: AgentInboxService;
-  logger: PinoLogger;
+  logger: SessionPipelineLogger;
   mcpService: McpService;
   modelProviderService: ModelProviderService;
   modelRegistry: ModelRegistry;
