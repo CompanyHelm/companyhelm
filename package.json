@@ -43,7 +43,7 @@
     "node": "20.20.0",
     "npm": "11.6.2"
   },
-  "version": "1.22.0",
+  "version": "1.22.1",
   "dependencies": {
     "@e2b/desktop": "^2.2.2"
   }
