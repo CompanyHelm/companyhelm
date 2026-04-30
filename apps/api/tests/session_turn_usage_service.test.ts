@@ -49,6 +49,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
     companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
     modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
     sessionId: "00000000-0000-0000-0000-000000000003",
@@ -114,13 +115,14 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
 });
 
-test("SessionTurnUsageService stores subscription costs as virtual spend", async () => {
+test("SessionTurnUsageService stores platform subscription costs as managed virtual spend", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();
   const service = new SessionTurnUsageService();
 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
     companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "platform",
     costKind: "virtual",
     modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
@@ -166,6 +168,43 @@ test("SessionTurnUsageService stores subscription costs as virtual spend", async
   assert.equal(managedDay.modelProviderCredentialId, null);
 });
 
+test("SessionTurnUsageService stores user-provided subscription costs under the credential scope", async () => {
+  const harness = new SessionTurnUsageServiceTestHarness();
+  const service = new SessionTurnUsageService();
+
+  await service.recordUsage(harness.createTransactionProvider() as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
+    costKind: "virtual",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      cost: {
+        input: 0.000000001,
+        total: 0.000000001,
+      },
+      input: 100,
+      totalTokens: 100,
+    },
+  });
+
+  const managedTotal = harness.aggregateRows.find((row) => {
+    return row.scopeType === "managed_model_provider_credential" && row.period === "total";
+  });
+  const providerTotal = harness.aggregateRows.find((row) => {
+    return row.scopeType === "model_provider_credential" && row.period === "total";
+  });
+
+  assert.equal(managedTotal, undefined);
+  assert.ok(providerTotal);
+  assert.equal(providerTotal.modelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
+  assert.equal(providerTotal.totalCostNanoUsd, 0);
+  assert.equal(providerTotal.totalCostNanoVirtualUsd, 1);
+});
+
 test("SessionTurnUsageService skips empty usage payloads", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();
   const service = new SessionTurnUsageService();
@@ -173,6 +212,7 @@ test("SessionTurnUsageService skips empty usage payloads", async () => {
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
     companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
     modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
     sessionId: "00000000-0000-0000-0000-000000000003",

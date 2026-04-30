@@ -19,6 +19,7 @@ import { RedisService } from "../../../redis/service.ts";
 import { CodexRateLimitService } from "../../../ai_providers/codex_rate_limit_service.ts";
 import {
   SessionTurnUsageService,
+  type SessionTurnUsageCredentialSource,
   type SessionTurnUsageCostKind,
   type SessionTurnUsagePayload,
 } from "../session_turn_usage_service.ts";
@@ -139,6 +140,7 @@ type SessionAttribution = {
   apiKey: string | null;
   baseUrl: string | null;
   companyId: string;
+  credentialSource: SessionTurnUsageCredentialSource;
   costKind: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   modelProvider: string | null;
@@ -199,6 +201,7 @@ export class PiMonoSessionEventHandler {
   private agentId?: string;
   private modelProviderCredentialApiKey?: string;
   private modelProviderCredentialBaseUrl?: string | null;
+  private modelProviderCredentialSource?: SessionTurnUsageCredentialSource;
   private modelProviderCredentialCostKind?: SessionTurnUsageCostKind;
   private modelProviderCredentialId?: string;
   private modelProviderCredentialProvider?: string;
@@ -329,6 +332,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: attribution.companyId,
+      credentialSource: attribution.credentialSource,
       costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt,
@@ -607,6 +611,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: persistedMessageReference.companyId,
+      credentialSource: attribution.credentialSource,
       costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt: persistedMessageReference.timestamp,
@@ -630,7 +635,7 @@ export class PiMonoSessionEventHandler {
         baseUrl: attribution.baseUrl,
         companyId: attribution.companyId,
         credentialId: attribution.modelProviderCredentialId,
-        credentialSource: attribution.platformModelProviderCredentialId ? "platform" : "user_provided",
+        credentialSource: attribution.credentialSource,
         modelProvider: attribution.modelProvider,
       }, persistedMessageReference.timestamp);
     } catch (error: unknown) {
@@ -1246,6 +1251,7 @@ export class PiMonoSessionEventHandler {
       this.companyId
       && this.agentId
       && this.modelProviderCredentialId
+      && this.modelProviderCredentialSource
       && this.modelProviderCredentialCostKind
     ) {
       return {
@@ -1253,6 +1259,7 @@ export class PiMonoSessionEventHandler {
         apiKey: this.modelProviderCredentialApiKey ?? null,
         baseUrl: this.modelProviderCredentialBaseUrl ?? null,
         companyId: this.companyId,
+        credentialSource: this.modelProviderCredentialSource,
         costKind: this.modelProviderCredentialCostKind,
         modelProviderCredentialId: this.modelProviderCredentialId,
         modelProvider: this.modelProviderCredentialProvider ?? null,
@@ -1297,6 +1304,23 @@ export class PiMonoSessionEventHandler {
           apiKey: null,
           baseUrl: null,
           companyId,
+          credentialSource: undefined,
+          costKind: undefined,
+          modelProviderCredentialId: undefined,
+          modelProvider: null,
+          platformModelId: null,
+          platformModelProviderCredentialId: null,
+          platformModelProviderCredentialModelId: null,
+        };
+      }
+      const credentialSource = PiMonoSessionEventHandler.resolveCredentialSource(currentModelCredentialSource);
+      if (!credentialSource) {
+        return {
+          agentId: sessionRecord?.agentId,
+          apiKey: null,
+          baseUrl: null,
+          companyId,
+          credentialSource: undefined,
           costKind: undefined,
           modelProviderCredentialId: undefined,
           modelProvider: null,
@@ -1306,11 +1330,11 @@ export class PiMonoSessionEventHandler {
         };
       }
 
-      if (currentModelCredentialSource === "platform") {
+      if (credentialSource === "platform") {
         await PlatformAdminAccess.enable(selectableDatabase);
       }
 
-      const [credentialModelRecord] = currentModelCredentialSource === "platform"
+      const [credentialModelRecord] = credentialSource === "platform"
         ? await selectableDatabase
           .select({
             modelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
@@ -1333,6 +1357,7 @@ export class PiMonoSessionEventHandler {
           apiKey: null,
           baseUrl: null,
           companyId,
+          credentialSource,
           costKind: undefined,
           modelProviderCredentialId,
           modelProvider: null,
@@ -1342,7 +1367,7 @@ export class PiMonoSessionEventHandler {
         };
       }
 
-      const [credentialRecord] = currentModelCredentialSource === "platform"
+      const [credentialRecord] = credentialSource === "platform"
         ? await selectableDatabase
           .select({
             baseUrl: platformModelProviderCredentials.baseUrl,
@@ -1370,19 +1395,20 @@ export class PiMonoSessionEventHandler {
         apiKey: typeof credentialRecord?.encryptedApiKey === "string" ? credentialRecord.encryptedApiKey : null,
         baseUrl: typeof credentialRecord?.baseUrl === "string" ? credentialRecord.baseUrl : null,
         companyId,
-        costKind: currentModelCredentialSource === "platform"
+        credentialSource,
+        costKind: credentialSource === "platform"
           ? "virtual"
           : credentialRecord
           ? PiMonoSessionEventHandler.resolveCredentialCostKind(credentialRecord)
           : undefined,
         modelProviderCredentialId,
         modelProvider: typeof credentialRecord?.modelProvider === "string" ? credentialRecord.modelProvider : null,
-        platformModelId: currentModelCredentialSource === "platform"
+        platformModelId: credentialSource === "platform"
           && typeof sessionRecord?.currentPlatformModelId === "string"
           ? sessionRecord.currentPlatformModelId
           : null,
-        platformModelProviderCredentialId: currentModelCredentialSource === "platform" ? modelProviderCredentialId : null,
-        platformModelProviderCredentialModelId: currentModelCredentialSource === "platform"
+        platformModelProviderCredentialId: credentialSource === "platform" ? modelProviderCredentialId : null,
+        platformModelProviderCredentialModelId: credentialSource === "platform"
           ? currentPlatformModelProviderCredentialModelId
           : null,
       };
@@ -1390,6 +1416,7 @@ export class PiMonoSessionEventHandler {
 
     const companyId = attribution.companyId;
     const agentId = attribution.agentId;
+    const credentialSource = attribution.credentialSource;
     const costKind = attribution.costKind;
     const apiKey = attribution.apiKey;
     const baseUrl = attribution.baseUrl;
@@ -1398,6 +1425,7 @@ export class PiMonoSessionEventHandler {
     if (
       typeof companyId !== "string"
       || typeof agentId !== "string"
+      || typeof credentialSource !== "string"
       || typeof costKind !== "string"
       || typeof modelProviderCredentialId !== "string"
     ) {
@@ -1408,6 +1436,7 @@ export class PiMonoSessionEventHandler {
     this.agentId = agentId;
     this.modelProviderCredentialApiKey = apiKey ?? undefined;
     this.modelProviderCredentialBaseUrl = typeof baseUrl === "string" ? baseUrl : null;
+    this.modelProviderCredentialSource = credentialSource;
     this.modelProviderCredentialCostKind = costKind;
     this.modelProviderCredentialId = modelProviderCredentialId;
     this.modelProviderCredentialProvider = modelProvider ?? undefined;
@@ -1419,6 +1448,7 @@ export class PiMonoSessionEventHandler {
       apiKey,
       baseUrl: this.modelProviderCredentialBaseUrl,
       companyId,
+      credentialSource,
       costKind,
       modelProviderCredentialId,
       modelProvider,
@@ -1434,6 +1464,14 @@ export class PiMonoSessionEventHandler {
     }
 
     return "actual";
+  }
+
+  private static resolveCredentialSource(value: string): SessionTurnUsageCredentialSource | null {
+    if (value === "platform" || value === "user_provided") {
+      return value;
+    }
+
+    return null;
   }
 
   private async resolveMessageId(sessionEvent: SessionEvent): Promise<string> {

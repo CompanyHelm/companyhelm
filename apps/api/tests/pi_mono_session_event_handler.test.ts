@@ -774,6 +774,7 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.credentialSource, "user_provided");
   assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
@@ -798,12 +799,14 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
 for (const scenario of [
   {
     description: "oauth subscription credentials",
+    expectedCredentialSource: "user_provided" as const,
     input: {
       credentialType: "oauth_token" as const,
     },
   },
   {
     description: "platform credentials",
+    expectedCredentialSource: "platform" as const,
     input: {
       credentialSource: "platform" as const,
     },
@@ -847,6 +850,7 @@ for (const scenario of [
     }
 
     assert.equal(usageRecords.length, 1);
+    assert.equal(usageRecords[0]?.credentialSource, scenario.expectedCredentialSource);
     assert.equal(usageRecords[0]?.costKind, "virtual");
   });
 }
@@ -927,6 +931,7 @@ test("PiMonoSessionEventHandler records current assistant usage when interrupted
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.credentialSource, "user_provided");
   assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");

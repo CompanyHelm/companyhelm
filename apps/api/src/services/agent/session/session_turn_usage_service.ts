@@ -22,6 +22,7 @@ export type SessionTurnUsagePayload = {
 export type SessionTurnUsageRecordInput = {
   agentId: string;
   companyId: string;
+  credentialSource: SessionTurnUsageCredentialSource;
   costKind?: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   recordedAt: Date;
@@ -30,6 +31,7 @@ export type SessionTurnUsageRecordInput = {
   usage: SessionTurnUsagePayload;
 };
 
+export type SessionTurnUsageCredentialSource = "platform" | "user_provided";
 export type SessionTurnUsageCostKind = "actual" | "virtual";
 
 type NormalizedUsage = {
@@ -227,7 +229,7 @@ export class SessionTurnUsageService {
   private buildAggregateRecords(input: SessionTurnUsageRecordInput): AggregateRecord[] {
     const dayPeriodStart = this.resolveUtcDayPeriodStart(input.recordedAt);
     const monthPeriodStart = this.resolveUtcMonthPeriodStart(input.recordedAt);
-    const modelProviderScopeType = input.costKind === "virtual"
+    const modelProviderScopeType = input.credentialSource === "platform"
       ? "managed_model_provider_credential"
       : "model_provider_credential";
 

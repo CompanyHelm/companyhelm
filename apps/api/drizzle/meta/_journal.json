@@ -1065,6 +1065,13 @@
       "when": 1777478000000,
       "tag": "0152_company_member_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1777479000000,
+      "tag": "0153_repair_managed_llm_usage",
+      "breakpoints": true
     }
   ]
 }
