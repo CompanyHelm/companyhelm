@@ -1,5 +1,5 @@
-import type { Logger as PinoLogger } from "pino";
 import type { Config } from "../../../../../config/schema.ts";
+import { SessionPipelineLogger } from "../../../../../log/session_pipeline_logger.ts";
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentTerminalToolProvider } from "../tools/terminal/provider.ts";
 import { AgentReadImageToolService } from "../tools/terminal/read_image_service.ts";
@@ -12,9 +12,9 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
  */
 export class TerminalSessionModule extends AgentSessionModuleInterface {
   private readonly config: Config;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
 
-  constructor(logger: PinoLogger, config: Config) {
+  constructor(logger: SessionPipelineLogger, config: Config) {
     super();
     this.logger = logger;
     this.config = config;

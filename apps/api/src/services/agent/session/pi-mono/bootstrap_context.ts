@@ -1,5 +1,5 @@
-import type { Logger as PinoLogger } from "pino";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 import type {
   AgentEnvironmentTemplate,
@@ -17,7 +17,7 @@ type AgentSessionBootstrapContextInput = {
   computeProviderDefinitionId: string;
   environmentProvider: ComputeProvider;
   environmentTemplate: AgentEnvironmentTemplate;
-  logger: PinoLogger;
+  logger: SessionPipelineLogger;
   modelApiKey: string;
   modelId: string;
   modelProviderId: string;
@@ -43,7 +43,7 @@ export class AgentSessionBootstrapContext {
   readonly computeProviderDefinitionId: string;
   readonly environmentProvider: ComputeProvider;
   readonly environmentTemplate: AgentEnvironmentTemplate;
-  readonly logger: PinoLogger;
+  readonly logger: SessionPipelineLogger;
   readonly modelApiKey: string;
   readonly modelId: string;
   readonly modelProviderId: string;

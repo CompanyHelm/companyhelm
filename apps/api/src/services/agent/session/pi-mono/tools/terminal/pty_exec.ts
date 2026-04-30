@@ -1,9 +1,9 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
-import type { Logger as PinoLogger } from "pino";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/providers/shell_interface.ts";
+import { SessionPipelineLogger } from "../../../../../../log/session_pipeline_logger.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
@@ -40,9 +40,9 @@ export class AgentPtyExecTool {
   });
 
   private readonly promptScope: AgentEnvironmentPromptScope;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
 
-  constructor(promptScope: AgentEnvironmentPromptScope, logger: PinoLogger) {
+  constructor(promptScope: AgentEnvironmentPromptScope, logger: SessionPipelineLogger) {
     this.promptScope = promptScope;
     this.logger = logger;
   }
@@ -68,8 +68,10 @@ export class AgentPtyExecTool {
             this.logger.warn({
               command: error.command,
               err: error,
+              event: "pty_exec_timeout",
               provider: error.provider,
               timeoutSeconds: error.timeoutSeconds,
+              tool_name: "pty_exec",
               workingDirectory: error.workingDirectory,
             }, "environment shell command timed out");
           }
