@@ -420,19 +420,6 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_tasks",
   }, {
-    description: "List tasks assigned to the current agent with pagination and optional status filtering.",
-    id: "task.assigned.list",
-    inputSchema: {
-      additionalProperties: false,
-      properties: {
-        limit: { maximum: 100, minimum: 1, type: "integer" },
-        offset: { minimum: 0, type: "integer" },
-        status: { enum: ["draft", "in_progress", "completed", null] },
-      },
-      type: "object",
-    },
-    systemSkillKey: "manage_tasks",
-  }, {
     description: "Create a company task and optionally assign it to one human user or one agent.",
     id: "task.create",
     inputSchema: {

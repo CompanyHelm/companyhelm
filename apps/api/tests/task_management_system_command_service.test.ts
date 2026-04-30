@@ -9,7 +9,7 @@ const context = {
   transactionProvider: "transaction-provider",
 } as never;
 
-test("TaskManagementSystemCommandService lists tasks assigned to the current agent", async () => {
+test("TaskManagementSystemCommandService lists company tasks with filters", async () => {
   let capturedInput: Record<string, unknown> | null = null;
   const service = new TaskManagementSystemCommandService({
     async listTasks(_transactionProvider: unknown, input: Record<string, unknown>) {
@@ -34,14 +34,15 @@ test("TaskManagementSystemCommandService lists tasks assigned to the current age
     },
   } as never);
 
-  const result = await service.execute("task.assigned.list", {
+  const result = await service.execute("task.list", {
+    assignedAgentId: "agent-2",
     limit: 10,
     offset: 5,
     status: "in_progress",
   }, context);
 
   assert.deepEqual(capturedInput, {
-    assignedAgentId: "agent-1",
+    assignedAgentId: "agent-2",
     companyId: "company-123",
     limit: 10,
     offset: 5,

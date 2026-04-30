@@ -32,8 +32,6 @@ export class TaskManagementSystemCommandService {
     switch (commandId) {
       case "task.list":
         return this.listTasks(input, context);
-      case "task.assigned.list":
-        return this.listAssignedTasks(input, context);
       case "task.create":
         return this.createTask(input, context);
       case "task.update":
@@ -52,20 +50,6 @@ export class TaskManagementSystemCommandService {
     const payload = this.inputReader.requireRecord(input);
     const tasks = await this.taskService.listTasks(context.transactionProvider, {
       ...this.readListInput(payload),
-      companyId: context.companyId,
-    });
-
-    return this.jsonSerializer.serializeRecord(tasks);
-  }
-
-  private async listAssignedTasks(
-    input: unknown,
-    context: SystemCommandExecutionContext,
-  ): Promise<Record<string, unknown>> {
-    const payload = this.inputReader.requireRecord(input);
-    const tasks = await this.taskService.listTasks(context.transactionProvider, {
-      ...this.readListInput(payload),
-      assignedAgentId: context.agentId,
       companyId: context.companyId,
     });
 

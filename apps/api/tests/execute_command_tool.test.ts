@@ -132,8 +132,10 @@ test("AgentPtyExecTool logs shell timeouts with the command and rethrows", async
   assert.deepEqual(warn.mock.calls[0], [{
     command: "ss -ltnp | grep ':4000 ' || true",
     err: timeoutError,
+    event: "pty_exec_timeout",
     provider: "e2b",
     timeoutSeconds: 30,
+    tool_name: "pty_exec",
     workingDirectory: "/workspace/companyhelm-ng",
   }, "environment shell command timed out"]);
 });

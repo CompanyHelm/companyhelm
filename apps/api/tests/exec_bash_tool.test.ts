@@ -86,8 +86,10 @@ test("AgentBashExecTool logs shell timeouts with the command and rethrows", asyn
   assert.deepEqual(warn.mock.calls[0], [{
     command: "bash -lc 'sleep 10'",
     err: timeoutError,
+    event: "bash_exec_timeout",
     provider: "e2b",
     timeoutSeconds: 10,
+    tool_name: "bash_exec",
     workingDirectory: "/workspace",
   }, "environment shell command timed out"]);
 });

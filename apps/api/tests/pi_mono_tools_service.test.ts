@@ -7,6 +7,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
 import { AgentManagementToolProvider } from "../src/services/agent/session/pi-mono/tools/agents/provider.ts";
+import { AgentAssignedTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/provider.ts";
 import { AgentArtifactToolProvider } from "../src/services/agent/session/pi-mono/tools/artifacts/provider.ts";
 import { AgentCompanyDirectoryToolProvider } from "../src/services/agent/session/pi-mono/tools/company_directory/provider.ts";
 import { AgentConversationToolProvider } from "../src/services/agent/session/pi-mono/tools/conversations/provider.ts";
@@ -110,6 +111,14 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
         throw new Error("agent messages should not be sent during initialization");
       },
     } as never),
+    new AgentAssignedTaskToolProvider({
+      async listAssignedTasks() {
+        throw new Error("assigned tasks should not be listed during initialization");
+      },
+      async updateAssignedTaskStatus() {
+        throw new Error("assigned task status should not be updated during initialization");
+      },
+    } as never),
     new AgentArtifactToolProvider({
       async archiveArtifact() {
         throw new Error("artifact archive should not run during initialization");
@@ -174,6 +183,8 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "web_fetch",
       "ask_human_question",
       "send_agent_message",
+      "list_assigned_tasks",
+      "update_assigned_task_status",
       "list_artifacts",
       "get_artifact",
       "create_markdown_artifact",
@@ -269,6 +280,14 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentConversationToolProvider({
       async sendMessage() {
         throw new Error("agent messages should not be sent during cleanup");
+      },
+    } as never),
+    new AgentAssignedTaskToolProvider({
+      async listAssignedTasks() {
+        throw new Error("assigned tasks should not be listed during cleanup");
+      },
+      async updateAssignedTaskStatus() {
+        throw new Error("assigned task status should not be updated during cleanup");
       },
     } as never),
     new AgentArtifactToolProvider({
@@ -520,6 +539,14 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("agent messages should not be sent during session creation");
       },
     } as never),
+    new AgentAssignedTaskToolProvider({
+      async listAssignedTasks() {
+        throw new Error("assigned tasks should not be listed during session creation");
+      },
+      async updateAssignedTaskStatus() {
+        throw new Error("assigned task status should not be updated during session creation");
+      },
+    } as never),
     new AgentArtifactToolProvider({
       async archiveArtifact() {
         throw new Error("artifact archive should not run during session creation");
@@ -598,6 +625,8 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "web_fetch",
       "ask_human_question",
       "send_agent_message",
+      "list_assigned_tasks",
+      "update_assigned_task_status",
       "list_artifacts",
       "get_artifact",
       "create_markdown_artifact",
