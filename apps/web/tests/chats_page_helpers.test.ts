@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE,
+  CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS,
   type ToolCallSummaryRecord,
   hasVisibleMessage,
   resolveAssistantContentDisplay,
@@ -365,4 +366,11 @@ test("resolveAssistantContentDisplay keeps regular assistant text next to a tool
 test("thinking indicator gradient uses theme foreground colors so it stays visible in light mode", () => {
   assert.match(CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE, /var\(--foreground\)/);
   assert.doesNotMatch(CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE, /rgba\(250,250,250/);
+});
+
+test("chat transcript gutter does not add extra left margin on mobile", () => {
+  const mobileClasses = CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS.split(" ").filter((className) => !className.includes(":"));
+
+  assert.deepEqual(mobileClasses, []);
+  assert.match(CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS, /md:pl-6/);
 });
