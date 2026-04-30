@@ -8,6 +8,7 @@ import type {
 import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
+  AlertTriangleIcon,
   ChevronRightIcon,
   ExternalLinkIcon,
   GitForkIcon,
@@ -47,8 +48,25 @@ import {
 import { ChatsPagePreferenceStorage } from "./chats_page_preference_storage";
 import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
-const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ text }: { text: string }) {
-  return <MarkdownContent content={text} />;
+const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
+  { isError, text }: { isError: boolean; text: string },
+) {
+  if (!isError) {
+    return <MarkdownContent content={text} />;
+  }
+
+  return (
+    <div className="grid gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-destructive">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em]">
+        <AlertTriangleIcon className="size-3.5 shrink-0" />
+        Error
+      </div>
+      <MarkdownContent
+        className="[&_a]:text-destructive [&_code]:text-destructive [&_p]:text-destructive [&_li]:text-destructive"
+        content={text}
+      />
+    </div>
+  );
 });
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
@@ -691,7 +709,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                     key={`${message.id}-assistant-content-${contentIndex}`}
                     className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
                   >
-                    <AssistantTranscriptMessage text={content.text} />
+                    <AssistantTranscriptMessage isError={message.isError} text={content.text} />
                   </div>
                 ))}
               </div>

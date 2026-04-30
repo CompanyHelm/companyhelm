@@ -1021,7 +1021,7 @@ test("PiMonoSessionEventHandler formats Codex cyber policy errors before persist
     String(messageRecord?.errorMessage),
     /OpenAI flagged this request for possible cybersecurity risk/,
   );
-  assert.match(String(messageRecord?.errorMessage), /ChatGPT with GPT-5\.4/);
+  assert.match(String(messageRecord?.errorMessage), /switch this agent to the GPT-5\.4 model/);
   assert.doesNotMatch(String(messageRecord?.errorMessage), /cyber_policy/);
 });
 

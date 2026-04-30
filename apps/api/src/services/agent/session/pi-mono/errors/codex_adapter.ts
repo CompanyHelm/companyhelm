@@ -21,7 +21,7 @@ export class PiMonoCodexProviderErrorAdapter implements PiMonoProviderErrorAdapt
   private static readonly cyberPolicyErrorMessage = [
     "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.",
     "",
-    "If this is normal coding work, rephrase the request with the intended benign context. You can also try ChatGPT with GPT-5.4 for a conversational coding workflow. Authorized security work may require Trusted Access for Cyber.",
+    "If this is normal coding work and Codex keeps blocking the request, switch this agent to the GPT-5.4 model instead to avoid the Codex cybersecurity block. You can also rephrase the request with the intended benign context. Authorized security work may require Trusted Access for Cyber.",
   ].join("\n");
 
   formatErrorMessage(input: PiMonoProviderErrorAdapterInput): string | null {
