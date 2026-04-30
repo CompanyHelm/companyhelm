@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { pathToFileURL } from "node:url";
 import { and, eq } from "drizzle-orm";
 import pino from "pino";
 import { ApiContainer } from "../src/api_container.ts";
@@ -27,6 +28,8 @@ import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 const LOCAL_DEV_USER_ID = "00000000-0000-4000-8000-000000000001";
 const LOCAL_DEV_COMPANY_ID = "00000000-0000-4000-8000-000000000002";
 const LOCAL_DEV_PLATFORM_OPENAI_CREDENTIAL_ID = "00000000-0000-4000-8000-000000000003";
+const LOCAL_DEV_OPENAI_API_KEY_ENV_VAR = "COMPANYHELM_LOCAL_OPENAI_API_KEY";
+const LOCAL_DEV_SEED_OPENAI_FLAG = "--seed-openai-from-env";
 const LOCAL_DEV_USER_EMAIL = "andrea.local@companyhelm.dev";
 const LOCAL_DEV_COMPANY_SLUG = "companyhelm-local";
 
@@ -50,6 +53,11 @@ type LocalDevPlatformModelRecord = {
   id: string;
 };
 
+type LocalDevSeedOptions = {
+  configPath: string;
+  shouldSeedOpenAiFromEnv: boolean;
+};
+
 type LocalDevMutableDatabase = DatabaseTransactionInterface & {
   insert(table: unknown): {
     values(value: Record<string, unknown>): {
@@ -70,9 +78,9 @@ type LocalDevMutableDatabase = DatabaseTransactionInterface & {
  */
 export class LocalDevSeedScript {
   async run(argv: string[] = process.argv): Promise<void> {
-    const argumentsDocument = new ApiCli().parse(argv);
-    const config = new Config(ConfigLoader.load(argumentsDocument.configPath, ConfigDocument));
-    const openAiApiKey = this.resolveOpenAiApiKey();
+    const seedOptions = this.parseSeedOptions(argv);
+    const config = new Config(ConfigLoader.load(seedOptions.configPath, ConfigDocument));
+    const openAiApiKey = this.resolveOpenAiApiKey(seedOptions);
 
     const container = new ApiContainer().build(config);
     const logger = pino(ApiLogger.createOptions(config)).child({ component: "local_dev_seed" });
@@ -80,14 +88,16 @@ export class LocalDevSeedScript {
 
     try {
       await container.get(DbBootstrap).run();
-      await this.seedPlatformOpenAiCredential(
-        adminDatabase,
-        openAiApiKey,
-        new PlatformModelProviderCredentialService(
-          new ModelRegistry(),
-          container.get(ModelService),
-        ),
-      );
+      if (openAiApiKey) {
+        await this.seedPlatformOpenAiCredential(
+          adminDatabase,
+          openAiApiKey,
+          new PlatformModelProviderCredentialService(
+            new ModelRegistry(),
+            container.get(ModelService),
+          ),
+        );
+      }
       const seeded = await this.seed(adminDatabase, container.get(CompanyBootstrapService));
       logger.info(seeded, "seeded local development data");
     } finally {
@@ -95,13 +105,39 @@ export class LocalDevSeedScript {
     }
   }
 
-  private resolveOpenAiApiKey(): string {
-    const openAiApiKey = String(process.env.OPENAI_API_KEY || "").trim();
+  parseSeedOptions(argv: string[]): LocalDevSeedOptions {
+    const shouldSeedOpenAiFromEnv = argv.includes(LOCAL_DEV_SEED_OPENAI_FLAG);
+    const apiArgv = argv.filter((argument) => argument !== LOCAL_DEV_SEED_OPENAI_FLAG);
+    const argumentsDocument = new ApiCli().parse(apiArgv);
+
+    return {
+      configPath: argumentsDocument.configPath,
+      shouldSeedOpenAiFromEnv,
+    };
+  }
+
+  resolveOpenAiApiKey(seedOptions: LocalDevSeedOptions): string | null {
+    if (!seedOptions.shouldSeedOpenAiFromEnv) {
+      return null;
+    }
+
+    const openAiApiKey = String(process.env[LOCAL_DEV_OPENAI_API_KEY_ENV_VAR] || "").trim();
     if (!openAiApiKey) {
-      throw new Error("OPENAI_API_KEY is required so local dev can seed the CompanyHelm platform OpenAI credential.");
+      throw new Error(`${LOCAL_DEV_OPENAI_API_KEY_ENV_VAR} is required when ${LOCAL_DEV_SEED_OPENAI_FLAG} is passed.`);
     }
 
     return openAiApiKey;
+  }
+
+  async validateOpenAiApiKey(
+    openAiApiKey: string,
+    platformCredentialService: Pick<PlatformModelProviderCredentialService, "fetchModels">,
+  ): Promise<void> {
+    await platformCredentialService.fetchModels({
+      apiKey: openAiApiKey,
+      baseUrl: null,
+      modelProvider: "openai",
+    });
   }
 
   private async seedPlatformOpenAiCredential(
@@ -113,6 +149,8 @@ export class LocalDevSeedScript {
     if (!database.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
+
+    await this.validateOpenAiApiKey(openAiApiKey, platformCredentialService);
 
     await database.transaction(async (transaction) => {
       await this.upsertPlatformOpenAiCredential(transaction as DatabaseTransactionInterface, openAiApiKey);
@@ -146,14 +184,6 @@ export class LocalDevSeedScript {
       .limit(1) as LocalDevPlatformCredentialRecord[];
     const now = new Date();
     const database = transaction as LocalDevMutableDatabase;
-    await database
-      .update(platformModelProviderCredentials)
-      .set({
-        isDefault: false,
-        updatedAt: now,
-      })
-      .where(eq(platformModelProviderCredentials.isDefault, true));
-
     if (existingCredential) {
       await database
         .update(platformModelProviderCredentials)
@@ -166,7 +196,6 @@ export class LocalDevSeedScript {
           refreshToken: null,
           accessTokenExpiresAt: null,
           refreshedAt: null,
-          isDefault: true,
           status: "active",
           errorMessage: null,
           updatedAt: now,
@@ -187,7 +216,6 @@ export class LocalDevSeedScript {
         refreshToken: null,
         accessTokenExpiresAt: null,
         refreshedAt: null,
-        isDefault: true,
         status: "active",
         errorMessage: null,
         createdByUserId: null,
@@ -349,4 +377,6 @@ export class LocalDevSeedScript {
   }
 }
 
-await new LocalDevSeedScript().run(process.argv);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await new LocalDevSeedScript().run(process.argv);
+}

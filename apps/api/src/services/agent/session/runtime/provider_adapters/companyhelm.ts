@@ -11,6 +11,7 @@ import { OpenAiRuntimeProviderAdapter } from "./openai.ts";
  * adapter is needed, but existing rows may still store `companyhelm` as the credential provider.
  */
 export class CompanyHelmRuntimeProviderAdapter implements RuntimeProviderAdapterInterface {
+  private static readonly PLACEHOLDER_API_KEY_PREFIX = "companyhelm-managed-";
   private readonly openAiAdapter: OpenAiRuntimeProviderAdapter;
 
   constructor(openAiAdapter: OpenAiRuntimeProviderAdapter = new OpenAiRuntimeProviderAdapter()) {
@@ -18,6 +19,12 @@ export class CompanyHelmRuntimeProviderAdapter implements RuntimeProviderAdapter
   }
 
   resolve(input: RuntimeProviderAdapterInput): RuntimeProviderResolution {
+    if (input.apiKey.startsWith(CompanyHelmRuntimeProviderAdapter.PLACEHOLDER_API_KEY_PREFIX)) {
+      throw new Error(
+        "CompanyHelm-managed local model access is not configured. Set COMPANYHELM_LOCAL_OPENAI_API_KEY before running local-dev to seed a validated local OpenAI route.",
+      );
+    }
+
     return this.openAiAdapter.resolve(input);
   }
 }

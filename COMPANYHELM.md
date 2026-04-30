@@ -7,6 +7,8 @@ This file explains how to run CompanyHelm locally without CORS issues, and how t
 - Preferred one-command local dev auth setup: `npm run local-dev`.
 - Preferred one-command E2B setup after exposing ports: `COMPANYHELM_API_PUBLIC_URL=<api-url> COMPANYHELM_WEB_PUBLIC_URL=<web-url> npm run local-e2b`.
 - Both commands seed `andrea.local@companyhelm.dev`, `CompanyHelm Local`, and a `CEO` agent using the CompanyHelm provider.
+- `npm run local-dev` does not require an OpenAI key; set `COMPANYHELM_LOCAL_OPENAI_API_KEY` only when you want real local agent execution.
+- Local OpenAI keys are validated against the OpenAI models API before the seed script activates a local platform route.
 - For a normal local setup, keep everything on localhost:
   - web: `http://localhost:5173`
   - api: `http://localhost:4000`
@@ -54,6 +56,20 @@ That must match how you are opening the API locally.
 npm run db:up
 ```
 
+### Optional: enable real local agent model execution
+
+Local development starts without a model key so UI work does not depend on LLM credentials.
+If you want local agents to execute against OpenAI, provide an explicit local-only shell environment variable:
+
+```bash
+COMPANYHELM_LOCAL_OPENAI_API_KEY=sk-... npm run local-dev
+```
+
+The local seed script validates that key with OpenAI before it writes/updates the local
+platform credential and routes default platform models to it. Ambient `OPENAI_API_KEY` and
+`COMPANYHELM_OPENAI_API_KEY` values are intentionally ignored by the local seed flow to avoid
+accidentally activating stale or placeholder credentials.
+
 ### 4. Start the API
 
 ```bash
@@ -100,7 +116,7 @@ There is also a second issue: if the forwarded web app still points at `http://l
 
 ## Correct setup when you want forwarded URLs
 
-The easiest E2B path is now `npm run local-e2b` after retrieving the API and web forwarded URLs with `get_e2b_port_url`. The command uses `apps/api/config/local-e2b.yaml` so forwarded CORS is injected by environment variables instead of editing `local.yaml` manually.
+The easiest E2B path is now `npm run local-e2b` after retrieving the API and web forwarded URLs with `get_e2b_port_url`. The command uses `apps/api/config/local-e2b.yaml` so forwarded CORS is injected by environment variables instead of editing `local.yaml` manually. Add `COMPANYHELM_LOCAL_OPENAI_API_KEY=sk-...` only when you want the E2B local run to validate and seed a real local OpenAI route.
 
 
 If you want to open the app through a forwarded URL, do all of the following.
@@ -205,11 +221,12 @@ Typical flow:
 
 ### Best flow for day-to-day local development
 
-Use localhost only:
+Use localhost only, and omit model credentials unless you are testing real agent execution:
 
 - keep `VITE_GRAPHQL_URL=http://localhost:4000/graphql`
 - open `http://localhost:5173`
 - do not use port forwarding unless you specifically need to share or demo the app
+- optionally set `COMPANYHELM_LOCAL_OPENAI_API_KEY` if you need local agents to call OpenAI
 
 ### Best flow for demos from the CompanyHelm runtime
 
@@ -243,6 +260,10 @@ If the browser shows a CORS error, check these in order:
 6. **Are both API and web ports actually running?**
    - web alone is not enough if the browser needs to call the API remotely
 
+7. **Did an agent run fail with local model access not configured?**
+   - rerun local dev with `COMPANYHELM_LOCAL_OPENAI_API_KEY=sk-... npm run local-dev`
+   - the seed script validates the key before activating the local OpenAI platform route
+
 ## Safe default
 
 If you are not explicitly demoing or sharing the app, the safest setup is still:
@@ -250,5 +271,6 @@ If you are not explicitly demoing or sharing the app, the safest setup is still:
 - API on `http://localhost:4000`
 - web on `http://localhost:5173`
 - `VITE_GRAPHQL_URL=http://localhost:4000/graphql`
+- no OpenAI key is needed unless you are testing real agent execution
 
 That path matches the checked-in local CORS settings and avoids almost all local browser CORS issues.
