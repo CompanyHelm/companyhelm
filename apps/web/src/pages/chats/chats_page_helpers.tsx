@@ -27,7 +27,7 @@ export const CHAT_TRANSCRIPT_TOP_LOAD_MIN_THRESHOLD_PX = 240;
 export const CHAT_TRANSCRIPT_TOP_LOAD_MAX_THRESHOLD_PX = 480;
 export const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 export const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
-export const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
+export const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "md:pl-6";
 export const CHATS_THINKING_GRADIENT_KEYFRAMES = `
 @keyframes chats-thinking-gradient {
   0% {

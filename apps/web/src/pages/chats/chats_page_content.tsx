@@ -2327,7 +2327,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-4 pr-0 pt-0 pb-0 md:pt-0 md:pb-0">
+          <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-1 pr-0 pt-0 pb-0 md:pl-4 md:pt-0 md:pb-0">
             <ChatTranscriptPane
               isTranscriptStuckToBottom={isTranscriptStuckToBottom}
               isLoadingOlderMessages={isLoadingOlderTranscript}
