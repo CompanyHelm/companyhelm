@@ -48,6 +48,7 @@ type SessionQueuedMessageRecord = Record<string, unknown> & {
 type PiMonoSessionEventHandlerTestHarnessInput = {
   credentialSource?: "platform" | "user_provided";
   credentialType?: "api_key" | "oauth_token";
+  modelProvider?: string;
 };
 
 class PiMonoSessionEventHandlerTestHarness {
@@ -195,7 +196,7 @@ class PiMonoSessionEventHandlerTestHarness {
                         return [{
                           baseUrl: null,
                           encryptedApiKey: "sk-test",
-                          modelProvider: "openai",
+                          modelProvider: input.modelProvider ?? "openai",
                           type: input.credentialType ?? "api_key",
                         }];
                       },
@@ -972,6 +973,86 @@ test("PiMonoSessionEventHandler persists assistant error text on failed message 
 
   const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
   assert.equal(messageContentRecords, undefined);
+});
+
+test("PiMonoSessionEventHandler formats Codex cyber policy errors before persisting them", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create({
+    modelProvider: "openai-codex",
+  });
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      codexRateLimitService: {
+        async refreshCredentialLimits() {
+          return undefined;
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        errorMessage: `Codex error: ${JSON.stringify({
+          error: {
+            code: "cyber_policy",
+            message: "This content was flagged for possible cybersecurity risk.",
+            type: "invalid_request",
+          },
+          sequence_number: 3,
+          type: "error",
+        })}`,
+        role: "assistant",
+        stopReason: "error",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.isError, true);
+  assert.match(
+    String(messageRecord?.errorMessage),
+    /OpenAI flagged this request for possible cybersecurity risk/,
+  );
+  assert.match(String(messageRecord?.errorMessage), /ChatGPT with GPT-5\.4/);
+  assert.doesNotMatch(String(messageRecord?.errorMessage), /cyber_policy/);
+});
+
+test("PiMonoSessionEventHandler keeps default provider errors unchanged", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create({
+    modelProvider: "openai",
+  });
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        errorMessage: "The model provider request failed.",
+        role: "assistant",
+        stopReason: "error",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.isError, true);
+  assert.equal(messageRecord?.errorMessage, "The model provider request failed.");
 });
 
 test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rotates it for the next turn", async () => {

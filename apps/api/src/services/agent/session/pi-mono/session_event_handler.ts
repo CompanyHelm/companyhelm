@@ -26,6 +26,7 @@ import {
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
 import { UserSessionReadService } from "../user_session_read_service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
+import { PiMonoProviderErrorAdapterRegistry } from "./errors/adapter_registry.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -166,6 +167,7 @@ type PiMonoSessionEventHandlerDependencies = {
   sessionTurnUsageService?: SessionTurnUsageService;
   userSessionReadService?: UserSessionReadService;
   enhancedLoggingService?: EnhancedLoggingService;
+  providerErrorAdapterRegistry?: PiMonoProviderErrorAdapterRegistry;
 };
 
 /**
@@ -188,6 +190,7 @@ export class PiMonoSessionEventHandler {
   private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly userSessionReadService: UserSessionReadService;
   private readonly enhancedLoggingService: EnhancedLoggingService;
+  private readonly providerErrorAdapterRegistry: PiMonoProviderErrorAdapterRegistry;
   private readonly contextMessagesSnapshotProvider: () => unknown;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
@@ -240,6 +243,8 @@ export class PiMonoSessionEventHandler {
     this.sessionTurnUsageService = dependencies.sessionTurnUsageService ?? new SessionTurnUsageService();
     this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
     this.enhancedLoggingService = dependencies.enhancedLoggingService ?? new EnhancedLoggingService();
+    this.providerErrorAdapterRegistry = dependencies.providerErrorAdapterRegistry
+      ?? new PiMonoProviderErrorAdapterRegistry();
   }
 
   async handle(event: unknown): Promise<void> {
@@ -1136,7 +1141,14 @@ export class PiMonoSessionEventHandler {
   }
 
   private resolveMessageErrorMessage(message: SessionMessage): string | null {
-    return typeof message.errorMessage === "string" ? message.errorMessage : null;
+    if (typeof message.errorMessage !== "string") {
+      return null;
+    }
+
+    return this.providerErrorAdapterRegistry.formatErrorMessage({
+      errorMessage: message.errorMessage,
+      modelProvider: this.modelProviderCredentialProvider ?? null,
+    });
   }
 
   private resolveMessageToolCallId(message: SessionMessage): string | null {
