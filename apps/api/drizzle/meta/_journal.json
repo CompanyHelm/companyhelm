@@ -1072,6 +1072,13 @@
       "when": 1777479000000,
       "tag": "0153_repair_managed_llm_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1777480000000,
+      "tag": "0154_remove_companyhelm_placeholder_platform_credentials",
+      "breakpoints": true
     }
   ]
 }
