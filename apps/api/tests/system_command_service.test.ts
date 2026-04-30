@@ -79,6 +79,30 @@ test("SystemCommandService rejects skill-management commands when manage_skills 
   );
 });
 
+test("SystemCommandService rejects task-management commands when manage_tasks is inactive", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return false;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("task.update", {
+      taskId: "task-1",
+      status: "completed",
+    }, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Activate the manage_tasks system skill/,
+  );
+});
+
 test("SystemCommandService rejects GitHub installation commands when manage_github_installations is inactive", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {
@@ -436,6 +460,72 @@ test("SystemCommandService executes skill-management commands when manage_skills
     systemCommands: [],
     systemKey: null,
   }]);
+});
+
+test("SystemCommandService executes task-management commands when manage_tasks is active", async () => {
+  let capturedInput: Record<string, unknown> | null = null;
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    taskService: {
+      async updateTask(_transactionProvider: unknown, input: Record<string, unknown>) {
+        capturedInput = input;
+        return {
+          assignedAt: null,
+          assignee: null,
+          completedAt: new Date("2026-04-20T13:00:00.000Z"),
+          createdAt: new Date("2026-04-20T12:00:00.000Z"),
+          description: null,
+          id: "task-1",
+          name: "Ship task commands",
+          status: "completed",
+          taskStageId: "stage-done",
+          taskStageName: "Done",
+          updatedAt: new Date("2026-04-20T13:00:00.000Z"),
+        };
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("task.update", {
+    status: "completed",
+    taskId: "task-1",
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: "transaction-provider" as never,
+  });
+
+  assert.deepEqual(capturedInput, {
+    assignedAgentId: undefined,
+    assignedUserId: undefined,
+    actorAgentId: "agent-1",
+    companyId: "company-123",
+    description: undefined,
+    name: undefined,
+    sessionId: "session-1",
+    status: "completed",
+    taskStageId: undefined,
+    taskId: "task-1",
+  });
+  assert.deepEqual(result.task, {
+    assignedAt: null,
+    assignee: null,
+    completedAt: "2026-04-20T13:00:00.000Z",
+    createdAt: "2026-04-20T12:00:00.000Z",
+    description: null,
+    id: "task-1",
+    name: "Ship task commands",
+    status: "completed",
+    taskStageId: "stage-done",
+    taskStageName: "Done",
+    updatedAt: "2026-04-20T13:00:00.000Z",
+  });
 });
 
 test("SystemCommandService executes agent default skill and MCP commands when manage_agents is active", async () => {

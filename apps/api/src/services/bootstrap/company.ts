@@ -159,7 +159,7 @@ export class CompanyBootstrapService {
       "Ask for explicit confirmation before importing or creating skills, creating the Engineer agent, or attaching skills to it.",
       "After confirmation, activate Manage skills and Manage agents as needed, then use skill.list, skill.github.import or skill.create, agent.list, agent.create, and agent.skill.attach.",
       "Ask whether the user wants to create the first task and assign it to the Engineer.",
-      "If confirmed, use create_task with assignedAgentId. Use status draft unless the user asks to start the task immediately, in which case use in_progress.",
+      "If confirmed, activate Manage tasks and call task.create through system_command with assignedAgentId. Use status draft unless the user asks to start the task immediately, in which case use in_progress.",
     ].join("\n"),
     name: "Create engineer and first task",
     stepId: "create-engineer-and-first-task",

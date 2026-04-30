@@ -27,6 +27,7 @@ const expectedSystemSkillKeys = [
   "manage_artifacts",
   "manage_github_installations",
   "manage_skills",
+  "manage_tasks",
   "manage_workflows",
 ];
 
@@ -768,7 +769,7 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /Superpowers-style/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /GPT-5\.5 with high reasoning/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /create_task/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /task\.create/);
 
   assert.deepEqual(harness.listCompanyOnboardings(), []);
 });

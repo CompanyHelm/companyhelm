@@ -177,10 +177,6 @@ const baseToolNames = [
   "web_fetch",
   "ask_human_question",
   "send_agent_message",
-  "list_tasks",
-  "list_assigned_tasks",
-  "create_task",
-  "update_task_status",
 ] as const;
 
 const computerUseToolNames = [

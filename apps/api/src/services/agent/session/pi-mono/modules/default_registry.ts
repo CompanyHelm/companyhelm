@@ -7,7 +7,6 @@ import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
 import { ComputeProviderDefinitionService } from "../../../../compute_provider_definitions/service.ts";
 import { SecretService } from "../../../../secrets/service.ts";
-import { TaskService } from "../../../../task_service.ts";
 import { WorkflowService } from "../../../../workflows/service.ts";
 import { ExaWebClient } from "../../../../web_search/exa_client.ts";
 import { AgentConversationService } from "../../../../conversations/service.ts";
@@ -30,7 +29,6 @@ import { SecretsSessionModule } from "./secrets.ts";
 import { SkillsSessionModule } from "./skills.ts";
 import { SystemCommandsSessionModule } from "./system_commands.ts";
 import { OrganizationSlugResolverFactory } from "../../../../../auth/organization_slug_resolver_factory.ts";
-import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
 
@@ -84,7 +82,6 @@ export class DefaultAgentSessionModuleRegistry {
       new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),
-      new TasksSessionModule(new TaskService()),
     ]);
   }
 

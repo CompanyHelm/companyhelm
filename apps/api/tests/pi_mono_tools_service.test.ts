@@ -15,7 +15,6 @@ import { AgentInboxToolProvider } from "../src/services/agent/session/pi-mono/to
 import { AgentSecretToolProvider } from "../src/services/agent/session/pi-mono/tools/secrets/provider.ts";
 import { AgentSkillToolProvider } from "../src/services/agent/session/pi-mono/tools/skills/provider.ts";
 import { AgentToolsService } from "../src/services/agent/session/pi-mono/tools/service.ts";
-import { AgentTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/tasks/provider.ts";
 import { AgentTerminalToolProvider } from "../src/services/agent/session/pi-mono/tools/terminal/provider.ts";
 import { AgentReadImageToolService } from "../src/services/agent/session/pi-mono/tools/terminal/read_image_service.ts";
 import { AgentWebToolProvider } from "../src/services/agent/session/pi-mono/tools/web/provider.ts";
@@ -111,20 +110,6 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
         throw new Error("agent messages should not be sent during initialization");
       },
     } as never),
-    new AgentTaskToolProvider({
-      async createTask() {
-        throw new Error("tasks should not be created during initialization");
-      },
-      async listAssignedTasks() {
-        throw new Error("assigned tasks should not be listed during initialization");
-      },
-      async listTasks() {
-        throw new Error("tasks should not be listed during initialization");
-      },
-      async updateTaskStatus() {
-        throw new Error("task status should not be updated during initialization");
-      },
-    } as never),
     new AgentArtifactToolProvider({
       async archiveArtifact() {
         throw new Error("artifact archive should not run during initialization");
@@ -189,10 +174,6 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "web_fetch",
       "ask_human_question",
       "send_agent_message",
-      "list_tasks",
-      "list_assigned_tasks",
-      "create_task",
-      "update_task_status",
       "list_artifacts",
       "get_artifact",
       "create_markdown_artifact",
@@ -288,20 +269,6 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentConversationToolProvider({
       async sendMessage() {
         throw new Error("agent messages should not be sent during cleanup");
-      },
-    } as never),
-    new AgentTaskToolProvider({
-      async createTask() {
-        throw new Error("tasks should not be created during cleanup");
-      },
-      async listAssignedTasks() {
-        throw new Error("assigned tasks should not be listed during cleanup");
-      },
-      async listTasks() {
-        throw new Error("tasks should not be listed during cleanup");
-      },
-      async updateTaskStatus() {
-        throw new Error("task status should not be updated during cleanup");
       },
     } as never),
     new AgentArtifactToolProvider({
@@ -553,20 +520,6 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("agent messages should not be sent during session creation");
       },
     } as never),
-    new AgentTaskToolProvider({
-      async createTask() {
-        throw new Error("tasks should not be created during session creation");
-      },
-      async listAssignedTasks() {
-        throw new Error("assigned tasks should not be listed during session creation");
-      },
-      async listTasks() {
-        throw new Error("tasks should not be listed during session creation");
-      },
-      async updateTaskStatus() {
-        throw new Error("task status should not be updated during session creation");
-      },
-    } as never),
     new AgentArtifactToolProvider({
       async archiveArtifact() {
         throw new Error("artifact archive should not run during session creation");
@@ -645,10 +598,6 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "web_fetch",
       "ask_human_question",
       "send_agent_message",
-      "list_tasks",
-      "list_assigned_tasks",
-      "create_task",
-      "update_task_status",
       "list_artifacts",
       "get_artifact",
       "create_markdown_artifact",

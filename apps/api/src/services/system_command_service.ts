@@ -19,10 +19,12 @@ import { ArtifactManagementSystemCommandService } from "./system_commands/artifa
 import { CompanyDirectorySystemCommandService } from "./system_commands/company_directory.ts";
 import { GithubInstallationSystemCommandService } from "./system_commands/github_installation.ts";
 import { SkillManagementSystemCommandService } from "./system_commands/skill_management.ts";
+import { TaskManagementSystemCommandService } from "./system_commands/task_management.ts";
 import { SkillGithubCatalog } from "./skills/github/catalog.ts";
 import { SessionSkillService } from "./skills/session_service.ts";
 import { SkillService } from "./skills/service.ts";
 import { SystemCommandCatalog } from "./skills/system_command_catalog.ts";
+import { TaskService } from "./task_service.ts";
 
 export type SystemCommandExecutionContext = {
   agentId: string;
@@ -44,6 +46,7 @@ export class SystemCommandService {
   private readonly githubInstallationCommandService: GithubInstallationSystemCommandService;
   private readonly sessionSkillService: SessionSkillService;
   private readonly skillManagementCommandService: SkillManagementSystemCommandService;
+  private readonly taskManagementCommandService: TaskManagementSystemCommandService;
   private readonly workflowCommandService: WorkflowSystemCommandService;
   private readonly workflowExecutionCommandService: WorkflowExecutionSystemCommandService;
 
@@ -61,6 +64,7 @@ export class SystemCommandService {
     sessionSkillService?: SessionSkillService;
     skillGithubCatalog?: SkillGithubCatalog;
     skillService?: SkillService;
+    taskService?: TaskService;
     templateService?: AgentEnvironmentTemplateService;
     workflowService: WorkflowService;
   }) {
@@ -86,6 +90,7 @@ export class SystemCommandService {
       input.skillService ?? new SkillService(),
       input.skillGithubCatalog ?? new SkillGithubCatalog(),
     );
+    this.taskManagementCommandService = new TaskManagementSystemCommandService(input.taskService ?? new TaskService());
     this.workflowCommandService = new WorkflowSystemCommandService(input.workflowService);
     this.workflowExecutionCommandService = new WorkflowExecutionSystemCommandService(input.workflowService);
   }
@@ -135,6 +140,9 @@ export class SystemCommandService {
     }
     if (command.systemSkillKey === "manage_skills") {
       return this.skillManagementCommandService.execute(command.id, input, context);
+    }
+    if (command.systemSkillKey === "manage_tasks") {
+      return this.taskManagementCommandService.execute(command.id, input, context);
     }
 
     throw new Error(`System command ${command.id} is not wired to a handler.`);

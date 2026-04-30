@@ -406,6 +406,80 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_agents",
   }, {
+    description: "List company tasks with pagination and optional status or assigned-agent filters.",
+    id: "task.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        assignedAgentId: { type: ["string", "null"] },
+        limit: { maximum: 100, minimum: 1, type: "integer" },
+        offset: { minimum: 0, type: "integer" },
+        status: { enum: ["draft", "in_progress", "completed", null] },
+      },
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
+    description: "List tasks assigned to the current agent with pagination and optional status filtering.",
+    id: "task.assigned.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        limit: { maximum: 100, minimum: 1, type: "integer" },
+        offset: { minimum: 0, type: "integer" },
+        status: { enum: ["draft", "in_progress", "completed", null] },
+      },
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
+    description: "Create a company task and optionally assign it to one human user or one agent.",
+    id: "task.create",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        assignedAgentId: { type: ["string", "null"] },
+        assignedUserId: { type: ["string", "null"] },
+        description: { type: ["string", "null"] },
+        name: { type: "string" },
+        status: { enum: ["draft", "in_progress", "completed", null] },
+        taskStageId: { type: ["string", "null"] },
+      },
+      required: ["name"],
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
+    description: "Partially update one company task's metadata, status, stage, or assignee while leaving omitted fields unchanged.",
+    id: "task.update",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        assignedAgentId: { type: ["string", "null"] },
+        assignedUserId: { type: ["string", "null"] },
+        description: { type: ["string", "null"] },
+        name: { type: ["string", "null"] },
+        status: { enum: ["draft", "in_progress", "completed", null] },
+        taskId: { type: "string" },
+        taskStageId: { type: ["string", "null"] },
+      },
+      required: ["taskId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
+    description: "Delete one company task and return the deleted task snapshot.",
+    id: "task.delete",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        taskId: { type: "string" },
+      },
+      required: ["taskId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
     description: "List artifacts for the current company, one task, or this session.",
     id: "artifact.list",
     inputSchema: {

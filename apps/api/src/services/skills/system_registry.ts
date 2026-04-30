@@ -68,6 +68,17 @@ export class SystemSkillRegistry {
       name: "Manage agents",
     },
     {
+      description: "Inspect, create, update, and delete company tasks through scoped system commands.",
+      instructions: [
+        "Use task commands when the user asks to inspect or change the company task tracker.",
+        "Call task.list or task.assigned.list before updating or deleting tasks so you can target the correct IDs.",
+        "Use task.update for partial edits to task metadata, status, stage, or assignee instead of looking for field-specific commands.",
+        "Create tasks only when the user confirms the work should be tracked or the session uncovers clear follow-up work.",
+      ].join("\n"),
+      key: "manage_tasks",
+      name: "Manage tasks",
+    },
+    {
       description: "Create, inspect, update, and archive durable artifacts through scoped system commands.",
       instructions: [
         "Use artifact commands when the user asks to manage durable docs, links, pull requests, or other saved deliverables.",

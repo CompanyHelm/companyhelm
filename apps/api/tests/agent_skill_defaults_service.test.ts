@@ -371,6 +371,7 @@ test("SkillService expands attached system skill group into available system ski
       "system:manage_artifacts",
       "system:manage_github_installations",
       "system:manage_skills",
+      "system:manage_tasks",
       "system:manage_workflows",
     ],
   );
