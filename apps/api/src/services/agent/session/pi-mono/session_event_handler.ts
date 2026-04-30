@@ -26,6 +26,7 @@ import {
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
 import { UserSessionReadService } from "../user_session_read_service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
+import { SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -160,7 +161,7 @@ type PiMonoSessionEventHandlerDependencies = {
   contextMessagesSnapshotProvider?: () => unknown;
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
   initialContextMessagesSnapshotAt?: Date | null;
-  logger?: PinoLogger;
+  logger?: PinoLogger | SessionPipelineLogger;
   codexRateLimitService?: CodexRateLimitService;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
   sessionTurnUsageService?: SessionTurnUsageService;
@@ -182,7 +183,7 @@ export class PiMonoSessionEventHandler {
   private readonly redisService: RedisService;
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly codexRateLimitService: CodexRateLimitService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionTurnUsageService: SessionTurnUsageService;
@@ -224,9 +225,12 @@ export class PiMonoSessionEventHandler {
     this.redisService = redisService;
     this.transactionProvider = transactionProvider;
     this.sessionId = sessionId;
-    this.logger = (dependencies.logger ?? PiMonoSessionEventHandler.fallbackLogger).child({
+    const dependencyLogger = dependencies.logger instanceof SessionPipelineLogger
+      ? dependencies.logger
+      : new SessionPipelineLogger(dependencies.logger ?? PiMonoSessionEventHandler.fallbackLogger);
+    this.logger = dependencyLogger.child({
       component: "pi_mono_session_event_handler",
-      sessionId,
+      session_id: sessionId,
     });
     this.contextMessagesSnapshotProvider = dependencies.contextMessagesSnapshotProvider ?? (() => []);
     this.contextSnapshotProvider = dependencies.contextSnapshotProvider ?? (() => ({
@@ -360,10 +364,14 @@ export class PiMonoSessionEventHandler {
         await this.handleAgentEnd(sessionEvent);
         return;
       case "turn_start":
-        this.logDebug("pi mono turn started", sessionEvent);
+        this.logDebug("pi mono turn started", sessionEvent, {
+          event: "pi_mono_turn_started",
+        });
         return;
       case "turn_end":
-        this.logDebug("pi mono turn ended", sessionEvent);
+        this.logDebug("pi mono turn ended", sessionEvent, {
+          event: "pi_mono_turn_ended",
+        });
         return;
       case "message_start":
         await this.handleMessageStart(sessionEvent);
@@ -390,7 +398,9 @@ export class PiMonoSessionEventHandler {
         await this.handleAutoCompactionEnd(sessionEvent);
         return;
       case "session_info_changed":
-        this.logDebug("pi mono session info changed", sessionEvent);
+        this.logDebug("pi mono session info changed", sessionEvent, {
+          event: "pi_mono_session_info_changed",
+        });
         return;
       default:
         this.logError("unhandled pi mono session event", sessionEvent);
@@ -408,12 +418,19 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono agent started", sessionEvent);
+    this.logDebug("pi mono agent started", sessionEvent, {
+      event: "pi_mono_agent_started",
+      status_to: "running",
+    });
     await this.updateSessionStatus("running");
   }
 
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono agent ended", sessionEvent);
+    this.logDebug("pi mono agent ended", sessionEvent, {
+      event: "pi_mono_agent_ended",
+      status_from: "running",
+      status_to: "stopped",
+    });
     const companyId = await this.resolveCompanyId();
     const clearReadsStartedAtMilliseconds = Date.now();
     await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
@@ -436,12 +453,16 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAutoCompactionStart(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono auto compaction started", sessionEvent);
+    this.logDebug("pi mono auto compaction started", sessionEvent, {
+      event: "pi_mono_auto_compaction_started",
+    });
     await this.persistSessionState({}, true, true);
   }
 
   private async handleAutoCompactionEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono auto compaction ended", sessionEvent);
+    this.logDebug("pi mono auto compaction ended", sessionEvent, {
+      event: "pi_mono_auto_compaction_ended",
+    });
     await this.persistSessionState({}, true, true);
   }
 
@@ -449,20 +470,38 @@ export class PiMonoSessionEventHandler {
     switch (sessionEvent.message?.role) {
       case "user":
         await this.markQueuedUserMessageDispatched(sessionEvent);
-        this.logDebug("ignoring pi mono user message start", sessionEvent);
+        this.logDebug("ignoring pi mono user message start", sessionEvent, {
+          event: "pi_mono_user_message_start_ignored",
+        });
         return;
       case "assistant":
         this.persistedThinkingContent = "";
-        await this.upsertSessionMessage("running", sessionEvent);
-        this.logDebug("pi mono assistant message started", sessionEvent);
+        this.logDebug(
+          "pi mono assistant message started",
+          sessionEvent,
+          {
+            event: "pi_mono_assistant_message_started",
+            status_to: "running",
+          },
+          await this.upsertSessionMessage("running", sessionEvent),
+        );
         return;
       case "toolResult":
       if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
-        this.logDebug("ignoring pi mono tool result start after tool execution events", sessionEvent);
+        this.logDebug("ignoring pi mono tool result start after tool execution events", sessionEvent, {
+          event: "pi_mono_tool_result_start_ignored",
+        });
         return;
       }
-        await this.upsertSessionMessage("running", sessionEvent);
-        this.logDebug("pi mono tool result message started", sessionEvent);
+        this.logDebug(
+          "pi mono tool result message started",
+          sessionEvent,
+          {
+            event: "pi_mono_tool_result_message_started",
+            status_to: "running",
+          },
+          await this.upsertSessionMessage("running", sessionEvent),
+        );
         return;
       default:
         this.logError("unhandled pi mono message_start event", sessionEvent);
@@ -472,8 +511,15 @@ export class PiMonoSessionEventHandler {
   private async handleMessageUpdate(sessionEvent: SessionEvent): Promise<void> {
     if (sessionEvent.message?.role === "assistant") {
       await this.processAssistantThinkingEvent(sessionEvent);
-      await this.upsertSessionMessage("running", sessionEvent);
-      this.logDebug("pi mono assistant message updated", sessionEvent);
+      this.logDebug(
+        "pi mono assistant message updated",
+        sessionEvent,
+        {
+          event: "pi_mono_assistant_message_updated",
+          status_to: "running",
+        },
+        await this.upsertSessionMessage("running", sessionEvent),
+      );
       return;
     }
 
@@ -487,12 +533,21 @@ export class PiMonoSessionEventHandler {
         const queuedUserMessageDispatch = this.shiftQueuedUserMessageDispatch();
         const userMessageTimestamp = queuedUserMessageDispatch?.timestamp
           ?? this.resolveMessageTimestamp(sessionEvent.message.timestamp);
-        await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp, queuedUserMessageDispatch);
+        const persistedMessageReference = await this.upsertSessionMessage(
+          "completed",
+          sessionEvent,
+          userMessageTimestamp,
+          queuedUserMessageDispatch,
+        );
         if (queuedUserMessageDispatch?.queuedMessageId) {
           await this.deleteQueuedUserMessage(queuedUserMessageDispatch.queuedMessageId);
         }
         await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
-        this.logDebug("pi mono user message completed", sessionEvent);
+        this.logDebug("pi mono user message completed", sessionEvent, {
+          event: "pi_mono_user_message_completed",
+          status_from: "running",
+          status_to: "completed",
+        }, persistedMessageReference);
         return;
       }
       case "assistant": {
@@ -504,18 +559,29 @@ export class PiMonoSessionEventHandler {
         await this.clearThinkingState(true, true);
         await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
         this.persistedThinkingContent = "";
-        this.logDebug("pi mono assistant message completed", sessionEvent);
+        this.logDebug("pi mono assistant message completed", sessionEvent, {
+          event: "pi_mono_assistant_message_completed",
+          status_from: "running",
+          status_to: "completed",
+        }, persistedMessageReference);
         return;
       }
-      case "toolResult":
+      case "toolResult": {
         if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
-          this.logDebug("ignoring pi mono tool result end after tool execution events", sessionEvent);
+          this.logDebug("ignoring pi mono tool result end after tool execution events", sessionEvent, {
+            event: "pi_mono_tool_result_end_ignored",
+          });
           return;
         }
-        await this.upsertSessionMessage("completed", sessionEvent);
+        const persistedMessageReference = await this.upsertSessionMessage("completed", sessionEvent);
         await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
-        this.logDebug("pi mono tool result message completed", sessionEvent);
+        this.logDebug("pi mono tool result message completed", sessionEvent, {
+          event: "pi_mono_tool_result_message_completed",
+          status_from: "running",
+          status_to: "completed",
+        }, persistedMessageReference);
         return;
+      }
       default:
         this.logError("unhandled pi mono message_end event", sessionEvent);
     }
@@ -640,28 +706,48 @@ export class PiMonoSessionEventHandler {
       }, persistedMessageReference.timestamp);
     } catch (error: unknown) {
       this.logger.error({
+        event: "session_codex_rate_limit_refresh_failed",
         error,
         logMessage: "failed to refresh codex rate limits after assistant message",
-        sessionId: this.sessionId,
+        message_id: persistedMessageReference.messageId,
+        turn_id: persistedMessageReference.turnId,
       });
     }
   }
 
   private async handleToolExecutionStart(sessionEvent: SessionEvent): Promise<void> {
     this.completedToolExecutionKeys.delete(this.createToolExecutionEventKey(sessionEvent));
-    await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
-    this.logDebug("pi mono tool execution started", sessionEvent);
+    this.logDebug(
+      "pi mono tool execution started",
+      sessionEvent,
+      {
+        event: "pi_mono_tool_execution_started",
+        status_to: "running",
+      },
+      await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent)),
+    );
   }
 
   private async handleToolExecutionUpdate(sessionEvent: SessionEvent): Promise<void> {
-    await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
-    this.logDebug("pi mono tool execution updated", sessionEvent);
+    this.logDebug(
+      "pi mono tool execution updated",
+      sessionEvent,
+      {
+        event: "pi_mono_tool_execution_updated",
+        status_to: "running",
+      },
+      await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent)),
+    );
   }
 
   private async handleToolExecutionEnd(sessionEvent: SessionEvent): Promise<void> {
-    await this.upsertSessionMessage("completed", this.createToolExecutionSessionEvent(sessionEvent));
+    const persistedMessageReference = await this.upsertSessionMessage("completed", this.createToolExecutionSessionEvent(sessionEvent));
     this.completedToolExecutionKeys.add(this.createToolExecutionEventKey(sessionEvent));
-    this.logDebug("pi mono tool execution ended", sessionEvent);
+    this.logDebug("pi mono tool execution ended", sessionEvent, {
+      event: "pi_mono_tool_execution_completed",
+      status_from: "running",
+      status_to: "completed",
+    }, persistedMessageReference);
   }
 
   private async upsertMessageContents(
@@ -1525,20 +1611,78 @@ export class PiMonoSessionEventHandler {
     });
   }
 
-  private logDebug(logMessage: string, event: SessionEvent): void {
+  private logDebug(
+    logMessage: string,
+    sessionEvent: SessionEvent,
+    fields: Record<string, unknown> = {},
+    persistedMessageReference?: PersistedSessionMessageReference | null,
+  ): void {
     this.logger.debug({
-      event,
+      ...this.buildSessionEventLogFields(sessionEvent, fields, persistedMessageReference),
       logMessage,
-      sessionId: this.sessionId,
+      session_event: sessionEvent,
     });
   }
 
-  private logError(logMessage: string, event: SessionEvent): void {
+  private logError(
+    logMessage: string,
+    sessionEvent: SessionEvent,
+    fields: Record<string, unknown> = {},
+    persistedMessageReference?: PersistedSessionMessageReference | null,
+  ): void {
     this.logger.error({
-      event,
+      ...this.buildSessionEventLogFields(sessionEvent, fields, persistedMessageReference),
       logMessage,
-      sessionId: this.sessionId,
+      session_event: sessionEvent,
     });
+  }
+
+  private buildSessionEventLogFields(
+    sessionEvent: SessionEvent,
+    fields: Record<string, unknown>,
+    persistedMessageReference?: PersistedSessionMessageReference | null,
+  ): Record<string, unknown> {
+    return {
+      event: this.resolveSessionEventLogValue(sessionEvent, fields),
+      message_id: this.resolveFieldValue(fields, "message_id", persistedMessageReference?.messageId ?? this.lookupMessageId(sessionEvent)),
+      status_from: this.resolveFieldValue(fields, "status_from", null),
+      status_to: this.resolveFieldValue(fields, "status_to", null),
+      tool_name: this.resolveFieldValue(fields, "tool_name", this.lookupToolName(sessionEvent)),
+      turn_id: this.resolveFieldValue(fields, "turn_id", persistedMessageReference?.turnId ?? this.currentTurnId),
+      ...fields,
+    };
+  }
+
+  private resolveSessionEventLogValue(sessionEvent: SessionEvent, fields: Record<string, unknown>): string {
+    const explicitEvent = this.resolveFieldValue(fields, "event", null);
+    if (typeof explicitEvent === "string") {
+      return explicitEvent;
+    }
+
+    const eventType = typeof sessionEvent.type === "string" ? sessionEvent.type : "unknown";
+    const role = typeof sessionEvent.message?.role === "string" ? sessionEvent.message.role : null;
+    return role ? `pi_mono_${eventType}_${role}` : `pi_mono_${eventType}`;
+  }
+
+  private lookupMessageId(sessionEvent: SessionEvent): string | null {
+    const eventMessage = sessionEvent.message ?? this.createToolExecutionSessionEvent(sessionEvent).message;
+    if (!eventMessage?.role) {
+      return null;
+    }
+
+    return this.messageIdByEventKey.get(this.createEventKey(eventMessage)) ?? null;
+  }
+
+  private lookupToolName(sessionEvent: SessionEvent): string | null {
+    return sessionEvent.toolName ?? sessionEvent.message?.toolName ?? null;
+  }
+
+  private resolveFieldValue<T>(fields: Record<string, unknown>, key: string, fallback: T): T | unknown {
+    if (!Object.prototype.hasOwnProperty.call(fields, key)) {
+      return fallback;
+    }
+
+    return fields[key];
   }
 
   private logEnhanced(
@@ -1557,7 +1701,7 @@ export class PiMonoSessionEventHandler {
       diagnostic: "enhanced",
       diagnosticComponent,
       diagnosticEvent,
-      sessionId: this.sessionId,
+      event: diagnosticEvent,
     }, "enhanced diagnostic log");
   }
 

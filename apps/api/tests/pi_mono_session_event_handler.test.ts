@@ -1980,28 +1980,28 @@ test("PiMonoSessionEventHandler debug logs assistant message updates", async () 
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.debugLogs.length, 1);
-  assert.deepEqual(
-    harness.debugLogs[0],
-    {
-      event: {
-        assistantMessageEvent: {
-          delta: "It",
-          type: "thinking_delta",
-        },
-        message: {
-          content: [{
-            text: "Answer",
-            type: "text",
-          }],
-          role: "assistant",
-          timestamp: 1000,
-        },
-        type: "message_update",
-      },
-      logMessage: "pi mono assistant message updated",
-      sessionId: "session-1",
+  const debugLog = harness.debugLogs[0] as Record<string, unknown>;
+  assert.equal(debugLog.event, "pi_mono_assistant_message_updated");
+  assert.equal(debugLog.logMessage, "pi mono assistant message updated");
+  assert.equal(debugLog.session_id, "session-1");
+  assert.equal(debugLog.status_to, "running");
+  assert.equal(typeof debugLog.message_id, "string");
+  assert.equal(typeof debugLog.turn_id, "string");
+  assert.deepEqual(debugLog.session_event, {
+    assistantMessageEvent: {
+      delta: "It",
+      type: "thinking_delta",
     },
-  );
+    message: {
+      content: [{
+        text: "Answer",
+        type: "text",
+      }],
+      role: "assistant",
+      timestamp: 1000,
+    },
+    type: "message_update",
+  });
 });
 
 test("PiMonoSessionEventHandler error logs unhandled message roles", async () => {
@@ -2029,19 +2029,18 @@ test("PiMonoSessionEventHandler error logs unhandled message roles", async () =>
   assert.equal(harness.sessionMessageRecords.size, 0);
   assert.equal(harness.debugLogs.length, 0);
   assert.equal(harness.errorLogs.length, 1);
-  assert.deepEqual(
-    harness.errorLogs[0],
-    {
-      event: {
-        message: {
-          role: "custom",
-        },
-        type: "message_end",
-      },
-      logMessage: "unhandled pi mono message_end event",
-      sessionId: "session-1",
+  const errorLog = harness.errorLogs[0] as Record<string, unknown>;
+  assert.equal(errorLog.event, "pi_mono_message_end_custom");
+  assert.equal(errorLog.logMessage, "unhandled pi mono message_end event");
+  assert.equal(errorLog.session_id, "session-1");
+  assert.equal(errorLog.message_id, null);
+  assert.equal(errorLog.turn_id, null);
+  assert.deepEqual(errorLog.session_event, {
+    message: {
+      role: "custom",
     },
-  );
+    type: "message_end",
+  });
 });
 
 test("PiMonoSessionEventHandler debug logs Pi session info changes", async () => {
@@ -2066,17 +2065,14 @@ test("PiMonoSessionEventHandler debug logs Pi session info changes", async () =>
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.debugLogs.length, 1);
-  assert.deepEqual(
-    harness.debugLogs[0],
-    {
-      event: {
-        name: "Updated session",
-        type: "session_info_changed",
-      },
-      logMessage: "pi mono session info changed",
-      sessionId: "session-1",
-    },
-  );
+  const infoChangeLog = harness.debugLogs[0] as Record<string, unknown>;
+  assert.equal(infoChangeLog.event, "pi_mono_session_info_changed");
+  assert.equal(infoChangeLog.logMessage, "pi mono session info changed");
+  assert.equal(infoChangeLog.session_id, "session-1");
+  assert.deepEqual(infoChangeLog.session_event, {
+    name: "Updated session",
+    type: "session_info_changed",
+  });
 });
 
 test("PiMonoSessionEventHandler emits enhanced agent-end diagnostics when enabled", async () => {

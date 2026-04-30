@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
 import {
@@ -27,6 +26,7 @@ import { SessionProcessQueuedNames } from "./queued_names.ts";
 import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 import { RuntimeModelResolver } from "../runtime/model_resolver.ts";
+import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
@@ -75,7 +75,7 @@ export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
   private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
   private readonly companySettingsService: CompanySettingsService;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
   private readonly runtimeModelResolver: RuntimeModelResolver;
@@ -111,9 +111,9 @@ export class SessionProcessExecutionService {
     this.appRuntimeDatabase = appRuntimeDatabase;
     this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
     this.companySettingsService = companySettingsService;
-    this.logger = logger.child({
+    this.logger = new SessionPipelineLogger(logger.child({
       component: "session_process_execution_service",
-    });
+    }));
     this.piMonoSessionManagerService = piMonoSessionManagerService;
     this.redisService = redisService;
     this.runtimeModelResolver = runtimeModelResolver;
@@ -125,15 +125,20 @@ export class SessionProcessExecutionService {
     this.enhancedLoggingService = enhancedLoggingService;
   }
 
-  async execute(companyId: string, sessionId: string): Promise<void> {
+  async execute(companyId: string, sessionId: string, logContext: SessionPipelineLogContext = {}): Promise<void> {
     const wakeRunId = randomUUID();
     const wakeStartedAtMilliseconds = Date.now();
+    const sessionLogger = this.logger.child({
+      companyId,
+      session_id: sessionId,
+      trace_id: logContext.trace_id ?? wakeRunId,
+      worker_id: logContext.worker_id,
+    });
     const lease = await this.sessionLeaseService.acquire(companyId, sessionId);
     if (!lease) {
       await this.enqueueDelayedWakeIfPending(companyId, sessionId);
-      this.logger.debug({
-        companyId,
-        sessionId,
+      sessionLogger.debug({
+        event: "session_wake_skipped_lease_owned",
       }, "skipping wake because another worker owns the lease");
       return;
     }
@@ -171,7 +176,8 @@ export class SessionProcessExecutionService {
           companyId,
         });
         if (!budgetStatus.allowed) {
-          this.logger.info({
+          sessionLogger.info({
+            event: "session_budget_exhausted_clear_queue",
             companyId,
             limitCostNanoUsd: budgetStatus.limitCostNanoUsd,
             period: budgetStatus.period,
@@ -190,6 +196,7 @@ export class SessionProcessExecutionService {
           ...runtimeConfig,
           companyBaseSystemPrompt: companySettings.baseSystemPrompt,
         },
+        sessionLogger.getContext(),
       );
 
       heartbeatHandle = this.startLeaseHeartbeat(lease, async (error) => {
@@ -215,7 +222,8 @@ export class SessionProcessExecutionService {
                 sessionId,
               );
             } catch (error) {
-              this.logger.error({
+              sessionLogger.error({
+                event: "session_steer_delivery_failed",
                 companyId,
                 error,
                 sessionId,
@@ -239,11 +247,13 @@ export class SessionProcessExecutionService {
                 transactionProvider,
                 companyId,
                 sessionId,
+                sessionLogger,
               );
               try {
                 await this.piMonoSessionManagerService.abort(interruptedRuntime);
               } catch (error) {
-                this.logger.error({
+                sessionLogger.error({
+                  event: "session_interrupt_abort_failed",
                   companyId,
                   error,
                   sessionId,
@@ -320,7 +330,7 @@ export class SessionProcessExecutionService {
       }
     } finally {
       const finalizeStartedAtMilliseconds = Date.now();
-      this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_finalize_start", {
+      this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_finalize_start", {
         sinceWakeStartMs: finalizeStartedAtMilliseconds - wakeStartedAtMilliseconds,
         wakeRunId,
       });
@@ -348,14 +358,15 @@ export class SessionProcessExecutionService {
           shouldEnqueueFollowUpWake = true;
           await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         }
-        this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_requeue_undispatched_steers_end", {
+        this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_requeue_undispatched_steers_end", {
           durationMs: Date.now() - requeueStartedAtMilliseconds,
           requeuedCount: requeuedUndispatchedSteerIds.length,
           sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
           wakeRunId,
         });
       } catch (error) {
-        this.logger.error({
+        sessionLogger.error({
+          event: "session_undispatched_steer_requeue_failed",
           companyId,
           error,
           sessionId,
@@ -365,12 +376,12 @@ export class SessionProcessExecutionService {
       try {
         if (runtime) {
           const disposeStartedAtMilliseconds = Date.now();
-          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_start", {
+          this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_start", {
             sinceWakeStartMs: disposeStartedAtMilliseconds - wakeStartedAtMilliseconds,
             wakeRunId,
           });
           await this.piMonoSessionManagerService.disposeRuntime(runtime);
-          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_end", {
+          this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_end", {
             durationMs: Date.now() - disposeStartedAtMilliseconds,
             sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
             wakeRunId,
@@ -379,12 +390,12 @@ export class SessionProcessExecutionService {
       } finally {
         try {
           const releaseStartedAtMilliseconds = Date.now();
-          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_release_lease_start", {
+          this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_release_lease_start", {
             sinceWakeStartMs: releaseStartedAtMilliseconds - wakeStartedAtMilliseconds,
             wakeRunId,
           });
           await this.sessionLeaseService.release(lease);
-          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_release_lease_end", {
+          this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_release_lease_end", {
             durationMs: Date.now() - releaseStartedAtMilliseconds,
             sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
             wakeRunId,
@@ -392,7 +403,7 @@ export class SessionProcessExecutionService {
         } finally {
           const disconnectStartedAtMilliseconds = Date.now();
           await redisCompanyScopedService.disconnect();
-          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_disconnect_redis_end", {
+          this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_disconnect_redis_end", {
             durationMs: Date.now() - disconnectStartedAtMilliseconds,
             sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
             wakeRunId,
@@ -403,14 +414,14 @@ export class SessionProcessExecutionService {
       if (shouldEnqueueFollowUpWake) {
         const followUpWakeStartedAtMilliseconds = Date.now();
         await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
-        this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_follow_up_wake_end", {
+        this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_follow_up_wake_end", {
           durationMs: Date.now() - followUpWakeStartedAtMilliseconds,
           sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
           wakeRunId,
         });
       }
 
-      this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_finalize_end", {
+      this.logEnhanced(sessionLogger, companyId, sessionId, "session_process_cleanup", "session_process_finalize_end", {
         durationMs: Date.now() - finalizeStartedAtMilliseconds,
         sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
         wakeRunId,
@@ -419,6 +430,7 @@ export class SessionProcessExecutionService {
   }
 
   private logEnhanced(
+    logger: SessionPipelineLogger,
     companyId: string,
     sessionId: string,
     diagnosticComponent: string,
@@ -429,12 +441,13 @@ export class SessionProcessExecutionService {
       return;
     }
 
-    this.logger.info({
+    logger.info({
       ...fields,
       companyId,
       diagnostic: "enhanced",
       diagnosticComponent,
       diagnosticEvent,
+      event: diagnosticEvent,
       sessionId,
     }, "enhanced diagnostic log");
   }
@@ -444,11 +457,13 @@ export class SessionProcessExecutionService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    logger: SessionPipelineLogger,
   ): Promise<void> {
     try {
       await this.piMonoSessionManagerService.recordInterruptedUsage(runtime);
     } catch (error) {
-      this.logger.error({
+      logger.error({
+        event: "session_interrupted_usage_persist_failed",
         companyId,
         error,
         sessionId,
@@ -462,7 +477,8 @@ export class SessionProcessExecutionService {
         sessionId,
       );
     } catch (error) {
-      this.logger.error({
+      logger.error({
+        event: "session_interrupted_runtime_snapshot_failed",
         companyId,
         error,
         sessionId,

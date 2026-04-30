@@ -1,4 +1,5 @@
 import type { AgentSession } from "@mariozechner/pi-coding-agent";
+import { SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 import { AgentToolsService } from "./tools/service.ts";
 import { AgentSessionBootstrapContext } from "./bootstrap_context.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -6,6 +7,7 @@ import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 type AgentSessionRuntimeContextInput = {
   bootstrapContext: AgentSessionBootstrapContext;
   eventHandler: PiMonoSessionEventHandler;
+  logger: SessionPipelineLogger;
   session: AgentSession;
   toolsService: AgentToolsService;
 };
@@ -18,12 +20,14 @@ type AgentSessionRuntimeContextInput = {
 export class AgentSessionRuntimeContext {
   readonly bootstrapContext: AgentSessionBootstrapContext;
   readonly eventHandler: PiMonoSessionEventHandler;
+  readonly logger: SessionPipelineLogger;
   readonly session: AgentSession;
   readonly toolsService: AgentToolsService;
 
   constructor(input: AgentSessionRuntimeContextInput) {
     this.bootstrapContext = input.bootstrapContext;
     this.eventHandler = input.eventHandler;
+    this.logger = input.logger;
     this.session = input.session;
     this.toolsService = input.toolsService;
   }

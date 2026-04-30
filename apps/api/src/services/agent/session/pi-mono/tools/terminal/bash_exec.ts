@@ -1,9 +1,9 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
-import type { Logger as PinoLogger } from "pino";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/providers/shell_interface.ts";
+import { SessionPipelineLogger } from "../../../../../../log/session_pipeline_logger.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
@@ -33,10 +33,10 @@ export class AgentBashExecTool {
     })),
   });
 
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly promptScope: AgentEnvironmentPromptScope;
 
-  constructor(promptScope: AgentEnvironmentPromptScope, logger: PinoLogger) {
+  constructor(promptScope: AgentEnvironmentPromptScope, logger: SessionPipelineLogger) {
     this.promptScope = promptScope;
     this.logger = logger;
   }
@@ -58,8 +58,10 @@ export class AgentBashExecTool {
             this.logger.warn({
               command: error.command,
               err: error,
+              event: "bash_exec_timeout",
               provider: error.provider,
               timeoutSeconds: error.timeoutSeconds,
+              tool_name: "bash_exec",
               workingDirectory: error.workingDirectory,
             }, "environment shell command timed out");
           }

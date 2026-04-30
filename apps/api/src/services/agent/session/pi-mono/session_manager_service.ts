@@ -2,7 +2,6 @@ import { inject, injectable } from "inversify";
 import { eq } from "drizzle-orm";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
-import type { Logger as PinoLogger } from "pino";
 import {
   type AgentSession,
   AuthStorage,
@@ -37,6 +36,7 @@ import { Config } from "../../../../config/schema.ts";
 import { McpService } from "../../../mcp/service.ts";
 import { WorkflowService } from "../../../workflows/service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
+import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -86,9 +86,10 @@ type StoredContextMessagesSnapshot = {
 @injectable()
 export class PiMonoSessionManagerService {
   private readonly agentEnvironmentAccessService: AgentEnvironmentAccessService;
+  private readonly config: Config;
   private readonly githubClient: GithubClient;
   private readonly inboxService: AgentInboxService;
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
   private readonly agentConversationService: AgentConversationService;
@@ -99,7 +100,7 @@ export class PiMonoSessionManagerService {
   private readonly openRouterCatalogService: OpenRouterCatalogService;
   private readonly appModelRegistry: ModelRegistry;
   private readonly mcpService: McpService;
-  private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
+  private readonly workflowService: WorkflowService;
   private readonly enhancedLoggingService: EnhancedLoggingService;
 
   constructor(
@@ -137,9 +138,10 @@ export class PiMonoSessionManagerService {
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
   ) {
-    this.logger = logger.child({
+    this.config = config;
+    this.logger = new SessionPipelineLogger(logger.child({
       component: "pi_mono_session_manager_service",
-    });
+    }));
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
     this.githubClient = githubClient;
@@ -153,28 +155,15 @@ export class PiMonoSessionManagerService {
     this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
     this.mcpService = mcpService;
+    this.workflowService = workflowService;
     this.enhancedLoggingService = enhancedLoggingService;
-    this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
-      agentConversationService: this.agentConversationService,
-      config,
-      computeProviderDefinitionService: this.computeProviderDefinitionService,
-      exaWebClient: this.exaWebClient,
-      githubClient: this.githubClient,
-      inboxService: this.inboxService,
-      logger: this.logger,
-      mcpService: this.mcpService,
-      modelProviderService: this.modelProviderService,
-      modelRegistry: this.appModelRegistry,
-      secretService: this.secretService,
-      templateService: this.templateService,
-      workflowService,
-    });
   }
 
   async createRuntime(
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     runtimeConfig: SessionRuntimeConfig,
+    logContext: SessionPipelineLogContext = {},
   ): Promise<AgentSessionRuntimeContext> {
     const bootstrapContext = await this.createBootstrapContext(
       transactionProvider,
@@ -190,7 +179,29 @@ export class PiMonoSessionManagerService {
     if (bootstrapContext.modelProviderId === "openai-compatible") {
       this.configureOpenAiCompatibleProvider(runtimeConfig, modelRegistry);
     }
-    const sessionModuleResolution = await this.sessionModuleRegistry.resolve(bootstrapContext);
+    const runtimeLogger = this.logger.child({
+      agentId: runtimeConfig.agentId,
+      companyId: runtimeConfig.companyId,
+      session_id: sessionId,
+      trace_id: logContext.trace_id,
+      worker_id: logContext.worker_id,
+    });
+    const sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
+      agentConversationService: this.agentConversationService,
+      config: this.config,
+      computeProviderDefinitionService: this.computeProviderDefinitionService,
+      exaWebClient: this.exaWebClient,
+      githubClient: this.githubClient,
+      inboxService: this.inboxService,
+      logger: runtimeLogger,
+      mcpService: this.mcpService,
+      modelProviderService: this.modelProviderService,
+      modelRegistry: this.appModelRegistry,
+      secretService: this.secretService,
+      templateService: this.templateService,
+      workflowService: this.workflowService,
+    });
+    const sessionModuleResolution = await sessionModuleRegistry.resolve(bootstrapContext);
     const agentToolsService = new AgentToolsService(
       bootstrapContext.promptScope,
       sessionModuleResolution.toolProviders,
@@ -239,7 +250,7 @@ export class PiMonoSessionManagerService {
         contextSnapshotProvider: () => this.buildContextSnapshot(session),
         enhancedLoggingService: this.enhancedLoggingService,
         initialContextMessagesSnapshotAt: storedContextMessagesSnapshot.contextMessagesSnapshotAt,
-        logger: this.logger,
+        logger: runtimeLogger,
       },
     );
 
@@ -250,6 +261,7 @@ export class PiMonoSessionManagerService {
     return new AgentSessionRuntimeContext({
       bootstrapContext,
       eventHandler: sessionEventHandler,
+      logger: runtimeLogger,
       session,
       toolsService: agentToolsService,
     });
@@ -276,12 +288,15 @@ export class PiMonoSessionManagerService {
     }
 
     const session = runtime.session;
-    await runtime.eventHandler.startPromptTurn(new Date());
+    const turnId = await runtime.eventHandler.startPromptTurn(new Date());
+    const runtimeLogger = runtime.logger.child({
+      turn_id: turnId,
+    });
     let completedTurnAt: Date;
     try {
       const promptStartedAtMilliseconds = Date.now();
       await session.prompt(message, images && images.length > 0 ? { images } : undefined);
-      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_call_end", {
+      this.logEnhanced(runtimeLogger, runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_call_end", {
         durationMs: Date.now() - promptStartedAtMilliseconds,
         pendingMessageCount: session.pendingMessageCount,
       });
@@ -294,7 +309,7 @@ export class PiMonoSessionManagerService {
         drainIterations += 1;
         await session.agent.continue();
       }
-      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_pending_drain_end", {
+      this.logEnhanced(runtimeLogger, runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_pending_drain_end", {
         drainIterations,
         durationMs: Date.now() - pendingDrainStartedAtMilliseconds,
       });
@@ -302,13 +317,13 @@ export class PiMonoSessionManagerService {
       completedTurnAt = new Date();
       const finishPromptTurnStartedAtMilliseconds = Date.now();
       await runtime.eventHandler.finishPromptTurn(completedTurnAt);
-      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_finish_turn_end", {
+      this.logEnhanced(runtimeLogger, runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_finish_turn_end", {
         durationMs: Date.now() - finishPromptTurnStartedAtMilliseconds,
       });
     }
     const snapshotStartedAtMilliseconds = Date.now();
     await this.persistRuntimeContextSnapshot(runtime, transactionProvider, sessionId, completedTurnAt);
-    this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_snapshot_end", {
+    this.logEnhanced(runtimeLogger, runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_snapshot_end", {
       durationMs: Date.now() - snapshotStartedAtMilliseconds,
     });
   }
@@ -372,19 +387,20 @@ export class PiMonoSessionManagerService {
     try {
       const cleanupToolsStartedAtMilliseconds = Date.now();
       await runtime.toolsService.cleanupTools();
-      this.logEnhanced(runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_cleanup_tools_end", {
+      this.logEnhanced(runtime.logger, runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_cleanup_tools_end", {
         durationMs: Date.now() - cleanupToolsStartedAtMilliseconds,
       });
     } finally {
       const sessionDisposeStartedAtMilliseconds = Date.now();
       runtime.session.dispose();
-      this.logEnhanced(runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_dispose_end", {
+      this.logEnhanced(runtime.logger, runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_dispose_end", {
         durationMs: Date.now() - sessionDisposeStartedAtMilliseconds,
       });
     }
   }
 
   private logEnhanced(
+    logger: SessionPipelineLogger,
     companyId: string,
     sessionId: string,
     diagnosticComponent: string,
@@ -395,12 +411,13 @@ export class PiMonoSessionManagerService {
       return;
     }
 
-    this.logger.info({
+    logger.info({
       ...fields,
       companyId,
       diagnostic: "enhanced",
       diagnosticComponent,
       diagnosticEvent,
+      event: diagnosticEvent,
       sessionId,
     }, "enhanced diagnostic log");
   }

@@ -1,5 +1,5 @@
-import type { Logger as PinoLogger } from "pino";
 import { McpService } from "../../../../mcp/service.ts";
+import { SessionPipelineLogger } from "../../../../../log/session_pipeline_logger.ts";
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentMcpToolProvider } from "../tools/mcp/provider.ts";
 import { AgentMcpToolService } from "../tools/mcp/service.ts";
@@ -11,10 +11,10 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
  * catalogs they publish as first-class PI Mono tools for newly created sessions.
  */
 export class McpSessionModule extends AgentSessionModuleInterface {
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly mcpService: McpService;
 
-  constructor(logger: PinoLogger, mcpService: McpService) {
+  constructor(logger: SessionPipelineLogger, mcpService: McpService) {
     super();
     this.logger = logger;
     this.mcpService = mcpService;
@@ -32,7 +32,7 @@ export class McpSessionModule extends AgentSessionModuleInterface {
       this.logger.child({
         agentId: context.agentId,
         component: "agent_mcp_tool_service",
-        sessionId: context.sessionId,
+        session_id: context.sessionId,
       }),
       this.mcpService,
     );

@@ -1,5 +1,5 @@
-import type { Logger as PinoLogger } from "pino";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
+import { SessionPipelineLogger } from "../../../../../../log/session_pipeline_logger.ts";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentApplyPatchTool } from "./apply_patch.ts";
 import { AgentBashExecTool } from "./bash_exec.ts";
@@ -18,13 +18,13 @@ import { AgentReadImageToolService } from "./read_image_service.ts";
  * shared tool catalog can compose them without knowing how many concrete environment tools exist.
  */
 export class AgentTerminalToolProvider extends AgentToolProviderInterface {
-  private readonly logger: PinoLogger;
+  private readonly logger: SessionPipelineLogger;
   private readonly promptScope: AgentEnvironmentPromptScope;
   private readonly readImageToolService: AgentReadImageToolService;
 
   constructor(
     promptScope: AgentEnvironmentPromptScope,
-    logger: PinoLogger,
+    logger: SessionPipelineLogger,
     readImageToolService: AgentReadImageToolService,
   ) {
     super();
