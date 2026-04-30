@@ -22,11 +22,10 @@ export class LocalRunner {
   }
 
   async run(): Promise<void> {
-    this.applyOpenAiFallback();
     this.assertRequiredEnvironment();
     this.registerShutdownHandlers();
     await this.ensureDockerServices();
-    await this.runCommand("npm", ["run", "seed:local-dev"]);
+    await this.runCommand("npm", this.resolveSeedCommandArguments());
     const workspaceScriptName = this.input.mode === "dev" ? "dev:local" : "dev:e2b";
     this.startPersistentCommand("npm", ["run", workspaceScriptName, "-w", "@companyhelm/api"], {
       COMPANYHELM_API_PUBLIC_URL: this.input.apiPublicUrl,
@@ -54,9 +53,6 @@ export class LocalRunner {
     }
 
     const missingVariableNames = requiredVariableNames.filter((variableName) => !process.env[variableName]);
-    if (!process.env.COMPANYHELM_OPENAI_API_KEY) {
-      missingVariableNames.push("COMPANYHELM_OPENAI_API_KEY or OPENAI_API_KEY");
-    }
     if (missingVariableNames.length > 0) {
       throw new Error(`Missing required local ${this.input.mode} environment variables: ${missingVariableNames.join(", ")}.`);
     }
@@ -84,10 +80,13 @@ export class LocalRunner {
     return await this.canConnect("127.0.0.1", 5432) && await this.canConnect("127.0.0.1", 6379);
   }
 
-  private applyOpenAiFallback(): void {
-    if (!process.env.COMPANYHELM_OPENAI_API_KEY && process.env.OPENAI_API_KEY) {
-      process.env.COMPANYHELM_OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  private resolveSeedCommandArguments(): string[] {
+    const seedArguments = ["run", "seed:local-dev", "-w", "@companyhelm/api"];
+    if (process.env.COMPANYHELM_LOCAL_OPENAI_API_KEY) {
+      seedArguments.push("--", "--seed-openai-from-env");
     }
+
+    return seedArguments;
   }
 
   private async waitForPort(host: string, port: number, label: string): Promise<void> {
@@ -187,6 +186,7 @@ export class LocalRunner {
     console.log(`API:      ${this.input.apiPublicUrl}`);
     console.log(`GraphQL:  ${this.input.apiPublicUrl}/graphql`);
     console.log("Auth:     dev");
-    console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent with CompanyHelm provider\n");
+    console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent with CompanyHelm provider");
+    console.log("Models:   Set COMPANYHELM_LOCAL_OPENAI_API_KEY to validate and seed a local OpenAI route\n");
   }
 }
