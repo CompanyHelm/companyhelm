@@ -830,6 +830,23 @@ const ForkedSessionBanner = memo(function ForkedSessionBanner({
 
 ForkedSessionBanner.displayName = "ForkedSessionBanner";
 
+const CompactionStatusRow = memo(function CompactionStatusRow({ session }: { session: SessionRecord }) {
+  if (!session.isCompacting) {
+    return null;
+  }
+
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex min-w-0 items-center`}>
+      <div className="inline-flex min-w-0 items-center gap-2 rounded-md border border-border/70 bg-muted/20 px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+        <Loader2Icon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+        <span className="truncate">Compacting context</span>
+      </div>
+    </div>
+  );
+});
+
+CompactionStatusRow.displayName = "CompactionStatusRow";
+
 const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   organizationSlug,
   session,
@@ -1184,6 +1201,7 @@ function ChatTranscriptPaneComponent({
               <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : null}
+          <CompactionStatusRow session={session} />
           <div ref={setTranscriptMessageList} className="grid gap-3">
             {transcriptTurns.map((turn) => {
               if (turn.isRunning) {

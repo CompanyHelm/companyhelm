@@ -1207,6 +1207,53 @@ test("PiMonoSessionEventHandler captures context snapshots when auto compaction 
   assert.equal(harness.sessionState.maxContextTokens, 200000);
 });
 
+test("PiMonoSessionEventHandler captures context snapshots when compaction starts and ends", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+      logger: harness.logger,
+    },
+  );
+
+  try {
+    harness.contextSnapshot.currentContextTokens = 199000;
+    harness.contextSnapshot.isCompacting = true;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      reason: "threshold",
+      type: "compaction_start",
+    });
+
+    harness.contextSnapshot.currentContextTokens = 43000;
+    harness.contextSnapshot.isCompacting = false;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      aborted: false,
+      reason: "threshold",
+      type: "compaction_end",
+      willRetry: false,
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionStatusUpdates.length, 2);
+  assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 199000);
+  assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, true);
+  assert.equal(harness.sessionStatusUpdates[0]?.maxContextTokens, 200000);
+  assert.equal(harness.sessionStatusUpdates[1]?.currentContextTokens, 43000);
+  assert.equal(harness.sessionStatusUpdates[1]?.isCompacting, false);
+  assert.equal(harness.sessionStatusUpdates[1]?.maxContextTokens, 200000);
+  assert.equal(harness.sessionState.currentContextTokens, 43000);
+  assert.equal(harness.sessionState.isCompacting, false);
+  assert.equal(harness.sessionState.maxContextTokens, 200000);
+});
+
 test("PiMonoSessionEventHandler persists tool execution events into one streamed tool result message", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(
@@ -2153,6 +2200,40 @@ test("PiMonoSessionEventHandler debug logs Pi session info changes", async () =>
   assert.deepEqual(infoChangeLog.session_event, {
     name: "Updated session",
     type: "session_info_changed",
+  });
+});
+
+test("PiMonoSessionEventHandler debug logs PI queue updates", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      logger: harness.logger,
+    },
+  );
+
+  try {
+    await handler.handle({
+      followUp: ["Summarize the result"],
+      steering: ["Focus on error handling"],
+      type: "queue_update",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.debugLogs.length, 1);
+  const queueUpdateLog = harness.debugLogs[0] as Record<string, unknown>;
+  assert.equal(queueUpdateLog.event, "pi_mono_queue_updated");
+  assert.equal(queueUpdateLog.logMessage, "pi mono queue updated");
+  assert.equal(queueUpdateLog.session_id, "session-1");
+  assert.deepEqual(queueUpdateLog.session_event, {
+    followUp: ["Summarize the result"],
+    steering: ["Focus on error handling"],
+    type: "queue_update",
   });
 });
 

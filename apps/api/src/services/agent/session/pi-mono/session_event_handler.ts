@@ -396,11 +396,18 @@ export class PiMonoSessionEventHandler {
       case "tool_execution_end":
         await this.handleToolExecutionEnd(sessionEvent);
         return;
+      case "compaction_start":
       case "auto_compaction_start":
-        await this.handleAutoCompactionStart(sessionEvent);
+        await this.handleCompactionStart(sessionEvent);
         return;
+      case "compaction_end":
       case "auto_compaction_end":
-        await this.handleAutoCompactionEnd(sessionEvent);
+        await this.handleCompactionEnd(sessionEvent);
+        return;
+      case "queue_update":
+        this.logDebug("pi mono queue updated", sessionEvent, {
+          event: "pi_mono_queue_updated",
+        });
         return;
       case "session_info_changed":
         this.logDebug("pi mono session info changed", sessionEvent, {
@@ -457,16 +464,16 @@ export class PiMonoSessionEventHandler {
     });
   }
 
-  private async handleAutoCompactionStart(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono auto compaction started", sessionEvent, {
-      event: "pi_mono_auto_compaction_started",
+  private async handleCompactionStart(sessionEvent: SessionEvent): Promise<void> {
+    this.logDebug("pi mono compaction started", sessionEvent, {
+      event: "pi_mono_compaction_started",
     });
     await this.persistSessionState({}, true, true);
   }
 
-  private async handleAutoCompactionEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.logDebug("pi mono auto compaction ended", sessionEvent, {
-      event: "pi_mono_auto_compaction_ended",
+  private async handleCompactionEnd(sessionEvent: SessionEvent): Promise<void> {
+    this.logDebug("pi mono compaction ended", sessionEvent, {
+      event: "pi_mono_compaction_ended",
     });
     await this.persistSessionState({}, true, true);
   }

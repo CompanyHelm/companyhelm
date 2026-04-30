@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createElement } from "react";
 import type { MutableRefObject } from "react";
-import { ChatTranscriptTimestampPresenter, areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ChatTranscriptPane, ChatTranscriptTimestampPresenter, areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
 
 function buildDomRect(properties: { height: number; left: number; top: number; width: number }): DOMRectReadOnly {
   return {
@@ -20,6 +22,8 @@ function buildDomRect(properties: { height: number; left: number; top: number; w
 function buildTranscriptPaneProps() {
   const session = {
     id: "session-1",
+    isCompacting: false,
+    status: "running",
     updatedAt: "2026-04-21T00:00:00.000Z",
   };
   const sessionMessages = [{
@@ -32,11 +36,17 @@ function buildTranscriptPaneProps() {
   } as MutableRefObject<HTMLDivElement | null>;
   const onJumpToLatest = () => {};
   const onScroll = () => {};
+  const onFileDrag = () => {};
 
   return {
+    isFileDropActive: false,
     isLoadingOlderMessages: false,
     isLoadingTranscript: false,
     isTranscriptStuckToBottom: true,
+    onFileDragEnter: onFileDrag,
+    onFileDragLeave: onFileDrag,
+    onFileDragOver: onFileDrag,
+    onFileDrop: onFileDrag,
     onJumpToLatest,
     onScroll,
     organizationSlug: "test-org",
@@ -87,6 +97,20 @@ test("areChatTranscriptPanePropsEqual rerenders when transcript loading state ch
   };
 
   assert.equal(areChatTranscriptPanePropsEqual(previousProps, nextProps), false);
+});
+
+test("chat transcript pane renders compaction status from session state", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    session: {
+      ...props.session,
+      isCompacting: true,
+    },
+    sessionMessages: [],
+  }));
+
+  assert.match(markup, /Compacting context/u);
 });
 
 test("timestamp tooltip boundary starts below visible workflow chrome", () => {
