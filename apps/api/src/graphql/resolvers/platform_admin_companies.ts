@@ -20,7 +20,7 @@ type PlatformAdminCompanyRow = {
   id: string;
   memberCount: number;
   name: string;
-  plan: "free" | "pro";
+  plan: "free" | "plus" | "pro";
   slug: string | null;
 };
 
@@ -34,7 +34,7 @@ type GraphqlPlatformAdminCompany = {
   id: string;
   memberCount: number;
   name: string;
-  plan: "free" | "pro";
+  plan: "free" | "plus" | "pro";
   slug: string | null;
 };
 

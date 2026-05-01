@@ -296,13 +296,16 @@ export class CompanyWalletService {
       return;
     }
 
-    if (company.plan === "free" && input.nextPlan === "pro") {
-      await this.applyPendingPlan(database, input.companyId, "pro");
+    const currentPlan = company.plan;
+    const currentPlanRechargeAmount = this.getMonthlyRechargeAmount(currentPlan);
+    const nextPlanRechargeAmount = this.getMonthlyRechargeAmount(input.nextPlan);
+    if (nextPlanRechargeAmount > currentPlanRechargeAmount) {
+      await this.applyPendingPlan(database, input.companyId, input.nextPlan);
       await this.recordUpgradeAdjustment(database, {
         companyId: input.companyId,
         now,
-        previousPlan: "free",
-        upgradedPlan: "pro",
+        previousPlan: currentPlan,
+        upgradedPlan: input.nextPlan,
       });
       return;
     }

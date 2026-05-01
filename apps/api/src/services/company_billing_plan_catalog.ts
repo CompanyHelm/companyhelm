@@ -1,4 +1,4 @@
-export type CompanyBillingPlanKey = "free" | "pro";
+export type CompanyBillingPlanKey = "free" | "plus" | "pro";
 
 export type CompanyBillingPlan = {
   currencyCode: "USD";
@@ -28,12 +28,21 @@ export class CompanyBillingPlanCatalog {
     },
     {
       currencyCode: "USD",
-      description: "Higher managed-model credit allowance for teams running CompanyHelm daily.",
+      description: "More included LLM tokens for teams using CompanyHelm throughout the week.",
+      key: "plus",
+      monthlyCreditsNanoUsd: 50 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
+      name: "Plus",
+      paddlePriceId: "pri_placeholder_plus_monthly",
+      priceCents: 900,
+    },
+    {
+      currencyCode: "USD",
+      description: "Expanded included LLM tokens for teams running CompanyHelm daily.",
       key: "pro",
-      monthlyCreditsNanoUsd: 100 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
+      monthlyCreditsNanoUsd: 500 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Pro",
       paddlePriceId: "pri_placeholder_pro_monthly",
-      priceCents: 2_000,
+      priceCents: 9_900,
     },
   ];
 

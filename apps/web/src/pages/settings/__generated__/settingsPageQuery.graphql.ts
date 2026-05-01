@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8c508421a0417dd65dfef84a6860abfe>>
+ * @generated SignedSource<<002eb0256fd073d2a1d7351f45b2c7c3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
+export type CompanySubscriptionPlan = "free" | "plus" | "pro" | "%future added value";
 export type settingsPageQuery$variables = Record<PropertyKey, never>;
 export type settingsPageQuery$data = {
   readonly BillingPlans: ReadonlyArray<{

@@ -343,7 +343,7 @@ export class CompanyBootstrapService {
 
   async ensureCompanySubscriptionWallet(
     transaction: DatabaseTransactionInterface,
-    input: { companyId: string; plan: "free" | "pro" },
+    input: { companyId: string; plan: "free" | "plus" | "pro" },
   ): Promise<void> {
     await this.companyWalletService.ensureSubscriptionWalletForCompanyInTransaction(transaction as never, input);
   }

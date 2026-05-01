@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { injectable } from "inversify";
 import { companies, walletTransactions, wallets } from "../../db/schema.ts";
-import { CompanyBillingPlanCatalog } from "../../services/company_billing_plan_catalog.ts";
+import { CompanyBillingPlanCatalog, type CompanyBillingPlanKey } from "../../services/company_billing_plan_catalog.ts";
 import { CompanyWalletService } from "../../services/wallet/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
@@ -24,9 +24,9 @@ type WalletTransactionRow = {
 };
 
 type CompanyWalletPlanRow = {
-  pendingPlan: string | null;
+  pendingPlan: CompanyBillingPlanKey | null;
   pendingPlanEffectiveAt: Date | null;
-  plan: string;
+  plan: CompanyBillingPlanKey;
 };
 
 /**
@@ -96,7 +96,7 @@ export class CompanyWalletQueryResolver {
 
       return {
         currentPlan: company.plan,
-        nextRechargeAmountNanoUsd: this.walletService.getMonthlyRechargeAmount((company.pendingPlan ?? company.plan) as "free" | "pro"),
+        nextRechargeAmountNanoUsd: this.walletService.getMonthlyRechargeAmount(company.pendingPlan ?? company.plan),
         nextRechargeAt: nextPeriod.toISOString(),
         pendingPlan: company.pendingPlan,
         pendingPlanEffectiveAt: company.pendingPlanEffectiveAt?.toISOString() ?? null,

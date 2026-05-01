@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6bc8bf8becffdd0ec8535145e426f1eb>>
+ * @generated SignedSource<<93286fe74399044fa5a482a99129aa86>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
+export type CompanySubscriptionPlan = "free" | "plus" | "pro" | "%future added value";
 export type LlmUsageAggregatePeriod = "day" | "month" | "total" | "%future added value";
 export type LlmUsageAggregateScope = "agent" | "company" | "managed_model_provider_credential" | "model_provider_credential" | "session" | "%future added value";
 export type dashboardPageQuery$variables = {

@@ -26,9 +26,9 @@ type WalletTransactionRecord = {
 
 type CompanyRecord = {
   id: string;
-  pendingPlan: "free" | "pro" | null;
+  pendingPlan: "free" | "plus" | "pro" | null;
   pendingPlanEffectiveAt: Date | null;
-  plan: "free" | "pro";
+  plan: "free" | "plus" | "pro";
 };
 
 /**
@@ -296,4 +296,23 @@ test("CompanyWalletService monthly recharge skips a period already opened", asyn
 
   assert.equal(harness.wallets[0]!.amountNanoUsd, 10_000_000_000);
   assert.equal(harness.transactions.length, 1);
+});
+
+test("CompanyWalletService applies plus upgrades immediately with a credit adjustment", async () => {
+  const service = new CompanyWalletService();
+  const harness = new CompanyWalletServiceHarness();
+  harness.wallets.push({ amountNanoUsd: 10_000_000_000, companyId: "company-1", id: "wallet-1", type: "subscription" });
+
+  await service.schedulePlanChangeInTransaction(harness.createDatabase() as never, {
+    companyId: "company-1",
+    nextPlan: "plus",
+    now: new Date("2026-05-21T10:00:00.000Z"),
+  });
+
+  assert.equal(harness.companies[0]!.plan, "plus");
+  assert.equal(harness.companies[0]!.pendingPlan, null);
+  assert.equal(harness.transactions.length, 1);
+  assert.equal(harness.transactions[0]!.category, "adjustment");
+  assert.equal(harness.transactions[0]!.amountNanoUsd, 40_000_000_000);
+  assert.equal(harness.wallets[0]!.amountNanoUsd, 50_000_000_000);
 });

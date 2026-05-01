@@ -17,6 +17,7 @@ import { sql } from "drizzle-orm/sql";
 
 export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
   "free",
+  "plus",
   "pro",
 ]);
 
