@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { companies, walletTransactions, wallets } from "../src/db/schema.ts";
+import { CompanyBillingPlanCatalog } from "../src/services/company_billing_plan_catalog.ts";
 import { CompanyWalletService } from "../src/services/wallet/service.ts";
 
 type WalletRecord = {
@@ -189,6 +190,7 @@ test("CompanyWalletService allows only companies with positive wallet balance", 
 
 test("CompanyWalletService bootstraps a subscription wallet with opening credit", async () => {
   const service = new CompanyWalletService();
+  const planCatalog = new CompanyBillingPlanCatalog();
   const harness = new CompanyWalletServiceHarness();
 
   await service.ensureSubscriptionWalletForCompanyInTransaction(harness.createDatabase() as never, {
@@ -198,7 +200,7 @@ test("CompanyWalletService bootstraps a subscription wallet with opening credit"
   });
 
   assert.equal(harness.wallets.length, 1);
-  assert.equal(harness.wallets[0]!.amountNanoUsd, 10_000_000_000);
+  assert.equal(harness.wallets[0]!.amountNanoUsd, planCatalog.requirePlan("free").monthlyCreditsNanoUsd);
   assert.equal(harness.transactions.length, 1);
   assert.equal(harness.transactions[0]!.category, "opening");
   assert.equal(harness.transactions[0]!.periodStart?.toISOString(), "2026-05-01T00:00:00.000Z");

@@ -4,8 +4,9 @@ import { injectable } from "inversify";
 import { companies, walletTransactions, wallets } from "../../db/schema.ts";
 import type { DatabaseInterface } from "../../db/database_interface.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { CompanyBillingPlanCatalog, type CompanyBillingPlanKey } from "../company_billing_plan_catalog.ts";
 
-export type CompanyWalletSubscriptionPlan = "free" | "pro";
+export type CompanyWalletSubscriptionPlan = CompanyBillingPlanKey;
 
 type WalletType = "subscription" | "pay_as_you_go";
 type WalletTransactionCategory = "llm_charge" | "monthly_recharge" | "adjustment" | "opening";
@@ -83,12 +84,12 @@ export type SubscriptionPeriod = {
  */
 @injectable()
 export class CompanyWalletService {
-  private static readonly nanoUsdPerUsd = 1_000_000_000;
   private static readonly depletedMessage = "CompanyHelm AI wallet balance is depleted for this company.";
-  private static readonly monthlyRechargeByPlan: Record<CompanyWalletSubscriptionPlan, number> = {
-    free: 10 * CompanyWalletService.nanoUsdPerUsd,
-    pro: 100 * CompanyWalletService.nanoUsdPerUsd,
-  };
+  private readonly planCatalog: CompanyBillingPlanCatalog;
+
+  constructor(planCatalog: CompanyBillingPlanCatalog = new CompanyBillingPlanCatalog()) {
+    this.planCatalog = planCatalog;
+  }
 
   async assertCompanyHasPositiveBalance(
     transactionProvider: TransactionProviderInterface,
@@ -359,7 +360,7 @@ export class CompanyWalletService {
   }
 
   getMonthlyRechargeAmount(plan: CompanyWalletSubscriptionPlan): number {
-    return CompanyWalletService.monthlyRechargeByPlan[plan];
+    return this.planCatalog.getMonthlyCreditsNanoUsd(plan);
   }
 
   resolveSubscriptionPeriod(now: Date): SubscriptionPeriod {

@@ -62,6 +62,7 @@ import { UpdateMcpServerMutation } from "../mutations/update_mcp_server.ts";
 import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_from_repository.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
+import { BillingPlansQueryResolver } from "../resolvers/billing_plans.ts";
 import { CodexRateLimitsQueryResolver } from "../resolvers/codex_rate_limits.ts";
 import { CompanyWalletQueryResolver } from "../resolvers/company_wallet.ts";
 import { CompanyMembersQueryResolver } from "../resolvers/company_members.ts";
@@ -106,6 +107,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
+  private readonly billingPlansQueryResolver: BillingPlansQueryResolver;
   private readonly codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver;
   private readonly companyWalletQueryResolver: CompanyWalletQueryResolver;
   private readonly companyMembersQueryResolver: CompanyMembersQueryResolver;
@@ -314,6 +316,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new FreeCompanyCreationEligibilityQueryResolver({} as never),
     @inject(CodexRateLimitsQueryResolver)
     codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver = new CodexRateLimitsQueryResolver(),
+    @inject(BillingPlansQueryResolver)
+    billingPlansQueryResolver: BillingPlansQueryResolver = new BillingPlansQueryResolver(),
     @inject(CompanyOnboardingFieldResolver)
     companyOnboardingFieldResolver: CompanyOnboardingFieldResolver = new CompanyOnboardingFieldResolver(),
     @inject(EnsureCompanyOnboardingMutation)
@@ -401,6 +405,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
+    this.billingPlansQueryResolver = billingPlansQueryResolver;
     this.codexRateLimitsQueryResolver = codexRateLimitsQueryResolver;
     this.companyWalletQueryResolver = companyWalletQueryResolver;
     this.companyMembersQueryResolver = companyMembersQueryResolver;
@@ -556,6 +561,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },
       Query: {
+        BillingPlans: this.billingPlansQueryResolver.execute,
         CodexRateLimits: this.codexRateLimitsQueryResolver.execute,
         CompanyWallet: this.companyWalletQueryResolver.execute,
         CompanyMembers: this.companyMembersQueryResolver.execute,

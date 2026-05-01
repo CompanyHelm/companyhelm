@@ -47,6 +47,15 @@ const settingsPageQueryNode = graphql`
       createdAt
       updatedAt
     }
+    BillingPlans {
+      key
+      name
+      description
+      priceCents
+      currencyCode
+      paddlePriceId
+      monthlyCreditsNanoUsd
+    }
     CompanyWallet {
       currentPlan
       pendingPlan
@@ -471,7 +480,7 @@ function SettingsPageContent() {
       ) : null}
 
       {selectedTab === "billing" ? (
-        <BillingPanel billing={data.CompanyWallet} />
+        <BillingPanel billing={data.CompanyWallet} companyId={data.Me.company.id} plans={data.BillingPlans} />
       ) : null}
 
       {selectedTab === "members" ? (

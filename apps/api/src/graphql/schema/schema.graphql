@@ -23,6 +23,7 @@ type Query {
   GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
+  BillingPlans: [BillingPlan!]!
   CompanyWallet: CompanyWallet!
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
@@ -885,6 +886,16 @@ type CompanyWallet {
   nextRechargeAt: String!
   wallets: [Wallet!]!
   transactions: [WalletTransaction!]!
+}
+
+type BillingPlan {
+  key: CompanySubscriptionPlan!
+  name: String!
+  description: String!
+  priceCents: Int!
+  currencyCode: String!
+  paddlePriceId: String
+  monthlyCreditsNanoUsd: Float!
 }
 
 type Wallet {

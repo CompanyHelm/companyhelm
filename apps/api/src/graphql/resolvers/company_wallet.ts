@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { injectable } from "inversify";
 import { companies, walletTransactions, wallets } from "../../db/schema.ts";
+import { CompanyBillingPlanCatalog } from "../../services/company_billing_plan_catalog.ts";
 import { CompanyWalletService } from "../../services/wallet/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
@@ -34,6 +35,12 @@ type CompanyWalletPlanRow = {
  */
 @injectable()
 export class CompanyWalletQueryResolver {
+  private readonly walletService: CompanyWalletService;
+
+  constructor(planCatalog: CompanyBillingPlanCatalog = new CompanyBillingPlanCatalog()) {
+    this.walletService = new CompanyWalletService(planCatalog);
+  }
+
   execute = async (
     _root: unknown,
     _arguments: unknown,
@@ -85,12 +92,11 @@ export class CompanyWalletQueryResolver {
         .orderBy(desc(walletTransactions.createdAt))
         .limit(10) as WalletTransactionRow[];
       const totalBalanceNanoUsd = walletRows.reduce((total, wallet) => total + wallet.amountNanoUsd, 0);
-      const walletService = new CompanyWalletService();
-      const nextPeriod = walletService.resolveSubscriptionPeriod(new Date()).periodEnd;
+      const nextPeriod = this.walletService.resolveSubscriptionPeriod(new Date()).periodEnd;
 
       return {
         currentPlan: company.plan,
-        nextRechargeAmountNanoUsd: walletService.getMonthlyRechargeAmount((company.pendingPlan ?? company.plan) as "free" | "pro"),
+        nextRechargeAmountNanoUsd: this.walletService.getMonthlyRechargeAmount((company.pendingPlan ?? company.plan) as "free" | "pro"),
         nextRechargeAt: nextPeriod.toISOString(),
         pendingPlan: company.pendingPlan,
         pendingPlanEffectiveAt: company.pendingPlanEffectiveAt?.toISOString() ?? null,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bf281687d1e52c82a293a3dce20e309f>>
+ * @generated SignedSource<<8c508421a0417dd65dfef84a6860abfe>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,15 @@ import { ConcreteRequest } from 'relay-runtime';
 export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
 export type settingsPageQuery$variables = Record<PropertyKey, never>;
 export type settingsPageQuery$data = {
+  readonly BillingPlans: ReadonlyArray<{
+    readonly currencyCode: string;
+    readonly description: string;
+    readonly key: CompanySubscriptionPlan;
+    readonly monthlyCreditsNanoUsd: number;
+    readonly name: string;
+    readonly paddlePriceId: string | null | undefined;
+    readonly priceCents: number;
+  }>;
   readonly CompanySettings: {
     readonly baseSystemPrompt: string | null | undefined;
     readonly companyId: string;
@@ -175,39 +184,93 @@ v4 = {
 v5 = {
   "alias": null,
   "args": null,
-  "kind": "ScalarField",
-  "name": "currentPlan",
+  "concreteType": "BillingPlan",
+  "kind": "LinkedField",
+  "name": "BillingPlans",
+  "plural": true,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "key",
+      "storageKey": null
+    },
+    (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "description",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "priceCents",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "currencyCode",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "paddlePriceId",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "monthlyCreditsNanoUsd",
+      "storageKey": null
+    }
+  ],
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "pendingPlan",
+  "name": "currentPlan",
   "storageKey": null
 },
 v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "pendingPlanEffectiveAt",
+  "name": "pendingPlan",
   "storageKey": null
 },
 v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "nextRechargeAt",
+  "name": "pendingPlanEffectiveAt",
   "storageKey": null
 },
 v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "type",
+  "name": "nextRechargeAt",
   "storageKey": null
 },
 v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -224,6 +287,7 @@ return {
       (v2/*: any*/),
       (v3/*: any*/),
       (v4/*: any*/),
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -232,10 +296,10 @@ return {
         "name": "CompanyWallet",
         "plural": false,
         "selections": [
-          (v5/*: any*/),
           (v6/*: any*/),
           (v7/*: any*/),
           (v8/*: any*/),
+          (v9/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -244,8 +308,8 @@ return {
             "name": "wallets",
             "plural": true,
             "selections": [
-              (v9/*: any*/),
-              (v10/*: any*/)
+              (v10/*: any*/),
+              (v11/*: any*/)
             ],
             "storageKey": null
           }
@@ -265,6 +329,7 @@ return {
       (v2/*: any*/),
       (v3/*: any*/),
       (v4/*: any*/),
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -273,10 +338,10 @@ return {
         "name": "CompanyWallet",
         "plural": false,
         "selections": [
-          (v5/*: any*/),
           (v6/*: any*/),
           (v7/*: any*/),
           (v8/*: any*/),
+          (v9/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -285,8 +350,8 @@ return {
             "name": "wallets",
             "plural": true,
             "selections": [
-              (v9/*: any*/),
               (v10/*: any*/),
+              (v11/*: any*/),
               (v0/*: any*/)
             ],
             "storageKey": null
@@ -297,16 +362,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "66daf285e701a485495c7f32f9d8a7b2",
+    "cacheID": "4a9ed53944d58e4468e6cb2bd2aa8b07",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  CompanyWallet {\n    currentPlan\n    pendingPlan\n    pendingPlanEffectiveAt\n    nextRechargeAt\n    wallets {\n      type\n      amountNanoUsd\n      id\n    }\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  BillingPlans {\n    key\n    name\n    description\n    priceCents\n    currencyCode\n    paddlePriceId\n    monthlyCreditsNanoUsd\n  }\n  CompanyWallet {\n    currentPlan\n    pendingPlan\n    pendingPlanEffectiveAt\n    nextRechargeAt\n    wallets {\n      type\n      amountNanoUsd\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a8e452a83bdc222d71129933e55141de";
+(node as any).hash = "09f442ff2869eb5e207de4f496c49695";
 
 export default node;
