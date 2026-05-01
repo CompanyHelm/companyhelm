@@ -9,6 +9,7 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
   AlertTriangleIcon,
+  CheckIcon,
   ChevronRightIcon,
   ExternalLinkIcon,
   GitForkIcon,
@@ -71,6 +72,59 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
 });
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
+
+type CompactionTranscriptMarkerRecord = {
+  phase: "start" | "end";
+  text: string;
+};
+
+function resolveCompactionTranscriptMarker(message: SessionMessageRecord): CompactionTranscriptMarkerRecord | null {
+  if (message.role !== "assistant") {
+    return null;
+  }
+
+  const markerContent = message.contents.find((content) => {
+    const structuredContent = content.structuredContent as Record<string, unknown> | null;
+    return structuredContent?.type === "compaction" && (structuredContent.phase === "start" || structuredContent.phase === "end");
+  });
+  if (!markerContent) {
+    return null;
+  }
+
+  const structuredContent = markerContent.structuredContent as Record<string, unknown>;
+  return {
+    phase: structuredContent.phase as "start" | "end",
+    text: markerContent.text?.trim() || (structuredContent.phase === "end" ? "Compaction complete" : "Compacting…"),
+  };
+}
+
+const CompactionTranscriptMessage = memo(function CompactionTranscriptMessage(
+  { marker, message }: { marker: CompactionTranscriptMarkerRecord; message: SessionMessageRecord },
+) {
+  const isRunningMarker = marker.phase === "start" && message.status.trim().toLowerCase() === "running";
+  const label = isRunningMarker
+    ? marker.text
+    : marker.phase === "start"
+    ? "Compaction started"
+    : marker.text;
+
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex min-w-0 items-center gap-3 py-1`}>
+      <div aria-hidden="true" className="h-px flex-1 bg-border/60" />
+      <div className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/95 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+        {isRunningMarker ? (
+          <Loader2Icon aria-hidden="true" className="size-3.5 shrink-0 animate-spin" />
+        ) : marker.phase === "end" ? (
+          <CheckIcon aria-hidden="true" className="size-3.5 shrink-0 text-emerald-500" />
+        ) : null}
+        <span className="truncate">{label}</span>
+      </div>
+      <div aria-hidden="true" className="h-px flex-1 bg-border/60" />
+    </div>
+  );
+});
+
+CompactionTranscriptMessage.displayName = "CompactionTranscriptMessage";
 
 /**
  * Formats persisted transcript timestamps for hover-only display, keeping message rows visually
@@ -565,6 +619,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   useLeftGutter?: boolean;
 }) {
   const principalExecutionDisplay = resolvePrincipalExecutionMessageDisplay(message, session);
+  const compactionMarker = resolveCompactionTranscriptMarker(message);
   const isUserMessage = message.role === "user" && principalExecutionDisplay === null;
   const isToolMessage = message.role === "toolResult";
   const userImageContents = isUserMessage ? resolveImageContentDisplay(message) : [];
@@ -635,6 +690,10 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
 
     return () => window.clearTimeout(timeoutId);
   }, [isPointerTapTimestampVisible, pointerTapTimestampOpenVersion]);
+
+  if (compactionMarker) {
+    return <CompactionTranscriptMessage marker={compactionMarker} message={message} />;
+  }
 
   if (!hasVisibleMessage(message, { assistantContentMode })) {
     return null;
@@ -1093,6 +1152,12 @@ function ChatTranscriptPaneComponent({
   const transcriptTurns = useMemo(() => {
     return buildTranscriptTurns(sessionMessages);
   }, [sessionMessages]);
+  const hasRunningCompactionTranscriptMarker = useMemo(() => {
+    return sessionMessages.some((message) => {
+      const marker = resolveCompactionTranscriptMarker(message);
+      return marker?.phase === "start" && message.status.trim().toLowerCase() === "running";
+    });
+  }, [sessionMessages]);
   const [expandedTurnIds, setExpandedTurnIds] = useState<Record<string, boolean>>({});
   const [transcriptViewport, setTranscriptViewport] = useState<HTMLDivElement | null>(null);
   const [transcriptMessageList, setTranscriptMessageList] = useState<HTMLDivElement | null>(null);
@@ -1202,7 +1267,7 @@ function ChatTranscriptPaneComponent({
               <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
             </div>
           ) : null}
-          <CompactionStatusRow session={session} />
+          {hasRunningCompactionTranscriptMarker ? null : <CompactionStatusRow session={session} />}
           <div ref={setTranscriptMessageList} className="grid gap-3">
             {transcriptTurns.map((turn) => {
               if (turn.isRunning) {
