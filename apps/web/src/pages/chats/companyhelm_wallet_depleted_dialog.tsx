@@ -1,4 +1,4 @@
-import { KeyRoundIcon, SparklesIcon, WalletIcon } from "lucide-react";
+import { KeyRoundIcon, SlidersHorizontalIcon, SparklesIcon, WalletIcon } from "lucide-react";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +29,8 @@ interface CompanyHelmWalletDepletedDialogProps {
 
 /**
  * Guides users away from a depleted managed-model wallet without leaving them in a generic error
- * state. The primary path is billing, while credential owners can immediately switch to their own
- * provider or add one.
+ * state. The primary path is billing, while the secondary action changes depending on whether the
+ * company already has another provider ready to use.
  */
 export function CompanyHelmWalletDepletedDialog(props: CompanyHelmWalletDepletedDialogProps) {
   return (
@@ -67,50 +67,60 @@ export function CompanyHelmWalletDepletedDialog(props: CompanyHelmWalletDepleted
           <Separator className="flex-1" />
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="text-center">
-            <p className="text-sm font-semibold text-foreground">Already have a subscription or API key?</p>
-            <p className="mt-1 text-xs/relaxed text-muted-foreground">
-              Bring your own provider credentials and keep chatting with your existing model account.
-            </p>
-          </div>
-
-          {props.providers.length > 0 ? (
-            <div className="flex flex-wrap justify-center gap-2">
-              {props.providers.map((provider) => (
-                <ModelProviderIcon
-                  key={provider.id}
-                  className="size-9 rounded-md border border-border/60 bg-background"
-                  imageClassName="size-5"
-                  label={provider.label}
-                  providerId={provider.id}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-stretch">
-          {props.hasAlternateProvider ? (
+        {props.hasAlternateProvider ? (
+          <div className="flex flex-col gap-3">
             <Button
               className="w-full"
               onClick={props.onChooseAlternateProvider}
               type="button"
               variant="outline"
             >
+              <SlidersHorizontalIcon data-icon="inline-start" />
               Choose another provider
             </Button>
-          ) : null}
-          <Button
-            className="w-full"
-            onClick={props.onAddProvider}
-            type="button"
-            variant={props.hasAlternateProvider ? "secondary" : "outline"}
-          >
-            <KeyRoundIcon data-icon="inline-start" />
-            Add LLM Provider
-          </Button>
-        </DialogFooter>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-3">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Already have a subscription or API key?</p>
+                <p className="mt-1 text-xs/relaxed text-muted-foreground">
+                  Bring your own provider credentials and keep chatting with your existing model account.
+                </p>
+              </div>
+
+              {props.providers.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {props.providers.map((provider) => (
+                    <div key={provider.id} className="flex w-16 flex-col items-center gap-1">
+                      <ModelProviderIcon
+                        className="size-9 rounded-md border border-border/60 bg-background"
+                        imageClassName="size-5"
+                        label={provider.label}
+                        providerId={provider.id}
+                      />
+                      <span className="max-w-full truncate text-center text-[0.625rem] leading-4 text-muted-foreground">
+                        {provider.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <DialogFooter className="sm:justify-stretch">
+              <Button
+                className="w-full"
+                onClick={props.onAddProvider}
+                type="button"
+                variant="outline"
+              >
+                <KeyRoundIcon data-icon="inline-start" />
+                Add LLM Provider
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
