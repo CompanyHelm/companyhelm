@@ -115,7 +115,7 @@ export function BillingPanel(props: BillingPanelProps) {
                         {formatPlanPrice(plan)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {UsageMetrics.formatUsdFromNano(plan.monthlyCreditsNanoUsd)} managed-model credits monthly
+                        {UsageMetrics.formatUsdFromNano(plan.monthlyCreditsNanoUsd)} included LLM tokens / month
                       </p>
                     </div>
 
