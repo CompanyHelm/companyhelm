@@ -21,6 +21,7 @@ import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
 import { ConversationsPage } from "./pages/conversations/conversations_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
+import { EnvironmentDetailPage } from "./pages/environments/environment_detail_page";
 import { EnvironmentTerminalPage } from "./pages/environments/environment_terminal_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
@@ -95,6 +96,10 @@ type WorkflowDetailRouteSearch = {
 
 type SkillDetailRouteSearch = {
   tab?: "overview" | "source";
+};
+
+type EnvironmentDetailRouteSearch = {
+  tab?: "metrics" | "overview";
 };
 
 type ConversationsRouteSearch = {
@@ -185,6 +190,14 @@ function validateWorkflowDetailRouteSearch(search: Record<string, unknown>): Wor
 function validateSkillDetailRouteSearch(search: Record<string, unknown>): SkillDetailRouteSearch {
   return {
     tab: search.tab === "overview" || search.tab === "source"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateEnvironmentDetailRouteSearch(search: Record<string, unknown>): EnvironmentDetailRouteSearch {
+  return {
+    tab: search.tab === "metrics" || search.tab === "overview"
       ? search.tab
       : undefined,
   };
@@ -352,6 +365,13 @@ const environmentsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/environments"),
   component: EnvironmentsPage,
+});
+
+const environmentDetailRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/environments/$environmentId"),
+  validateSearch: validateEnvironmentDetailRouteSearch,
+  component: EnvironmentDetailPage,
 });
 
 const environmentTerminalRoute = createRoute({
@@ -594,6 +614,7 @@ const routeTree = rootRoute.addChildren([
         flagsRoute,
         agentsRoute,
         environmentsRoute,
+        environmentDetailRoute,
         computeProvidersRoute,
         chatsRoute,
         onboardingRoute,

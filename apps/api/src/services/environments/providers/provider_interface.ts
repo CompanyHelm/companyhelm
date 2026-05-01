@@ -41,13 +41,17 @@ export type AgentEnvironmentRecord = {
   agentId: string;
   companyId: string;
   cpuCount: number;
+  cpuUsedPct?: number | null;
   createdAt: Date;
   diskSpaceGb: number;
+  diskUsedBytes?: number | null;
   displayName: string | null;
   id: string;
   lastSeenAt: Date | null;
   memoryGb: number;
+  memUsedBytes?: number | null;
   metadata: Record<string, unknown>;
+  metricsSampledAt?: Date | null;
   platform: "linux" | "macos" | "windows";
   provider: ComputeProvider;
   providerDefinitionId: string | null;

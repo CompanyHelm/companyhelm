@@ -15,6 +15,7 @@ import { WorkflowTriggerQueueService } from "../services/workflows/queue.ts";
 import { WorkflowSchedulerSyncService } from "../services/workflows/scheduler_sync.ts";
 import { CompanyDeletionSweepWorker } from "../workers/company_deletion_sweep.ts";
 import { CompanyDeletionWorker } from "../workers/company_deletions.ts";
+import { EnvironmentMetricsWorker } from "../workers/environment_metrics.ts";
 import { GithubWebhookWorker } from "../workers/github_webhooks.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
@@ -38,6 +39,7 @@ export class ApiServer {
   private readonly companyDeletionWorker: CompanyDeletionWorker;
   private readonly database: AppRuntimeDatabase;
   private readonly devAuthRoute: DevAuthRoute;
+  private readonly environmentMetricsWorker: EnvironmentMetricsWorker;
   private readonly graphqlApplication: GraphqlApplication;
   private readonly githubWebhookQueueService: GithubWebhookQueueService;
   private readonly githubWebhookRoute: GithubWebhookRoute;
@@ -129,6 +131,11 @@ export class ApiServer {
       start() {},
       stop() {},
     } as never,
+    @inject(EnvironmentMetricsWorker)
+    environmentMetricsWorker: EnvironmentMetricsWorker = {
+      start() {},
+      stop() {},
+    } as never,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
@@ -137,6 +144,7 @@ export class ApiServer {
     this.companyDeletionSweepWorker = companyDeletionSweepWorker;
     this.companyDeletionWorker = companyDeletionWorker;
     this.database = database;
+    this.environmentMetricsWorker = environmentMetricsWorker;
     this.graphqlApplication = graphqlApplication;
     this.githubWebhookQueueService = githubWebhookQueueService;
     this.githubWebhookRoute = githubWebhookRoute;
@@ -199,6 +207,7 @@ export class ApiServer {
     this.skillRepositoryUpdateWorker.start();
     this.companyDeletionWorker.start();
     this.companyDeletionSweepWorker.start();
+    this.environmentMetricsWorker.start();
     await this.companyDeletionDispatcher.dispatchDueRequests();
   }
 
@@ -240,6 +249,7 @@ export class ApiServer {
       this.skillRepositoryUpdateWorker.stop();
       this.companyDeletionSweepWorker.stop();
       await this.companyDeletionWorker.stop();
+      this.environmentMetricsWorker.stop();
       await this.workflowTriggerQueueService.close();
       await this.githubWebhookQueueService.close();
       await this.companyDeletionQueueService.close();

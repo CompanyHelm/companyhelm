@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import {
+  bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -94,6 +96,10 @@ export const agentEnvironments = pgTable("agent_environments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  metricsSampledAt: timestamp("metrics_sampled_at", { withTimezone: true }),
+  cpuUsedPct: doublePrecision("cpu_used_pct"),
+  memUsedBytes: bigint("mem_used_bytes", { mode: "number" }),
+  diskUsedBytes: bigint("disk_used_bytes", { mode: "number" }),
 }, (table) => ({
   companyIdIndex: index("agent_environments_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_environments_agent_id_idx").on(table.agentId),
@@ -101,6 +107,36 @@ export const agentEnvironments = pgTable("agent_environments", {
   providerEnvironmentIdIndex: index("agent_environments_provider_environment_id_idx").on(
     table.provider,
     table.providerEnvironmentId,
+  ),
+}));
+
+export const agentEnvironmentMetricSamples = pgTable("agent_environment_metric_samples", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  environmentId: uuid("environment_id")
+    .references(() => agentEnvironments.id, { onDelete: "cascade" })
+    .notNull(),
+  sampledAt: timestamp("sampled_at", { withTimezone: true }).notNull(),
+  cpuUsedPct: doublePrecision("cpu_used_pct"),
+  memUsedBytes: bigint("mem_used_bytes", { mode: "number" }),
+  diskUsedBytes: bigint("disk_used_bytes", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companySampledAtIndex: index("agent_environment_metric_samples_company_sampled_at_idx").on(
+    table.companyId,
+    table.sampledAt,
+  ),
+  environmentSampledAtIndex: index("agent_environment_metric_samples_environment_sampled_at_idx").on(
+    table.environmentId,
+    table.sampledAt,
+  ),
+  environmentSampledAtUnique: uniqueIndex("agent_environment_metric_samples_environment_sampled_at_uidx").on(
+    table.environmentId,
+    table.sampledAt,
   ),
 }));
 

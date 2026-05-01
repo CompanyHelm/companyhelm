@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { EnvironmentActions } from "@/components/environment_actions";
 import {
@@ -8,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { OrganizationPath } from "@/lib/organization_path";
 
 export type EnvironmentsTableRecord = {
   agentId: string;
@@ -31,6 +33,7 @@ interface EnvironmentsTableProps {
   deletingEnvironmentId: string | null;
   environments: EnvironmentsTableRecord[];
   isLoading: boolean;
+  organizationSlug: string;
   onDelete: (environmentId: string, force: boolean) => Promise<void>;
   onOpenDesktop: (environmentId: string) => Promise<void>;
   onOpenTerminal: (environmentId: string) => Promise<void>;
@@ -119,7 +122,16 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
             <TableCell>
               <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">
-                  {environment.displayName ?? environment.providerEnvironmentId}
+                  <Link
+                    className="underline-offset-4 hover:underline"
+                    params={{
+                      environmentId: environment.id,
+                      organizationSlug: props.organizationSlug,
+                    }}
+                    to={OrganizationPath.route("/environments/$environmentId")}
+                  >
+                    {environment.displayName ?? environment.providerEnvironmentId}
+                  </Link>
                 </p>
               </div>
             </TableCell>
