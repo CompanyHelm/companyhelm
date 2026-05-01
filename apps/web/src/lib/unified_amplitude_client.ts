@@ -18,6 +18,12 @@ export class UnifiedAmplitudeClient implements AmplitudeClientInterface {
     amplitude.setUserId(userId);
   }
 
+  setUserProperty(propertyName: string, value: boolean): void {
+    const identify = new amplitude.Identify();
+    identify.set(propertyName, value);
+    amplitude.identify(identify);
+  }
+
   track(eventType: string, eventProperties: Record<string, unknown>): void {
     amplitude.track(eventType, eventProperties);
   }

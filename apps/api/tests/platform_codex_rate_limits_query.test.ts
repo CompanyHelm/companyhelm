@@ -60,13 +60,13 @@ class PlatformCodexRateLimitsQueryTestHarness {
     };
 
     return {
+      isPlatformAdmin,
       authSession: {
         token: "jwt-token",
         user: {
           email: "admin@example.com",
           firstName: "Admin",
           id: "admin-user",
-          isPlatformAdmin,
           lastName: "User",
           provider: "clerk",
           providerSubject: "clerk-admin-user",

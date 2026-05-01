@@ -41,7 +41,7 @@ export class PlatformModelsQueryResolver {
     _arguments: unknown,
     context: GraphqlRequestContext,
   ): Promise<PlatformModelRecord[]> => {
-    if (!context.authSession?.user?.isPlatformAdmin) {
+    if (context.isPlatformAdmin !== true) {
       throw new Error("Platform admin access required.");
     }
     if (!context.app_runtime_transaction_provider) {

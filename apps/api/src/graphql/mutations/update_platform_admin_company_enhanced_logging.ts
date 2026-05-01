@@ -53,7 +53,7 @@ export class UpdatePlatformAdminCompanyEnhancedLoggingMutation extends Mutation<
     if (!transactionProvider) {
       throw new Error("Authentication required.");
     }
-    if (context.authSession.user.isPlatformAdmin !== true) {
+    if (context.isPlatformAdmin !== true) {
       throw new Error("Platform admin access required.");
     }
 

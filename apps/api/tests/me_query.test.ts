@@ -27,10 +27,26 @@ class MeQueryTestHarness {
     } as Config;
   }
 
-  static createDatabaseMock() {
+  static createDatabaseMock(isPlatformAdmin = true) {
     return {
       getDatabase() {
-        return {} as never;
+        return {
+          select() {
+            return {
+              from() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return isPlatformAdmin ? [{ userId: "user-123" }] : [];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        } as never;
       },
       async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
         return callback(this.getDatabase());
@@ -56,7 +72,6 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
           id: "user-123",
           email: "user@example.com",
           firstName: "User",
-          isPlatformAdmin: true,
           lastName: "Example",
           provider: "clerk" as const,
           providerSubject: "user_clerk_123",

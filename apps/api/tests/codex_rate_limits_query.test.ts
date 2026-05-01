@@ -87,7 +87,6 @@ class CodexRateLimitsQueryTestHarness {
           email: "user@example.com",
           firstName: "Test",
           id: "user-1",
-          isPlatformAdmin: false,
           lastName: "User",
           provider: "clerk",
           providerSubject: "clerk-user-1",

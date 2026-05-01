@@ -15,7 +15,6 @@ export type CompanyHelmOrganizationMembership = {
 export type CompanyHelmUser = {
   firstName: string;
   id: string;
-  isPlatformAdmin?: boolean;
   lastName: string | null;
   primaryEmailAddress: {
     emailAddress: string;

@@ -771,7 +771,6 @@ export function CompanyHelmDevProvider(props: {
         ? {
           firstName: session.userDetail.user.firstName,
           id: session.userDetail.user.id,
-          isPlatformAdmin: undefined,
           lastName: session.userDetail.user.lastName,
           primaryEmailAddress: {
             emailAddress: session.userDetail.user.email,

@@ -60,7 +60,7 @@ export class PlatformAdminUsersQueryResolver {
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
-    if (context.authSession.user.isPlatformAdmin !== true) {
+    if (context.isPlatformAdmin !== true) {
       throw new Error("Platform admin access required.");
     }
 

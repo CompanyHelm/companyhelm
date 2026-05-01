@@ -84,7 +84,6 @@ function ClerkAuthContextBridge(props: {
             ? {
               firstName: user.user.firstName ?? "User",
               id: user.user.id,
-              isPlatformAdmin: undefined,
               lastName: user.user.lastName,
               primaryEmailAddress: {
                 emailAddress: user.user.primaryEmailAddress?.emailAddress ?? "",

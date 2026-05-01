@@ -27,7 +27,7 @@ class PlatformAdminUsersQueryTestHarness {
     } as Config;
   }
 
-  static createDatabaseMock() {
+  static createDatabaseMock(isPlatformAdmin = true) {
     let selectCallCount = 0;
 
     return {
@@ -38,6 +38,22 @@ class PlatformAdminUsersQueryTestHarness {
             if (selectCallCount === 1) {
               return {
                 from() {
+                  return {
+                    where() {
+                      return {
+                        async limit() {
+                          return isPlatformAdmin ? [{ userId: "user-123" }] : [];
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
                   return [{
                     totalCount: 2,
                   }];
@@ -45,7 +61,7 @@ class PlatformAdminUsersQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -64,7 +80,7 @@ class PlatformAdminUsersQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -134,7 +150,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
           id: "user-123",
           email: "admin@example.com",
           firstName: "Admin",
-          isPlatformAdmin: true,
           lastName: "User",
           provider: "clerk" as const,
           providerSubject: "user_clerk_123",
@@ -223,7 +238,7 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
 test("GraphQL PlatformAdminUsers query rejects non-platform-admin users", async () => {
   const app = Fastify();
   const config = PlatformAdminUsersQueryTestHarness.createConfigMock();
-  const database = PlatformAdminUsersQueryTestHarness.createDatabaseMock();
+  const database = PlatformAdminUsersQueryTestHarness.createDatabaseMock(false);
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -237,7 +252,6 @@ test("GraphQL PlatformAdminUsers query rejects non-platform-admin users", async 
           id: "user-123",
           email: "user@example.com",
           firstName: "User",
-          isPlatformAdmin: false,
           lastName: "Example",
           provider: "clerk" as const,
           providerSubject: "user_clerk_123",
