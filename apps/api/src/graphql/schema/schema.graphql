@@ -14,6 +14,8 @@ type Query {
   FreeCompanyCreationEligibility: FreeCompanyCreationEligibility!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
+  Environment(id: ID!): Environment!
+  EnvironmentMetricSamples(environmentId: ID!, startTime: String!, endTime: String!): [EnvironmentMetricSample!]!
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositoryProvisionings: [GithubRepositoryProvisioning!]!
@@ -662,9 +664,20 @@ type Environment {
   cpuCount: Int!
   memoryGb: Int!
   diskSpaceGb: Int!
+  metricsSampledAt: String
+  cpuUsedPct: Float
+  memUsedBytes: Float
+  diskUsedBytes: Float
   lastSeenAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type EnvironmentMetricSample {
+  sampledAt: String!
+  cpuUsedPct: Float
+  memUsedBytes: Float
+  diskUsedBytes: Float
 }
 
 type EnvironmentVncUrl {

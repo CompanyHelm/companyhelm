@@ -44,7 +44,7 @@ export function EnvironmentTerminalPage() {
   };
   const environmentId = String(routeParams.environmentId || "").trim();
   const terminalElementRef = useRef<HTMLDivElement | null>(null);
-  const terminalRef = useRef<Terminal | null>(null);
+  const terminalRef = useRef<InstanceType<typeof Terminal> | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
@@ -132,7 +132,7 @@ export function EnvironmentTerminalPage() {
     searchAddonRef.current = searchAddon;
     terminal.writeln("Connecting to CompanyHelm environment terminal...");
 
-    const dataDisposable = terminal.onData((data) => {
+    const dataDisposable = terminal.onData((data: string) => {
       const websocket = websocketRef.current;
       if (!websocket || websocket.readyState !== WebSocket.OPEN) {
         return;

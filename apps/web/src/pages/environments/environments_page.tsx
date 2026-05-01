@@ -82,6 +82,7 @@ function EnvironmentsPageFallback() {
             deletingEnvironmentId={null}
             environments={[]}
             isLoading
+            organizationSlug=""
             onDelete={async () => undefined}
             onOpenDesktop={async () => undefined}
             onOpenTerminal={async () => undefined}
@@ -180,6 +181,7 @@ function EnvironmentsPageContent() {
             deletingEnvironmentId={deletingEnvironmentId}
             environments={environments}
             isLoading={false}
+            organizationSlug={organizationSlug}
             onDelete={async (environmentId, force) => {
               if (isDeleteEnvironmentInFlight) {
                 return;

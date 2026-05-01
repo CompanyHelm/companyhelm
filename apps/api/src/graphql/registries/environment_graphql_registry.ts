@@ -19,6 +19,8 @@ import { StartEnvironmentMutation } from "../mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "../mutations/stop_environment.ts";
 import { UpdateComputeProviderDefinitionMutation } from "../mutations/update_compute_provider_definition.ts";
 import { ComputeProviderDefinitionTemplatesResolver } from "../resolvers/compute_provider_definition_templates.ts";
+import { EnvironmentMetricSamplesQueryResolver } from "../resolvers/environment_metric_samples.ts";
+import { EnvironmentQueryResolver } from "../resolvers/environment.ts";
 import { ComputeProviderDefinitionsQueryResolver } from "../resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "../resolvers/environments.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../resolvers/model_provider_credential_models.ts";
@@ -49,6 +51,8 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private deleteEnvironmentMutation: MutationLike;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private environmentMetricSamplesQueryResolver: EnvironmentsQueryResolverLike;
+  private environmentQueryResolver: EnvironmentsQueryResolverLike;
   private environmentsQueryResolver: EnvironmentsQueryResolverLike;
   private getEnvironmentVncUrlMutation: MutationLike;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
@@ -118,6 +122,18 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("SessionEnvironment query is not configured.");
       },
     } as never,
+    @inject(EnvironmentQueryResolver)
+    environmentQueryResolver: EnvironmentQueryResolver = {
+      async execute() {
+        throw new Error("Environment query is not configured.");
+      },
+    } as never,
+    @inject(EnvironmentMetricSamplesQueryResolver)
+    environmentMetricSamplesQueryResolver: EnvironmentMetricSamplesQueryResolver = {
+      async execute() {
+        throw new Error("EnvironmentMetricSamples query is not configured.");
+      },
+    } as never,
     @inject(EnvironmentsQueryResolver)
     environmentsQueryResolver: EnvironmentsQueryResolver = new EnvironmentsQueryResolver(),
     @inject(AgentEnvironmentTemplateService)
@@ -174,6 +190,8 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.environmentMetricSamplesQueryResolver = environmentMetricSamplesQueryResolver;
+    this.environmentQueryResolver = environmentQueryResolver;
     this.environmentsQueryResolver = environmentsQueryResolver;
     this.getEnvironmentVncUrlMutation = getEnvironmentVncUrlMutation;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
@@ -218,6 +236,8 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
       },
       Query: {
         ComputeProviderDefinitions: this.computeProviderDefinitionsQueryResolver.execute,
+        Environment: this.environmentQueryResolver.execute,
+        EnvironmentMetricSamples: this.environmentMetricSamplesQueryResolver.execute,
         Environments: this.environmentsQueryResolver.execute,
         ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
         ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
