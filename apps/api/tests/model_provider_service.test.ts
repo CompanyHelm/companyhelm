@@ -55,19 +55,15 @@ test("ModelProviderService returns oauth instructions for openai-codex", () => {
   });
 });
 
-test("ModelProviderService returns oauth instructions for google-gemini-cli", () => {
+test("ModelProviderService returns API key instructions for Google Gemini API", () => {
   const service = new ModelProviderService();
 
-  assert.deepEqual(service.get("google-gemini-cli"), {
-    id: "google-gemini-cli",
-    name: "Google Gemini CLI",
-    type: ModelProviderAuthorizationType.Oauth,
-    authorizationInstructionsMarkdown: [
-      "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
-      "```",
-      "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json",
-      "```",
-    ].join("\n"),
+  assert.deepEqual(service.get("google"), {
+    id: "google",
+    name: "Google Gemini API",
+    type: ModelProviderAuthorizationType.ApiKey,
+    authorizationInstructionsMarkdown:
+      "Create an API key in [Google AI Studio](https://aistudio.google.com/app/apikey) for the Gemini API.",
   });
 });
 
@@ -76,7 +72,7 @@ test("ModelProviderService lists supported providers in modal order", () => {
 
   assert.deepEqual(
     service.list().map((provider) => provider.id),
-    ["companyhelm", "openai", "anthropic", "openrouter", "openai-compatible", "openai-codex", "google-gemini-cli"],
+    ["companyhelm", "openai", "anthropic", "google", "openrouter", "openai-compatible", "openai-codex"],
   );
 });
 
@@ -95,4 +91,5 @@ test("ModelProviderService rejects unsupported providers", () => {
   const service = new ModelProviderService();
 
   assert.throws(() => service.get("gemini"), /Unsupported model provider: gemini/);
+  assert.throws(() => service.get("google-gemini-cli"), /Unsupported model provider: google-gemini-cli/);
 });

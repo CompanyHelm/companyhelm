@@ -6,7 +6,7 @@ export const modelProviderEnum = pgEnum("model_provider", [
   "openai-codex",
   "openrouter",
   "openai-compatible",
-  "google-gemini-cli",
+  "google",
   "companyhelm",
 ]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);

@@ -601,16 +601,16 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
         reasoningLevels: null,
       }, {
         provider: "openai-compatible",
-        modelId: "nvidia/nemotron-3-super-120b-a12b",
-        name: "nvidia/nemotron-3-super-120b-a12b",
-        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        modelId: "deepseek-ai/deepseek-v4-pro",
+        name: "deepseek-ai/deepseek-v4-pro",
+        description: "OpenAI-compatible model: deepseek-ai/deepseek-v4-pro",
         reasoningSupported: false,
         reasoningLevels: null,
       }, {
         provider: "openai-compatible",
-        modelId: "nvidia/nemotron-3-super-120b-a12b",
-        name: "nvidia/nemotron-3-super-120b-a12b",
-        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        modelId: "deepseek-ai/deepseek-v4-pro",
+        name: "deepseek-ai/deepseek-v4-pro",
+        description: "OpenAI-compatible model: deepseek-ai/deepseek-v4-pro",
         reasoningSupported: false,
         reasoningLevels: null,
       }];
@@ -681,7 +681,7 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
   assert.deepEqual(document.data.AddModelProviderCredential, {
     id: "credential-1",
     baseUrl: "https://integrate.api.nvidia.com/v1",
-    defaultModelId: "nvidia/nemotron-3-super-120b-a12b",
+    defaultModelId: "deepseek-ai/deepseek-v4-pro",
     name: "OpenAI-compatible API",
     modelProvider: "openai-compatible",
   });
@@ -693,7 +693,7 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
       .map((value) => value.modelId),
     [
       "llama3.1:8b",
-      "nvidia/nemotron-3-super-120b-a12b",
+      "deepseek-ai/deepseek-v4-pro",
     ],
   );
   assert.deepEqual(modelManager.calls, [{

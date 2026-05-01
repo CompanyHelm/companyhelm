@@ -28,7 +28,7 @@ export class ModelProviderCredentialCatalog {
     ["openai-codex", 0],
     ["anthropic", 1],
     ["openai", 2],
-    ["google-gemini-cli", 3],
+    ["google", 3],
     ["openrouter", 4],
     [ModelProviderCredentialCatalog.NVIDIA_PROVIDER_ID, 5],
     [ModelProviderCredentialCatalog.OPENAI_COMPATIBLE_PROVIDER_ID, 6],
@@ -103,8 +103,8 @@ export class ModelProviderCredentialCatalog {
     if (providerId === "openai-codex") {
       return "Codex";
     }
-    if (providerId === "google-gemini-cli") {
-      return "Gemini";
+    if (providerId === "google") {
+      return "Google Gemini API";
     }
     if (providerId === "openai") {
       return "OpenAI";

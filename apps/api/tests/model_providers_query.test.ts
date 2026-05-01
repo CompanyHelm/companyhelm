@@ -142,6 +142,14 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
         "Create an API key in the [Anthropic API getting started guide](https://docs.anthropic.com/en/api/getting-started).",
     },
     {
+      id: "google",
+      isAvailable: true,
+      name: "Google Gemini API",
+      type: "api_key",
+      authorizationInstructionsMarkdown:
+        "Create an API key in [Google AI Studio](https://aistudio.google.com/app/apikey) for the Gemini API.",
+    },
+    {
       id: "openrouter",
       isAvailable: true,
       name: "OpenRouter",
@@ -166,18 +174,6 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
         "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
         "```",
         "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json",
-        "```",
-      ].join("\n"),
-    },
-    {
-      id: "google-gemini-cli",
-      isAvailable: true,
-      name: "Google Gemini CLI",
-      type: "oauth",
-      authorizationInstructionsMarkdown: [
-        "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
-        "```",
-        "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json",
         "```",
       ].join("\n"),
     },

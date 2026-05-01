@@ -40,17 +40,17 @@ class NvidiaCompatibleRefreshingModelService extends ModelService {
       }),
       new ModelProviderModel({
         provider: "openai-compatible",
-        modelId: "nvidia/nemotron-3-super-120b-a12b",
-        name: "nvidia/nemotron-3-super-120b-a12b",
-        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        modelId: "deepseek-ai/deepseek-v4-pro",
+        name: "deepseek-ai/deepseek-v4-pro",
+        description: "OpenAI-compatible model: deepseek-ai/deepseek-v4-pro",
         reasoningSupported: false,
         reasoningLevels: null,
       }),
       new ModelProviderModel({
         provider: "openai-compatible",
-        modelId: "nvidia/nemotron-3-super-120b-a12b",
-        name: "nvidia/nemotron-3-super-120b-a12b",
-        description: "OpenAI-compatible model: nvidia/nemotron-3-super-120b-a12b",
+        modelId: "deepseek-ai/deepseek-v4-pro",
+        name: "deepseek-ai/deepseek-v4-pro",
+        description: "OpenAI-compatible model: deepseek-ai/deepseek-v4-pro",
         reasoningSupported: false,
         reasoningLevels: null,
       }),
@@ -226,7 +226,7 @@ class ModelServiceTestHarness {
                     }
 
                     currentModels.forEach((model) => {
-                      model.isDefault = model.modelId === "nvidia/nemotron-3-super-120b-a12b";
+                      model.isDefault = model.modelId === "deepseek-ai/deepseek-v4-pro";
                     });
                   },
                 };
@@ -330,7 +330,7 @@ test("ModelService refreshStoredModels defaults NVIDIA OpenAI-compatible credent
     modelId: "meta/llama-3.1-70b-instruct",
   }, {
     isDefault: true,
-    modelId: "nvidia/nemotron-3-super-120b-a12b",
+    modelId: "deepseek-ai/deepseek-v4-pro",
   }]);
 });
 
@@ -356,43 +356,54 @@ test("ModelService fetchModels uses the dedicated openai-codex adapter", async (
   }
 });
 
-test("ModelService fetchModels uses the dedicated google-gemini-cli adapter", async () => {
+test("ModelService fetchModels validates Google Gemini API keys against the official model endpoint", async () => {
   const originalFetch = globalThis.fetch;
-  let fetchCallCount = 0;
-  globalThis.fetch = (async () => {
-    fetchCallCount += 1;
-    throw new Error("google-gemini-cli should not call a model discovery API");
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push(String(input));
+    assert.equal((init?.headers as Record<string, string>)["x-goog-api-key"], "google-api-key");
+
+    return new Response(JSON.stringify({
+      models: [
+        {
+          name: "models/gemini-2.5-pro",
+          displayName: "Gemini 2.5 Pro",
+          supportedGenerationMethods: ["generateContent"],
+        },
+        {
+          name: "models/text-embedding-004",
+          displayName: "Embedding",
+          supportedGenerationMethods: ["embedContent"],
+        },
+      ],
+    }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    });
   }) as typeof fetch;
 
   try {
     const modelService = new ModelService(new ModelRegistry());
 
-    const models = await modelService.fetchModels(
-      "google-gemini-cli",
-      JSON.stringify({
-        token: "oauth-access-token",
-        projectId: "project-1",
-      }),
-    );
+    const models = await modelService.fetchModels("google", "google-api-key");
 
-    assert.equal(fetchCallCount, 0);
-    assert.equal(models[0]?.provider, "google-gemini-cli");
-    assert.ok(models.some((model) => model.modelId === "gemini-3.1-pro-preview"));
-    assert.deepEqual(
-      models.find((model) => model.modelId === "gemini-3.1-pro-preview")?.reasoningLevels,
-      ["minimal", "low", "medium", "high"],
-    );
+    assert.deepEqual(calls, ["https://generativelanguage.googleapis.com/v1beta/models"]);
+    assert.equal(models.length, 1);
+    assert.equal(models[0]?.provider, "google");
+    assert.equal(models[0]?.modelId, "gemini-2.5-pro");
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-test("ModelService rejects google-gemini-cli credentials without projectId", async () => {
+test("ModelService rejects removed Google Gemini CLI provider", async () => {
   const modelService = new ModelService(new ModelRegistry());
 
   await assert.rejects(
     () => modelService.fetchModels("google-gemini-cli", JSON.stringify({ token: "oauth-access-token" })),
-    /token and projectId/,
+    /Unsupported model provider: google-gemini-cli/,
   );
 });
 

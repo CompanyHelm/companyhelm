@@ -49,9 +49,9 @@ test("orders and labels dialog providers for the credential picker", () => {
     },
     {
       authorizationInstructionsMarkdown: null,
-      id: "google-gemini-cli",
-      name: "Google Gemini CLI",
-      type: "oauth",
+      id: "google",
+      name: "Google Gemini API",
+      type: "api_key",
     },
     {
       authorizationInstructionsMarkdown: null,
@@ -73,7 +73,7 @@ test("orders and labels dialog providers for the credential picker", () => {
       ["openai-codex", "Codex", "Subscription"],
       ["anthropic", "Anthropic", "API key"],
       ["openai", "OpenAI", "API key"],
-      ["google-gemini-cli", "Gemini", "Subscription"],
+      ["google", "Google Gemini API", "API key"],
       ["openrouter", "OpenRouter", "API key"],
       ["nvidia", "NVIDIA", "API key"],
       ["openai-compatible", "OpenAI Compatible", "API key"],
