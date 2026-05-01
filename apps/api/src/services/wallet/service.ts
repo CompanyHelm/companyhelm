@@ -22,8 +22,11 @@ type CompanyWalletTransactionRecord = {
   amountNanoUsd: number;
   category: WalletTransactionCategory;
   companyId: string;
+  createdAt?: Date;
+  id?: string;
   periodEnd: Date | null;
   periodStart: Date | null;
+  sessionId?: string | null;
   sessionTurnId: string | null;
   walletId: string;
 };
@@ -319,6 +322,51 @@ export class CompanyWalletService {
       .where(eq(companies.id, input.companyId));
   }
 
+  async recordAdjustmentInTransaction(
+    database: SelectableDatabase & InsertableDatabase & UpdatableDatabase,
+    input: { amountNanoUsd: number; companyId: string; now?: Date; walletId: string },
+  ): Promise<Required<Pick<CompanyWalletTransactionRecord, "createdAt" | "id" | "sessionId">> & CompanyWalletTransactionRecord> {
+    if (!Number.isSafeInteger(input.amountNanoUsd) || input.amountNanoUsd === 0) {
+      throw new Error("Adjustment amount must be a non-zero safe integer nano-USD value.");
+    }
+
+    const wallet = await this.requireCompanyWallet(database, input.companyId, input.walletId);
+    const now = input.now ?? new Date();
+    const transactionId = randomUUID();
+    const [transaction] = await database
+      .insert(walletTransactions)
+      .values({
+        amountNanoUsd: input.amountNanoUsd,
+        category: "adjustment",
+        companyId: input.companyId,
+        createdAt: now,
+        id: transactionId,
+        periodEnd: null,
+        periodStart: null,
+        sessionId: null,
+        sessionTurnId: null,
+        walletId: wallet.id,
+      })
+      .returning?.({
+        amountNanoUsd: walletTransactions.amountNanoUsd,
+        category: walletTransactions.category,
+        companyId: walletTransactions.companyId,
+        createdAt: walletTransactions.createdAt,
+        id: walletTransactions.id,
+        periodEnd: walletTransactions.periodEnd,
+        periodStart: walletTransactions.periodStart,
+        sessionId: walletTransactions.sessionId,
+        sessionTurnId: walletTransactions.sessionTurnId,
+        walletId: walletTransactions.walletId,
+      }) as Array<Required<Pick<CompanyWalletTransactionRecord, "createdAt" | "id" | "sessionId">> & CompanyWalletTransactionRecord>;
+    if (!transaction) {
+      throw new Error("Failed to create wallet adjustment.");
+    }
+
+    await this.incrementWalletAmount(database, wallet, input.amountNanoUsd, now);
+    return transaction;
+  }
+
 
   async rechargeDueSubscriptions(
     databaseOwner: DatabaseInterface,
@@ -460,6 +508,20 @@ export class CompanyWalletService {
     const wallet = await this.loadSubscriptionWallet(database, companyId);
     if (!wallet) {
       throw new Error("Company subscription wallet not found.");
+    }
+
+    return wallet;
+  }
+
+  private async requireCompanyWallet(
+    database: SelectableDatabase,
+    companyId: string,
+    walletId: string,
+  ): Promise<CompanyWalletRecord> {
+    const walletRows = await this.loadCompanyWallets(database, companyId);
+    const wallet = walletRows.find((companyWallet) => companyWallet.id === walletId) ?? null;
+    if (!wallet) {
+      throw new Error("Company wallet not found.");
     }
 
     return wallet;

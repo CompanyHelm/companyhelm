@@ -220,6 +220,10 @@ export class UsageMetrics {
   }
 
   static formatUsdFromNano(nanoUsd: number): string {
+    if (nanoUsd < 0) {
+      return `-${UsageMetrics.formatUsdFromNano(Math.abs(nanoUsd))}`;
+    }
+
     const usd = nanoUsd / UsageMetrics.nanoUsdPerUsd;
     if (usd === 0) {
       return "$0.00";

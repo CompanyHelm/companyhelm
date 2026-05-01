@@ -427,19 +427,26 @@ function AdminCompaniesPageContent() {
                     </TableCell>
                     <TableCell>{formatOptionalValue(company.clerkOrganizationId)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        disabled={isDeleteCompanyInFlight}
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setDeleteCompanyErrorMessage(null);
-                          setDeleteConfirmationName("");
-                          setSelectedDeleteCompany(company);
-                        }}
-                      >
-                        <Trash2 data-icon="inline-start" />
-                        Delete
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <a href={`/admin/companies/${company.id}`}>
+                            Details
+                          </a>
+                        </Button>
+                        <Button
+                          disabled={isDeleteCompanyInFlight}
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setDeleteCompanyErrorMessage(null);
+                            setDeleteConfirmationName("");
+                            setSelectedDeleteCompany(company);
+                          }}
+                        >
+                          <Trash2 data-icon="inline-start" />
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

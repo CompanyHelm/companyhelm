@@ -8,6 +8,9 @@ import {
 import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AdminCompaniesPage } from "./pages/admin/companies_page";
+import { AdminCompanyDetailPage } from "./pages/admin/company_detail_page";
+import { AdminCompanyWalletDetailPage } from "./pages/admin/company_wallet_detail_page";
+import { AdminCompanyWalletsPage } from "./pages/admin/company_wallets_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
 import { AdminLlmCredentialDetailPage } from "./pages/admin/llm_credential_detail_page";
 import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
@@ -309,7 +312,31 @@ const adminUsersRoute = createRoute({
 const adminCompaniesRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/admin/companies",
+  component: Outlet,
+});
+
+const adminCompaniesIndexRoute = createRoute({
+  getParentRoute: () => adminCompaniesRoute,
+  path: "/",
   component: AdminCompaniesPage,
+});
+
+const adminCompanyDetailRoute = createRoute({
+  getParentRoute: () => adminCompaniesRoute,
+  path: "$companyId" as string,
+  component: AdminCompanyDetailPage,
+});
+
+const adminCompanyWalletsRoute = createRoute({
+  getParentRoute: () => adminCompaniesRoute,
+  path: "$companyId/wallets" as string,
+  component: AdminCompanyWalletsPage,
+});
+
+const adminCompanyWalletDetailRoute = createRoute({
+  getParentRoute: () => adminCompaniesRoute,
+  path: "$companyId/wallets/$walletId" as string,
+  component: AdminCompanyWalletDetailPage,
 });
 
 const adminModelsRoute = createRoute({
@@ -606,7 +633,12 @@ const routeTree = rootRoute.addChildren([
       rootIndexRoute,
       adminDashboardRoute,
       adminUsersRoute,
-      adminCompaniesRoute,
+      adminCompaniesRoute.addChildren([
+        adminCompaniesIndexRoute,
+        adminCompanyDetailRoute,
+        adminCompanyWalletsRoute,
+        adminCompanyWalletDetailRoute,
+      ]),
       adminModelsRoute.addChildren([
         adminModelsIndexRoute,
         adminModelDetailRoute,

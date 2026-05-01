@@ -28,6 +28,9 @@ type Query {
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String, userId: ID): PlatformAdminCompanyPage!
+  PlatformAdminCompany(id: ID!): PlatformAdminCompanyDetail!
+  PlatformAdminCompanyWallets(companyId: ID!): [PlatformAdminCompanyWallet!]!
+  PlatformAdminCompanyWallet(companyId: ID!, walletId: ID!): PlatformAdminCompanyWalletDetail!
   PlatformModels: [PlatformModel!]!
   PlatformModelRoutes(platformModelId: ID!): [PlatformModelRoute!]!
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
@@ -99,6 +102,7 @@ type Mutation {
   UpdatePlatformAdminCompanyEnhancedLogging(
     input: UpdatePlatformAdminCompanyEnhancedLoggingInput!
   ): PlatformAdminCompanyEnhancedLogging!
+  AddPlatformAdminWalletAdjustment(input: AddPlatformAdminWalletAdjustmentInput!): PlatformAdminWalletTransaction!
   GrantPlatformAdmin(input: GrantPlatformAdminInput!): PlatformAdminUser!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
@@ -618,6 +622,74 @@ type PlatformAdminCompanyPage {
   pageSize: Int!
   totalCount: Int!
   totalPages: Int!
+}
+
+type PlatformAdminCompanyDetail {
+  id: ID!
+  name: String!
+  slug: String
+  plan: CompanySubscriptionPlan!
+  clerkOrganizationId: String
+  memberCount: Int!
+  usage: PlatformAdminCompanyUsage!
+  wallets: [PlatformAdminCompanyWallet!]!
+}
+
+type PlatformAdminCompanyUsage {
+  requestCount: Float!
+  inputTokens: Float!
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  totalTokens: Float!
+  inputCostNanoUsd: Float!
+  outputCostNanoUsd: Float!
+  cacheReadCostNanoUsd: Float!
+  cacheWriteCostNanoUsd: Float!
+  totalCostNanoUsd: Float!
+  inputCostNanoVirtualUsd: Float!
+  outputCostNanoVirtualUsd: Float!
+  cacheReadCostNanoVirtualUsd: Float!
+  cacheWriteCostNanoVirtualUsd: Float!
+  totalCostNanoVirtualUsd: Float!
+}
+
+type PlatformAdminCompanyWallet {
+  id: ID!
+  companyId: ID!
+  type: String!
+  amountNanoUsd: Float!
+  transactionCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminCompanyWalletDetail {
+  wallet: PlatformAdminCompanyWallet!
+  company: PlatformAdminCompanyWalletCompany!
+  transactions: [PlatformAdminWalletTransaction!]!
+}
+
+type PlatformAdminCompanyWalletCompany {
+  id: ID!
+  name: String!
+  slug: String
+  plan: CompanySubscriptionPlan!
+  clerkOrganizationId: String
+  memberCount: Int!
+}
+
+type PlatformAdminWalletTransaction {
+  id: ID!
+  companyId: ID!
+  walletId: ID!
+  category: String!
+  amountNanoUsd: Float!
+  periodStart: String
+  periodEnd: String
+  sessionId: ID
+  sessionTurnId: ID
+  createdAt: String!
 }
 
 type Agent {
@@ -1449,6 +1521,12 @@ input UpdatePlatformAdminCompanyEnhancedLoggingInput {
   ttlSeconds: Int
   components: [String!]
   sessionIds: [String!]
+}
+
+input AddPlatformAdminWalletAdjustmentInput {
+  companyId: ID!
+  walletId: ID!
+  amountNanoUsd: Float!
 }
 
 input GrantPlatformAdminInput {

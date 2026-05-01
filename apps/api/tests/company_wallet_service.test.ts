@@ -271,6 +271,32 @@ test("CompanyWalletService spends subscription credits before pay as you go cred
   ]);
 });
 
+test("CompanyWalletService records manual adjustments against the selected wallet", async () => {
+  const service = new CompanyWalletService();
+  const harness = new CompanyWalletServiceHarness();
+  harness.wallets.push({ amountNanoUsd: 1_000, companyId: "company-1", id: "wallet-1", type: "subscription" });
+
+  const positiveAdjustment = await service.recordAdjustmentInTransaction(harness.createDatabase() as never, {
+    amountNanoUsd: 500,
+    companyId: "company-1",
+    now: new Date("2026-05-20T10:00:00.000Z"),
+    walletId: "wallet-1",
+  });
+  const negativeAdjustment = await service.recordAdjustmentInTransaction(harness.createDatabase() as never, {
+    amountNanoUsd: -250,
+    companyId: "company-1",
+    now: new Date("2026-05-20T10:05:00.000Z"),
+    walletId: "wallet-1",
+  });
+
+  assert.equal(harness.wallets[0]!.amountNanoUsd, 1_250);
+  assert.equal(positiveAdjustment.category, "adjustment");
+  assert.equal(positiveAdjustment.amountNanoUsd, 500);
+  assert.equal(negativeAdjustment.category, "adjustment");
+  assert.equal(negativeAdjustment.amountNanoUsd, -250);
+  assert.deepEqual(harness.transactions.map((transaction) => transaction.amountNanoUsd), [500, -250]);
+});
+
 test("CompanyWalletService monthly recharge skips a period already opened", async () => {
   const service = new CompanyWalletService();
   const harness = new CompanyWalletServiceHarness();

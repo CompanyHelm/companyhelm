@@ -86,6 +86,7 @@ declare module "lucide-react" {
   export const Trash2Icon: LucideIcon;
   export const UploadIcon: LucideIcon;
   export const UsersIcon: LucideIcon;
+  export const WalletIcon: LucideIcon;
   export const WorkflowIcon: LucideIcon;
   export const WrenchIcon: LucideIcon;
   export const XIcon: LucideIcon;

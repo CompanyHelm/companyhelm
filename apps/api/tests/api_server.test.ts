@@ -168,6 +168,7 @@ test("ApiServer health endpoint reports draining state", async () => {
 test("ApiServer stop is idempotent and closes runtime dependencies once", async () => {
   const adminClose = vi.fn(async () => {});
   const databaseClose = vi.fn(async () => {});
+  const environmentMetricsStop = vi.fn();
   const githubQueueClose = vi.fn(async () => {});
   const githubWorkerStop = vi.fn(async () => {});
   const llmOauthStop = vi.fn();
@@ -238,6 +239,9 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
     start: () => {},
     stop: () => {},
   } as never, {
+    start: () => {},
+    stop: environmentMetricsStop,
+  } as never, {
     async close() {
       await walletQueueClose();
     },
@@ -256,6 +260,7 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   assert.equal(githubWorkerStop.mock.calls.length, 1);
   assert.equal(sessionStop.mock.calls.length, 1);
   assert.equal(workflowStop.mock.calls.length, 1);
+  assert.equal(environmentMetricsStop.mock.calls.length, 1);
   assert.equal(walletWorkerStop.mock.calls.length, 1);
   assert.equal(walletSchedulerUpsert.mock.calls.length, 1);
   assert.equal(walletQueueClose.mock.calls.length, 1);

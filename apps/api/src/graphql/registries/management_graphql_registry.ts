@@ -13,6 +13,7 @@ import { ModelService } from "../../services/ai_providers/model_service.ts";
 import { PlatformModelProviderCredentialService } from "../../services/ai_providers/platform_model_provider_credential_service.ts";
 import { McpService } from "../../services/mcp/service.ts";
 import { AddGithubInstallationMutation } from "../mutations/add_github_installation.ts";
+import { AddPlatformAdminWalletAdjustmentMutation } from "../mutations/add_platform_admin_wallet_adjustment.ts";
 import { AddPlatformModelProviderCredentialMutation } from "../mutations/add_platform_model_provider_credential.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateGithubRepositoryProvisioningMutation } from "../mutations/create_github_repository_provisioning.ts";
@@ -80,6 +81,7 @@ import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregat
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
+import { PlatformAdminCompanyWalletsQueryResolver } from "../resolvers/platform_admin_company_wallets.ts";
 import { PlatformCodexRateLimitsQueryResolver } from "../resolvers/platform_codex_rate_limits.ts";
 import { PlatformModelRoutesQueryResolver } from "../resolvers/platform_model_routes.ts";
 import { PlatformModelsQueryResolver } from "../resolvers/platform_models.ts";
@@ -106,6 +108,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 @injectable()
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
+  private readonly addPlatformAdminWalletAdjustmentMutation: AddPlatformAdminWalletAdjustmentMutation;
   private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
   private readonly billingPlansQueryResolver: BillingPlansQueryResolver;
   private readonly codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver;
@@ -156,6 +159,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation;
   private readonly refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation;
   private readonly platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver;
+  private readonly platformAdminCompanyWalletsQueryResolver: PlatformAdminCompanyWalletsQueryResolver;
   private readonly platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver;
   private readonly platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver;
   private readonly platformModelsQueryResolver: PlatformModelsQueryResolver;
@@ -327,6 +331,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(PlatformAdminCompaniesQueryResolver)
     platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver =
       new PlatformAdminCompaniesQueryResolver(),
+    @inject(PlatformAdminCompanyWalletsQueryResolver)
+    platformAdminCompanyWalletsQueryResolver: PlatformAdminCompanyWalletsQueryResolver =
+      new PlatformAdminCompanyWalletsQueryResolver(),
     @inject(PlatformCodexRateLimitsQueryResolver)
     platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver =
       new PlatformCodexRateLimitsQueryResolver(),
@@ -388,6 +395,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService(config)),
     @inject(CompanyWalletQueryResolver)
     companyWalletQueryResolver: CompanyWalletQueryResolver = new CompanyWalletQueryResolver(),
+    @inject(AddPlatformAdminWalletAdjustmentMutation)
+    addPlatformAdminWalletAdjustmentMutation: AddPlatformAdminWalletAdjustmentMutation =
+      new AddPlatformAdminWalletAdjustmentMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -404,6 +414,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     const defaultSkillGithubCatalog = new SkillGithubCatalog(new SkillGithubPublicClient(config), new GithubClient(config));
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
+    this.addPlatformAdminWalletAdjustmentMutation = addPlatformAdminWalletAdjustmentMutation;
     this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
     this.billingPlansQueryResolver = billingPlansQueryResolver;
     this.codexRateLimitsQueryResolver = codexRateLimitsQueryResolver;
@@ -461,6 +472,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
     this.platformAdminCompaniesQueryResolver = platformAdminCompaniesQueryResolver;
+    this.platformAdminCompanyWalletsQueryResolver = platformAdminCompanyWalletsQueryResolver;
     this.platformCodexRateLimitsQueryResolver = platformCodexRateLimitsQueryResolver;
     this.platformModelRoutesQueryResolver = platformModelRoutesQueryResolver;
     this.platformModelsQueryResolver = platformModelsQueryResolver;
@@ -510,6 +522,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     return {
       Mutation: {
         AddGithubInstallation: this.addGithubInstallationMutation.execute,
+        AddPlatformAdminWalletAdjustment: this.addPlatformAdminWalletAdjustmentMutation.execute,
         AddPlatformModelProviderCredential: this.addPlatformModelProviderCredentialMutation.execute,
         ConnectMcpServerOAuthClientCredentials: this.connectMcpServerOauthClientCredentialsMutation.execute,
         CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
@@ -578,6 +591,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,
+        PlatformAdminCompany: this.platformAdminCompanyWalletsQueryResolver.executeCompany,
+        PlatformAdminCompanyWallets: this.platformAdminCompanyWalletsQueryResolver.executeWallets,
+        PlatformAdminCompanyWallet: this.platformAdminCompanyWalletsQueryResolver.executeWallet,
         PlatformCodexRateLimits: this.platformCodexRateLimitsQueryResolver.execute,
         PlatformModels: this.platformModelsQueryResolver.execute,
         PlatformModelRoutes: this.platformModelRoutesQueryResolver.execute,
