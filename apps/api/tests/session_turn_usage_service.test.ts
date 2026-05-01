@@ -4,9 +4,18 @@ import { llmUsageAggregates, sessionTurns } from "../src/db/schema.ts";
 import { SessionTurnUsageService } from "../src/services/agent/session/session_turn_usage_service.ts";
 
 class SessionTurnUsageServiceTestHarness {
+  readonly walletCharges: Array<Record<string, unknown>> = [];
   readonly aggregateRows: Array<Record<string, unknown>> = [];
   readonly aggregateConflictUpdates: unknown[] = [];
   readonly turnUpdates: Array<Record<string, unknown>> = [];
+
+  createWalletService() {
+    return {
+      recordManagedLlmChargeInTransaction: async (_tx: unknown, input: Record<string, unknown>) => {
+        this.walletCharges.push(input);
+      },
+    };
+  }
 
   createTransactionProvider() {
     return {
@@ -117,7 +126,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
 
 test("SessionTurnUsageService stores platform subscription costs as managed virtual spend", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();
-  const service = new SessionTurnUsageService();
+  const service = new SessionTurnUsageService(harness.createWalletService() as never);
 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
@@ -167,6 +176,36 @@ test("SessionTurnUsageService stores platform subscription costs as managed virt
   assert.ok(managedDay);
   assert.equal(managedDay.modelProviderCredentialId, null);
 });
+
+
+test("SessionTurnUsageService debits the managed wallet for platform virtual spend", async () => {
+  const harness = new SessionTurnUsageServiceTestHarness();
+  const service = new SessionTurnUsageService(harness.createWalletService() as never);
+
+  await service.recordUsage(harness.createTransactionProvider() as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "platform",
+    costKind: "virtual",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      cost: { total: 0.000000010 },
+      totalTokens: 100,
+    },
+  });
+
+  assert.deepEqual(harness.walletCharges, [{
+    amountNanoUsd: 10,
+    companyId: "00000000-0000-0000-0000-000000000001",
+    now: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    sessionTurnId: "00000000-0000-0000-0000-000000000004",
+  }]);
+});
+
 
 test("SessionTurnUsageService stores user-provided subscription costs under the credential scope", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();

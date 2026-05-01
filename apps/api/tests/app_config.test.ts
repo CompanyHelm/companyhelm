@@ -340,6 +340,9 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     session_process: {
       concurrency: 4,
     },
+    wallet_recharges: {
+      concurrency: 10,
+    },
     workflow_triggers: {
       concurrency: 2,
     },
@@ -384,6 +387,9 @@ test("AppConfig allows local override files to include local.yaml", () => {
     },
     session_process: {
       concurrency: 11,
+    },
+    wallet_recharges: {
+      concurrency: 10,
     },
     workflow_triggers: {
       concurrency: 2,
@@ -440,6 +446,9 @@ test("AppConfig defaults newer worker queue concurrency when deployment config l
     },
     session_process: {
       concurrency: 4,
+    },
+    wallet_recharges: {
+      concurrency: 10,
     },
     workflow_triggers: {
       concurrency: 10,

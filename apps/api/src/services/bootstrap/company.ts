@@ -24,6 +24,7 @@ import { ModelRegistry } from "../ai_providers/model_registry.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
 import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
+import { CompanyWalletService } from "../wallet/service.ts";
 
 type CompanyRecord = {
   id: string;
@@ -166,6 +167,7 @@ export class CompanyBootstrapService {
   }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly modelRegistry: ModelRegistry;
+  private readonly companyWalletService: CompanyWalletService;
   private readonly systemSkillRegistry = new SystemSkillRegistry();
 
   constructor(
@@ -173,9 +175,12 @@ export class CompanyBootstrapService {
     companyHelmComputeProviderService: CompanyHelmComputeProviderService,
     @inject(ModelRegistry)
     modelRegistry: ModelRegistry = new ModelRegistry(),
+    @inject(CompanyWalletService)
+    companyWalletService: CompanyWalletService = new CompanyWalletService(),
   ) {
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
     this.modelRegistry = modelRegistry;
+    this.companyWalletService = companyWalletService;
   }
 
   async findOrCreateCompany(
@@ -221,6 +226,11 @@ export class CompanyBootstrapService {
 
       return concurrentCompany;
     }
+
+    await this.ensureCompanySubscriptionWallet(transaction, {
+      companyId: createdCompany.id,
+      plan: "free",
+    });
 
     return {
       ...createdCompany,
@@ -328,6 +338,14 @@ export class CompanyBootstrapService {
       modelSelection,
     );
     await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, input.companyId, seedAgent.id);
+  }
+
+
+  async ensureCompanySubscriptionWallet(
+    transaction: DatabaseTransactionInterface,
+    input: { companyId: string; plan: "free" | "pro" },
+  ): Promise<void> {
+    await this.companyWalletService.ensureSubscriptionWalletForCompanyInTransaction(transaction as never, input);
   }
 
   private async findCompanyByClerkOrganizationId(

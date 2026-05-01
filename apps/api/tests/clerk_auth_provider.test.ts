@@ -39,7 +39,7 @@ class ClerkAuthProviderTestHarness {
       },
       select() {
         selectCallCount += 1;
-        if (selectCallCount <= 7) {
+        if (selectCallCount <= 8) {
           return {
             from() {
               return {
@@ -73,6 +73,13 @@ class ClerkAuthProviderTestHarness {
                 id: "local-company-1",
                 clerk_organization_id: "org_clerk_1",
                 name: "Example Org",
+              }]
+              : insertCallCount === 3
+              ? [{
+                amountNanoUsd: 10_000_000_000,
+                companyId: "local-company-1",
+                id: "local-wallet-1",
+                type: "subscription",
               }]
               : [];
 
@@ -748,8 +755,15 @@ test("clerk auth provider provisions missing local user, company, and membership
   assert.ok(db.insertedValues.length >= 7);
   assert.equal(db.insertedValues[0]?.clerkUserId, "user_clerk_1");
   assert.equal(db.insertedValues[1]?.clerkOrganizationId, "org_clerk_1");
-  assert.equal(db.insertedValues[2]?.companyId, "local-company-1");
-  assert.equal(db.insertedValues[2]?.userId, "local-user-1");
+  assert.ok(db.insertedValues.some((value) =>
+    value.companyId === "local-company-1"
+    && value.userId === "local-user-1"
+  ));
+  assert.ok(db.insertedValues.some((value) =>
+    value.companyId === "local-company-1"
+    && value.type === "subscription"
+    && value.amountNanoUsd === 10_000_000_000
+  ));
   assert.ok(db.insertedValues.some((value) =>
     value.companyId === "local-company-1"
     && value.name === "CompanyHelm"

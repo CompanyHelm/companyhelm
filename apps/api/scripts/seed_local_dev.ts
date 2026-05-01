@@ -308,6 +308,10 @@ export class LocalDevSeedScript {
       const userId = await this.ensureUser(transaction as DatabaseTransactionInterface);
       const companyId = await this.ensureCompany(transaction as DatabaseTransactionInterface);
       await this.ensureMembership(transaction as DatabaseTransactionInterface, companyId, userId);
+      await companyBootstrapService.ensureCompanySubscriptionWallet(transaction as DatabaseTransactionInterface, {
+        companyId,
+        plan: "pro",
+      });
       await companyBootstrapService.ensureCompanyDefaults(transaction as DatabaseTransactionInterface, companyId);
       await companyBootstrapService.ensureOnboardingAssets(transaction as DatabaseTransactionInterface, {
         companyId,

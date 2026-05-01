@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<951b7bb51a0af456dee0955ed2573154>>
+ * @generated SignedSource<<505367e66211754a8b003b5c014320c4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,11 +9,21 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
 export type settingsPageQuery$variables = Record<PropertyKey, never>;
 export type settingsPageQuery$data = {
   readonly CompanySettings: {
     readonly baseSystemPrompt: string | null | undefined;
     readonly companyId: string;
+  };
+  readonly CompanyWallet: {
+    readonly currentPlan: CompanySubscriptionPlan;
+    readonly pendingPlan: CompanySubscriptionPlan | null | undefined;
+    readonly pendingPlanEffectiveAt: string | null | undefined;
+    readonly wallets: ReadonlyArray<{
+      readonly amountNanoUsd: number;
+      readonly type: string;
+    }>;
   };
   readonly Me: {
     readonly company: {
@@ -53,123 +63,187 @@ v1 = {
   "name": "name",
   "storageKey": null
 },
-v2 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "MeCompanyEntitlements",
-        "kind": "LinkedField",
-        "name": "companyEntitlements",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "canDeleteCompany",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AuthenticatedCompany",
-        "kind": "LinkedField",
-        "name": "company",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/),
-          (v1/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "CompanySettings",
-    "kind": "LinkedField",
-    "name": "CompanySettings",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "companyId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "baseSystemPrompt",
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "TaskStage",
-    "kind": "LinkedField",
-    "name": "TaskStages",
-    "plural": true,
-    "selections": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isDefault",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "taskCount",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "updatedAt",
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  }
-];
+v2 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "Me",
+  "kind": "LinkedField",
+  "name": "Me",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "MeCompanyEntitlements",
+      "kind": "LinkedField",
+      "name": "companyEntitlements",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "canDeleteCompany",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "AuthenticatedCompany",
+      "kind": "LinkedField",
+      "name": "company",
+      "plural": false,
+      "selections": [
+        (v0/*: any*/),
+        (v1/*: any*/)
+      ],
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "CompanySettings",
+  "kind": "LinkedField",
+  "name": "CompanySettings",
+  "plural": false,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "companyId",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "baseSystemPrompt",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "TaskStage",
+  "kind": "LinkedField",
+  "name": "TaskStages",
+  "plural": true,
+  "selections": [
+    (v0/*: any*/),
+    (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "isDefault",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "taskCount",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "createdAt",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "updatedAt",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "currentPlan",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "pendingPlan",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "pendingPlanEffectiveAt",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "amountNanoUsd",
+  "storageKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
     "name": "settingsPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": [
+      (v2/*: any*/),
+      (v3/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "CompanyWallet",
+        "kind": "LinkedField",
+        "name": "CompanyWallet",
+        "plural": false,
+        "selections": [
+          (v5/*: any*/),
+          (v6/*: any*/),
+          (v7/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "Wallet",
+            "kind": "LinkedField",
+            "name": "wallets",
+            "plural": true,
+            "selections": [
+              (v8/*: any*/),
+              (v9/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ],
     "type": "Query",
     "abstractKey": null
   },
@@ -178,19 +252,51 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "settingsPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": [
+      (v2/*: any*/),
+      (v3/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "CompanyWallet",
+        "kind": "LinkedField",
+        "name": "CompanyWallet",
+        "plural": false,
+        "selections": [
+          (v5/*: any*/),
+          (v6/*: any*/),
+          (v7/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "Wallet",
+            "kind": "LinkedField",
+            "name": "wallets",
+            "plural": true,
+            "selections": [
+              (v8/*: any*/),
+              (v9/*: any*/),
+              (v0/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ]
   },
   "params": {
-    "cacheID": "ceeab6e22c4fe9fd2c53db5705e3a787",
+    "cacheID": "f9aa59f16c857f2216a8bbf6921b83dd",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  CompanyWallet {\n    currentPlan\n    pendingPlan\n    pendingPlanEffectiveAt\n    wallets {\n      type\n      amountNanoUsd\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f583628ae5ee60afc0cc24a2d8de19c9";
+(node as any).hash = "5e097518d4a7a3aa32738b68c9a51131";
 
 export default node;

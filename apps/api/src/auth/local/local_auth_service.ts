@@ -169,6 +169,10 @@ export class LocalAuthService {
         companyId: createdCompany.id,
         userId: createdUser.id,
       });
+      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction as never, {
+        companyId: createdCompany.id,
+        plan: "free",
+      });
       await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 
       await insertableDatabase

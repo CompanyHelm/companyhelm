@@ -78,6 +78,7 @@ export class GraphqlRequestContextResolver {
    */
   private async resolvePlatformAdminStatus(userId: string): Promise<boolean> {
     const database = this.database.getDatabase?.() as {
+      execute?(query: unknown): Promise<unknown>;
       select?(selection: Record<string, unknown>): {
         from(table: unknown): {
           where(condition: unknown): {
@@ -86,17 +87,21 @@ export class GraphqlRequestContextResolver {
         };
       };
     } | undefined;
-    if (!database?.select) {
+    if (!database?.select || typeof database.execute !== "function") {
       return false;
     }
 
-    const [platformAdminGrant] = await database
+    const platformAdminQuery = database
       .select({
         userId: platformAdmins.userId,
       })
       .from(platformAdmins)
-      .where(eq(platformAdmins.userId, userId))
-      .limit(1) as Array<{ userId: string }>;
+      .where(eq(platformAdmins.userId, userId));
+    if (!("limit" in platformAdminQuery) || typeof platformAdminQuery.limit !== "function") {
+      return false;
+    }
+
+    const [platformAdminGrant] = await platformAdminQuery.limit(1) as Array<{ userId: string }>;
 
     return Boolean(platformAdminGrant?.userId);
   }

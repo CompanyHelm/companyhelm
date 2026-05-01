@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { agentSessions } from "../../../db/schema.ts";
-import { CompanyManagedLlmBudgetService } from "../../ai_providers/company_managed_llm_budget_service.ts";
+import { CompanyWalletService } from "../../wallet/service.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
@@ -38,7 +38,7 @@ type PreparedSessionPrompt = {
  */
 @injectable()
 export class SessionPromptService {
-  private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
+  private readonly companyWalletService: CompanyWalletService;
   private readonly redisService: RedisService;
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
@@ -57,10 +57,10 @@ export class SessionPromptService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(SessionQueuedMessageService)
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
-    @inject(CompanyManagedLlmBudgetService)
-    companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
+    @inject(CompanyWalletService)
+    companyWalletService: CompanyWalletService = new CompanyWalletService(),
   ) {
-    this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
+    this.companyWalletService = companyWalletService;
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
@@ -158,7 +158,7 @@ export class SessionPromptService {
       existingSession.currentReasoningLevel,
     );
     if (selectedModelRecord.modelCredentialSource === "platform") {
-      await this.companyManagedLlmBudgetService.assertWithinManagedBudgetInTransaction(selectableDatabase, {
+      await this.companyWalletService.assertCompanyHasPositiveBalanceInTransaction(selectableDatabase, {
         companyId,
       });
     }

@@ -41,6 +41,7 @@ class AgentCreateOptionsQueryTestHarness {
   }) {
     let selectCallCount = 0;
     const selectResults = [
+      [],
       input?.platformModelRecords ?? [],
       input?.platformRouteRecords ?? [],
       input?.managedProviderSettingsRecords ?? [],
@@ -78,8 +79,10 @@ class AgentCreateOptionsQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
-                      return selectResult;
+                    where() {
+                      return selectCallCount === 1
+                        ? { async limit() { return selectResult; } }
+                        : selectResult;
                     },
                   };
                 },

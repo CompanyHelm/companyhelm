@@ -382,6 +382,8 @@ export class GraphqlApplication {
       updateComputeProviderDefinitionMutation,
       computeProviderDefinitionsQueryResolver,
       sessionEnvironmentQueryResolver,
+      undefined,
+      undefined,
       environmentsQueryResolver,
       agentEnvironmentTemplateService,
       computeProviderDefinitionTemplatesResolver,

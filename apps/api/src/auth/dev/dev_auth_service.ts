@@ -165,6 +165,10 @@ export class DevAuthService {
         companyId: createdCompany.id,
         userId: user.id,
       });
+      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction as never, {
+        companyId: createdCompany.id,
+        plan: "free",
+      });
       await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 
       const membershipCompanies = await this.findMembershipCompanies(transaction, user.id);

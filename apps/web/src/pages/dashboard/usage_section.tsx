@@ -12,24 +12,17 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { type UsageAggregateRecord, UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
-type CompanyManagedLlmBudgetPeriodRecord = {
-  exhausted: boolean;
-  limitCostNanoUsd: number | null | undefined;
-  overageCostNanoUsd: number;
-  period: string;
-  periodStart: string;
-  remainingCostNanoUsd: number | null | undefined;
-  usedCostNanoUsd: number;
-};
-
-type CompanyManagedLlmBudgetRecord = {
-  daily: CompanyManagedLlmBudgetPeriodRecord;
-  monthly: CompanyManagedLlmBudgetPeriodRecord;
-  plan: string;
+type CompanyWalletRecord = {
+  currentPlan: string;
+  nextRechargeAmountNanoUsd: number;
+  nextRechargeAt: string;
+  pendingPlan: string | null | undefined;
+  pendingPlanEffectiveAt: string | null | undefined;
+  totalBalanceNanoUsd: number;
 };
 
 type UsageSectionProps = {
-  budget: CompanyManagedLlmBudgetRecord;
+  budget: CompanyWalletRecord;
   currentDayUsage: UsageAggregateRecord;
   currentMonthUsage: UsageAggregateRecord;
   organizationName: string;
@@ -50,14 +43,6 @@ function UsageMetricTile(props: {
       <p className="mt-2 text-xs text-muted-foreground">{props.description}</p>
     </div>
   );
-}
-
-function formatRemainingLabel(value: number | null | undefined): string {
-  if (value === null || value === undefined) {
-    return "Uncapped";
-  }
-
-  return `${UsageMetrics.formatUsdFromNano(value)} left`;
 }
 
 function formatPlanLabel(plan: string): string {
@@ -93,17 +78,14 @@ export function UsageSection(props: UsageSectionProps) {
         <div className="space-y-1">
           <CardTitle>Usage</CardTitle>
           <CardDescription>
-            LLM spend and CompanyHelm-managed budget for {props.organizationName}.
+            LLM spend and CompanyHelm wallet balance for {props.organizationName}.
           </CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{formatPlanLabel(props.budget.plan)} plan</Badge>
+          <Badge variant="secondary">{formatPlanLabel(props.budget.currentPlan)} plan</Badge>
           <Badge variant="outline">Managed provider</Badge>
-          <Badge variant={props.budget.daily.exhausted ? "destructive" : "outline"}>
-            Daily budget: {formatRemainingLabel(props.budget.daily.remainingCostNanoUsd)}
-          </Badge>
-          <Badge variant={props.budget.monthly.exhausted ? "destructive" : "outline"}>
-            Monthly budget: {formatRemainingLabel(props.budget.monthly.remainingCostNanoUsd)}
+          <Badge variant={props.budget.totalBalanceNanoUsd <= 0 ? "destructive" : "outline"}>
+            Wallet: {UsageMetrics.formatUsdFromNano(props.budget.totalBalanceNanoUsd)}
           </Badge>
         </div>
       </CardHeader>

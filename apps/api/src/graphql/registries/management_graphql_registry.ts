@@ -63,7 +63,7 @@ import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_fro
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CodexRateLimitsQueryResolver } from "../resolvers/codex_rate_limits.ts";
-import { CompanyManagedLlmBudgetQueryResolver } from "../resolvers/company_managed_llm_budget.ts";
+import { CompanyWalletQueryResolver } from "../resolvers/company_wallet.ts";
 import { CompanyMembersQueryResolver } from "../resolvers/company_members.ts";
 import { FreeCompanyCreationEligibilityQueryResolver } from "../resolvers/free_company_creation_eligibility.ts";
 import { CompanyOnboardingFieldResolver } from "../resolvers/company_onboarding.ts";
@@ -107,7 +107,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
   private readonly codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver;
-  private readonly companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver;
+  private readonly companyWalletQueryResolver: CompanyWalletQueryResolver;
   private readonly companyMembersQueryResolver: CompanyMembersQueryResolver;
   private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
@@ -309,9 +309,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new DeletePlatformAdminCompanyMutation(),
     @inject(CreateCompanyMutation)
     createCompanyMutation: CreateCompanyMutation = new CreateCompanyMutation({} as never),
-    @inject(CompanyManagedLlmBudgetQueryResolver)
-    companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver =
-      new CompanyManagedLlmBudgetQueryResolver(),
     @inject(FreeCompanyCreationEligibilityQueryResolver)
     freeCompanyCreationEligibilityQueryResolver: FreeCompanyCreationEligibilityQueryResolver =
       new FreeCompanyCreationEligibilityQueryResolver({} as never),
@@ -385,6 +382,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(UpdateCompanyMemberRoleMutation)
     updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
       new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService(config)),
+    @inject(CompanyWalletQueryResolver)
+    companyWalletQueryResolver: CompanyWalletQueryResolver = new CompanyWalletQueryResolver(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -403,7 +402,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
     this.codexRateLimitsQueryResolver = codexRateLimitsQueryResolver;
-    this.companyManagedLlmBudgetQueryResolver = companyManagedLlmBudgetQueryResolver;
+    this.companyWalletQueryResolver = companyWalletQueryResolver;
     this.companyMembersQueryResolver = companyMembersQueryResolver;
     this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
@@ -558,7 +557,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       },
       Query: {
         CodexRateLimits: this.codexRateLimitsQueryResolver.execute,
-        CompanyManagedLlmBudget: this.companyManagedLlmBudgetQueryResolver.execute,
+        CompanyWallet: this.companyWalletQueryResolver.execute,
         CompanyMembers: this.companyMembersQueryResolver.execute,
         FreeCompanyCreationEligibility: this.freeCompanyCreationEligibilityQueryResolver.execute,
         CompanySettings: this.companySettingsQueryResolver.execute,

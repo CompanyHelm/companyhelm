@@ -23,7 +23,7 @@ import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
 import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
-import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
+import { CompanyWalletService } from "../../../wallet/service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 import { RuntimeModelResolver } from "../runtime/model_resolver.ts";
 import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
@@ -73,7 +73,7 @@ type SelectableDatabase = {
 @injectable()
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
-  private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
+  private readonly companyWalletService: CompanyWalletService;
   private readonly companySettingsService: CompanySettingsService;
   private readonly logger: SessionPipelineLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
@@ -101,15 +101,15 @@ export class SessionProcessExecutionService {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(CompanySettingsService)
     companySettingsService: CompanySettingsService = new CompanySettingsService(),
-    @inject(CompanyManagedLlmBudgetService)
-    companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
+    @inject(CompanyWalletService)
+    companyWalletService: CompanyWalletService = new CompanyWalletService(),
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
     @inject(RuntimeModelResolver)
     runtimeModelResolver: RuntimeModelResolver = new RuntimeModelResolver(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
-    this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
+    this.companyWalletService = companyWalletService;
     this.companySettingsService = companySettingsService;
     this.logger = new SessionPipelineLogger(logger.child({
       component: "session_process_execution_service",
@@ -172,18 +172,16 @@ export class SessionProcessExecutionService {
         return;
       }
       if (runtimeConfig.isCompanyHelmManagedCredential) {
-        const budgetStatus = await this.companyManagedLlmBudgetService.checkWithinManagedBudget(transactionProvider, {
+        const walletStatus = await this.companyWalletService.checkCompanyHasPositiveBalance(transactionProvider, {
           companyId,
         });
-        if (!budgetStatus.allowed) {
+        if (!walletStatus.allowed) {
           sessionLogger.info({
-            event: "session_budget_exhausted_clear_queue",
+            event: "session_wallet_depleted_clear_queue",
             companyId,
-            limitCostNanoUsd: budgetStatus.limitCostNanoUsd,
-            period: budgetStatus.period,
+            balanceNanoUsd: walletStatus.balanceNanoUsd,
             sessionId,
-            usedCostNanoUsd: budgetStatus.usedCostNanoUsd,
-          }, "clearing queued session work because CompanyHelm managed LLM budget is exhausted");
+          }, "clearing queued session work because CompanyHelm managed LLM wallet is depleted");
           await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
           return;
         }

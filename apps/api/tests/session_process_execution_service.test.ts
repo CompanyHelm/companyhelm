@@ -937,7 +937,7 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
     undefined as never,
     companySettingsService as never,
     {
-      async checkWithinManagedBudget() {
+      async checkCompanyHasPositiveBalance() {
         return {
           allowed: true,
         };
@@ -1407,7 +1407,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     undefined as never,
     companySettingsService as never,
     {
-      async checkWithinManagedBudget() {
+      async checkCompanyHasPositiveBalance() {
         return {
           allowed: true,
         };
@@ -1843,15 +1843,12 @@ test("SessionProcessExecutionService clears queued work when the managed provide
     undefined as never,
     companySettingsService as never,
     {
-      async checkWithinManagedBudget(_transactionProvider: unknown, input: { companyId: string }) {
+      async checkCompanyHasPositiveBalance(_transactionProvider: unknown, input: { companyId: string }) {
         budgetChecks.push(input);
         return {
           allowed: false,
-          limitCostNanoUsd: 5_000_000_000,
-          message: "CompanyHelm daily AI usage limit reached for this company.",
-          period: "day",
-          periodStart: new Date("2026-04-22T00:00:00.000Z"),
-          usedCostNanoUsd: 5_000_000_000,
+          balanceNanoUsd: 0,
+          message: "CompanyHelm AI wallet balance is depleted for this company.",
         };
       },
     } as never,

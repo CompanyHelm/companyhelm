@@ -68,25 +68,23 @@ const dashboardPageQueryNode = graphql`
       status
       updatedAt
     }
-    CompanyManagedLlmBudget {
-      plan
-      daily {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
+    CompanyWallet {
+      currentPlan
+      pendingPlan
+      pendingPlanEffectiveAt
+      totalBalanceNanoUsd
+      nextRechargeAmountNanoUsd
+      nextRechargeAt
+      wallets {
+        id
+        type
+        amountNanoUsd
       }
-      monthly {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
+      transactions {
+        id
+        category
+        amountNanoUsd
+        createdAt
       }
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
@@ -351,7 +349,7 @@ function DashboardPageContent() {
       </div>
 
       <UsageSection
-        budget={data.CompanyManagedLlmBudget}
+        budget={data.CompanyWallet}
         currentDayUsage={currentDayUsage}
         currentMonthUsage={currentMonthUsage}
         organizationName={organizationName}
