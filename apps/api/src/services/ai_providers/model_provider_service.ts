@@ -2,7 +2,7 @@ import { injectable } from "inversify";
 
 export type ModelProviderId =
   | "anthropic"
-  | "google-gemini-cli"
+  | "google"
   | "openai"
   | "openai-codex"
   | "openai-compatible"
@@ -60,6 +60,16 @@ export class ModelProviderService {
       },
     ],
     [
+      "google",
+      {
+        id: "google",
+        name: "Google Gemini API",
+        type: ModelProviderAuthorizationType.ApiKey,
+        authorizationInstructionsMarkdown:
+          "Create an API key in [Google AI Studio](https://aistudio.google.com/app/apikey) for the Gemini API.",
+      },
+    ],
+    [
       "openrouter",
       {
         id: "openrouter",
@@ -89,20 +99,6 @@ export class ModelProviderService {
           "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
           "```",
           "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json",
-          "```",
-        ].join("\n"),
-      },
-    ],
-    [
-      "google-gemini-cli",
-      {
-        id: "google-gemini-cli",
-        name: "Google Gemini CLI",
-        type: ModelProviderAuthorizationType.Oauth,
-        authorizationInstructionsMarkdown: [
-          "Run this command. It copies the auth file to your clipboard; paste it into the Auth File field below.",
-          "```",
-          "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json",
           "```",
         ].join("\n"),
       },

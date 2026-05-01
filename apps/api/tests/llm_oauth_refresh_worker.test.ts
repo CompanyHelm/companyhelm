@@ -245,38 +245,3 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
     error: "refresh failed for credential-1",
   });
 });
-
-test("LlmOauthRefreshWorker refreshes platform oauth credentials through the platform table", async () => {
-  const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
-  const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock({
-    platformRows: [{
-      id: "platform-credential-1",
-      modelProvider: "google-gemini-cli",
-      encryptedApiKey: "{\"token\":\"old-access-token\",\"projectId\":\"project-1\"}",
-      refreshToken: "old-refresh-token",
-      accessTokenExpiresAtMilliseconds: 1774254000000,
-    }],
-  });
-  const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
-  const worker = new TestLlmOauthRefreshWorker(adminDatabase, logger, {
-    "platform-credential-1": {
-      access: "new-access-token",
-      refresh: "new-refresh-token",
-      expires: 1774257600000,
-    },
-  });
-
-  await worker.runNow();
-
-  assert.deepEqual(worker.refreshCalls, [{
-    id: "platform-credential-1",
-    modelProvider: "google-gemini-cli",
-  }]);
-  assert.equal(adminDatabase.updateCalls.length, 1);
-  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /UPDATE "platform_model_provider_credentials"/);
-  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"status" = 'active'/);
-  assert.equal(adminDatabase.updateCalls[0]?.values[0], "new-access-token");
-  assert.equal(adminDatabase.updateCalls[0]?.values[1], "new-refresh-token");
-  assert.equal(adminDatabase.updateCalls[0]?.values[5], "platform-credential-1");
-  assert.equal(loggedErrors.length, 0);
-});

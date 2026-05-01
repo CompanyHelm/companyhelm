@@ -16,14 +16,14 @@ export class ModelRegistry {
     "openai-codex": "gpt-5.4",
     anthropic: "claude-opus-4-6",
     openrouter: "openrouter/auto",
-    "google-gemini-cli": "gemini-3.1-pro-preview",
+    google: "gemini-2.5-pro",
   };
 
   private static defaultReasoningLevels: Record<string, string> = {
     companyhelm: "high",
     openai: "high",
     "openai-codex": "high",
-    "google-gemini-cli": "high",
+    google: "high",
   };
 
 

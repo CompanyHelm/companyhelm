@@ -21,7 +21,7 @@ export class RuntimeProviderAdapterRegistry {
     this.adapters = new Map<string, RuntimeProviderAdapterInterface>([
       ["anthropic", new IdentityRuntimeProviderAdapter("anthropic")],
       ["companyhelm", new CompanyHelmRuntimeProviderAdapter()],
-      ["google-gemini-cli", new IdentityRuntimeProviderAdapter("google-gemini-cli")],
+      ["google", new IdentityRuntimeProviderAdapter("google")],
       ["openai", new OpenAiRuntimeProviderAdapter()],
       ["openai-codex", new IdentityRuntimeProviderAdapter("openai-codex")],
       ["openai-compatible", new IdentityRuntimeProviderAdapter("openai-compatible")],

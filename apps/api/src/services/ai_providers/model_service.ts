@@ -6,7 +6,7 @@ import { ModelRegistry } from "./model_registry.js";
 import { ModelProviderModelCollection } from "./model_provider_model_collection.js";
 import { ModelProviderModel } from "./model_provider_model.js";
 import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
-import { GoogleGeminiCliModelAdapter } from "../providers/models-adapters/google_gemini_cli_model_adapter.js";
+import { GoogleModelAdapter } from "../providers/models-adapters/google_model_adapter.js";
 import type {
   ModelAdapterFetchOptions,
   ModelAdapterInterface,
@@ -80,7 +80,7 @@ export class ModelService {
       ["openai-compatible", new OpenAiCompatibleModelAdapter()],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
       ["openrouter", new OpenRouterModelAdapter()],
-      ["google-gemini-cli", new GoogleGeminiCliModelAdapter()],
+      ["google", new GoogleModelAdapter()],
     ]);
   }
 

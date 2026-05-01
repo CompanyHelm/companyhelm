@@ -10,7 +10,7 @@ const providerIconAssets: Record<string, string | typeof openAiIconAsset> = {
   anthropic: "/logos/providers/anthropic.svg",
   companyhelm: "/logos/logo-only.svg",
   gemini: "/logos/providers/gemini.svg",
-  "google-gemini-cli": "/logos/providers/gemini.svg",
+  google: "/logos/providers/gemini.svg",
   nvidia: "/logos/providers/nvidia.svg",
   openai: openAiIconAsset,
   "openai-codex": openAiIconAsset,
