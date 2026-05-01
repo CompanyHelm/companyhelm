@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b7b861109204588738a8bbcbdc33f60f>>
+ * @generated SignedSource<<82f9f87c3f15858024becf40f77838e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
 export type chatsPageDataQuery$variables = Record<PropertyKey, never>;
 export type chatsPageDataQuery$data = {
   readonly AgentCreateOptions: ReadonlyArray<{
@@ -40,6 +41,13 @@ export type chatsPageDataQuery$data = {
     readonly platformModelId: string | null | undefined;
     readonly reasoningLevel: string | null | undefined;
   }>;
+  readonly BillingPlans: ReadonlyArray<{
+    readonly key: CompanySubscriptionPlan;
+    readonly name: string;
+  }>;
+  readonly CompanyWallet: {
+    readonly currentPlan: CompanySubscriptionPlan;
+  };
   readonly InboxHumanQuestions: ReadonlyArray<{
     readonly allowCustomAnswer: boolean;
     readonly createdAt: string;
@@ -52,6 +60,10 @@ export type chatsPageDataQuery$data = {
     readonly questionText: string;
     readonly sessionId: string;
     readonly title: string;
+  }>;
+  readonly ModelProviders: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
   }>;
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
@@ -274,6 +286,56 @@ v10 = [
         ],
         "storageKey": null
       }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "BillingPlan",
+    "kind": "LinkedField",
+    "name": "BillingPlans",
+    "plural": true,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "key",
+        "storageKey": null
+      },
+      (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "CompanyWallet",
+    "kind": "LinkedField",
+    "name": "CompanyWallet",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "currentPlan",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ModelProvider",
+    "kind": "LinkedField",
+    "name": "ModelProviders",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/)
     ],
     "storageKey": null
   },
@@ -549,16 +611,16 @@ return {
     "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "0ae5abff04e78641cc8d34a32218e180",
+    "cacheID": "cf831ad157f9233909ca44fe5292ebb0",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    platformModelId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  BillingPlans {\n    key\n    name\n  }\n  CompanyWallet {\n    currentPlan\n  }\n  ModelProviders {\n    id\n    name\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    platformModelId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7b44bb82327b886c705ea8b020244f9f";
+(node as any).hash = "5e1c38ce77c45b83e913d1f94e9581cb";
 
 export default node;

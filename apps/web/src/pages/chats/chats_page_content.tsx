@@ -8,6 +8,7 @@ import type {
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ListTodoIcon, Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
 import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { ModelSelectionDialog, type ModelSelectionOption } from "@/components/model_selection_dialog";
 import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,7 +106,10 @@ import {
 } from "./chats_page_helpers";
 import { ChatListPanel } from "./chat_list_panel";
 import { ChatTranscriptPane } from "./chat_transcript_pane";
+import { CompanyHelmWalletDepletedDialog } from "./companyhelm_wallet_depleted_dialog";
 import { useChatTranscript } from "./use_chat_transcript";
+
+const COMPANYHELM_WALLET_DEPLETED_MESSAGE = "CompanyHelm AI wallet balance is depleted for this company.";
 
 export function ChatsPageFallback() {
   return (
@@ -206,6 +210,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [isAttachmentDragActive, setIsAttachmentDragActive] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
+  const [isCompanyHelmWalletDepletedDialogOpen, setIsCompanyHelmWalletDepletedDialogOpen] = useState(false);
+  const [isAlternateModelDialogOpen, setIsAlternateModelDialogOpen] = useState(false);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>(
     () => ChatsPagePreferenceStorage.loadCollapsedAgentIds(),
   );
@@ -315,6 +321,31 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const composerModelOptionById = useMemo(() => {
     return new Map(composerModelOptions.map((modelOption) => [modelOption.id, modelOption]));
   }, [composerModelOptions]);
+  const alternateComposerModelOptions = useMemo<ChatComposerModelOption[]>(() => {
+    return composerModelOptions.filter((modelOption) => modelOption.modelCredentialSource === "user_provided");
+  }, [composerModelOptions]);
+  const alternateModelSelectionOptions = useMemo<ModelSelectionOption[]>(() => {
+    return alternateComposerModelOptions.map((modelOption) => ({
+      description: modelOption.description,
+      id: modelOption.id,
+      modelId: modelOption.modelId,
+      name: modelOption.name,
+      providerId: modelOption.providerId,
+      providerLabel: modelOption.providerLabel,
+    }));
+  }, [alternateComposerModelOptions]);
+  const companyHelmPlanName = useMemo(() => {
+    const currentPlan = data.BillingPlans.find((plan) => plan.key === data.CompanyWallet.currentPlan);
+    return currentPlan?.name ?? data.CompanyWallet.currentPlan;
+  }, [data.BillingPlans, data.CompanyWallet.currentPlan]);
+  const companyHelmWalletProviderLogos = useMemo(() => {
+    return data.ModelProviders
+      .filter((provider) => provider.id !== "companyhelm")
+      .map((provider) => ({
+        id: provider.id,
+        label: provider.name,
+      }));
+  }, [data.ModelProviders]);
   const activeSessions = useMemo(() => {
     return data.Sessions.filter((session) => !isArchivedSession(session));
   }, [data.Sessions]);
@@ -428,6 +459,16 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         [sessionId]: nextTitle,
       };
     });
+  }, []);
+
+  const handleChatActionError = useCallback((error: unknown, fallbackMessage: string) => {
+    if (error instanceof Error && error.message === COMPANYHELM_WALLET_DEPLETED_MESSAGE) {
+      setErrorMessage(null);
+      setIsCompanyHelmWalletDepletedDialogOpen(true);
+      return;
+    }
+
+    setErrorMessage(error instanceof Error ? error.message : fallbackMessage);
   }, []);
 
   const {
@@ -1489,7 +1530,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       });
     }).catch((error: unknown) => {
       setPendingCreatedSessionId(null);
-      setErrorMessage(error instanceof Error ? error.message : "Failed to create chat session.");
+      handleChatActionError(error, "Failed to create chat session.");
     });
   }, [
     commitCreateSession,
@@ -1503,6 +1544,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     routeSessionId,
     selectedAgent,
     selectedComposerModelOption,
+    handleChatActionError,
   ]);
 
   const forkLatestSessionContext = useCallback(async () => {
@@ -1659,9 +1701,9 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         onError: reject,
       });
     }).catch((error: unknown) => {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to send message.");
+      handleChatActionError(error, "Failed to send message.");
     });
-  }, [commitPromptSession, composerReasoningLevel, draftImages, draftMessage, selectedComposerModelOption, selectedSession]);
+  }, [commitPromptSession, composerReasoningLevel, draftImages, draftMessage, handleChatActionError, selectedComposerModelOption, selectedSession]);
 
   const interruptSession = useCallback(async () => {
     if (!selectedSession || !isSelectedSessionRunning) {
@@ -2163,6 +2205,54 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       title="Start a new chat"
     />
   ) : null;
+  const alternateModelDialog = (
+    <ModelSelectionDialog
+      description="Search your connected provider models and choose one for this draft."
+      noItemsMessage="No connected provider models are available."
+      onOpenChange={setIsAlternateModelDialogOpen}
+      onSelect={(modelOptionId) => {
+        setComposerModelOptionId(modelOptionId);
+        setIsAlternateModelDialogOpen(false);
+      }}
+      open={isAlternateModelDialogOpen}
+      options={alternateModelSelectionOptions}
+      selectedOptionId={composerModelOptionId}
+    />
+  );
+  const companyHelmWalletDepletedDialog = (
+    <CompanyHelmWalletDepletedDialog
+      currentPlanName={companyHelmPlanName}
+      hasAlternateProvider={alternateComposerModelOptions.length > 0}
+      isOpen={isCompanyHelmWalletDepletedDialogOpen}
+      onAddProvider={() => {
+        setIsCompanyHelmWalletDepletedDialogOpen(false);
+        void navigate({
+          params: {
+            organizationSlug,
+          },
+          to: OrganizationPath.route("/model-provider-credentials"),
+        });
+      }}
+      onChooseAlternateProvider={() => {
+        setIsCompanyHelmWalletDepletedDialogOpen(false);
+        setIsAlternateModelDialogOpen(true);
+      }}
+      onOpenChange={setIsCompanyHelmWalletDepletedDialogOpen}
+      onUpgrade={() => {
+        setIsCompanyHelmWalletDepletedDialogOpen(false);
+        void navigate({
+          params: {
+            organizationSlug,
+          },
+          search: {
+            tab: "billing",
+          },
+          to: OrganizationPath.route("/settings"),
+        });
+      }}
+      providers={companyHelmWalletProviderLogos}
+    />
+  );
   const chatComposer = selectedAgent && (!isFixedSessionMode || selectedSession) ? (
     <ChatComposerPane
       canForkLatestSession={canForkLatestSession}
@@ -2232,6 +2322,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {mobileChatListOverlay}
       {newChatDialog}
+      {alternateModelDialog}
+      {companyHelmWalletDepletedDialog}
       <ChatEnvironmentPanel
         actingSessionEnvironmentId={actingSessionEnvironmentId}
         composerModelOptionId={composerModelOptionId}

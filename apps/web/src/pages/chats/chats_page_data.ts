@@ -57,6 +57,17 @@ export const chatsPageQueryNode = graphql`
         reasoningLevels
       }
     }
+    BillingPlans {
+      key
+      name
+    }
+    CompanyWallet {
+      currentPlan
+    }
+    ModelProviders {
+      id
+      name
+    }
     InboxHumanQuestions {
       id
       sessionId
