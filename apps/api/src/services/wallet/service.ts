@@ -210,23 +210,28 @@ export class CompanyWalletService {
     }
 
     const now = input.now ?? new Date();
-    const wallet = await this.requireSubscriptionWallet(database, input.companyId);
-    const inserted = await this.insertTransactionIfNew(database, {
-      amountNanoUsd: -input.amountNanoUsd,
-      category: "llm_charge",
+    const chargeDebits = await this.resolveManagedLlmChargeDebits(database, {
+      amountNanoUsd: input.amountNanoUsd,
       companyId: input.companyId,
-      createdAt: now,
-      periodEnd: null,
-      periodStart: null,
-      sessionId: input.sessionId,
-      sessionTurnId: input.sessionTurnId,
-      walletId: wallet.id,
     });
-    if (!inserted) {
-      return;
-    }
+    for (const chargeDebit of chargeDebits) {
+      const inserted = await this.insertTransactionIfNew(database, {
+        amountNanoUsd: -chargeDebit.amountNanoUsd,
+        category: "llm_charge",
+        companyId: input.companyId,
+        createdAt: now,
+        periodEnd: null,
+        periodStart: null,
+        sessionId: input.sessionId,
+        sessionTurnId: input.sessionTurnId,
+        walletId: chargeDebit.wallet.id,
+      });
+      if (!inserted) {
+        continue;
+      }
 
-    await this.incrementWalletAmount(database, wallet, -input.amountNanoUsd, now);
+      await this.incrementWalletAmount(database, chargeDebit.wallet, -chargeDebit.amountNanoUsd, now);
+    }
   }
 
   async recordMonthlyRechargeInTransaction(
@@ -456,6 +461,35 @@ export class CompanyWalletService {
     return wallet;
   }
 
+  private async resolveManagedLlmChargeDebits(
+    database: SelectableDatabase,
+    input: { amountNanoUsd: number; companyId: string },
+  ): Promise<Array<{ amountNanoUsd: number; wallet: CompanyWalletRecord }>> {
+    const companyWallets = await this.loadCompanyWallets(database, input.companyId);
+    const subscriptionWallet = companyWallets.find((wallet) => wallet.type === "subscription");
+    if (!subscriptionWallet) {
+      throw new Error("Company subscription wallet not found.");
+    }
+
+    const payAsYouGoWallet = companyWallets.find((wallet) => wallet.type === "pay_as_you_go") ?? null;
+    if (!payAsYouGoWallet) {
+      return [{ amountNanoUsd: input.amountNanoUsd, wallet: subscriptionWallet }];
+    }
+
+    const subscriptionDebit = Math.min(Math.max(subscriptionWallet.amountNanoUsd, 0), input.amountNanoUsd);
+    const chargeDebits: Array<{ amountNanoUsd: number; wallet: CompanyWalletRecord }> = [];
+    if (subscriptionDebit > 0) {
+      chargeDebits.push({ amountNanoUsd: subscriptionDebit, wallet: subscriptionWallet });
+    }
+
+    const remainingDebit = input.amountNanoUsd - subscriptionDebit;
+    if (remainingDebit > 0) {
+      chargeDebits.push({ amountNanoUsd: remainingDebit, wallet: payAsYouGoWallet });
+    }
+
+    return chargeDebits;
+  }
+
   private async hasSubscriptionCreditForPeriod(
     database: SelectableDatabase,
     walletId: string,
@@ -529,6 +563,7 @@ export class CompanyWalletService {
         updatedAt: now,
       })
       .where(eq(wallets.id, wallet.id));
+    wallet.amountNanoUsd += amountDeltaNanoUsd;
   }
 
   private async resolveWhere(whereResult: Promise<Array<Record<string, unknown>>> | {

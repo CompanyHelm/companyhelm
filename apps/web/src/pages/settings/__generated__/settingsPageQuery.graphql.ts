@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<505367e66211754a8b003b5c014320c4>>
+ * @generated SignedSource<<bf281687d1e52c82a293a3dce20e309f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type settingsPageQuery$data = {
   };
   readonly CompanyWallet: {
     readonly currentPlan: CompanySubscriptionPlan;
+    readonly nextRechargeAt: string;
     readonly pendingPlan: CompanySubscriptionPlan | null | undefined;
     readonly pendingPlanEffectiveAt: string | null | undefined;
     readonly wallets: ReadonlyArray<{
@@ -196,10 +197,17 @@ v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "type",
+  "name": "nextRechargeAt",
   "storageKey": null
 },
 v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
@@ -227,6 +235,7 @@ return {
           (v5/*: any*/),
           (v6/*: any*/),
           (v7/*: any*/),
+          (v8/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -235,8 +244,8 @@ return {
             "name": "wallets",
             "plural": true,
             "selections": [
-              (v8/*: any*/),
-              (v9/*: any*/)
+              (v9/*: any*/),
+              (v10/*: any*/)
             ],
             "storageKey": null
           }
@@ -267,6 +276,7 @@ return {
           (v5/*: any*/),
           (v6/*: any*/),
           (v7/*: any*/),
+          (v8/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -275,8 +285,8 @@ return {
             "name": "wallets",
             "plural": true,
             "selections": [
-              (v8/*: any*/),
               (v9/*: any*/),
+              (v10/*: any*/),
               (v0/*: any*/)
             ],
             "storageKey": null
@@ -287,16 +297,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f9aa59f16c857f2216a8bbf6921b83dd",
+    "cacheID": "66daf285e701a485495c7f32f9d8a7b2",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  CompanyWallet {\n    currentPlan\n    pendingPlan\n    pendingPlanEffectiveAt\n    wallets {\n      type\n      amountNanoUsd\n      id\n    }\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  CompanyWallet {\n    currentPlan\n    pendingPlan\n    pendingPlanEffectiveAt\n    nextRechargeAt\n    wallets {\n      type\n      amountNanoUsd\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5e097518d4a7a3aa32738b68c9a51131";
+(node as any).hash = "a8e452a83bdc222d71129933e55141de";
 
 export default node;

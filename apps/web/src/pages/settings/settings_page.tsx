@@ -21,7 +21,7 @@ import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphq
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI" | "company" | "members";
+  tab?: "tasks" | "AI" | "company" | "billing" | "members";
 };
 
 const settingsPageQueryNode = graphql`
@@ -51,6 +51,7 @@ const settingsPageQueryNode = graphql`
       currentPlan
       pendingPlan
       pendingPlanEffectiveAt
+      nextRechargeAt
       wallets {
         type
         amountNanoUsd
@@ -169,7 +170,7 @@ function SettingsPageContent() {
   const [commitDeleteCompany, isDeleteCompanyInFlight] = useMutation<settingsPageDeleteCompanyMutation>(
     settingsPageDeleteCompanyMutationNode,
   );
-  const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "members"
+  const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "billing" || search.tab === "members"
     ? search.tab
     : "tasks";
   const companyName = data.Me.company.name;
@@ -200,6 +201,10 @@ function SettingsPageContent() {
             {
               key: "company" as const,
               label: "Company",
+            },
+            {
+              key: "billing" as const,
+              label: "Billing",
             },
             {
               key: "members" as const,
@@ -406,67 +411,67 @@ function SettingsPageContent() {
       ) : null}
 
       {selectedTab === "company" ? (
-        <>
-          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-            <CardHeader>
-              <div className="min-w-0">
-                <CardTitle>Company</CardTitle>
-                <CardDescription>
-                  Manage the current Clerk organization and CompanyHelm workspace.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/90 px-4 py-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-muted-foreground">
-                    <Building2Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{companyName}</p>
-                    <p className="text-xs text-muted-foreground">Current organization</p>
-                  </div>
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Company</CardTitle>
+              <CardDescription>
+                Manage the current Clerk organization and CompanyHelm workspace.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/90 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-muted-foreground">
+                  <Building2Icon className="size-4" />
                 </div>
-              </div>
-
-              {deletionRequestStatus ? (
-                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  Company deletion request created. Status: {deletionRequestStatus}
-                </div>
-              ) : null}
-
-              {companyErrorMessage ? (
-                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {companyErrorMessage}
-                </div>
-              ) : null}
-
-              <div className="flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Delete company</p>
-                  <p className="mt-1 text-xs/relaxed text-muted-foreground">
-                    Remove the Clerk organization and schedule all CompanyHelm company data for cleanup.
-                  </p>
+                  <p className="truncate text-sm font-semibold text-foreground">{companyName}</p>
+                  <p className="text-xs text-muted-foreground">Current organization</p>
                 </div>
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={deletionRequestStatus !== null || !data.Me.companyEntitlements.canDeleteCompany}
-                  onClick={() => {
-                    setCompanyErrorMessage(null);
-                    setDeleteCompanyDialogOpen(true);
-                  }}
-                  type="button"
-                  variant="destructive"
-                >
-                  <Trash2Icon />
-                  Delete company
-                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <BillingPanel billing={data.CompanyWallet} />
-        </>
+            {deletionRequestStatus ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Company deletion request created. Status: {deletionRequestStatus}
+              </div>
+            ) : null}
+
+            {companyErrorMessage ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {companyErrorMessage}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Delete company</p>
+                <p className="mt-1 text-xs/relaxed text-muted-foreground">
+                  Remove the Clerk organization and schedule all CompanyHelm company data for cleanup.
+                </p>
+              </div>
+              <Button
+                className="w-full sm:w-auto"
+                disabled={deletionRequestStatus !== null || !data.Me.companyEntitlements.canDeleteCompany}
+                onClick={() => {
+                  setCompanyErrorMessage(null);
+                  setDeleteCompanyDialogOpen(true);
+                }}
+                type="button"
+                variant="destructive"
+              >
+                <Trash2Icon />
+                Delete company
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {selectedTab === "billing" ? (
+        <BillingPanel billing={data.CompanyWallet} />
       ) : null}
 
       {selectedTab === "members" ? (

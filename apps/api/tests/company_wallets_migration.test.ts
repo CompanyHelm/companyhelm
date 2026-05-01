@@ -28,7 +28,8 @@ test("company wallet migration adds wallets, transactions, pending plans, and id
   assert.match(migration, /"wallet_transactions_amount_sign_check"/u);
   assert.match(migration, /wallet_transactions_monthly_recharge_period_uidx/u);
   assert.match(migration, /wallet_transactions_opening_uidx/u);
-  assert.match(migration, /wallet_transactions_llm_charge_turn_uidx/u);
+  assert.match(migration, /DROP INDEX IF EXISTS "wallet_transactions_llm_charge_turn_uidx"/u);
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS "wallet_transactions_llm_charge_turn_uidx"[\s\S]*\("wallet_id", "session_turn_id", "category"\)/u);
   assert.match(migration, /ALTER TABLE "wallets" ENABLE ROW LEVEL SECURITY/u);
   assert.match(migration, /CREATE POLICY "wallets_company_scope_policy"/u);
   assert.match(migration, /ALTER TABLE "wallet_transactions" ENABLE ROW LEVEL SECURITY/u);

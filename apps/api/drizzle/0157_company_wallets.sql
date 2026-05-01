@@ -62,7 +62,8 @@ CREATE INDEX IF NOT EXISTS "wallet_transactions_company_id_idx" ON "wallet_trans
 CREATE INDEX IF NOT EXISTS "wallet_transactions_wallet_id_idx" ON "wallet_transactions" USING btree ("wallet_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "wallet_transactions_monthly_recharge_period_uidx" ON "wallet_transactions" USING btree ("wallet_id", "category", "period_start") WHERE "category" = 'monthly_recharge' AND "period_start" IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "wallet_transactions_opening_uidx" ON "wallet_transactions" USING btree ("wallet_id", "category") WHERE "category" = 'opening';--> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "wallet_transactions_llm_charge_turn_uidx" ON "wallet_transactions" USING btree ("session_turn_id", "category") WHERE "category" = 'llm_charge' AND "session_turn_id" IS NOT NULL;--> statement-breakpoint
+DROP INDEX IF EXISTS "wallet_transactions_llm_charge_turn_uidx";--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "wallet_transactions_llm_charge_turn_uidx" ON "wallet_transactions" USING btree ("wallet_id", "session_turn_id", "category") WHERE "category" = 'llm_charge' AND "session_turn_id" IS NOT NULL;--> statement-breakpoint
 ALTER TABLE "wallets" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE POLICY "wallets_company_scope_policy"
 ON "wallets"

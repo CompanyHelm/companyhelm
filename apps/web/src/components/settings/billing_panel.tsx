@@ -3,6 +3,7 @@ import { UsageMetrics } from "@/lib/usage_metrics";
 
 export type BillingRecord = {
   currentPlan: string;
+  nextRechargeAt: string;
   pendingPlan: string | null | undefined;
   pendingPlanEffectiveAt: string | null | undefined;
   wallets: ReadonlyArray<{
@@ -21,6 +22,7 @@ type BillingPanelProps = {
  */
 export function BillingPanel(props: BillingPanelProps) {
   const subscriptionWallet = props.billing.wallets.find((wallet) => wallet.type === "subscription");
+  const payAsYouGoWallet = props.billing.wallets.find((wallet) => wallet.type === "pay_as_you_go");
   const pendingPlanLabel = props.billing.pendingPlan ? formatPlanLabel(props.billing.pendingPlan) : null;
 
   return (
@@ -55,6 +57,21 @@ export function BillingPanel(props: BillingPanelProps) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Remaining credits available to CompanyHelm-managed sessions.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Next renewal: {formatTimestamp(props.billing.nextRechargeAt)}.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border/70 bg-background/90 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+            Pay as you go credits
+          </p>
+          <p className="mt-2 text-sm font-semibold text-foreground">
+            {UsageMetrics.formatUsdFromNano(payAsYouGoWallet?.amountNanoUsd ?? 0)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Credits available for usage outside the subscription wallet.
           </p>
         </div>
       </CardContent>

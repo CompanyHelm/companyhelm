@@ -70,7 +70,7 @@ export const walletTransactions = pgTable("wallet_transactions", {
     .on(table.walletId, table.category)
     .where(sql`${table.category} = 'opening'`),
   llmChargeTurnUnique: uniqueIndex("wallet_transactions_llm_charge_turn_uidx")
-    .on(table.sessionTurnId, table.category)
+    .on(table.walletId, table.sessionTurnId, table.category)
     .where(sql`${table.category} = 'llm_charge' AND ${table.sessionTurnId} IS NOT NULL`),
   amountSignCheck: check(
     "wallet_transactions_amount_sign_check",

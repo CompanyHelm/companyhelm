@@ -102,7 +102,9 @@ class CompanyWalletServiceHarness {
       const transaction = value as unknown as WalletTransactionRecord;
       if (transaction.category === "llm_charge" && transaction.sessionTurnId) {
         const duplicate = this.transactions.find((existing) =>
-          existing.category === "llm_charge" && existing.sessionTurnId === transaction.sessionTurnId
+          existing.category === "llm_charge"
+          && existing.sessionTurnId === transaction.sessionTurnId
+          && existing.walletId === transaction.walletId
         );
         if (duplicate) {
           return [];
@@ -145,11 +147,6 @@ class CompanyWalletServiceHarness {
 
   private updateRows(table: unknown, value: Record<string, unknown>): void {
     if (table === wallets) {
-      const wallet = this.wallets.find((candidate) => candidate.companyId === "company-1" && candidate.type === "subscription");
-      if (!wallet) {
-        throw new Error("No wallet to update.");
-      }
-      wallet.amountNanoUsd = Number(value.amountNanoUsd ?? wallet.amountNanoUsd + Number(value.amountNanoUsdDelta ?? 0));
       return;
     }
     if (table === companies) {
@@ -232,6 +229,44 @@ test("CompanyWalletService records managed LLM charges idempotently", async () =
   assert.equal(harness.transactions.length, 1);
   assert.equal(harness.transactions[0]!.category, "llm_charge");
   assert.equal(harness.transactions[0]!.amountNanoUsd, -250);
+});
+
+test("CompanyWalletService spends subscription credits before pay as you go credits", async () => {
+  const service = new CompanyWalletService();
+  const harness = new CompanyWalletServiceHarness();
+  harness.wallets.push({ amountNanoUsd: 100, companyId: "company-1", id: "subscription-wallet", type: "subscription" });
+  harness.wallets.push({ amountNanoUsd: 1_000, companyId: "company-1", id: "paygo-wallet", type: "pay_as_you_go" });
+
+  await service.recordManagedLlmChargeInTransaction(harness.createDatabase() as never, {
+    amountNanoUsd: 250,
+    companyId: "company-1",
+    now: new Date("2026-05-20T10:00:00.000Z"),
+    sessionId: "session-1",
+    sessionTurnId: "turn-1",
+  });
+  await service.recordManagedLlmChargeInTransaction(harness.createDatabase() as never, {
+    amountNanoUsd: 250,
+    companyId: "company-1",
+    now: new Date("2026-05-20T10:00:00.000Z"),
+    sessionId: "session-1",
+    sessionTurnId: "turn-1",
+  });
+
+  assert.equal(harness.wallets.find((wallet) => wallet.type === "subscription")?.amountNanoUsd, 0);
+  assert.equal(harness.wallets.find((wallet) => wallet.type === "pay_as_you_go")?.amountNanoUsd, 850);
+  assert.deepEqual(harness.transactions.map((transaction) => ({
+    amountNanoUsd: transaction.amountNanoUsd,
+    walletId: transaction.walletId,
+  })), [
+    {
+      amountNanoUsd: -100,
+      walletId: "subscription-wallet",
+    },
+    {
+      amountNanoUsd: -150,
+      walletId: "paygo-wallet",
+    },
+  ]);
 });
 
 test("CompanyWalletService monthly recharge skips a period already opened", async () => {
