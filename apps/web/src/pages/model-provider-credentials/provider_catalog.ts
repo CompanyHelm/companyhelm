@@ -104,7 +104,7 @@ export class ModelProviderCredentialCatalog {
       return "Codex";
     }
     if (providerId === "google") {
-      return "Gemini";
+      return "Google Gemini API";
     }
     if (providerId === "openai") {
       return "OpenAI";

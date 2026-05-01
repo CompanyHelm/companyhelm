@@ -73,7 +73,7 @@ test("orders and labels dialog providers for the credential picker", () => {
       ["openai-codex", "Codex", "Subscription"],
       ["anthropic", "Anthropic", "API key"],
       ["openai", "OpenAI", "API key"],
-      ["google", "Gemini", "API key"],
+      ["google", "Google Gemini API", "API key"],
       ["openrouter", "OpenRouter", "API key"],
       ["nvidia", "NVIDIA", "API key"],
       ["openai-compatible", "OpenAI Compatible", "API key"],

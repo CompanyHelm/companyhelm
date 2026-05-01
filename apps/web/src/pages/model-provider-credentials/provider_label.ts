@@ -28,7 +28,7 @@ export function formatProviderLabel(value: string, options: {
   }
 
   if (value === "google") {
-    return "Gemini";
+    return "Google Gemini API";
   }
 
   if (value === "anthropic") {
