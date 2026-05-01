@@ -1,7 +1,6 @@
 import { Suspense, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
-import { CompanyWalletPanel } from "@/components/usage/company_wallet_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,25 +19,6 @@ const usagePageQueryNode = graphql`
       company {
         id
         name
-      }
-    }
-    CompanyWallet {
-      currentPlan
-      pendingPlan
-      pendingPlanEffectiveAt
-      totalBalanceNanoUsd
-      nextRechargeAmountNanoUsd
-      nextRechargeAt
-      wallets {
-        id
-        type
-        amountNanoUsd
-      }
-      transactions {
-        id
-        category
-        amountNanoUsd
-        createdAt
       }
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
@@ -203,11 +183,6 @@ function UsagePageContent() {
 
   return (
     <div className="grid gap-6">
-      <CompanyWalletPanel
-        budget={data.CompanyWallet}
-        description="Subscription wallet balance and recent managed LLM ledger activity."
-      />
-
       <UsageSummaryPanel
         aggregates={companyAggregates}
         description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
