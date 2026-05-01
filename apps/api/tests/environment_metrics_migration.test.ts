@@ -23,6 +23,7 @@ test("environment metrics migration adds latest snapshot columns and tenant-scop
   assert.match(migration, /CREATE TABLE "agent_environment_metric_samples"/u);
   assert.match(migration, /"company_id" uuid NOT NULL/u);
   assert.match(migration, /"environment_id" uuid NOT NULL/u);
+  assert.match(migration, /CONSTRAINT "agent_env_metric_samples_environment_id_fk"/u);
   assert.match(migration, /CREATE UNIQUE INDEX "agent_environment_metric_samples_environment_sampled_at_uidx"/u);
   assert.match(migration, /ALTER TABLE "agent_environment_metric_samples" ENABLE ROW LEVEL SECURITY;/u);
   assert.match(

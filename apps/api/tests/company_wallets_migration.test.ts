@@ -19,6 +19,7 @@ test("company wallet migration adds wallets, transactions, pending plans, and id
   const migration = CompanyWalletsMigrationTest.readMigration();
 
   assert.match(migration, /CREATE TYPE "public"\."wallet_type" AS ENUM\('subscription', 'pay_as_you_go'\)/u);
+  assert.match(migration, /ALTER TYPE "public"\."company_subscription_plan" ADD VALUE IF NOT EXISTS 'pro'/u);
   assert.match(migration, /CREATE TYPE "public"\."wallet_transaction_category" AS ENUM\('llm_charge', 'monthly_recharge', 'adjustment', 'opening'\)/u);
   assert.match(migration, /ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "pending_plan" "company_subscription_plan"/u);
   assert.match(migration, /ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "pending_plan_effective_at" timestamp with time zone/u);
@@ -32,6 +33,7 @@ test("company wallet migration adds wallets, transactions, pending plans, and id
   assert.match(migration, /CREATE POLICY "wallets_company_scope_policy"/u);
   assert.match(migration, /ALTER TABLE "wallet_transactions" ENABLE ROW LEVEL SECURITY/u);
   assert.match(migration, /CREATE POLICY "wallet_transactions_company_scope_policy"/u);
+  assert.match(migration, /CASE "companies"\."plan"::text\s+WHEN 'pro'/u);
   assert.match(migration, /INSERT INTO "wallets"/u);
   assert.match(migration, /INSERT INTO "wallet_transactions"/u);
 });

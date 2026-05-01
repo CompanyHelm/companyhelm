@@ -14,7 +14,7 @@ CREATE TABLE "agent_environment_metric_samples" (
 );
 --> statement-breakpoint
 ALTER TABLE "agent_environment_metric_samples" ADD CONSTRAINT "agent_environment_metric_samples_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agent_environment_metric_samples" ADD CONSTRAINT "agent_environment_metric_samples_environment_id_agent_environments_id_fk" FOREIGN KEY ("environment_id") REFERENCES "public"."agent_environments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "agent_environment_metric_samples" ADD CONSTRAINT "agent_env_metric_samples_environment_id_fk" FOREIGN KEY ("environment_id") REFERENCES "public"."agent_environments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "agent_environment_metric_samples_company_sampled_at_idx" ON "agent_environment_metric_samples" USING btree ("company_id","sampled_at");--> statement-breakpoint
 CREATE INDEX "agent_environment_metric_samples_environment_sampled_at_idx" ON "agent_environment_metric_samples" USING btree ("environment_id","sampled_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "agent_environment_metric_samples_environment_sampled_at_uidx" ON "agent_environment_metric_samples" USING btree ("environment_id","sampled_at");--> statement-breakpoint

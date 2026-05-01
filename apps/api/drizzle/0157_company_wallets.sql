@@ -10,6 +10,7 @@ BEGIN
     CREATE TYPE "public"."wallet_type" AS ENUM('subscription', 'pay_as_you_go');
   END IF;
 END $$;--> statement-breakpoint
+ALTER TYPE "public"."company_subscription_plan" ADD VALUE IF NOT EXISTS 'pro';--> statement-breakpoint
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -88,7 +89,7 @@ WITH current_period AS (
     gen_random_uuid(),
     "companies"."id",
     'subscription',
-    CASE "companies"."plan"
+    CASE "companies"."plan"::text
       WHEN 'pro' THEN 100000000000
       ELSE 10000000000
     END,
