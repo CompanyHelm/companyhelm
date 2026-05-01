@@ -19,3 +19,23 @@ test("renders GitHub-flavored markdown tables with transcript-safe styling", () 
   assert.match(html, /<td[^>]*>Alpha<\/td>/);
   assert.match(html, /<td[^>]*>2<\/td>/);
 });
+
+test("renders transcript markdown with tighter vertical rhythm than shared markdown documents", () => {
+  const html = renderToStaticMarkup(createElement(MarkdownContent, {
+    content: `# Goal
+
+Here is the plan.
+
+\`\`\`
+run the migration
+\`\`\`
+
+- Ship it`,
+    variant: "transcript",
+  }));
+
+  assert.match(html, /mt-3 text-base leading-6/);
+  assert.match(html, /mt-1\.5 text-sm leading-5/);
+  assert.match(html, /mt-2 px-3 py-2 leading-5/);
+  assert.match(html, /mt-2 gap-0\.5/);
+});

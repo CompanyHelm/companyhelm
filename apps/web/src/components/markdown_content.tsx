@@ -9,7 +9,7 @@ type MarkdownContentProps = {
   emptyClassName?: string;
   emptyLabel?: string;
   tone?: "default" | "muted";
-  variant?: "compact" | "default";
+  variant?: "compact" | "default" | "transcript";
 };
 
 /**
@@ -46,11 +46,12 @@ export const MarkdownContent = memo(function MarkdownContent({
   }
 
   const isCompact = variant === "compact";
+  const isTranscript = variant === "transcript";
   const bodyTextClassName = tone === "muted" ? "text-muted-foreground" : "text-foreground";
   const codeSurfaceClassName = isCompact ? "bg-background/80 text-[11px]" : "bg-muted text-[13px]";
   const preSurfaceClassName = isCompact ? "bg-background/80 text-[11px]" : "bg-muted/30 text-[13px]";
-  const tableTextClassName = isCompact ? "text-xs leading-5" : "text-sm leading-6";
-  const tableCellClassName = isCompact ? "px-2 py-1.5" : "px-3 py-2";
+  const tableTextClassName = isCompact ? "text-xs leading-5" : isTranscript ? "text-sm leading-5" : "text-sm leading-6";
+  const tableCellClassName = isCompact ? "px-2 py-1.5" : isTranscript ? "px-2.5 py-1.5" : "px-3 py-2";
 
   return (
     <div className={cn("min-w-0 w-full [&>*:first-child]:mt-0", className)}>
@@ -70,7 +71,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           blockquote: ({ children }) => (
             <blockquote
               className={cn(
-                isCompact ? "mt-3 pl-3 text-xs leading-5" : "mt-4 pl-4 text-sm leading-6",
+                isCompact ? "mt-3 pl-3 text-xs leading-5" : isTranscript ? "mt-2 pl-3 text-sm leading-5" : "mt-4 pl-4 text-sm leading-6",
                 "min-w-0 border-l-2 border-border/70 text-muted-foreground [overflow-wrap:anywhere]",
               )}
             >
@@ -92,7 +93,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           h1: ({ children }) => (
             <h1
               className={cn(
-                isCompact ? "mt-4 text-sm leading-6" : "mt-6 text-lg leading-7",
+                isCompact ? "mt-4 text-sm leading-6" : isTranscript ? "mt-3 text-base leading-6" : "mt-6 text-lg leading-7",
                 "min-w-0 font-semibold text-foreground",
               )}
             >
@@ -102,7 +103,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           h2: ({ children }) => (
             <h2
               className={cn(
-                isCompact ? "mt-4 text-sm leading-6" : "mt-5 text-base leading-7",
+                isCompact ? "mt-4 text-sm leading-6" : isTranscript ? "mt-3 text-sm leading-6" : "mt-5 text-base leading-7",
                 "min-w-0 font-semibold text-foreground",
               )}
             >
@@ -112,7 +113,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           h3: ({ children }) => (
             <h3
               className={cn(
-                isCompact ? "mt-3 text-xs leading-5" : "mt-4 text-sm leading-6",
+                isCompact ? "mt-3 text-xs leading-5" : isTranscript ? "mt-2 text-sm leading-5" : "mt-4 text-sm leading-6",
                 "min-w-0 font-semibold text-foreground",
               )}
             >
@@ -122,8 +123,9 @@ export const MarkdownContent = memo(function MarkdownContent({
           li: ({ children }) => (
             <li
               className={cn(
-                isCompact ? "pl-1 text-xs leading-5" : "pl-1 leading-6",
-                "min-w-0 marker:text-muted-foreground [&>p]:my-0 [&>ul]:mt-2 [&>ol]:mt-2",
+                isCompact ? "pl-1 text-xs leading-5" : isTranscript ? "pl-1 leading-5" : "pl-1 leading-6",
+                "min-w-0 marker:text-muted-foreground [&>p]:my-0",
+                isTranscript ? "[&>ul]:mt-1 [&>ol]:mt-1" : "[&>ul]:mt-2 [&>ol]:mt-2",
                 bodyTextClassName,
               )}
             >
@@ -131,14 +133,14 @@ export const MarkdownContent = memo(function MarkdownContent({
             </li>
           ),
           ol: ({ children }) => (
-            <ol className={cn(isCompact ? "mt-3 gap-1" : "mt-4 gap-1.5", "ml-5 grid min-w-0 list-decimal")}>
+            <ol className={cn(isCompact ? "mt-3 gap-1" : isTranscript ? "mt-2 gap-0.5" : "mt-4 gap-1.5", "ml-5 grid min-w-0 list-decimal")}>
               {children}
             </ol>
           ),
           p: ({ children }) => (
             <p
               className={cn(
-                isCompact ? "mt-2 text-xs leading-5" : "mt-3 text-sm leading-6 text-pretty",
+                isCompact ? "mt-2 text-xs leading-5" : isTranscript ? "mt-1.5 text-sm leading-5" : "mt-3 text-sm leading-6 text-pretty",
                 "min-w-0 break-words [overflow-wrap:anywhere]",
                 bodyTextClassName,
               )}
@@ -149,9 +151,9 @@ export const MarkdownContent = memo(function MarkdownContent({
           pre: ({ children }) => (
             <pre
               className={cn(
-                isCompact ? "mt-3 px-3 py-2 leading-5" : "mt-4 px-4 py-3 leading-6",
                 "modern-scrollbar w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 font-mono text-foreground",
                 preSurfaceClassName,
+                isCompact ? "mt-3 px-3 py-2 leading-5" : isTranscript ? "mt-2 px-3 py-2 leading-5" : "mt-4 px-4 py-3 leading-6",
                 "[&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]",
               )}
             >
@@ -159,7 +161,7 @@ export const MarkdownContent = memo(function MarkdownContent({
             </pre>
           ),
           table: ({ children }) => (
-            <div className={cn(isCompact ? "mt-3" : "mt-4", "modern-scrollbar w-full overflow-x-auto rounded-xl border border-border/60")}>
+            <div className={cn(isCompact ? "mt-3" : isTranscript ? "mt-2" : "mt-4", "modern-scrollbar w-full overflow-x-auto rounded-xl border border-border/60")}>
               <table className={cn("w-full min-w-max border-collapse bg-background/40 text-left", tableTextClassName)}>
                 {children}
               </table>
@@ -184,7 +186,7 @@ export const MarkdownContent = memo(function MarkdownContent({
           thead: ({ children }) => <thead>{children}</thead>,
           tr: ({ children }) => <tr className="align-top">{children}</tr>,
           ul: ({ children }) => (
-            <ul className={cn(isCompact ? "mt-3 gap-1" : "mt-4 gap-1.5", "ml-5 grid min-w-0 list-disc")}>
+            <ul className={cn(isCompact ? "mt-3 gap-1" : isTranscript ? "mt-2 gap-0.5" : "mt-4 gap-1.5", "ml-5 grid min-w-0 list-disc")}>
               {children}
             </ul>
           ),

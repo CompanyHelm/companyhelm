@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { pathToFileURL } from "node:url";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import pino from "pino";
 import { ApiContainer } from "../src/api_container.ts";
 import { ApiCli } from "../src/cli/api_cli.ts";
@@ -12,10 +12,14 @@ import type { DatabaseTransactionInterface } from "../src/db/database_interface.
 import { PlatformAdminAccess } from "../src/db/platform_admin_access.ts";
 import {
   agents,
+  agentSessions,
   companies,
   companyMembers,
+  messageContents,
   platformModelProviderCredentials,
   platformModels,
+  sessionMessages,
+  sessionTurns,
   users,
 } from "../src/db/schema.ts";
 import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
@@ -42,6 +46,10 @@ type LocalDevCompanyRecord = {
 };
 
 type LocalDevAgentRecord = {
+  defaultModelCredentialSource: "platform" | "user_provided";
+  defaultModelProviderCredentialModelId: string | null;
+  defaultPlatformModelId: string | null;
+  defaultReasoningLevel: string | null;
   id: string;
 };
 
@@ -59,8 +67,11 @@ type LocalDevSeedOptions = {
 };
 
 type LocalDevMutableDatabase = DatabaseTransactionInterface & {
+  delete(table: unknown): {
+    where(condition: unknown): Promise<unknown>;
+  };
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | Array<Record<string, unknown>>): {
       onConflictDoNothing(): Promise<unknown>;
     };
   };
@@ -69,6 +80,28 @@ type LocalDevMutableDatabase = DatabaseTransactionInterface & {
       where(condition: unknown): Promise<unknown>;
     };
   };
+};
+
+type LocalDevDemoChatSeedPlanInput = {
+  agent: LocalDevAgentRecord;
+  baseDate: Date;
+  companyId: string;
+  userId: string;
+};
+
+type LocalDevDemoChatSeedPlan = {
+  contents: Array<Record<string, unknown>>;
+  messages: Array<Record<string, unknown>>;
+  sessionIds: string[];
+  sessions: Array<Record<string, unknown>>;
+  turns: Array<Record<string, unknown>>;
+};
+
+type LocalDevDemoSessionSeedRecord = {
+  contents: Array<Record<string, unknown>>;
+  messages: Array<Record<string, unknown>>;
+  session: Record<string, unknown>;
+  turns: Array<Record<string, unknown>>;
 };
 
 /**
@@ -280,9 +313,346 @@ export class LocalDevSeedScript {
         companyId,
         llmSetupStatus: "company_managed",
       });
-      const agentId = await this.loadSeedAgentId(transaction as DatabaseTransactionInterface, companyId);
+      const agent = await this.loadSeedAgent(transaction as DatabaseTransactionInterface, companyId);
+      await this.seedDemoChats(transaction as DatabaseTransactionInterface, {
+        agent,
+        baseDate: new Date(),
+        companyId,
+        userId,
+      });
+      const agentId = agent.id;
       return { agentId, companyId, userId };
     });
+  }
+
+  buildDemoChatSeedPlan(input: LocalDevDemoChatSeedPlanInput): LocalDevDemoChatSeedPlan {
+    const sessionRecords = [
+      this.buildDenseMarkdownDemoSession(input),
+      this.buildToolOutputDemoSession(input),
+      this.buildImagesAndErrorsDemoSession(input),
+    ];
+
+    return {
+      contents: sessionRecords.flatMap((sessionRecord) => sessionRecord.contents),
+      messages: sessionRecords.flatMap((sessionRecord) => sessionRecord.messages),
+      sessionIds: sessionRecords.map((sessionRecord) => String(sessionRecord.session.id)),
+      sessions: sessionRecords.map((sessionRecord) => sessionRecord.session),
+      turns: sessionRecords.flatMap((sessionRecord) => sessionRecord.turns),
+    };
+  }
+
+  private async seedDemoChats(
+    transaction: DatabaseTransactionInterface,
+    input: LocalDevDemoChatSeedPlanInput,
+  ): Promise<void> {
+    const plan = this.buildDemoChatSeedPlan(input);
+    const database = transaction as LocalDevMutableDatabase;
+    await database
+      .delete(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, input.companyId),
+        inArray(agentSessions.id, plan.sessionIds),
+      ));
+    await database.insert(agentSessions).values(plan.sessions);
+    await database.insert(sessionTurns).values(plan.turns);
+    await database.insert(sessionMessages).values(plan.messages);
+    await database.insert(messageContents).values(plan.contents);
+  }
+
+  private buildDenseMarkdownDemoSession(input: LocalDevDemoChatSeedPlanInput): LocalDevDemoSessionSeedRecord {
+    const sessionId = "00000000-0000-4000-8000-000000000101";
+    const turnId = "00000000-0000-4000-8000-000000000201";
+    const userMessageId = "00000000-0000-4000-8000-000000000301";
+    const assistantMessageId = "00000000-0000-4000-8000-000000000302";
+    const startedAt = this.offsetDate(input.baseDate, -900);
+    const endedAt = this.offsetDate(input.baseDate, -880);
+    const assistantMessageAt = this.offsetDate(input.baseDate, -881);
+
+    return {
+      contents: [
+        this.buildTextContent("00000000-0000-4000-8000-000000000401", input.companyId, userMessageId, "Show me a plan with headings, lists, code, and a table so I can review markdown spacing."),
+        this.buildTextContent("00000000-0000-4000-8000-000000000402", input.companyId, assistantMessageId, `Here’s a compact markdown fixture for the /chats transcript.
+
+# Goal
+
+Replace extra transcript whitespace while keeping headings scannable.
+
+## Runtime rule
+
+\`\`\`ts
+if (company.usesCompanyHelmManagedModel) {
+  await walletService.assertPositiveBalance(company.id);
+}
+\`\`\`
+
+## Checklist
+
+- Keep paragraph rhythm readable.
+- Reduce code-block and list margins.
+- Preserve tables and inline \`code\` wrapping.
+
+| Area | Change |
+| --- | --- |
+| Headings | Smaller top margins in chat transcripts |
+| Lists | Tighter item gaps |
+| Code | Less padding while retaining borders |
+
+> This blockquote should not create a giant vertical jump.`),
+      ],
+      messages: [
+        this.buildMessage(userMessageId, input.companyId, sessionId, turnId, "user", this.offsetDate(input.baseDate, -899)),
+        this.buildMessage(assistantMessageId, input.companyId, sessionId, turnId, "assistant", assistantMessageAt),
+      ],
+      session: this.buildSession(input, sessionId, "Demo: dense markdown transcript", startedAt, assistantMessageAt),
+      turns: [this.buildTurn(turnId, input.companyId, sessionId, input.agent, startedAt, endedAt)],
+    };
+  }
+
+  private buildToolOutputDemoSession(input: LocalDevDemoChatSeedPlanInput): LocalDevDemoSessionSeedRecord {
+    const sessionId = "00000000-0000-4000-8000-000000000102";
+    const turnId = "00000000-0000-4000-8000-000000000202";
+    const userMessageId = "00000000-0000-4000-8000-000000000303";
+    const thinkingMessageId = "00000000-0000-4000-8000-000000000304";
+    const toolCallMessageId = "00000000-0000-4000-8000-000000000305";
+    const toolResultMessageId = "00000000-0000-4000-8000-000000000306";
+    const assistantMessageId = "00000000-0000-4000-8000-000000000307";
+    const toolCallId = "local-demo-tool-call-1";
+    const startedAt = this.offsetDate(input.baseDate, -720);
+    const endedAt = this.offsetDate(input.baseDate, -690);
+
+    return {
+      contents: [
+        this.buildTextContent("00000000-0000-4000-8000-000000000403", input.companyId, userMessageId, "Run a quick local verification and summarize it."),
+        this.buildThinkingContent("00000000-0000-4000-8000-000000000404", input.companyId, thinkingMessageId, "I’ll inspect the package scripts first, then run a focused command."),
+        this.buildToolCallContent("00000000-0000-4000-8000-000000000405", input.companyId, toolCallMessageId, toolCallId, "pty_exec", {
+          command: "npm run check:web",
+          pty_id: "local-demo",
+          workingDirectory: "~/workspace/companyhelm",
+          yield_time_ms: 1000,
+        }),
+        this.buildTextContent("00000000-0000-4000-8000-000000000406", input.companyId, toolResultMessageId, "\u001b[32m✓\u001b[0m lint passed\n\u001b[32m✓\u001b[0m typecheck passed\nWeb checks completed."),
+        this.buildTerminalContent("00000000-0000-4000-8000-000000000407", input.companyId, toolResultMessageId, "npm run check:web", "~/workspace/companyhelm", "check:web exited 0 in 12.4s"),
+        this.buildTextContent("00000000-0000-4000-8000-000000000408", input.companyId, assistantMessageId, `Verification finished:
+
+- Web lint passed.
+- Typecheck passed.
+- No transcript rendering regressions found in this fixture.`),
+      ],
+      messages: [
+        this.buildMessage(userMessageId, input.companyId, sessionId, turnId, "user", this.offsetDate(input.baseDate, -719)),
+        this.buildMessage(thinkingMessageId, input.companyId, sessionId, turnId, "assistant", this.offsetDate(input.baseDate, -716)),
+        this.buildMessage(toolCallMessageId, input.companyId, sessionId, turnId, "assistant", this.offsetDate(input.baseDate, -713)),
+        this.buildMessage(toolResultMessageId, input.companyId, sessionId, turnId, "toolResult", this.offsetDate(input.baseDate, -704), { toolCallId, toolName: "pty_exec" }),
+        this.buildMessage(assistantMessageId, input.companyId, sessionId, turnId, "assistant", this.offsetDate(input.baseDate, -691)),
+      ],
+      session: this.buildSession(input, sessionId, "Demo: tools and terminal output", startedAt, this.offsetDate(input.baseDate, -691)),
+      turns: [this.buildTurn(turnId, input.companyId, sessionId, input.agent, startedAt, endedAt)],
+    };
+  }
+
+  private buildImagesAndErrorsDemoSession(input: LocalDevDemoChatSeedPlanInput): LocalDevDemoSessionSeedRecord {
+    const sessionId = "00000000-0000-4000-8000-000000000103";
+    const turnId = "00000000-0000-4000-8000-000000000203";
+    const userMessageId = "00000000-0000-4000-8000-000000000308";
+    const assistantMessageId = "00000000-0000-4000-8000-000000000309";
+    const errorMessageId = "00000000-0000-4000-8000-000000000310";
+    const startedAt = this.offsetDate(input.baseDate, -540);
+    const endedAt = this.offsetDate(input.baseDate, -520);
+
+    return {
+      contents: [
+        this.buildTextContent("00000000-0000-4000-8000-000000000409", input.companyId, userMessageId, "Here is a tiny screenshot attachment. Also show how an error response wraps."),
+        this.buildImageContent("00000000-0000-4000-8000-000000000410", input.companyId, userMessageId),
+        this.buildTextContent("00000000-0000-4000-8000-000000000411", input.companyId, assistantMessageId, `Attachment received. The transcript should keep image previews compact and align this response with normal markdown text.
+
+1. Image preview stays bounded.
+2. Ordered lists stay tight.
+3. Follow-up errors still inherit the compact markdown rhythm.`),
+        this.buildTextContent("00000000-0000-4000-8000-000000000412", input.companyId, errorMessageId, `The demo error renderer is active.
+
+\`wallet_balance\` could not be loaded for this fixture.`),
+      ],
+      messages: [
+        this.buildMessage(userMessageId, input.companyId, sessionId, turnId, "user", this.offsetDate(input.baseDate, -539)),
+        this.buildMessage(assistantMessageId, input.companyId, sessionId, turnId, "assistant", this.offsetDate(input.baseDate, -526)),
+        this.buildMessage(errorMessageId, input.companyId, sessionId, turnId, "assistant", this.offsetDate(input.baseDate, -521), { errorMessage: "The demo error renderer is active.", isError: true }),
+      ],
+      session: this.buildSession(input, sessionId, "Demo: images and error states", startedAt, this.offsetDate(input.baseDate, -521)),
+      turns: [this.buildTurn(turnId, input.companyId, sessionId, input.agent, startedAt, endedAt)],
+    };
+  }
+
+  private buildSession(
+    input: LocalDevDemoChatSeedPlanInput,
+    sessionId: string,
+    title: string,
+    createdAt: Date,
+    lastUserMessageAt: Date,
+  ): Record<string, unknown> {
+    return {
+      agentId: input.agent.id,
+      companyId: input.companyId,
+      created_at: createdAt,
+      currentContextTokens: null,
+      currentModelCredentialSource: input.agent.defaultModelCredentialSource,
+      currentModelProviderCredentialModelId: input.agent.defaultModelProviderCredentialModelId,
+      currentPlatformModelId: input.agent.defaultPlatformModelId,
+      currentPlatformModelProviderCredentialModelId: null,
+      currentReasoningLevel: input.agent.defaultReasoningLevel ?? "",
+      forkedFromTurnId: null,
+      id: sessionId,
+      inferredTitle: title,
+      isCompacting: false,
+      isThinking: false,
+      lastUserMessageAt,
+      maxContextTokens: null,
+      ownerUserId: input.userId,
+      status: "stopped",
+      thinkingText: null,
+      updated_at: lastUserMessageAt,
+      userSetTitle: title,
+    };
+  }
+
+  private buildTurn(
+    turnId: string,
+    companyId: string,
+    sessionId: string,
+    agent: LocalDevAgentRecord,
+    startedAt: Date,
+    endedAt: Date,
+  ): Record<string, unknown> {
+    return {
+      companyId,
+      endedAt,
+      id: turnId,
+      platformModelId: agent.defaultModelCredentialSource === "platform" ? agent.defaultPlatformModelId : null,
+      platformModelProviderCredentialId: null,
+      platformModelProviderCredentialModelId: null,
+      sessionId,
+      startedAt,
+      usageCacheReadCostNanoUsd: 0,
+      usageCacheReadCostNanoVirtualUsd: 0,
+      usageCacheReadTokens: 0,
+      usageCacheWriteCostNanoUsd: 0,
+      usageCacheWriteCostNanoVirtualUsd: 0,
+      usageCacheWriteTokens: 0,
+      usageInputCostNanoUsd: 0,
+      usageInputCostNanoVirtualUsd: 0,
+      usageInputTokens: 0,
+      usageOutputCostNanoUsd: 0,
+      usageOutputCostNanoVirtualUsd: 0,
+      usageOutputTokens: 0,
+      usageRecordedAt: endedAt,
+      usageTotalCostNanoUsd: 0,
+      usageTotalCostNanoVirtualUsd: 0,
+      usageTotalTokens: 0,
+    };
+  }
+
+  private buildMessage(
+    messageId: string,
+    companyId: string,
+    sessionId: string,
+    turnId: string,
+    role: "assistant" | "toolResult" | "user",
+    createdAt: Date,
+    overrides: Partial<Record<string, unknown>> = {},
+  ): Record<string, unknown> {
+    return {
+      companyId,
+      createdAt,
+      errorMessage: null,
+      id: messageId,
+      isError: false,
+      principalAgentId: null,
+      principalSessionId: null,
+      principalType: "user",
+      role,
+      sessionId,
+      status: "completed",
+      taskRunId: null,
+      toolCallId: null,
+      toolName: null,
+      turnId,
+      updatedAt: this.offsetDate(createdAt, role === "toolResult" ? 3 : 1),
+      workflowRunId: null,
+      ...overrides,
+    };
+  }
+
+  private buildTextContent(contentId: string, companyId: string, messageId: string, text: string): Record<string, unknown> {
+    return this.buildContent(contentId, companyId, messageId, "text", { text });
+  }
+
+  private buildThinkingContent(contentId: string, companyId: string, messageId: string, text: string): Record<string, unknown> {
+    return this.buildContent(contentId, companyId, messageId, "thinking", { text });
+  }
+
+  private buildToolCallContent(
+    contentId: string,
+    companyId: string,
+    messageId: string,
+    toolCallId: string,
+    toolName: string,
+    argumentsValue: Record<string, unknown>,
+  ): Record<string, unknown> {
+    return this.buildContent(contentId, companyId, messageId, "toolCall", {
+      arguments: argumentsValue,
+      toolCallId,
+      toolName,
+    });
+  }
+
+  private buildTerminalContent(
+    contentId: string,
+    companyId: string,
+    messageId: string,
+    command: string,
+    cwd: string,
+    text: string,
+  ): Record<string, unknown> {
+    return this.buildContent(contentId, companyId, messageId, "text", {
+      structuredContent: { command, completed: true, cwd, exitCode: 0, sessionId: "local-demo", type: "terminal" },
+      text,
+    });
+  }
+
+  private buildImageContent(contentId: string, companyId: string, messageId: string): Record<string, unknown> {
+    return this.buildContent(contentId, companyId, messageId, "image", {
+      data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+      mimeType: "image/png",
+    });
+  }
+
+  private buildContent(
+    contentId: string,
+    companyId: string,
+    messageId: string,
+    type: "image" | "text" | "thinking" | "toolCall",
+    overrides: Partial<Record<string, unknown>>,
+  ): Record<string, unknown> {
+    const createdAt = new Date();
+    return {
+      arguments: null,
+      companyId,
+      createdAt,
+      data: null,
+      id: contentId,
+      messageId,
+      mimeType: null,
+      structuredContent: null,
+      text: null,
+      toolCallId: null,
+      toolName: null,
+      type,
+      updatedAt: createdAt,
+      ...overrides,
+    };
+  }
+
+  private offsetDate(date: Date, seconds: number): Date {
+    return new Date(date.getTime() + seconds * 1000);
   }
 
   private async ensureUser(transaction: DatabaseTransactionInterface): Promise<string> {
@@ -360,9 +730,15 @@ export class LocalDevSeedScript {
       .onConflictDoNothing();
   }
 
-  private async loadSeedAgentId(transaction: DatabaseTransactionInterface, companyId: string): Promise<string> {
+  private async loadSeedAgent(transaction: DatabaseTransactionInterface, companyId: string): Promise<LocalDevAgentRecord> {
     const [agent] = await transaction
-      .select({ id: agents.id })
+      .select({
+        defaultModelCredentialSource: agents.defaultModelCredentialSource,
+        defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+        defaultPlatformModelId: agents.defaultPlatformModelId,
+        defaultReasoningLevel: agents.default_reasoning_level,
+        id: agents.id,
+      })
       .from(agents)
       .where(and(
         eq(agents.companyId, companyId),
@@ -373,7 +749,7 @@ export class LocalDevSeedScript {
       throw new Error("Failed to seed the local CEO agent.");
     }
 
-    return agent.id;
+    return agent;
   }
 }
 

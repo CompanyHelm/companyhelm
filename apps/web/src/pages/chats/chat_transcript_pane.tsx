@@ -52,7 +52,7 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
   { isError, text }: { isError: boolean; text: string },
 ) {
   if (!isError) {
-    return <MarkdownContent content={text} />;
+    return <MarkdownContent content={text} variant="transcript" />;
   }
 
   return (
@@ -64,6 +64,7 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
       <MarkdownContent
         className="[&_a]:text-destructive [&_code]:text-destructive [&_p]:text-destructive [&_li]:text-destructive"
         content={text}
+        variant="transcript"
       />
     </div>
   );
@@ -703,7 +704,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                 toolCallSummary={message.toolCallId ? toolCallSummary : null}
               />
             ) : (
-              <div className="grid min-w-0 w-full gap-4 text-left">
+              <div className="grid min-w-0 w-full gap-2 text-left">
                 {assistantDisplayContents.map((content, contentIndex) => (
                   <div
                     key={`${message.id}-assistant-content-${contentIndex}`}
