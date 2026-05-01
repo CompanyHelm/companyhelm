@@ -33,6 +33,9 @@ class PlatformAdminUsersQueryTestHarness {
     return {
       getDatabase() {
         return {
+          async execute() {
+            return [];
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {

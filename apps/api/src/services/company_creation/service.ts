@@ -153,6 +153,8 @@ export class CompanyCreationService {
           "on conflict do nothing",
         ].join("\n"), [company.id, input.userId]);
 
+        await this.createOpeningSubscriptionWallet(sql, company.id);
+
         const clerkOrganization = await this.createClerkOrganization({
           clerkUserId: input.clerkUserId,
           name: companyName,
@@ -181,6 +183,30 @@ export class CompanyCreationService {
       await this.deleteCreatedClerkOrganization(createdClerkOrganizationId);
       throw error;
     }
+  }
+
+  private async createOpeningSubscriptionWallet(sql: TransactionSql, companyId: string): Promise<void> {
+    const walletId = randomUUID();
+    const transactionId = randomUUID();
+    await sql.unsafe([
+      "with inserted_wallet as (",
+      "  insert into wallets (id, company_id, type, amount_nano_usd, created_at, updated_at)",
+      "  values ($1, $2, 'subscription', 10000000000, now(), now())",
+      "  on conflict (company_id, type) do nothing",
+      "  returning id, company_id",
+      ")",
+      "insert into wallet_transactions (",
+      "  id, company_id, wallet_id, category, amount_nano_usd,",
+      "  period_start, period_end, session_id, session_turn_id, created_at",
+      ")",
+      "select",
+      "  $3, company_id, id, 'opening', 10000000000,",
+      "  date_trunc('month', timezone('UTC', now()))::timestamptz,",
+      "  (date_trunc('month', timezone('UTC', now())) + interval '1 month')::timestamptz,",
+      "  null, null, now()",
+      "from inserted_wallet",
+      "on conflict do nothing",
+    ].join("\n"), [walletId, companyId, transactionId]);
   }
 
   private buildEligibility(input: {

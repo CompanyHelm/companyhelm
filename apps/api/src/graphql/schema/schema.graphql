@@ -23,7 +23,7 @@ type Query {
   GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
-  CompanyManagedLlmBudget: CompanyManagedLlmBudget!
+  CompanyWallet: CompanyWallet!
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String, userId: ID): PlatformAdminCompanyPage!
@@ -874,6 +874,35 @@ type LlmUsageAggregate {
   totalCostNanoVirtualUsd: Float!
   createdAt: String!
   updatedAt: String!
+}
+
+type CompanyWallet {
+  currentPlan: CompanySubscriptionPlan!
+  pendingPlan: CompanySubscriptionPlan
+  pendingPlanEffectiveAt: String
+  totalBalanceNanoUsd: Float!
+  nextRechargeAmountNanoUsd: Float!
+  nextRechargeAt: String!
+  wallets: [Wallet!]!
+  transactions: [WalletTransaction!]!
+}
+
+type Wallet {
+  id: ID!
+  type: String!
+  amountNanoUsd: Float!
+}
+
+type WalletTransaction {
+  id: ID!
+  walletId: ID!
+  category: String!
+  amountNanoUsd: Float!
+  periodStart: String
+  periodEnd: String
+  sessionId: ID
+  sessionTurnId: ID
+  createdAt: String!
 }
 
 type CompanyManagedLlmBudgetPeriod {

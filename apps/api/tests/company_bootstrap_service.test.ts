@@ -4,6 +4,7 @@ import type { Config } from "../src/config/schema.ts";
 import {
   agentSkills,
   agents,
+  companies,
   companyModelProviderDefaults,
   companyOnboardings,
   computeProviderDefinitions,
@@ -249,6 +250,11 @@ class CompanyBootstrapServiceTestHarness {
     return new CompanyBootstrapService(
       new CompanyHelmComputeProviderService(config),
       new ModelRegistry(),
+      {
+        async ensureSubscriptionWalletForCompanyInTransaction() {
+          return undefined;
+        },
+      } as never,
     );
   }
 
@@ -627,6 +633,9 @@ class CompanyBootstrapServiceTestHarness {
 
                 return {
                   async limit() {
+                    if (table === companies) {
+                      return [{ plan: "free" }];
+                    }
                     if (table === agents) {
                       return agentRows.filter((row) => row.name === "CEO").slice(0, 1);
                     }

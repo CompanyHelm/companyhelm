@@ -45,6 +45,8 @@ export const companies = pgTable("companies", {
   slug: text("slug"),
   name: text("name").notNull(),
   plan: companySubscriptionPlanEnum("plan").notNull(),
+  pendingPlan: companySubscriptionPlanEnum("pending_plan"),
+  pendingPlanEffectiveAt: timestamp("pending_plan_effective_at", { withTimezone: true }),
 }, (table) => ({
   clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
   slugUnique: uniqueIndex("companies_slug_uidx").on(table.slug),

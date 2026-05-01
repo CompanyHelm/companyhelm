@@ -1,7 +1,7 @@
 import { Suspense, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
-import { CompanyManagedLlmBudgetPanel } from "@/components/usage/company_managed_llm_budget_panel";
+import { CompanyWalletPanel } from "@/components/usage/company_wallet_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,25 +22,23 @@ const usagePageQueryNode = graphql`
         name
       }
     }
-    CompanyManagedLlmBudget {
-      plan
-      daily {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
+    CompanyWallet {
+      currentPlan
+      pendingPlan
+      pendingPlanEffectiveAt
+      totalBalanceNanoUsd
+      nextRechargeAmountNanoUsd
+      nextRechargeAt
+      wallets {
+        id
+        type
+        amountNanoUsd
       }
-      monthly {
-        exhausted
-        limitCostNanoUsd
-        overageCostNanoUsd
-        period
-        periodStart
-        remainingCostNanoUsd
-        usedCostNanoUsd
+      transactions {
+        id
+        category
+        amountNanoUsd
+        createdAt
       }
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
@@ -205,9 +203,9 @@ function UsagePageContent() {
 
   return (
     <div className="grid gap-6">
-      <CompanyManagedLlmBudgetPanel
-        budget={data.CompanyManagedLlmBudget}
-        description="Subscription level and included CompanyHelm-managed LLM budget for the current UTC day and month."
+      <CompanyWalletPanel
+        budget={data.CompanyWallet}
+        description="Subscription wallet balance and recent managed LLM ledger activity."
       />
 
       <UsageSummaryPanel

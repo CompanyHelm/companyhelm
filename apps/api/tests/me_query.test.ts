@@ -31,6 +31,9 @@ class MeQueryTestHarness {
     return {
       getDatabase() {
         return {
+          async execute() {
+            return [];
+          },
           select() {
             return {
               from() {

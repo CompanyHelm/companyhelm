@@ -1093,6 +1093,13 @@
       "when": 1777600000000,
       "tag": "0156_environment_metrics",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1777666267000,
+      "tag": "0157_company_wallets",
+      "breakpoints": true
     }
   ]
 }

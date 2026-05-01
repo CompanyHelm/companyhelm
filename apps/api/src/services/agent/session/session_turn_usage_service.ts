@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, type SQL } from "drizzle-orm";
 import { sql } from "drizzle-orm/sql";
 import { llmUsageAggregates, sessionTurns } from "../../../db/schema.ts";
+import { CompanyWalletService } from "../../wallet/service.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 
 export type SessionTurnUsagePayload = {
@@ -72,6 +73,11 @@ type AggregateRecord = {
  */
 export class SessionTurnUsageService {
   private static readonly nanoUsdPerUsd = 1_000_000_000;
+  private readonly companyWalletService: CompanyWalletService;
+
+  constructor(companyWalletService: CompanyWalletService = new CompanyWalletService()) {
+    this.companyWalletService = companyWalletService;
+  }
 
   async recordUsage(
     transactionProvider: TransactionProviderInterface,
@@ -164,6 +170,16 @@ export class SessionTurnUsageService {
               updatedAt: input.recordedAt,
             },
           });
+      }
+
+      if (input.credentialSource === "platform" && usage.totalCostNanoVirtualUsd > 0) {
+        await this.companyWalletService.recordManagedLlmChargeInTransaction(tx as never, {
+          amountNanoUsd: usage.totalCostNanoVirtualUsd,
+          companyId: input.companyId,
+          now: input.recordedAt,
+          sessionId: input.sessionId,
+          sessionTurnId: input.turnId,
+        });
       }
     });
   }
