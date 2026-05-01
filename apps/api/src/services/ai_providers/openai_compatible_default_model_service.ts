@@ -14,7 +14,7 @@ type OpenAiCompatibleDefaultModelInput = {
 @injectable()
 export class OpenAiCompatibleDefaultModelService {
   private static readonly defaultModelIdsByBaseUrl = new Map<string, string>([
-    ["https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3-super-120b-a12b"],
+    ["https://integrate.api.nvidia.com/v1", "deepseek-ai/deepseek-v4-pro"],
   ]);
 
   resolveDefaultModelId(input: OpenAiCompatibleDefaultModelInput): string | null {
