@@ -1,7 +1,7 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../../db/admin_database.ts";
-import { companies, companyMembers, platformAdmins, users } from "../../db/schema.ts";
+import { companies, companyMembers, users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import type { AuthSession } from "../auth_provider.ts";
 import { DevAuthHeaders } from "./headers.ts";
@@ -10,7 +10,6 @@ type DevAuthUserRecord = {
   email: string;
   first_name: string;
   id: string;
-  isPlatformAdmin: boolean;
   last_name: string | null;
 };
 
@@ -24,7 +23,6 @@ type DevAuthCompanyMembershipRecord = DevAuthCompanyRecord & {
   user_email: string;
   user_first_name: string;
   user_id: string;
-  user_isPlatformAdmin: boolean;
   user_last_name: string | null;
 };
 
@@ -116,7 +114,6 @@ export class DevAuthService {
           email: users.email,
           first_name: users.first_name,
           id: users.id,
-          isPlatformAdmin: sql<boolean>`false`,
           last_name: users.last_name,
         }) as DevAuthUserRecord[];
       if (!createdUser) {
@@ -271,7 +268,6 @@ export class DevAuthService {
         email: membership.user_email,
         firstName: membership.user_first_name,
         id: membership.user_id,
-        isPlatformAdmin: membership.user_isPlatformAdmin,
         lastName: membership.user_last_name,
         provider: "dev",
         providerSubject: `dev:${membership.user_id}`,
@@ -317,11 +313,6 @@ export class DevAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -346,11 +337,6 @@ export class DevAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -388,11 +374,6 @@ export class DevAuthService {
         user_email: users.email,
         user_first_name: users.first_name,
         user_id: users.id,
-        user_isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         user_last_name: users.last_name,
       })
       .from(companyMembers)

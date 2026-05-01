@@ -10,13 +10,14 @@ import { DeletePlatformAdminCompanyMutation } from "../src/graphql/mutations/del
 class DeletePlatformAdminCompanyMutationTestHarness {
   static createContext(isPlatformAdmin: boolean): GraphqlRequestContext {
     return {
+      app_runtime_transaction_provider: null,
+      isPlatformAdmin,
       authSession: {
         token: "jwt-token",
         user: {
           id: "user-1",
           email: "admin@example.com",
           firstName: "Admin",
-          isPlatformAdmin,
           lastName: "User",
           provider: "clerk",
           providerSubject: "user_clerk_1",

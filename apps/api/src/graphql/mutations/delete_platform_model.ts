@@ -43,7 +43,7 @@ export class DeletePlatformModelMutation extends Mutation<
     arguments_: DeletePlatformModelMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<PlatformModelRecord> => {
-    if (!context.authSession?.user?.isPlatformAdmin) {
+    if (context.isPlatformAdmin !== true) {
       throw new Error("Platform admin access required.");
     }
     const transactionProvider = context.app_runtime_transaction_provider;

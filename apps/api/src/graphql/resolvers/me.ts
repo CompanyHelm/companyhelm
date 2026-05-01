@@ -14,7 +14,13 @@ type MeQueryResult = {
   companyEntitlements: CompanyMemberEntitlements;
   companyMembership: CompanyMemberPermissionRecord | null;
   serverVersion: string;
-  user: Omit<AuthSession["user"], "provider" | "providerSubject">;
+  user: {
+    email: string;
+    firstName: string;
+    id: string;
+    isPlatformAdmin: boolean;
+    lastName: string | null;
+  };
 };
 
 /**
@@ -51,8 +57,11 @@ export class MeQueryResolver extends Resolver<MeQueryResult> {
       companyMembership: membership,
       serverVersion: MeQueryResolver.serverVersion,
       user: {
-        ...context.authSession.user,
-        isPlatformAdmin: context.authSession.user.isPlatformAdmin === true,
+        email: context.authSession.user.email,
+        firstName: context.authSession.user.firstName,
+        id: context.authSession.user.id,
+        isPlatformAdmin: context.isPlatformAdmin === true,
+        lastName: context.authSession.user.lastName,
       },
     };
   };

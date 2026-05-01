@@ -16,6 +16,12 @@ export interface AmplitudeClientInterface {
   setUserId(userId: string | undefined): void;
 
   /**
+   * Publishes a user-property update so Amplitude can segment authenticated activity using
+   * application-managed account metadata.
+   */
+  setUserProperty(propertyName: string, value: boolean): void;
+
+  /**
    * Publishes an analytics event with the event properties collected from routed pages and UI
    * interaction surfaces.
    */

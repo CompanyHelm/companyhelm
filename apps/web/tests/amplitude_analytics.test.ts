@@ -6,6 +6,8 @@ import type { AmplitudeClientInterface } from "../src/lib/amplitude_client_inter
 class FakeAmplitudeClient implements AmplitudeClientInterface {
   readonly initAllCalls: string[] = [];
 
+  readonly setUserPropertyCalls: Array<{ propertyName: string; value: boolean }> = [];
+
   readonly resetCalls: undefined[] = [];
 
   readonly setUserIdCalls: Array<string | undefined> = [];
@@ -24,6 +26,10 @@ class FakeAmplitudeClient implements AmplitudeClientInterface {
     this.setUserIdCalls.push(userId);
   }
 
+  setUserProperty(propertyName: string, value: boolean): void {
+    this.setUserPropertyCalls.push({ propertyName, value });
+  }
+
   track(eventType: string, eventProperties: Record<string, unknown>): void {
     this.trackCalls.push({ eventType, eventProperties });
   }
@@ -38,6 +44,7 @@ test("syncs the Clerk user id into Amplitude once the authenticated session is l
       __COMPANYHELM_AMPLITUDE__: {
         client: fakeClient,
         initialized: true,
+        lastSyncedIsPlatformAdmin: null,
         lastSyncedUserId: null,
         lastTrackedHref: null,
       },
@@ -45,17 +52,20 @@ test("syncs the Clerk user id into Amplitude once the authenticated session is l
 
     AmplitudeAnalytics.syncUserSession({
       isLoaded: true,
+      isPlatformAdmin: true,
       isSignedIn: true,
       userId: "user_2z7k18n3f9",
     });
 
     AmplitudeAnalytics.syncUserSession({
       isLoaded: true,
+      isPlatformAdmin: true,
       isSignedIn: true,
       userId: "user_2z7k18n3f9",
     });
 
     assert.deepEqual(fakeClient.setUserIdCalls, ["user_2z7k18n3f9"]);
+    assert.deepEqual(fakeClient.setUserPropertyCalls, [{ propertyName: "isPlatformAdmin", value: true }]);
     assert.equal(fakeClient.resetCalls.length, 0);
   } finally {
     if (originalWindow) {
@@ -75,6 +85,7 @@ test("clears the Amplitude identity and resets the SDK after logout", () => {
       __COMPANYHELM_AMPLITUDE__: {
         client: fakeClient,
         initialized: true,
+        lastSyncedIsPlatformAdmin: true,
         lastSyncedUserId: "user_2z7k18n3f9",
         lastTrackedHref: null,
       },
@@ -82,6 +93,7 @@ test("clears the Amplitude identity and resets the SDK after logout", () => {
 
     AmplitudeAnalytics.syncUserSession({
       isLoaded: true,
+      isPlatformAdmin: null,
       isSignedIn: false,
       userId: null,
     });
@@ -106,6 +118,7 @@ test("ignores unloaded Clerk sessions so anonymous bootstrap traffic is not rese
       __COMPANYHELM_AMPLITUDE__: {
         client: fakeClient,
         initialized: true,
+        lastSyncedIsPlatformAdmin: null,
         lastSyncedUserId: null,
         lastTrackedHref: null,
       },
@@ -113,12 +126,53 @@ test("ignores unloaded Clerk sessions so anonymous bootstrap traffic is not rese
 
     AmplitudeAnalytics.syncUserSession({
       isLoaded: false,
+      isPlatformAdmin: null,
       isSignedIn: false,
       userId: null,
     });
 
     assert.equal(fakeClient.setUserIdCalls.length, 0);
     assert.equal(fakeClient.resetCalls.length, 0);
+  } finally {
+    if (originalWindow) {
+      globalThis.window = originalWindow;
+    } else {
+      delete (globalThis as typeof globalThis & { window?: unknown }).window;
+    }
+  }
+});
+
+test("updates the platform-admin user property when Me resolves after login", () => {
+  const originalWindow = globalThis.window;
+  const fakeClient = new FakeAmplitudeClient();
+
+  try {
+    globalThis.window = {
+      __COMPANYHELM_AMPLITUDE__: {
+        client: fakeClient,
+        initialized: true,
+        lastSyncedIsPlatformAdmin: null,
+        lastSyncedUserId: "user_2z7k18n3f9",
+        lastTrackedHref: null,
+      },
+    } as Window;
+
+    AmplitudeAnalytics.syncUserSession({
+      isLoaded: true,
+      isPlatformAdmin: true,
+      isSignedIn: true,
+      userId: "user_2z7k18n3f9",
+    });
+
+    AmplitudeAnalytics.syncUserSession({
+      isLoaded: true,
+      isPlatformAdmin: true,
+      isSignedIn: true,
+      userId: "user_2z7k18n3f9",
+    });
+
+    assert.deepEqual(fakeClient.setUserIdCalls, []);
+    assert.deepEqual(fakeClient.setUserPropertyCalls, [{ propertyName: "isPlatformAdmin", value: true }]);
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;

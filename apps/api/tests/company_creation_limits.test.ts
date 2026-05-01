@@ -12,6 +12,8 @@ import { CompanyCreationService } from "../src/services/company_creation/service
 class CompanyCreationLimitsTestHarness {
   static createContext(isPlatformAdmin: boolean): GraphqlRequestContext {
     return {
+      app_runtime_transaction_provider: null,
+      isPlatformAdmin,
       authSession: {
         company: null,
         token: "jwt-token",
@@ -19,7 +21,6 @@ class CompanyCreationLimitsTestHarness {
           id: "user-1",
           email: "admin@example.com",
           firstName: "Admin",
-          isPlatformAdmin,
           lastName: null,
           provider: "clerk",
           providerSubject: "user_clerk_1",

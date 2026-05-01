@@ -40,7 +40,7 @@ export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArgumen
       clerkUserId: context.authSession.user.provider === "clerk"
         ? context.authSession.user.providerSubject
         : null,
-      isPlatformAdmin: context.authSession.user.isPlatformAdmin === true,
+      isPlatformAdmin: context.isPlatformAdmin === true,
       name: arguments_.input.name,
       userId: context.authSession.user.id,
     });

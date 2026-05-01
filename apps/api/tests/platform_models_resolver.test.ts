@@ -12,9 +12,10 @@ class PlatformModelsQueryResolverHarness {
 
   getContext() {
     return {
+      isPlatformAdmin: true,
       authSession: {
         user: {
-          isPlatformAdmin: true,
+          id: "user-1",
         },
       },
       app_runtime_transaction_provider: {

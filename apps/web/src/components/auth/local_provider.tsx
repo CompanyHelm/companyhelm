@@ -358,7 +358,6 @@ export function CompanyHelmLocalProvider(props: {
             ? {
               firstName: session.user.firstName,
               id: session.user.id,
-              isPlatformAdmin: session.user.isPlatformAdmin,
               lastName: session.user.lastName,
               primaryEmailAddress: {
                 emailAddress: session.user.email,

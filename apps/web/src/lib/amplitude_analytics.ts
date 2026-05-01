@@ -20,12 +20,14 @@ type AnalyticsRouter = {
 type AmplitudeWindowState = {
   client: AmplitudeClientInterface;
   initialized: boolean;
+  lastSyncedIsPlatformAdmin: boolean | null;
   lastTrackedHref: string | null;
   lastSyncedUserId: string | null;
 };
 
 type AmplitudeUserSession = {
   isLoaded: boolean;
+  isPlatformAdmin: boolean | null;
   isSignedIn: boolean;
   userId: string | null;
 };
@@ -121,12 +123,17 @@ export class AmplitudeAnalytics {
     }
 
     if (session.isSignedIn && typeof session.userId === "string" && session.userId.length > 0) {
-      if (state.lastSyncedUserId === session.userId) {
-        return;
+      if (state.lastSyncedUserId !== session.userId) {
+        state.lastSyncedIsPlatformAdmin = null;
+        state.lastSyncedUserId = session.userId;
+        state.client.setUserId(session.userId);
       }
 
-      state.lastSyncedUserId = session.userId;
-      state.client.setUserId(session.userId);
+      if (typeof session.isPlatformAdmin === "boolean" && state.lastSyncedIsPlatformAdmin !== session.isPlatformAdmin) {
+        state.lastSyncedIsPlatformAdmin = session.isPlatformAdmin;
+        state.client.setUserProperty("isPlatformAdmin", session.isPlatformAdmin);
+      }
+
       return;
     }
 
@@ -134,6 +141,7 @@ export class AmplitudeAnalytics {
       return;
     }
 
+    state.lastSyncedIsPlatformAdmin = null;
     state.lastSyncedUserId = null;
     state.client.setUserId(undefined);
     state.client.reset();
@@ -144,6 +152,7 @@ export class AmplitudeAnalytics {
       window.__COMPANYHELM_AMPLITUDE__ = {
         client: new UnifiedAmplitudeClient(),
         initialized: false,
+        lastSyncedIsPlatformAdmin: null,
         lastTrackedHref: null,
         lastSyncedUserId: null,
       };

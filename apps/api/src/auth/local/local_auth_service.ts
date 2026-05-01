@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import {
@@ -7,7 +7,6 @@ import {
   companyMembers,
   localAuthCredentials,
   localAuthSessions,
-  platformAdmins,
   users,
 } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
@@ -20,7 +19,6 @@ type LocalAuthUserRecord = {
   email: string;
   first_name: string;
   id: string;
-  isPlatformAdmin: boolean;
   last_name: string | null;
 };
 
@@ -53,7 +51,6 @@ export type LocalAuthSessionDocument = {
     email: string;
     firstName: string;
     id: string;
-    isPlatformAdmin: boolean;
     lastName: string | null;
   };
 };
@@ -148,7 +145,6 @@ export class LocalAuthService {
           email: users.email,
           first_name: users.first_name,
           id: users.id,
-          isPlatformAdmin: sql<boolean>`false`,
           last_name: users.last_name,
         }) as LocalAuthUserRecord[];
       const [createdCompany] = await insertableDatabase
@@ -272,7 +268,6 @@ export class LocalAuthService {
         email: sessionRecord.email,
         firstName: sessionRecord.first_name,
         id: sessionRecord.id_user,
-        isPlatformAdmin: sessionRecord.isPlatformAdmin,
         lastName: sessionRecord.last_name,
         provider: "local",
         providerSubject: `local:${sessionRecord.id_user}`,
@@ -340,7 +335,6 @@ export class LocalAuthService {
         email: sessionRecord.email,
         firstName: sessionRecord.first_name,
         id: sessionRecord.id_user,
-        isPlatformAdmin: sessionRecord.isPlatformAdmin,
         lastName: sessionRecord.last_name,
       },
     };
@@ -371,11 +365,6 @@ export class LocalAuthService {
         first_name: users.first_name,
         id: companies.id,
         id_user: users.id,
-        isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         last_name: users.last_name,
         name: companies.name,
         revokedAt: localAuthSessions.revokedAt,
@@ -425,11 +414,6 @@ export class LocalAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         last_name: users.last_name,
       })
       .from(users)
@@ -456,11 +440,6 @@ export class LocalAuthService {
         email: users.email,
         first_name: users.first_name,
         id: users.id,
-        isPlatformAdmin: sql<boolean>`exists (
-          select 1
-          from ${platformAdmins}
-          where ${platformAdmins.userId} = ${users.id}
-        )`,
         last_name: users.last_name,
         passwordHash: localAuthCredentials.passwordHash,
         passwordSalt: localAuthCredentials.passwordSalt,

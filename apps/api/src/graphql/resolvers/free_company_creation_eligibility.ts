@@ -30,7 +30,7 @@ export class FreeCompanyCreationEligibilityQueryResolver extends Resolver<FreeCo
     }
 
     return this.companyCreationService.getFreeCompanyCreationEligibility({
-      isPlatformAdmin: context.authSession.user.isPlatformAdmin === true,
+      isPlatformAdmin: context.isPlatformAdmin === true,
       userId: context.authSession.user.id,
     });
   };

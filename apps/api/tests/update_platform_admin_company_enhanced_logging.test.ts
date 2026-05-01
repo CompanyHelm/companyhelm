@@ -43,13 +43,13 @@ class UpdatePlatformAdminCompanyEnhancedLoggingTestHarness {
 
   createContext(isPlatformAdmin: boolean, companyExists = true): GraphqlRequestContext {
     return {
+      isPlatformAdmin,
       authSession: {
         token: "jwt-token",
         user: {
           id: "user-1",
           email: "admin@example.com",
           firstName: "Admin",
-          isPlatformAdmin,
           lastName: "User",
           provider: "clerk",
           providerSubject: "user_clerk_1",

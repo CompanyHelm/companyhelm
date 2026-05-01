@@ -50,7 +50,7 @@ export class ImportPlatformModelMutation extends Mutation<
   };
 
   private assertPlatformAdmin(context: GraphqlRequestContext): void {
-    if (!context.authSession?.user?.isPlatformAdmin) {
+    if (context.isPlatformAdmin !== true) {
       throw new Error("Platform admin access required.");
     }
   }

@@ -12,7 +12,6 @@ export type LocalAuthSessionDocument = {
     email: string;
     firstName: string;
     id: string;
-    isPlatformAdmin: boolean;
     lastName: string | null;
   };
 };
