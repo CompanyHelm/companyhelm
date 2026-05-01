@@ -722,6 +722,14 @@ function hasVisibleTranscriptMessage(
     return typeof message.toolName === "string" && message.toolName.trim().length > 0;
   }
   if (message.role === "assistant") {
+    const hasCompactionMarker = message.contents.some((content) => {
+      const structuredContent = content.structuredContent as Record<string, unknown> | null;
+      return structuredContent?.type === "compaction" && (structuredContent.phase === "start" || structuredContent.phase === "end");
+    });
+    if (hasCompactionMarker) {
+      return true;
+    }
+
     return resolveAssistantDisplayContents(message, {
       contentMode: options.assistantContentMode ?? "all",
     }).length > 0;

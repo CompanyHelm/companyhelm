@@ -1256,6 +1256,20 @@ test("PiMonoSessionEventHandler captures context snapshots when auto compaction 
   assert.equal(harness.sessionState.currentContextTokens, null);
   assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
+  assert.equal(harness.sessionMessageRecords.size, 2);
+  assert.equal(harness.sessionTurnRecords.size, 2);
+  const persistedAutoCompactionMessages = [...harness.sessionMessageRecords.values()]
+    .sort((firstMessage, secondMessage) => {
+      return String(firstMessage.createdAt).localeCompare(String(secondMessage.createdAt));
+    });
+  assert.equal(persistedAutoCompactionMessages[0]?.status, "completed");
+  assert.equal(persistedAutoCompactionMessages[1]?.status, "completed");
+  const autoCompactionContentPhases = [...harness.messageContentRecordsByMessageId.values()]
+    .flatMap((contentRecords) => contentRecords)
+    .map((contentRecord) => (contentRecord.structuredContent as { phase?: string } | null)?.phase ?? null)
+    .filter((phase): phase is string => typeof phase === "string")
+    .sort();
+  assert.deepEqual(autoCompactionContentPhases, ["end", "start"]);
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when compaction starts and ends", async () => {
@@ -1303,6 +1317,24 @@ test("PiMonoSessionEventHandler captures context snapshots when compaction start
   assert.equal(harness.sessionState.currentContextTokens, 43000);
   assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
+  assert.equal(harness.sessionMessageRecords.size, 2);
+  assert.equal(harness.sessionTurnRecords.size, 2);
+  const persistedCompactionMessages = [...harness.sessionMessageRecords.values()]
+    .sort((firstMessage, secondMessage) => {
+      return String(firstMessage.createdAt).localeCompare(String(secondMessage.createdAt));
+    });
+  assert.equal(persistedCompactionMessages[0]?.status, "completed");
+  assert.equal(persistedCompactionMessages[1]?.status, "completed");
+  const compactionContentPhases = [...harness.messageContentRecordsByMessageId.values()]
+    .flatMap((contentRecords) => contentRecords)
+    .map((contentRecord) => (contentRecord.structuredContent as { phase?: string } | null)?.phase ?? null)
+    .filter((phase): phase is string => typeof phase === "string")
+    .sort();
+  assert.deepEqual(compactionContentPhases, ["end", "start"]);
+  const messageUpdateChannels = harness.publishCalls
+    .map((publishCall) => publishCall.channel)
+    .filter((channel) => channel.includes(":message:"));
+  assert.equal(messageUpdateChannels.length, 3);
 });
 
 test("PiMonoSessionEventHandler persists tool execution events into one streamed tool result message", async () => {
