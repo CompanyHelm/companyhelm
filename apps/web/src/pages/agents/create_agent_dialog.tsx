@@ -229,6 +229,32 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       .map(({ modelOption }) => modelOption);
   }, [selectedModelRecordId, selectedProviderOption]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
+  const orderedEnvironmentTemplateOptions = useMemo(() => {
+    const sizeOrder = ["small", "medium", "large"];
+
+    return (selectedComputeProviderDefinitionOption?.templates ?? [])
+      .map((templateOption, index) => ({
+        index,
+        templateOption,
+        templateOrder: sizeOrder.indexOf(templateOption.name),
+      }))
+      .sort((left, right) => {
+        if (left.templateOrder !== right.templateOrder) {
+          if (left.templateOrder === -1) {
+            return 1;
+          }
+
+          if (right.templateOrder === -1) {
+            return -1;
+          }
+
+          return left.templateOrder - right.templateOrder;
+        }
+
+        return left.index - right.index;
+      })
+      .map(({ templateOption }) => templateOption);
+  }, [selectedComputeProviderDefinitionOption?.templates]);
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -565,56 +591,6 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <p className="text-xs font-medium text-foreground" id="agent-environment-template-label">
-              Environment template
-            </p>
-            {(selectedComputeProviderDefinitionOption?.templates ?? []).length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-3" aria-labelledby="agent-environment-template-label">
-                {(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => {
-                  const isSelected = templateOption.templateId === environmentTemplateId;
-
-                  return (
-                    <button
-                      key={templateOption.templateId}
-                      aria-pressed={isSelected}
-                      className={cn(
-                        "min-h-32 rounded-xl border px-4 py-4 text-left transition",
-                        isSelected
-                          ? "border-foreground bg-muted/30"
-                          : "border-border/60 bg-card/40 hover:border-border hover:bg-muted/20",
-                      )}
-                      onClick={() => {
-                        setEnvironmentTemplateId(templateOption.templateId);
-                      }}
-                      type="button"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">{templateOption.name}</p>
-                          <p className="mt-1 truncate text-sm text-muted-foreground">{templateOption.templateId}</p>
-                        </div>
-                        {isSelected ? (
-                          <span className="shrink-0 text-sm font-medium text-foreground">Selected</span>
-                        ) : null}
-                      </div>
-
-                      <div className="mt-4 grid gap-1.5 text-sm text-muted-foreground">
-                        <p>{templateOption.cpuCount} vCPU • {templateOption.memoryGb} GB RAM</p>
-                        <p>{templateOption.diskSpaceGb} GB disk</p>
-                        <p>Computer use {templateOption.computerUse ? "enabled" : "disabled"}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                No templates are available for this environment provider.
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="agent-model">
               Model
             </label>
@@ -680,6 +656,69 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               </Select>
             </div>
           ) : null}
+
+          <div className="grid gap-2">
+            <p className="text-xs font-medium text-foreground" id="agent-environment-template-label">
+              Environment template
+            </p>
+            {orderedEnvironmentTemplateOptions.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-3" aria-labelledby="agent-environment-template-label">
+                {orderedEnvironmentTemplateOptions.map((templateOption) => {
+                  const isSelected = templateOption.templateId === environmentTemplateId;
+
+                  return (
+                    <button
+                      key={templateOption.templateId}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "min-h-32 rounded-xl border px-4 py-4 text-left transition",
+                        isSelected
+                          ? "border-foreground bg-muted/30"
+                          : "border-border/60 bg-card/40 hover:border-border hover:bg-muted/20",
+                      )}
+                      onClick={() => {
+                        setEnvironmentTemplateId(templateOption.templateId);
+                      }}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{templateOption.name}</p>
+                          <p className="mt-1 truncate text-sm text-muted-foreground">{templateOption.templateId}</p>
+                        </div>
+                        {isSelected ? (
+                          <span className="shrink-0 text-sm font-medium text-foreground">Selected</span>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-4 grid gap-1.5 text-sm text-muted-foreground">
+                        <p>{templateOption.cpuCount} vCPU • {templateOption.memoryGb} GB RAM</p>
+                        <p>{templateOption.diskSpaceGb} GB disk</p>
+                        <p className="flex items-center gap-2">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-semibold leading-none",
+                              templateOption.computerUse
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                : "border-muted-foreground/25 bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {templateOption.computerUse ? "V" : "X"}
+                          </span>
+                          <span>Computer use {templateOption.computerUse ? "enabled" : "disabled"}</span>
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                No templates are available for this environment provider.
+              </div>
+            )}
+          </div>
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="agent-system-prompt">
