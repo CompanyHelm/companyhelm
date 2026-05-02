@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { ModelSelectionDialog } from "@/components/model_selection_dialog";
 import { Button } from "@/components/ui/button";
+import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { DefaultAttachmentSection } from "./default_attachment_section";
 import { EnvironmentTemplateDefaultSelector } from "./environment_template_default_selector";
 import { SecretDefaultOptions } from "./secret_default_options";
@@ -142,6 +144,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([]);
+  const { isEnabled } = useFeatureFlags();
+  const isEnvironmentProviderSelectionEnabled = isEnabled("computer_providers");
   const environmentTemplateDefaultSelector = useMemo(() => new EnvironmentTemplateDefaultSelector(), []);
   const secretDefaultOptions = useMemo(() => new SecretDefaultOptions(), []);
   const selectedProviderOption = useMemo(() => {
@@ -155,11 +159,6 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const selectedModelOption = useMemo(() => {
     return selectedProviderOption?.models.find((modelOption) => modelOption.id === selectedModelRecordId);
   }, [selectedModelRecordId, selectedProviderOption]);
-  const selectedEnvironmentTemplateOption = useMemo(() => {
-    return selectedComputeProviderDefinitionOption?.templates.find(
-      (templateOption) => templateOption.templateId === environmentTemplateId,
-    ) ?? null;
-  }, [environmentTemplateId, selectedComputeProviderDefinitionOption]);
   const orderedComputeProviderDefinitionOptions = useMemo(() => {
     return props.computeProviderDefinitionOptions
       .map((definitionOption, index) => ({
@@ -474,7 +473,9 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         <DialogHeader>
           <DialogTitle>Create agent</DialogTitle>
           <DialogDescription>
-            Set a default environment provider, model provider, model, reasoning level, and system prompt for this agent.
+            {isEnvironmentProviderSelectionEnabled
+              ? "Set a default environment provider, model provider, model, reasoning level, and system prompt for this agent."
+              : "Set a default model provider, environment template, model, reasoning level, and system prompt for this agent."}
           </DialogDescription>
         </DialogHeader>
 
@@ -507,32 +508,34 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             />
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="agent-compute-provider">
-              Environment provider
-            </label>
-            <Select
-              items={orderedComputeProviderDefinitionOptions.map((definitionOption) => ({
-                label: definitionOption.label,
-                value: definitionOption.id,
-              }))}
-              onValueChange={(value) => {
-                setComputeProviderDefinitionId(value ?? "");
-              }}
-              value={computeProviderDefinitionId}
-            >
-              <SelectTrigger id="agent-compute-provider">
-                <SelectValue placeholder="Select an environment provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {orderedComputeProviderDefinitionOptions.map((definitionOption) => (
-                  <SelectItem key={definitionOption.id} value={definitionOption.id}>
-                    {definitionOption.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isEnvironmentProviderSelectionEnabled ? (
+            <div className="grid gap-2">
+              <label className="text-xs font-medium text-foreground" htmlFor="agent-compute-provider">
+                Environment provider
+              </label>
+              <Select
+                items={orderedComputeProviderDefinitionOptions.map((definitionOption) => ({
+                  label: definitionOption.label,
+                  value: definitionOption.id,
+                }))}
+                onValueChange={(value) => {
+                  setComputeProviderDefinitionId(value ?? "");
+                }}
+                value={computeProviderDefinitionId}
+              >
+                <SelectTrigger id="agent-compute-provider">
+                  <SelectValue placeholder="Select an environment provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orderedComputeProviderDefinitionOptions.map((definitionOption) => (
+                    <SelectItem key={definitionOption.id} value={definitionOption.id}>
+                      {definitionOption.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="agent-provider">
@@ -562,42 +565,53 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="agent-environment-template">
+            <p className="text-xs font-medium text-foreground" id="agent-environment-template-label">
               Environment template
-            </label>
-            <Select
-              items={(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => ({
-                label: templateOption.name,
-                value: templateOption.templateId,
-              }))}
-              onValueChange={(value) => {
-                setEnvironmentTemplateId(value ?? "");
-              }}
-              value={environmentTemplateId}
-            >
-              <SelectTrigger id="agent-environment-template">
-                <SelectValue placeholder="Select an environment template" />
-              </SelectTrigger>
-              <SelectContent>
-                {(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => (
-                  <SelectItem key={templateOption.templateId} value={templateOption.templateId}>
-                    {templateOption.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedEnvironmentTemplateOption ? (
-              <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">{selectedEnvironmentTemplateOption.name}</p>
-                <p className="mt-1">
-                  {selectedEnvironmentTemplateOption.cpuCount} vCPU • {selectedEnvironmentTemplateOption.memoryGb} GB RAM
-                  • {selectedEnvironmentTemplateOption.diskSpaceGb} GB disk
-                </p>
-                <p className="mt-1">
-                  Computer use: {selectedEnvironmentTemplateOption.computerUse ? "Enabled" : "Disabled"}
-                </p>
+            </p>
+            {(selectedComputeProviderDefinitionOption?.templates ?? []).length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-3" aria-labelledby="agent-environment-template-label">
+                {(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => {
+                  const isSelected = templateOption.templateId === environmentTemplateId;
+
+                  return (
+                    <button
+                      key={templateOption.templateId}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "min-h-32 rounded-xl border px-4 py-4 text-left transition",
+                        isSelected
+                          ? "border-foreground bg-muted/30"
+                          : "border-border/60 bg-card/40 hover:border-border hover:bg-muted/20",
+                      )}
+                      onClick={() => {
+                        setEnvironmentTemplateId(templateOption.templateId);
+                      }}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{templateOption.name}</p>
+                          <p className="mt-1 truncate text-sm text-muted-foreground">{templateOption.templateId}</p>
+                        </div>
+                        {isSelected ? (
+                          <span className="shrink-0 text-sm font-medium text-foreground">Selected</span>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-4 grid gap-1.5 text-sm text-muted-foreground">
+                        <p>{templateOption.cpuCount} vCPU • {templateOption.memoryGb} GB RAM</p>
+                        <p>{templateOption.diskSpaceGb} GB disk</p>
+                        <p>Computer use {templateOption.computerUse ? "enabled" : "disabled"}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                No templates are available for this environment provider.
+              </div>
+            )}
           </div>
 
           <div className="grid gap-2">

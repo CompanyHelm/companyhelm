@@ -8,6 +8,7 @@ import { useApplicationBreadcrumb } from "@/components/layout/application_breadc
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
+import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -382,6 +383,8 @@ function AgentDetailPageContent() {
   const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" | "skills" | "usage" };
   const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
+  const { isEnabled } = useFeatureFlags();
+  const isEnvironmentProviderSelectionEnabled = isEnabled("computer_providers");
   if (!normalizedAgentId) {
     throw new Error("Agent ID is required.");
   }
@@ -782,6 +785,12 @@ function AgentDetailPageContent() {
                       });
                     }}
                     readOnlyFormat="markdown"
+                    readOnlyFullscreen={{
+                      buttonLabel: "Open agent instructions full screen",
+                      description: "Review the complete agent-specific prompt in a scrollable full-screen view.",
+                      title: "Agent instructions",
+                    }}
+                    readOnlyPreviewClassName="max-h-64 overflow-hidden"
                     value={agent.systemPrompt ?? null}
                     variant="plain"
                   />
@@ -789,27 +798,31 @@ function AgentDetailPageContent() {
               </AgentOverviewSection>
 
               <AgentOverviewSection
-                description="Pick the compute provider, then choose the template card that best matches the environment shape this agent should use by default."
+                description={isEnvironmentProviderSelectionEnabled
+                  ? "Pick the compute provider, then choose the template card that best matches the environment shape this agent should use by default."
+                  : "Choose the template card that best matches the environment shape this agent should use by default."}
                 title="Environment"
               >
                 <div className="grid gap-5">
-                  <EditableField
-                    displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
-                    emptyValueLabel="No environment provider selected"
-                    fieldType="select"
-                    label="Environment provider"
-                    onSave={async (value) => {
-                      await saveAgent({
-                        defaultComputeProviderDefinitionId: value,
-                      });
-                    }}
-                    options={computeProviderDefinitionOptions.map((option) => ({
-                      label: option.label,
-                      value: option.id,
-                    }))}
-                    value={agent.defaultComputeProviderDefinitionId ?? null}
-                    variant="plain"
-                  />
+                  {isEnvironmentProviderSelectionEnabled ? (
+                    <EditableField
+                      displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
+                      emptyValueLabel="No environment provider selected"
+                      fieldType="select"
+                      label="Environment provider"
+                      onSave={async (value) => {
+                        await saveAgent({
+                          defaultComputeProviderDefinitionId: value,
+                        });
+                      }}
+                      options={computeProviderDefinitionOptions.map((option) => ({
+                        label: option.label,
+                        value: option.id,
+                      }))}
+                      value={agent.defaultComputeProviderDefinitionId ?? null}
+                      variant="plain"
+                    />
+                  ) : null}
 
                   {(selectedComputeProviderDefinitionOption?.templates ?? []).length > 0 ? (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

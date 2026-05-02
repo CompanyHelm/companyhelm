@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2Icon, PencilIcon } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -10,10 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 type EditableFieldOption = {
   label: string;
   value: string;
+};
+
+type EditableFieldFullscreenPreview = {
+  buttonLabel: string;
+  description: string;
+  title: string;
 };
 
 type EditableFieldTextProps = {
@@ -25,6 +39,8 @@ type EditableFieldTextProps = {
   min?: number;
   onSave: (value: string) => Promise<void>;
   readOnlyFormat?: "markdown" | "plain";
+  readOnlyFullscreen?: EditableFieldFullscreenPreview;
+  readOnlyPreviewClassName?: string;
   readOnly?: boolean;
   value: string | null;
 };
@@ -56,11 +72,18 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
   const [draftValue, setDraftValue] = useState(props.value ?? "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditing, setEditing] = useState(false);
+  const [isFullscreenOpen, setFullscreenOpen] = useState(false);
   const [isOpen, setOpen] = useState(false);
+  const [isPreviewOverflowing, setPreviewOverflowing] = useState(false);
   const [isSaving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | HTMLParagraphElement | null>(null);
   const renderedValue = props.displayValue ?? props.value;
+  const hasRenderedValue = renderedValue !== null && renderedValue !== undefined && renderedValue.length > 0;
   const shouldRenderMarkdown = props.fieldType !== "select" && props.readOnlyFormat === "markdown";
+  const readOnlyFullscreen = props.fieldType !== "select" ? props.readOnlyFullscreen : undefined;
+  const readOnlyPreviewClassName = props.fieldType !== "select" ? props.readOnlyPreviewClassName : undefined;
+  const shouldShowFullscreen = !isEditing && hasRenderedValue && readOnlyFullscreen !== undefined;
   const variant = props.variant ?? "card";
   const containerClassName = variant === "plain"
     ? "grid gap-3"
@@ -84,6 +107,35 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
     inputRef.current?.focus();
     inputRef.current?.select?.();
   }, [isEditing, props.fieldType]);
+
+  useEffect(() => {
+    if (!shouldShowFullscreen || !readOnlyPreviewClassName) {
+      setPreviewOverflowing(false);
+      return;
+    }
+
+    const previewElement = previewRef.current;
+    if (!previewElement) {
+      setPreviewOverflowing(false);
+      return;
+    }
+
+    const measuredPreviewElement = previewElement;
+
+    function measurePreviewOverflow() {
+      setPreviewOverflowing(
+        measuredPreviewElement.scrollHeight > measuredPreviewElement.clientHeight + 1
+          || measuredPreviewElement.scrollWidth > measuredPreviewElement.clientWidth + 1,
+      );
+    }
+
+    measurePreviewOverflow();
+    window.addEventListener("resize", measurePreviewOverflow);
+
+    return () => {
+      window.removeEventListener("resize", measurePreviewOverflow);
+    };
+  }, [readOnlyPreviewClassName, renderedValue, shouldShowFullscreen]);
 
   const commitValue = async (nextValue: string) => {
     if (isSaving) {
@@ -119,23 +171,40 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
             {props.label}
           </p>
         </div>
-        {props.readOnly ? null : (
-          <Button
-            disabled={isSaving || (props.fieldType === "select" && props.options.length === 0)}
-            onClick={() => {
-              setDraftValue(props.value ?? "");
-              setErrorMessage(null);
-              setEditing(true);
-              if (props.fieldType === "select") {
-                setOpen(true);
-              }
-            }}
-            size="icon"
-            variant="ghost"
-          >
-            {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {shouldShowFullscreen ? (
+            <Button
+              aria-label={readOnlyFullscreen.buttonLabel}
+              onClick={() => {
+                setFullscreenOpen(true);
+              }}
+              size="icon"
+              title="Full screen"
+              variant="ghost"
+            >
+              <span aria-hidden="true" className="font-mono text-[11px] leading-none">
+                {"<>"}
+              </span>
+            </Button>
+          ) : null}
+          {props.readOnly ? null : (
+            <Button
+              disabled={isSaving || (props.fieldType === "select" && props.options.length === 0)}
+              onClick={() => {
+                setDraftValue(props.value ?? "");
+                setErrorMessage(null);
+                setEditing(true);
+                if (props.fieldType === "select") {
+                  setOpen(true);
+                }
+              }}
+              size="icon"
+              variant="ghost"
+            >
+              {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className={valueSpacingClassName}>
@@ -232,16 +301,31 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
         ) : null}
 
         {!isEditing ? (
-          (renderedValue && renderedValue.length > 0) ? (
-            shouldRenderMarkdown ? (
-              <div className="min-w-0 text-sm text-foreground">
-                <MarkdownContent content={renderedValue} />
-              </div>
-            ) : (
-              <p className="whitespace-pre-wrap text-sm text-foreground">
-                {renderedValue}
-              </p>
-            )
+          hasRenderedValue ? (
+            <div className="relative">
+              {shouldRenderMarkdown ? (
+                <div
+                  className={cn("min-w-0 text-sm text-foreground", readOnlyPreviewClassName)}
+                  ref={previewRef}
+                >
+                  <MarkdownContent content={renderedValue} />
+                </div>
+              ) : (
+                <p
+                  className={cn("whitespace-pre-wrap text-sm text-foreground", readOnlyPreviewClassName)}
+                  ref={previewRef}
+                >
+                  {renderedValue}
+                </p>
+              )}
+              {shouldShowFullscreen && isPreviewOverflowing ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-background via-background/95 to-transparent pt-8">
+                  <span className="rounded-full bg-background px-1.5 font-mono text-xs text-muted-foreground">
+                    ...
+                  </span>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <p className="whitespace-pre-wrap text-sm text-foreground">
               {props.emptyValueLabel}
@@ -249,6 +333,46 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
           )
         ) : null}
       </div>
+
+      {readOnlyFullscreen ? (
+        <Dialog onOpenChange={setFullscreenOpen} open={isFullscreenOpen}>
+          <DialogContent className="flex h-[90vh] w-[90vw] max-w-none flex-col overflow-hidden p-0">
+            <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-4">
+              <div className="flex items-start justify-between gap-4 pr-8">
+                <div className="min-w-0">
+                  <DialogTitle>{readOnlyFullscreen.title}</DialogTitle>
+                  <DialogDescription>{readOnlyFullscreen.description}</DialogDescription>
+                </div>
+                {props.readOnly ? null : (
+                  <Button
+                    disabled={isSaving}
+                    onClick={() => {
+                      setFullscreenOpen(false);
+                      setDraftValue(props.value ?? "");
+                      setErrorMessage(null);
+                      setEditing(true);
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </DialogHeader>
+            <div className="modern-scrollbar flex-1 overflow-y-auto px-6 py-5">
+              {shouldRenderMarkdown ? (
+                <MarkdownContent content={renderedValue ?? ""} />
+              ) : (
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
+                  {renderedValue ?? ""}
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       {errorMessage ? (
         <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
