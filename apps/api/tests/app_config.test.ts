@@ -337,6 +337,9 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     github_webhooks: {
       concurrency: 3,
     },
+    llm_usage: {
+      concurrency: 10,
+    },
     session_process: {
       concurrency: 4,
     },
@@ -384,6 +387,9 @@ test("AppConfig allows local override files to include local.yaml", () => {
     },
     github_webhooks: {
       concurrency: 3,
+    },
+    llm_usage: {
+      concurrency: 10,
     },
     session_process: {
       concurrency: 11,
@@ -442,6 +448,9 @@ test("AppConfig defaults newer worker queue concurrency when deployment config l
       concurrency: 10,
     },
     github_webhooks: {
+      concurrency: 10,
+    },
+    llm_usage: {
       concurrency: 10,
     },
     session_process: {
