@@ -365,6 +365,7 @@ test("SkillService expands attached system skill group into available system ski
   assert.deepEqual(
     availableSkills.map((skill) => skill.id),
     [
+      "system:access_past_messages",
       "system:company_directory",
       "system:execute_workflows",
       "system:manage_agents",

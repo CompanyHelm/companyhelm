@@ -12,6 +12,64 @@ export type SystemCommandDefinition = {
  */
 export class SystemCommandCatalog {
   private readonly commands: SystemCommandDefinition[] = [{
+    description: "List the current agent's persisted session messages with newest-first pagination and optional content inclusion/type filters.",
+    id: "past_messages.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        after: { type: "string" },
+        before: { type: "string" },
+        contentTypes: { items: { enum: ["image", "text", "thinking", "toolCall"], type: "string" }, type: "array" },
+        cursor: { type: "string" },
+        includeContents: { type: "boolean" },
+        limit: { maximum: 200, minimum: 1, type: "integer" },
+        principalTypes: { items: { enum: ["agent_message", "github_webhook", "task", "user", "workflow"], type: "string" }, type: "array" },
+        roles: { items: { enum: ["assistant", "toolResult", "user"], type: "string" }, type: "array" },
+        sessionId: { type: "string" },
+        sort: { enum: ["asc", "desc"], type: "string" },
+        statuses: { items: { enum: ["completed", "running"], type: "string" }, type: "array" },
+      },
+      type: "object",
+    },
+    systemSkillKey: "access_past_messages",
+  }, {
+    description: "Get one persisted session message by ID when it belongs to the current agent.",
+    id: "past_messages.get",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        contentTypes: { items: { enum: ["image", "text", "thinking", "toolCall"], type: "string" }, type: "array" },
+        includeContents: { type: "boolean" },
+        messageId: { type: "string" },
+      },
+      required: ["messageId"],
+      type: "object",
+    },
+    systemSkillKey: "access_past_messages",
+  }, {
+    description: "Search the current agent's persisted session messages using case-insensitive text matching over message_contents.text.",
+    id: "past_messages.search",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        after: { type: "string" },
+        before: { type: "string" },
+        contentTypes: { items: { enum: ["image", "text", "thinking", "toolCall"], type: "string" }, type: "array" },
+        cursor: { type: "string" },
+        includeContents: { type: "boolean" },
+        limit: { maximum: 200, minimum: 1, type: "integer" },
+        principalTypes: { items: { enum: ["agent_message", "github_webhook", "task", "user", "workflow"], type: "string" }, type: "array" },
+        query: { type: "string" },
+        roles: { items: { enum: ["assistant", "toolResult", "user"], type: "string" }, type: "array" },
+        sessionId: { type: "string" },
+        sort: { enum: ["asc", "desc"], type: "string" },
+        statuses: { items: { enum: ["completed", "running"], type: "string" }, type: "array" },
+      },
+      required: ["query"],
+      type: "object",
+    },
+    systemSkillKey: "access_past_messages",
+  }, {
     description: "List paginated company skill summaries, including system skills.",
     id: "skill.list",
     inputSchema: {

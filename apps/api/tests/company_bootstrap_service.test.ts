@@ -22,6 +22,7 @@ import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 import { CompanyHelmComputeProviderService } from "../src/services/compute_provider_definitions/companyhelm_service.ts";
 
 const expectedSystemSkillKeys = [
+  "access_past_messages",
   "company_directory",
   "execute_workflows",
   "manage_agents",

@@ -15,6 +15,7 @@ import { WorkflowExecutionSystemCommandService } from "./workflows/execution_sys
 import { WorkflowService } from "./workflows/service.ts";
 import { WorkflowSystemCommandService } from "./workflows/system_command_service.ts";
 import { AgentManagementSystemCommandService } from "./system_commands/agent_management.ts";
+import { AccessPastMessagesSystemCommandService } from "./system_commands/access_past_messages.ts";
 import { ArtifactManagementSystemCommandService } from "./system_commands/artifact_management.ts";
 import { CompanyDirectorySystemCommandService } from "./system_commands/company_directory.ts";
 import { GithubInstallationSystemCommandService } from "./system_commands/github_installation.ts";
@@ -25,6 +26,7 @@ import { SessionSkillService } from "./skills/session_service.ts";
 import { SkillService } from "./skills/service.ts";
 import { SystemCommandCatalog } from "./skills/system_command_catalog.ts";
 import { TaskService } from "./task_service.ts";
+import { PastMessageAccessService } from "./session_messages/access_service.ts";
 
 export type SystemCommandExecutionContext = {
   agentId: string;
@@ -39,6 +41,7 @@ export type SystemCommandExecutionContext = {
  * grant access to product-owned mutation capabilities.
  */
 export class SystemCommandService {
+  private readonly accessPastMessagesCommandService: AccessPastMessagesSystemCommandService;
   private readonly agentManagementCommandService: AgentManagementSystemCommandService;
   private readonly artifactCommandService: ArtifactManagementSystemCommandService;
   private readonly commandCatalog: SystemCommandCatalog;
@@ -58,6 +61,7 @@ export class SystemCommandService {
     githubInstallationStateService?: GithubInstallationStateService;
     organizationSlugResolver?: OrganizationSlugResolver;
     mcpService?: McpService;
+    pastMessageAccessService?: PastMessageAccessService;
     modelProviderService?: ModelProviderService;
     modelRegistry?: ModelRegistry;
     secretService?: SecretService;
@@ -68,6 +72,9 @@ export class SystemCommandService {
     templateService?: AgentEnvironmentTemplateService;
     workflowService: WorkflowService;
   }) {
+    this.accessPastMessagesCommandService = new AccessPastMessagesSystemCommandService(
+      input.pastMessageAccessService ?? new PastMessageAccessService(),
+    );
     this.agentManagementCommandService = new AgentManagementSystemCommandService({
       computeProviderDefinitionService: input.computeProviderDefinitionService,
       mcpService: input.mcpService,
@@ -125,6 +132,9 @@ export class SystemCommandService {
         sessionId: context.sessionId,
         transactionProvider: context.transactionProvider,
       });
+    }
+    if (command.systemSkillKey === "access_past_messages") {
+      return this.accessPastMessagesCommandService.execute(command.id, input, context);
     }
     if (command.systemSkillKey === "manage_agents") {
       return this.agentManagementCommandService.execute(command.id, input, context);

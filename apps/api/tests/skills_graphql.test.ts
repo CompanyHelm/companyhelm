@@ -463,6 +463,14 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     fileList: ["scripts/open.sh"],
   }, {
     companyId: "company-123",
+    id: "system:access_past_messages",
+    name: "Access past messages",
+    skillGroupId: "system",
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
+  }, {
+    companyId: "company-123",
     id: "system:company_directory",
     name: "Company directory",
     skillGroupId: "system",
@@ -1056,6 +1064,9 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
   }, {
     id: "skill-research",
     skillGroupId: null,
+  }, {
+    id: "system:access_past_messages",
+    skillGroupId: "system",
   }, {
     id: "system:company_directory",
     skillGroupId: "system",
