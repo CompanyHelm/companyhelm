@@ -54,8 +54,8 @@ type UpdatableDatabase = {
  */
 @injectable()
 export class AgentEnvironmentLeaseService {
-  static readonly ACTIVE_LEASE_TTL_MILLISECONDS = 10 * 60 * 1000;
-  static readonly IDLE_LEASE_TTL_MILLISECONDS = 10 * 60 * 1000;
+  static readonly ACTIVE_LEASE_TTL_MILLISECONDS = 6 * 60 * 60 * 1000;
+  static readonly IDLE_LEASE_TTL_MILLISECONDS = 6 * 60 * 60 * 1000;
 
   async acquireLease(
     transactionProvider: TransactionProviderInterface,
