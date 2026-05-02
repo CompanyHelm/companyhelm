@@ -8,9 +8,7 @@ export class E2bTemplatesManager {
   private static readonly DEFAULT_NODE_MAJOR_VERSION = "25";
   private static readonly DEFAULT_GIT_USER_EMAIL = "agent@companyhelm.internal";
   private static readonly DEFAULT_GIT_USER_NAME = "CompanyHelm Agent";
-  private static readonly GITHUB_CLI_APT_SOURCE_PATH = "/etc/apt/sources.list.d/github-cli.list";
-  private static readonly GITHUB_CLI_KEYRING_PATH = "/etc/apt/keyrings/githubcli-archive-keyring.gpg";
-  private static readonly GITHUB_CLI_REPOSITORY_URL = "https://cli.github.com/packages";
+  private static readonly GITHUB_CLI_RELEASE_BASE_URL = "https://github.com/cli/cli/releases/download";
   private static readonly GITHUB_CLI_VERSION = "2.88.1";
   private static readonly NVM_INSTALL_VERSION = "v0.40.3";
   private static readonly NVM_DIRECTORY = "/usr/local/nvm";
@@ -84,20 +82,28 @@ export class E2bTemplatesManager {
   }
 
   /**
-   * Installs a reproducible GitHub CLI version from GitHub's official apt repository instead of
-   * the stale Ubuntu universe package. The explicit repo setup keeps template rebuilds predictable
-   * while still letting operators roll the version forward in one reviewed change.
+   * Installs a reproducible GitHub CLI version directly from the tagged release asset. GitHub's
+   * apt repository only serves the newest package, so older pinned versions disappear and break
+   * deterministic rebuilds.
    */
   private buildGithubCliInstallCommand(): string {
     return `bash -lc '
 set -euo pipefail
 GH_VERSION="${E2bTemplatesManager.GITHUB_CLI_VERSION}"
-sudo mkdir -p -m 755 /etc/apt/keyrings
-curl -fsSL ${E2bTemplatesManager.GITHUB_CLI_REPOSITORY_URL}/githubcli-archive-keyring.gpg | sudo tee ${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH} >/dev/null
-sudo chmod go+r ${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH}
-echo "deb [arch=$(dpkg --print-architecture) signed-by=${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH}] ${E2bTemplatesManager.GITHUB_CLI_REPOSITORY_URL} stable main" | sudo tee ${E2bTemplatesManager.GITHUB_CLI_APT_SOURCE_PATH} >/dev/null
-sudo apt update
-DEBIAN_FRONTEND=noninteractive sudo apt install -y "gh=$GH_VERSION*"
+GH_ARCH="$(dpkg --print-architecture)"
+case "$GH_ARCH" in
+  amd64) GH_ASSET_ARCH="amd64" ;;
+  arm64) GH_ASSET_ARCH="arm64" ;;
+  *)
+    echo "Unsupported gh architecture: $GH_ARCH" >&2
+    exit 1
+    ;;
+esac
+GH_DEB="gh_${'$'}{GH_VERSION}_linux_${'$'}{GH_ASSET_ARCH}.deb"
+GH_URL="${E2bTemplatesManager.GITHUB_CLI_RELEASE_BASE_URL}/v${'$'}{GH_VERSION}/${'$'}{GH_DEB}"
+curl -fsSL "$GH_URL" -o "/tmp/${'$'}{GH_DEB}"
+DEBIAN_FRONTEND=noninteractive sudo apt install -y "/tmp/${'$'}{GH_DEB}"
+rm -f "/tmp/${'$'}{GH_DEB}"
 '`;
   }
 

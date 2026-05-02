@@ -38,10 +38,11 @@ test("E2bTemplatesManager adds pinned official GitHub CLI and nvm-backed Node 25
     assert.doesNotMatch(instructions, /"gh"/);
     assert.ok(runCommands.some((command) => command.includes("git config --global user.name 'CompanyHelm Agent'")));
     assert.ok(runCommands.some((command) => command.includes("git config --global user.email 'agent@companyhelm.internal'")));
-    assert.ok(runCommands.some((command) => command.includes("https://cli.github.com/packages")));
-    assert.ok(runCommands.some((command) => command.includes("githubcli-archive-keyring.gpg")));
+    assert.ok(runCommands.some((command) => command.includes("https://github.com/cli/cli/releases/download")));
     assert.ok(runCommands.some((command) => command.includes('GH_VERSION="2.88.1"')));
-    assert.ok(runCommands.some((command) => command.includes("apt install -y \"gh=$GH_VERSION*\"")));
+    assert.ok(runCommands.some((command) => command.includes('GH_ARCH="$(dpkg --print-architecture)"')));
+    assert.ok(runCommands.some((command) => command.includes('GH_DEB="gh_${GH_VERSION}_linux_${GH_ASSET_ARCH}.deb"')));
+    assert.ok(runCommands.some((command) => command.includes('apt install -y "/tmp/${GH_DEB}"')));
     assert.ok(runCommands.includes("curl -fsSL https://get.docker.com | sudo sh"));
     assert.ok(runCommands.includes("sudo usermod -aG docker user"));
     assert.ok(runCommands.some((command) => command.includes("nvm install 25")));
