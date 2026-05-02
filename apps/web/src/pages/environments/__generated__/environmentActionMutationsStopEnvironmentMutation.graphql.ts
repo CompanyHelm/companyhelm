@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4f03351e8cf34d4b9860fd60ed2329bd>>
+ * @generated SignedSource<<eb8069c94d8e93ee089ac0598465acc7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,18 +12,18 @@ import { ConcreteRequest } from 'relay-runtime';
 export type StopEnvironmentInput = {
   id: string;
 };
-export type environmentsPageStopEnvironmentMutation$variables = {
+export type environmentActionMutationsStopEnvironmentMutation$variables = {
   input: StopEnvironmentInput;
 };
-export type environmentsPageStopEnvironmentMutation$data = {
+export type environmentActionMutationsStopEnvironmentMutation$data = {
   readonly StopEnvironment: {
     readonly id: string;
     readonly status: string;
   };
 };
-export type environmentsPageStopEnvironmentMutation = {
-  response: environmentsPageStopEnvironmentMutation$data;
-  variables: environmentsPageStopEnvironmentMutation$variables;
+export type environmentActionMutationsStopEnvironmentMutation = {
+  response: environmentActionMutationsStopEnvironmentMutation$data;
+  variables: environmentActionMutationsStopEnvironmentMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -72,7 +72,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "environmentsPageStopEnvironmentMutation",
+    "name": "environmentActionMutationsStopEnvironmentMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +81,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "environmentsPageStopEnvironmentMutation",
+    "name": "environmentActionMutationsStopEnvironmentMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "088db43714a6392256f1ad18e399c935",
+    "cacheID": "6714525fcbcca7a67fbd471f86f8cf1f",
     "id": null,
     "metadata": {},
-    "name": "environmentsPageStopEnvironmentMutation",
+    "name": "environmentActionMutationsStopEnvironmentMutation",
     "operationKind": "mutation",
-    "text": "mutation environmentsPageStopEnvironmentMutation(\n  $input: StopEnvironmentInput!\n) {\n  StopEnvironment(input: $input) {\n    id\n    status\n  }\n}\n"
+    "text": "mutation environmentActionMutationsStopEnvironmentMutation(\n  $input: StopEnvironmentInput!\n) {\n  StopEnvironment(input: $input) {\n    id\n    status\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "af74a28c0a8a55a1bc9baa812b478537";
+(node as any).hash = "b21a5ef4889a2c1048434a39dc9a2955";
 
 export default node;

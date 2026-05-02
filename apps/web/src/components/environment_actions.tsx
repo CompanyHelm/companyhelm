@@ -28,11 +28,12 @@ interface EnvironmentActionsProps {
   className?: string;
   deletingEnvironmentId: string | null;
   environment: EnvironmentActionRecord;
-  onDelete: (environmentId: string, force: boolean) => Promise<void>;
+  onDelete?: (environmentId: string, force: boolean) => Promise<void>;
   onOpenDesktop: (environmentId: string) => Promise<void>;
   onOpenTerminal: (environmentId: string) => Promise<void>;
   onStart: (environmentId: string) => Promise<void>;
   onStop: (environmentId: string) => Promise<void>;
+  showDelete?: boolean;
   size?: "icon" | "icon-sm";
 }
 
@@ -165,6 +166,7 @@ function DeleteEnvironmentDialog(props: DeleteEnvironmentDialogProps) {
  */
 export function EnvironmentActions(props: EnvironmentActionsProps) {
   const size = props.size ?? "icon";
+  const showDelete = props.showDelete ?? true;
   const isDisabled = props.actingEnvironmentId === props.environment.id
     || props.deletingEnvironmentId === props.environment.id;
 
@@ -250,13 +252,15 @@ export function EnvironmentActions(props: EnvironmentActionsProps) {
           <SquareIcon className="h-4 w-4" />
         </Button>
       ) : null}
-      <DeleteEnvironmentDialog
-        actingEnvironmentId={props.actingEnvironmentId}
-        deletingEnvironmentId={props.deletingEnvironmentId}
-        environment={props.environment}
-        onDelete={props.onDelete}
-        size={size}
-      />
+      {showDelete && props.onDelete ? (
+        <DeleteEnvironmentDialog
+          actingEnvironmentId={props.actingEnvironmentId}
+          deletingEnvironmentId={props.deletingEnvironmentId}
+          environment={props.environment}
+          onDelete={props.onDelete}
+          size={size}
+        />
+      ) : null}
     </div>
   );
 }

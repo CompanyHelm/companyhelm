@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b04f50d3fba6dfeeba91f7e9443d1a20>>
+ * @generated SignedSource<<fa91ddd1f219624e0e3802aec6f2cf3c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,17 +13,17 @@ export type DeleteEnvironmentInput = {
   force?: boolean | null | undefined;
   id: string;
 };
-export type environmentsPageDeleteEnvironmentMutation$variables = {
+export type environmentActionMutationsDeleteEnvironmentMutation$variables = {
   input: DeleteEnvironmentInput;
 };
-export type environmentsPageDeleteEnvironmentMutation$data = {
+export type environmentActionMutationsDeleteEnvironmentMutation$data = {
   readonly DeleteEnvironment: {
     readonly id: string;
   };
 };
-export type environmentsPageDeleteEnvironmentMutation = {
-  response: environmentsPageDeleteEnvironmentMutation$data;
-  variables: environmentsPageDeleteEnvironmentMutation$variables;
+export type environmentActionMutationsDeleteEnvironmentMutation = {
+  response: environmentActionMutationsDeleteEnvironmentMutation$data;
+  variables: environmentActionMutationsDeleteEnvironmentMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -65,7 +65,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "environmentsPageDeleteEnvironmentMutation",
+    "name": "environmentActionMutationsDeleteEnvironmentMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -74,20 +74,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "environmentsPageDeleteEnvironmentMutation",
+    "name": "environmentActionMutationsDeleteEnvironmentMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "c3eb7a0c93cb99f71f4ba90e46678ca0",
+    "cacheID": "256ae808bce71e4e6fd2be6561ba7ea5",
     "id": null,
     "metadata": {},
-    "name": "environmentsPageDeleteEnvironmentMutation",
+    "name": "environmentActionMutationsDeleteEnvironmentMutation",
     "operationKind": "mutation",
-    "text": "mutation environmentsPageDeleteEnvironmentMutation(\n  $input: DeleteEnvironmentInput!\n) {\n  DeleteEnvironment(input: $input) {\n    id\n  }\n}\n"
+    "text": "mutation environmentActionMutationsDeleteEnvironmentMutation(\n  $input: DeleteEnvironmentInput!\n) {\n  DeleteEnvironment(input: $input) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "46207b8e5dd3c1737fc433d5e002b384";
+(node as any).hash = "364f8daf1add0d1f1db4463ed442e9b6";
 
 export default node;

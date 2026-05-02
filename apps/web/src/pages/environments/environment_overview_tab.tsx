@@ -1,12 +1,11 @@
-import { Link } from "@tanstack/react-router";
-import { TerminalSquareIcon } from "lucide-react";
+import { EnvironmentActions } from "@/components/environment_actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { OrganizationPath } from "@/lib/organization_path";
 
 interface EnvironmentOverviewTabProps {
+  actingEnvironmentId: string | null;
   environment: {
+    agentName: string | null | undefined;
     cpuCount: number;
     cpuUsedPct: number | null | undefined;
     diskSpaceGb: number;
@@ -20,12 +19,14 @@ interface EnvironmentOverviewTabProps {
     platform: string;
     provider: string;
     providerDefinitionName: string | null;
-    providerEnvironmentId: string;
     status: string;
     templateId: string;
     updatedAt: string | undefined;
   };
-  organizationSlug: string;
+  onOpenDesktop: (environmentId: string) => Promise<void>;
+  onOpenTerminal: (environmentId: string) => Promise<void>;
+  onStart: (environmentId: string) => Promise<void>;
+  onStop: (environmentId: string) => Promise<void>;
 }
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -78,14 +79,15 @@ function formatStatusLabel(status: string): string {
  * understand what the machine is and whether its current utilization looks healthy at a glance.
  */
 export function EnvironmentOverviewTab(props: EnvironmentOverviewTabProps) {
-  const { environment, organizationSlug } = props;
+  const { environment } = props;
+  const title = environment.displayName ?? (environment.agentName ? `${environment.agentName} environment` : "Environment");
 
   return (
     <div className="grid gap-6 px-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            {environment.displayName ?? environment.providerEnvironmentId}
+            {title}
           </h1>
           <p className="text-sm text-muted-foreground">
             {environment.providerDefinitionName ?? environment.provider} · {environment.platform} · template {environment.templateId}
@@ -93,19 +95,16 @@ export function EnvironmentOverviewTab(props: EnvironmentOverviewTabProps) {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{formatStatusLabel(environment.status)}</Badge>
-          <Button
-            render={(
-              <Link
-                params={{ organizationSlug, environmentId: environment.id }}
-                to={OrganizationPath.route("/environments/$environmentId/terminal")}
-              />
-            )}
-            size="sm"
-            variant="outline"
-          >
-            <TerminalSquareIcon data-icon="inline-start" />
-            Open terminal
-          </Button>
+          <EnvironmentActions
+            actingEnvironmentId={props.actingEnvironmentId}
+            deletingEnvironmentId={null}
+            environment={environment}
+            onOpenDesktop={props.onOpenDesktop}
+            onOpenTerminal={props.onOpenTerminal}
+            onStart={props.onStart}
+            onStop={props.onStop}
+            showDelete={false}
+          />
         </div>
       </div>
 
@@ -142,13 +141,9 @@ export function EnvironmentOverviewTab(props: EnvironmentOverviewTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Environment details</CardTitle>
-          <CardDescription>Current machine identity and latest telemetry timestamps.</CardDescription>
+          <CardDescription>Latest telemetry timestamps for this environment.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Provider environment ID</p>
-            <p className="mt-1 text-sm text-foreground">{environment.providerEnvironmentId}</p>
-          </div>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Last metrics sample</p>
             <p className="mt-1 text-sm text-foreground">{formatTimestamp(environment.metricsSampledAt)}</p>

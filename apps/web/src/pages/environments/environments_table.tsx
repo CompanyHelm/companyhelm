@@ -16,14 +16,12 @@ export type EnvironmentsTableRecord = {
   agentName: string | null | undefined;
   cpuCount: number;
   diskSpaceGb: number;
-  displayName: string | null | undefined;
   id: string;
   lastSeenAt: string | null | undefined;
   memoryGb: number;
   platform: string;
   provider: string;
   providerDefinitionName: string | null | undefined;
-  providerEnvironmentId: string;
   status: string;
   updatedAt: string;
 };
@@ -115,7 +113,6 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Environment</TableHead>
           <TableHead>Agent</TableHead>
           <TableHead>Provider</TableHead>
           <TableHead>Platform</TableHead>
@@ -132,7 +129,7 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
         {props.environments.map((environment) => (
           <TableRow
             key={environment.id}
-            aria-label={`Open environment ${environment.displayName ?? environment.providerEnvironmentId}`}
+            aria-label={`Open environment for ${environment.agentName ?? environment.agentId}`}
             className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             onClick={() => {
               openEnvironmentDetail(environment.id);
@@ -148,13 +145,6 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
             role="link"
             tabIndex={0}
           >
-            <TableCell>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">
-                  {environment.displayName ?? environment.providerEnvironmentId}
-                </p>
-              </div>
-            </TableCell>
             <TableCell>
               <div className="min-w-0">
                 <p className="truncate text-foreground">{environment.agentName ?? environment.agentId}</p>

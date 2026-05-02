@@ -3,11 +3,17 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import {
+  environmentActionDeleteEnvironmentMutationNode,
+  environmentActionGetEnvironmentVncUrlMutationNode,
+  environmentActionStartEnvironmentMutationNode,
+  environmentActionStopEnvironmentMutationNode,
+} from "./environment_action_mutations";
 import { EnvironmentsTable, type EnvironmentsTableRecord } from "./environments_table";
-import type { environmentsPageDeleteEnvironmentMutation } from "./__generated__/environmentsPageDeleteEnvironmentMutation.graphql";
-import type { environmentsPageGetEnvironmentVncUrlMutation } from "./__generated__/environmentsPageGetEnvironmentVncUrlMutation.graphql";
-import type { environmentsPageStartEnvironmentMutation } from "./__generated__/environmentsPageStartEnvironmentMutation.graphql";
-import type { environmentsPageStopEnvironmentMutation } from "./__generated__/environmentsPageStopEnvironmentMutation.graphql";
+import type { environmentActionMutationsDeleteEnvironmentMutation } from "./__generated__/environmentActionMutationsDeleteEnvironmentMutation.graphql";
+import type { environmentActionMutationsGetEnvironmentVncUrlMutation } from "./__generated__/environmentActionMutationsGetEnvironmentVncUrlMutation.graphql";
+import type { environmentActionMutationsStartEnvironmentMutation } from "./__generated__/environmentActionMutationsStartEnvironmentMutation.graphql";
+import type { environmentActionMutationsStopEnvironmentMutation } from "./__generated__/environmentActionMutationsStopEnvironmentMutation.graphql";
 import type { environmentsPageQuery } from "./__generated__/environmentsPageQuery.graphql";
 
 const environmentsPageQueryNode = graphql`
@@ -19,8 +25,6 @@ const environmentsPageQueryNode = graphql`
       provider
       providerDefinitionId
       providerDefinitionName
-      providerEnvironmentId
-      displayName
       platform
       status
       cpuCount
@@ -28,41 +32,6 @@ const environmentsPageQueryNode = graphql`
       diskSpaceGb
       lastSeenAt
       updatedAt
-    }
-  }
-`;
-
-const environmentsPageDeleteEnvironmentMutationNode = graphql`
-  mutation environmentsPageDeleteEnvironmentMutation($input: DeleteEnvironmentInput!) {
-    DeleteEnvironment(input: $input) {
-      id
-    }
-  }
-`;
-
-const environmentsPageStartEnvironmentMutationNode = graphql`
-  mutation environmentsPageStartEnvironmentMutation($input: StartEnvironmentInput!) {
-    StartEnvironment(input: $input) {
-      id
-      status
-    }
-  }
-`;
-
-const environmentsPageGetEnvironmentVncUrlMutationNode = graphql`
-  mutation environmentsPageGetEnvironmentVncUrlMutation($input: GetEnvironmentVncUrlInput!) {
-    GetEnvironmentVncUrl(input: $input) {
-      environmentId
-      url
-    }
-  }
-`;
-
-const environmentsPageStopEnvironmentMutationNode = graphql`
-  mutation environmentsPageStopEnvironmentMutation($input: StopEnvironmentInput!) {
-    StopEnvironment(input: $input) {
-      id
-      status
     }
   }
 `;
@@ -107,31 +76,29 @@ function EnvironmentsPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
-  const [commitDeleteEnvironment, isDeleteEnvironmentInFlight] = useMutation<environmentsPageDeleteEnvironmentMutation>(
-    environmentsPageDeleteEnvironmentMutationNode,
+  const [commitDeleteEnvironment, isDeleteEnvironmentInFlight] = useMutation<environmentActionMutationsDeleteEnvironmentMutation>(
+    environmentActionDeleteEnvironmentMutationNode,
   );
-  const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<environmentsPageStartEnvironmentMutation>(
-    environmentsPageStartEnvironmentMutationNode,
+  const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<environmentActionMutationsStartEnvironmentMutation>(
+    environmentActionStartEnvironmentMutationNode,
   );
-  const [commitGetEnvironmentVncUrl, isGetEnvironmentVncUrlInFlight] = useMutation<environmentsPageGetEnvironmentVncUrlMutation>(
-    environmentsPageGetEnvironmentVncUrlMutationNode,
+  const [commitGetEnvironmentVncUrl, isGetEnvironmentVncUrlInFlight] = useMutation<environmentActionMutationsGetEnvironmentVncUrlMutation>(
+    environmentActionGetEnvironmentVncUrlMutationNode,
   );
-  const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<environmentsPageStopEnvironmentMutation>(
-    environmentsPageStopEnvironmentMutationNode,
+  const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<environmentActionMutationsStopEnvironmentMutation>(
+    environmentActionStopEnvironmentMutationNode,
   );
   const environments: EnvironmentsTableRecord[] = data.Environments.map((environment) => ({
     agentId: environment.agentId,
     agentName: environment.agentName,
     cpuCount: environment.cpuCount,
     diskSpaceGb: environment.diskSpaceGb,
-    displayName: environment.displayName,
     id: environment.id,
     lastSeenAt: environment.lastSeenAt,
     memoryGb: environment.memoryGb,
     platform: environment.platform,
     provider: environment.provider,
     providerDefinitionName: environment.providerDefinitionName,
-    providerEnvironmentId: environment.providerEnvironmentId,
     status: environment.status,
     updatedAt: environment.updatedAt,
   }));

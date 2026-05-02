@@ -1,15 +1,23 @@
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { graphql, useLazyLoadQuery } from "react-relay";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { ErrorState } from "@/components/error_state";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import {
+  environmentActionGetEnvironmentVncUrlMutationNode,
+  environmentActionStartEnvironmentMutationNode,
+  environmentActionStopEnvironmentMutationNode,
+} from "./environment_action_mutations";
 import { EnvironmentMetricsTab } from "./environment_metrics_tab";
 import { EnvironmentOverviewTab } from "./environment_overview_tab";
 import type { environmentDetailPageQuery } from "./__generated__/environmentDetailPageQuery.graphql";
+import type { environmentActionMutationsGetEnvironmentVncUrlMutation } from "./__generated__/environmentActionMutationsGetEnvironmentVncUrlMutation.graphql";
+import type { environmentActionMutationsStartEnvironmentMutation } from "./__generated__/environmentActionMutationsStartEnvironmentMutation.graphql";
+import type { environmentActionMutationsStopEnvironmentMutation } from "./__generated__/environmentActionMutationsStopEnvironmentMutation.graphql";
 
 type EnvironmentDetailPageTab = "metrics" | "overview";
 
@@ -83,8 +91,19 @@ function EnvironmentDetailPageContent() {
   const { environmentId } = useParams({ strict: false }) as { environmentId?: string };
   const search = useSearch({ strict: false }) as { tab?: EnvironmentDetailPageTab };
   const { setDetailLabel } = useApplicationBreadcrumb();
+  const [actingEnvironmentId, setActingEnvironmentId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const normalizedEnvironmentId = String(environmentId || "").trim();
   const selectedTab: EnvironmentDetailPageTab = search.tab === "metrics" ? "metrics" : "overview";
+  const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<environmentActionMutationsStartEnvironmentMutation>(
+    environmentActionStartEnvironmentMutationNode,
+  );
+  const [commitGetEnvironmentVncUrl, isGetEnvironmentVncUrlInFlight] = useMutation<environmentActionMutationsGetEnvironmentVncUrlMutation>(
+    environmentActionGetEnvironmentVncUrlMutationNode,
+  );
+  const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<environmentActionMutationsStopEnvironmentMutation>(
+    environmentActionStopEnvironmentMutationNode,
+  );
 
   if (!normalizedEnvironmentId) {
     return (
@@ -118,7 +137,11 @@ function EnvironmentDetailPageContent() {
     },
   );
   const environment = data.Environment;
+  const isEnvironmentActionInFlight = isStartEnvironmentInFlight
+    || isStopEnvironmentInFlight
+    || isGetEnvironmentVncUrlInFlight;
   const environmentOverview = {
+    agentName: environment.agentName,
     cpuCount: environment.cpuCount,
     cpuUsedPct: environment.cpuUsedPct ?? null,
     diskSpaceGb: environment.diskSpaceGb,
@@ -132,7 +155,6 @@ function EnvironmentDetailPageContent() {
     platform: environment.platform,
     provider: environment.provider,
     providerDefinitionName: environment.providerDefinitionName ?? null,
-    providerEnvironmentId: environment.providerEnvironmentId,
     status: environment.status,
     templateId: environment.templateId,
     updatedAt: environment.updatedAt,
@@ -144,6 +166,23 @@ function EnvironmentDetailPageContent() {
       setDetailLabel(null);
     };
   }, [environment.displayName, environment.providerEnvironmentId, setDetailLabel]);
+
+  const updateEnvironmentStatusInStore = (
+    nextEnvironmentId: string,
+    status: string,
+    store: {
+      get(dataId: string): {
+        setValue(value: string, key: string): void;
+      } | null;
+    },
+  ) => {
+    const environmentRecord = store.get(nextEnvironmentId);
+    if (!environmentRecord) {
+      return;
+    }
+
+    environmentRecord.setValue(status, "status");
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -166,9 +205,152 @@ function EnvironmentDetailPageContent() {
             }}
             selectedKey={selectedTab}
           />
+          {errorMessage ? (
+            <div className="mx-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {errorMessage}
+            </div>
+          ) : null}
 
           {selectedTab === "overview" ? (
-            <EnvironmentOverviewTab environment={environmentOverview} organizationSlug={organizationSlug} />
+            <EnvironmentOverviewTab
+              actingEnvironmentId={actingEnvironmentId}
+              environment={environmentOverview}
+              onOpenDesktop={async (nextEnvironmentId) => {
+                if (isEnvironmentActionInFlight) {
+                  return;
+                }
+
+                setErrorMessage(null);
+                setActingEnvironmentId(nextEnvironmentId);
+
+                try {
+                  await new Promise<void>((resolve, reject) => {
+                    commitGetEnvironmentVncUrl({
+                      variables: {
+                        input: {
+                          id: nextEnvironmentId,
+                        },
+                      },
+                      onCompleted: (response, errors) => {
+                        const nextErrorMessage = errors?.[0]?.message;
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
+
+                        const url = response.GetEnvironmentVncUrl?.url;
+                        if (!url) {
+                          reject(new Error("Environment desktop URL was not returned."));
+                          return;
+                        }
+
+                        window.open(url, "_blank", "noopener,noreferrer");
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  });
+                } catch (error: unknown) {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to open environment desktop.");
+                } finally {
+                  setActingEnvironmentId(null);
+                }
+              }}
+              onOpenTerminal={async (nextEnvironmentId) => {
+                window.open(
+                  OrganizationPath.href(
+                    organizationSlug,
+                    `/environments/${encodeURIComponent(nextEnvironmentId)}/terminal`,
+                  ),
+                  "_blank",
+                  "noopener,noreferrer",
+                );
+              }}
+              onStart={async (nextEnvironmentId) => {
+                if (isEnvironmentActionInFlight) {
+                  return;
+                }
+
+                setErrorMessage(null);
+                setActingEnvironmentId(nextEnvironmentId);
+
+                try {
+                  await new Promise<void>((resolve, reject) => {
+                    commitStartEnvironment({
+                      variables: {
+                        input: {
+                          id: nextEnvironmentId,
+                        },
+                      },
+                      updater: (store) => {
+                        const startedEnvironment = store.getRootField("StartEnvironment");
+                        if (!startedEnvironment) {
+                          return;
+                        }
+
+                        updateEnvironmentStatusInStore(startedEnvironment.getDataID(), "running", store);
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = errors?.[0]?.message;
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
+
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  });
+                } catch (error: unknown) {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to start environment.");
+                } finally {
+                  setActingEnvironmentId(null);
+                }
+              }}
+              onStop={async (nextEnvironmentId) => {
+                if (isEnvironmentActionInFlight) {
+                  return;
+                }
+
+                setErrorMessage(null);
+                setActingEnvironmentId(nextEnvironmentId);
+
+                try {
+                  await new Promise<void>((resolve, reject) => {
+                    commitStopEnvironment({
+                      variables: {
+                        input: {
+                          id: nextEnvironmentId,
+                        },
+                      },
+                      updater: (store) => {
+                        const stoppedEnvironment = store.getRootField("StopEnvironment");
+                        if (!stoppedEnvironment) {
+                          return;
+                        }
+
+                        updateEnvironmentStatusInStore(stoppedEnvironment.getDataID(), "stopped", store);
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = errors?.[0]?.message;
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
+
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  });
+                } catch (error: unknown) {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to stop environment.");
+                } finally {
+                  setActingEnvironmentId(null);
+                }
+              }}
+            />
           ) : (
             <EnvironmentMetricsTab samples={data.EnvironmentMetricSamples} />
           )}

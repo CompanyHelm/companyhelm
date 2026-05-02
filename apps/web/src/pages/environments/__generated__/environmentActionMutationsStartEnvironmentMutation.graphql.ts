@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c0fd7c75bda2bb4a73a799d95b97122f>>
+ * @generated SignedSource<<1c183ea67b6b5a2421b0ace3e8c70da2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,21 +9,21 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type GetEnvironmentVncUrlInput = {
+export type StartEnvironmentInput = {
   id: string;
 };
-export type environmentsPageGetEnvironmentVncUrlMutation$variables = {
-  input: GetEnvironmentVncUrlInput;
+export type environmentActionMutationsStartEnvironmentMutation$variables = {
+  input: StartEnvironmentInput;
 };
-export type environmentsPageGetEnvironmentVncUrlMutation$data = {
-  readonly GetEnvironmentVncUrl: {
-    readonly environmentId: string;
-    readonly url: string;
+export type environmentActionMutationsStartEnvironmentMutation$data = {
+  readonly StartEnvironment: {
+    readonly id: string;
+    readonly status: string;
   };
 };
-export type environmentsPageGetEnvironmentVncUrlMutation = {
-  response: environmentsPageGetEnvironmentVncUrlMutation$data;
-  variables: environmentsPageGetEnvironmentVncUrlMutation$variables;
+export type environmentActionMutationsStartEnvironmentMutation = {
+  response: environmentActionMutationsStartEnvironmentMutation$data;
+  variables: environmentActionMutationsStartEnvironmentMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -44,23 +44,23 @@ v1 = [
         "variableName": "input"
       }
     ],
-    "concreteType": "EnvironmentVncUrl",
+    "concreteType": "Environment",
     "kind": "LinkedField",
-    "name": "GetEnvironmentVncUrl",
+    "name": "StartEnvironment",
     "plural": false,
     "selections": [
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "environmentId",
+        "name": "id",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "url",
+        "name": "status",
         "storageKey": null
       }
     ],
@@ -72,7 +72,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "environmentsPageGetEnvironmentVncUrlMutation",
+    "name": "environmentActionMutationsStartEnvironmentMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +81,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "environmentsPageGetEnvironmentVncUrlMutation",
+    "name": "environmentActionMutationsStartEnvironmentMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "7cb2756b3767faa598f8c5413c0aa293",
+    "cacheID": "c03e4537c32b66a820468309a885d009",
     "id": null,
     "metadata": {},
-    "name": "environmentsPageGetEnvironmentVncUrlMutation",
+    "name": "environmentActionMutationsStartEnvironmentMutation",
     "operationKind": "mutation",
-    "text": "mutation environmentsPageGetEnvironmentVncUrlMutation(\n  $input: GetEnvironmentVncUrlInput!\n) {\n  GetEnvironmentVncUrl(input: $input) {\n    environmentId\n    url\n  }\n}\n"
+    "text": "mutation environmentActionMutationsStartEnvironmentMutation(\n  $input: StartEnvironmentInput!\n) {\n  StartEnvironment(input: $input) {\n    id\n    status\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bed78b10d2a478b6d1accce812ca7553";
+(node as any).hash = "8bbe1096d8d53345d41a184aaa59dccb";
 
 export default node;

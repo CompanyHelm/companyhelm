@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0dc2fdd31a461e1218f77ac34c0af14d>>
+ * @generated SignedSource<<2716028c313bb67a5c8ea1da2b3cc4d7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,6 @@ export type environmentsPageQuery$data = {
     readonly agentName: string | null | undefined;
     readonly cpuCount: number;
     readonly diskSpaceGb: number;
-    readonly displayName: string | null | undefined;
     readonly id: string;
     readonly lastSeenAt: string | null | undefined;
     readonly memoryGb: number;
@@ -24,7 +23,6 @@ export type environmentsPageQuery$data = {
     readonly provider: string;
     readonly providerDefinitionId: string | null | undefined;
     readonly providerDefinitionName: string | null | undefined;
-    readonly providerEnvironmentId: string;
     readonly status: string;
     readonly updatedAt: string;
   }>;
@@ -84,20 +82,6 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "providerDefinitionName",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "providerEnvironmentId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "displayName",
         "storageKey": null
       },
       {
@@ -171,16 +155,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "4e4630ec0067a56ec5dc3999f27b22e1",
+    "cacheID": "c935d1760e97c770e07773c0cd79d23f",
     "id": null,
     "metadata": {},
     "name": "environmentsPageQuery",
     "operationKind": "query",
-    "text": "query environmentsPageQuery {\n  Environments {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    displayName\n    platform\n    status\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    lastSeenAt\n    updatedAt\n  }\n}\n"
+    "text": "query environmentsPageQuery {\n  Environments {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    platform\n    status\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    lastSeenAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1a0e79e979adf66bfb93b9b4d6b593e6";
+(node as any).hash = "2167e69d71aab71ec43f43c20841f65d";
 
 export default node;
