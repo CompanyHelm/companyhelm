@@ -165,6 +165,7 @@ class UpdateAgentMutationTestHarness {
                         return [{
                           id: "agent-1",
                           name: String(value.name),
+                          title: value.title ?? null,
                           defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
                           defaultModelProviderCredentialModelId: String(
                             value.defaultModelProviderCredentialModelId,

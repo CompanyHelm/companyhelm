@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2fc9ebe1d1d7d9f9ceae32dda89093b0>>
+ * @generated SignedSource<<f466ecf39734b31c3caf745c3ffe0449>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type AddAgentInput = {
   skillGroupIds?: ReadonlyArray<string> | null | undefined;
   skillIds?: ReadonlyArray<string> | null | undefined;
   systemPrompt?: string | null | undefined;
+  title?: string | null | undefined;
 };
 export type agentsPageAddAgentMutation$variables = {
   input: AddAgentInput;
@@ -34,6 +35,7 @@ export type agentsPageAddAgentMutation$data = {
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
     readonly systemPrompt: string | null | undefined;
+    readonly title: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -77,6 +79,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "name",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "title",
         "storageKey": null
       },
       {
@@ -143,16 +152,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "6618d7b970978935cf8af65178ceab30",
+    "cacheID": "f3f3caeb261de3d61cbaba1ecbf9e855",
     "id": null,
     "metadata": {},
     "name": "agentsPageAddAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentsPageAddAgentMutation(\n  $input: AddAgentInput!\n) {\n  AddAgent(input: $input) {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentsPageAddAgentMutation(\n  $input: AddAgentInput!\n) {\n  AddAgent(input: $input) {\n    id\n    name\n    title\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "670d5cbe3313e1ca051e84604a4053d1";
+(node as any).hash = "cd3381bd5736268dcc8e83cfb77f77ef";
 
 export default node;

@@ -114,6 +114,7 @@ test("AddAgentMutation attaches skill groups and skills after creating the agent
                         defaultReasoningLevel: value.default_reasoning_level ?? null,
                         id: "agent-1",
                         name: String(value.name),
+                        title: value.title ?? null,
                         systemPrompt: value.system_prompt ?? null,
                         updatedAt: new Date("2026-04-09T00:00:00.000Z"),
                       }];

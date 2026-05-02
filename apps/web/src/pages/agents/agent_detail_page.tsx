@@ -33,6 +33,7 @@ const agentDetailPageQueryNode = graphql`
     Agent(id: $agentId) {
       id
       name
+      title
       modelCredentialSource
       llmModelId
       platformModelId
@@ -245,6 +246,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
     UpdateAgent(input: $input) {
       id
       name
+      title
       modelCredentialSource
       llmModelId
       platformModelId
@@ -542,6 +544,7 @@ function AgentDetailPageContent() {
     providerOptionId?: string;
     llmModelId?: string | null;
     name?: string;
+    title?: string | null;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
   }) => {
@@ -593,6 +596,7 @@ function AgentDetailPageContent() {
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
             name: patch.name ?? agent.name,
+            title: patch.title === undefined ? agent.title : (patch.title === "" ? null : patch.title),
             llmModelId: nextModelOption.llmModelId,
             reasoningLevel: nextReasoningLevel,
             systemPrompt: patch.systemPrompt === undefined
@@ -669,6 +673,19 @@ function AgentDetailPageContent() {
                       });
                     }}
                     value={agent.name}
+                    variant="plain"
+                  />
+
+                  <EditableField
+                    emptyValueLabel="No title"
+                    fieldType="text"
+                    label="Title"
+                    onSave={async (value) => {
+                      await saveAgent({
+                        title: value,
+                      });
+                    }}
+                    value={agent.title ?? null}
                     variant="plain"
                   />
 

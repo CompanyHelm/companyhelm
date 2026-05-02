@@ -21,6 +21,7 @@ type UpdateAgentMutationArguments = {
     id: string;
     llmModelId: string;
     name: string;
+    title?: string | null;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
   };
@@ -29,6 +30,7 @@ type UpdateAgentMutationArguments = {
 type AgentRecord = {
   id: string;
   name: string;
+  title: string | null;
   defaultModelCredentialSource: "platform" | "user_provided";
   defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
@@ -72,6 +74,7 @@ type GraphqlAgentRecord = {
   environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
+  title: string | null;
   modelCredentialSource: "platform" | "user_provided";
   llmModelId: string | null;
   platformModelId: string | null;
@@ -214,6 +217,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .update(agents)
         .set({
           name: arguments_.input.name,
+          title: UpdateAgentMutation.resolveTitle(arguments_.input.title),
           defaultModelCredentialSource: modelRecord.modelCredentialSource,
           defaultPlatformModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
           defaultModelProviderCredentialModelId: modelRecord.modelCredentialSource === "user_provided" ? modelRecord.id : null,
@@ -230,6 +234,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .returning?.({
           id: agents.id,
           name: agents.name,
+          title: agents.title,
           defaultModelCredentialSource: agents.defaultModelCredentialSource,
           defaultPlatformModelId: agents.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
@@ -275,6 +280,14 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     }
 
     return reasoningLevel;
+  }
+
+  private static resolveTitle(title: string | null | undefined): string | null {
+    if (title === undefined || title === null || title === "") {
+      return null;
+    }
+
+    return title;
   }
 
   private static resolveSystemPrompt(systemPrompt: string | null | undefined): string | null {
@@ -412,6 +425,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
+      title: agentRecord.title,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
       llmModelId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
       platformModelId: agentRecord.defaultPlatformModelId,

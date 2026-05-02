@@ -34,6 +34,7 @@ export const agents = pgTable("agents", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   name: text("name").notNull(),
+  title: text("title"),
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
