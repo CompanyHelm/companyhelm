@@ -119,7 +119,7 @@ test("chat transcript pane renders compaction status from session state", () => 
   assert.match(markup, /Compacting context/u);
 });
 
-test("chat transcript pane renders streamed compaction markers and suppresses the fallback pill", () => {
+test("chat transcript pane renders a streamed compaction marker with divider lines and suppresses the fallback pill", () => {
   const props = buildTranscriptPaneProps();
   const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
     ...props,
@@ -131,7 +131,6 @@ test("chat transcript pane renders streamed compaction markers and suppresses th
       {
         contents: [{
           structuredContent: {
-            phase: "start",
             type: "compaction",
           },
           text: "Compacting…",
@@ -146,30 +145,40 @@ test("chat transcript pane renders streamed compaction markers and suppresses th
         toolCallId: null,
         turnId: "turn-compaction-start",
       },
+    ],
+  }));
+
+  assert.match(markup, /Compacting…/u);
+  assert.doesNotMatch(markup, /Compacting context/u);
+  assert.equal([...markup.matchAll(/bg-border\/60/gu)].length, 2);
+});
+
+test("chat transcript pane renders a completed compaction marker from a single message", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    sessionMessages: [
       {
         contents: [{
           structuredContent: {
-            phase: "end",
             type: "compaction",
           },
           text: "Compaction complete",
         }],
         createdAt: "2026-04-21T00:00:05.000Z",
         errorMessage: null,
-        id: "message-compaction-end",
+        id: "message-compaction-complete",
         isError: false,
         role: "assistant",
         status: "completed",
         text: "Compaction complete",
         toolCallId: null,
-        turnId: "turn-compaction-end",
+        turnId: "turn-compaction-complete",
       },
     ],
   }));
 
-  assert.match(markup, /Compacting…/u);
   assert.match(markup, /Compaction complete/u);
-  assert.doesNotMatch(markup, /Compacting context/u);
 });
 
 test("timestamp tooltip boundary starts below visible workflow chrome", () => {

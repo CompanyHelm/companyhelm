@@ -203,6 +203,22 @@ class PiMonoSessionEventHandlerTestHarness {
                     };
                   }
 
+                  if (table === sessionMessages) {
+                    return {
+                      async where() {
+                        return [...sessionMessageRecords.values()];
+                      },
+                    };
+                  }
+
+                  if (table === messageContents) {
+                    return {
+                      async where() {
+                        return [...messageContentRecordsByMessageId.values()].flatMap((records) => records);
+                      },
+                    };
+                  }
+
                   throw new Error("Unexpected select table.");
                 },
               };
@@ -1256,20 +1272,17 @@ test("PiMonoSessionEventHandler captures context snapshots when auto compaction 
   assert.equal(harness.sessionState.currentContextTokens, null);
   assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
-  assert.equal(harness.sessionMessageRecords.size, 2);
-  assert.equal(harness.sessionTurnRecords.size, 2);
-  const persistedAutoCompactionMessages = [...harness.sessionMessageRecords.values()]
-    .sort((firstMessage, secondMessage) => {
-      return String(firstMessage.createdAt).localeCompare(String(secondMessage.createdAt));
-    });
-  assert.equal(persistedAutoCompactionMessages[0]?.status, "completed");
-  assert.equal(persistedAutoCompactionMessages[1]?.status, "completed");
-  const autoCompactionContentPhases = [...harness.messageContentRecordsByMessageId.values()]
-    .flatMap((contentRecords) => contentRecords)
-    .map((contentRecord) => (contentRecord.structuredContent as { phase?: string } | null)?.phase ?? null)
-    .filter((phase): phase is string => typeof phase === "string")
-    .sort();
-  assert.deepEqual(autoCompactionContentPhases, ["end", "start"]);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  assert.equal(harness.sessionTurnRecords.size, 1);
+  const [persistedAutoCompactionMessage] = [...harness.sessionMessageRecords.values()];
+  assert.equal(persistedAutoCompactionMessage?.status, "completed");
+  const persistedAutoCompactionContents = [...harness.messageContentRecordsByMessageId.values()].flatMap((contentRecords) => contentRecords);
+  assert.equal(persistedAutoCompactionContents.length, 1);
+  assert.equal(persistedAutoCompactionContents[0]?.text, "Compaction complete");
+  assert.deepEqual(persistedAutoCompactionContents[0]?.structuredContent, {
+    trigger: "automatic",
+    type: "compaction",
+  });
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when compaction starts and ends", async () => {
@@ -1317,24 +1330,108 @@ test("PiMonoSessionEventHandler captures context snapshots when compaction start
   assert.equal(harness.sessionState.currentContextTokens, 43000);
   assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
-  assert.equal(harness.sessionMessageRecords.size, 2);
-  assert.equal(harness.sessionTurnRecords.size, 2);
-  const persistedCompactionMessages = [...harness.sessionMessageRecords.values()]
-    .sort((firstMessage, secondMessage) => {
-      return String(firstMessage.createdAt).localeCompare(String(secondMessage.createdAt));
-    });
-  assert.equal(persistedCompactionMessages[0]?.status, "completed");
-  assert.equal(persistedCompactionMessages[1]?.status, "completed");
-  const compactionContentPhases = [...harness.messageContentRecordsByMessageId.values()]
-    .flatMap((contentRecords) => contentRecords)
-    .map((contentRecord) => (contentRecord.structuredContent as { phase?: string } | null)?.phase ?? null)
-    .filter((phase): phase is string => typeof phase === "string")
-    .sort();
-  assert.deepEqual(compactionContentPhases, ["end", "start"]);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  assert.equal(harness.sessionTurnRecords.size, 1);
+  const [persistedCompactionMessage] = [...harness.sessionMessageRecords.values()];
+  assert.equal(persistedCompactionMessage?.status, "completed");
+  const persistedCompactionContents = [...harness.messageContentRecordsByMessageId.values()].flatMap((contentRecords) => contentRecords);
+  assert.equal(persistedCompactionContents.length, 1);
+  assert.equal(persistedCompactionContents[0]?.text, "Compaction complete");
+  assert.deepEqual(persistedCompactionContents[0]?.structuredContent, {
+    trigger: "manual",
+    type: "compaction",
+  });
   const messageUpdateChannels = harness.publishCalls
     .map((publishCall) => publishCall.channel)
     .filter((channel) => channel.includes(":message:"));
-  assert.equal(messageUpdateChannels.length, 3);
+  assert.equal(messageUpdateChannels.length, 2);
+});
+
+test("PiMonoSessionEventHandler completes stale running compaction messages before starting another compaction", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.sessionTurnRecords.set("turn-stale", {
+    companyId: "company-1",
+    endedAt: null,
+    id: "turn-stale",
+    sessionId: "session-1",
+    startedAt: new Date("2026-04-21T00:00:00.000Z"),
+  });
+  harness.sessionMessageRecords.set("message-stale", {
+    companyId: "company-1",
+    createdAt: new Date("2026-04-21T00:00:00.000Z"),
+    errorMessage: null,
+    id: "message-stale",
+    isError: false,
+    principalAgentId: null,
+    principalSessionId: null,
+    principalType: "user",
+    role: "assistant",
+    sessionId: "session-1",
+    status: "running",
+    taskRunId: null,
+    toolCallId: null,
+    toolName: null,
+    turnId: "turn-stale",
+    updatedAt: new Date("2026-04-21T00:00:00.000Z"),
+    workflowRunId: null,
+  });
+  harness.messageContentRecordsByMessageId.set("message-stale", [{
+    companyId: "company-1",
+    createdAt: new Date("2026-04-21T00:00:00.000Z"),
+    id: "content-stale",
+    messageId: "message-stale",
+    structuredContent: {
+      phase: "start",
+      trigger: "manual",
+      type: "compaction",
+    },
+    text: "Compacting…",
+    type: "text",
+    updatedAt: new Date("2026-04-21T00:00:00.000Z"),
+  }]);
+
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
+  );
+
+  try {
+    harness.contextSnapshot.currentContextTokens = 199000;
+    harness.contextSnapshot.isCompacting = true;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      reason: "threshold",
+      type: "compaction_start",
+    });
+
+    harness.contextSnapshot.currentContextTokens = 43000;
+    harness.contextSnapshot.isCompacting = false;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      aborted: false,
+      reason: "threshold",
+      type: "compaction_end",
+      willRetry: false,
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionMessageRecords.size, 2);
+  const staleMessage = harness.sessionMessageRecords.get("message-stale");
+  assert.equal(staleMessage?.status, "completed");
+  const staleContent = harness.messageContentRecordsByMessageId.get("message-stale")?.[0];
+  assert.equal(staleContent?.text, "Compaction complete");
+  assert.deepEqual(staleContent?.structuredContent, {
+    trigger: "manual",
+    type: "compaction",
+  });
+  const staleTurn = harness.sessionTurnRecords.get("turn-stale");
+  assert.ok(staleTurn?.endedAt instanceof Date);
 });
 
 test("PiMonoSessionEventHandler persists tool execution events into one streamed tool result message", async () => {

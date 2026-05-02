@@ -724,7 +724,7 @@ function hasVisibleTranscriptMessage(
   if (message.role === "assistant") {
     const hasCompactionMarker = message.contents.some((content) => {
       const structuredContent = content.structuredContent as Record<string, unknown> | null;
-      return structuredContent?.type === "compaction" && (structuredContent.phase === "start" || structuredContent.phase === "end");
+      return structuredContent?.type === "compaction";
     });
     if (hasCompactionMarker) {
       return true;
