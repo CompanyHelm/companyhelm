@@ -19,7 +19,7 @@ export class CompanyBillingPlanCatalog {
   private static readonly plans: readonly CompanyBillingPlan[] = [
     {
       currencyCode: "USD",
-      description: "Core CompanyHelm workspace access with starter managed-model credits.",
+      description: "Starter workspace access",
       key: "free",
       monthlyCreditsNanoUsd: 10 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Free",
@@ -28,7 +28,7 @@ export class CompanyBillingPlanCatalog {
     },
     {
       currencyCode: "USD",
-      description: "More included LLM tokens for teams using CompanyHelm throughout the week.",
+      description: "For teams using agents weekly",
       key: "plus",
       monthlyCreditsNanoUsd: 50 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Plus",
@@ -37,7 +37,7 @@ export class CompanyBillingPlanCatalog {
     },
     {
       currencyCode: "USD",
-      description: "Expanded included LLM tokens for teams running CompanyHelm daily.",
+      description: "For teams running agents daily",
       key: "pro",
       monthlyCreditsNanoUsd: 500 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Pro",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRightIcon, Loader2Icon } from "lucide-react";
+import { ArrowRightIcon, CheckCircle2Icon, Loader2Icon } from "lucide-react";
 import { config } from "@/config";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +35,27 @@ type BillingPanelProps = {
   plans: ReadonlyArray<BillingPlanRecord>;
 };
 
+const planFeatureCopy: Record<string, readonly string[]> = {
+  free: [
+    "$10 included LLM credits / month",
+    "Isolated Virtual Machines",
+    "Remote desktop",
+    "Custom Agents: MCP, Skills, instructions",
+    "Github integration",
+    "Model agnostic: OpenAI, Anthropic, OpenRouter",
+  ],
+  plus: [
+    "Everything in Free",
+    "$50 included LLM credits / month",
+  ],
+  pro: [
+    "Everything in Plus",
+    "$500 included LLM credits / month",
+  ],
+};
+
 /**
- * Summarizes the active subscription plan and remaining subscription credits inside settings so
+ * Summarizes the available subscription plans and remaining subscription credits inside settings so
  * billing state lives alongside the rest of the company configuration surface.
  */
 export function BillingPanel(props: BillingPanelProps) {
@@ -53,7 +72,7 @@ export function BillingPanel(props: BillingPanelProps) {
         <div className="min-w-0">
           <CardTitle>Billing</CardTitle>
           <CardDescription>
-            Subscription plan and managed-model credits for the current CompanyHelm workspace.
+            Subscription plans with LLM credits for the current CompanyHelm workspace.
           </CardDescription>
         </div>
       </CardHeader>
@@ -66,6 +85,9 @@ export function BillingPanel(props: BillingPanelProps) {
               </p>
               <p className="mt-2 text-sm font-semibold text-foreground">
                 {currentPlan?.name ?? props.billing.currentPlan} subscription
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Next renewal: {formatTimestamp(props.billing.nextRechargeAt)}.
               </p>
             </div>
             {pendingPlanLabel && props.billing.pendingPlanEffectiveAt ? (
@@ -115,8 +137,17 @@ export function BillingPanel(props: BillingPanelProps) {
                         {formatPlanPrice(plan)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {UsageMetrics.formatUsdFromNano(plan.monthlyCreditsNanoUsd)} included LLM tokens / month
+                        {formatPlanCredits(plan)} included LLM credits / month
                       </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {getPlanFeatures(plan).map((feature) => (
+                        <div className="flex items-start gap-2 text-xs/relaxed text-muted-foreground" key={feature}>
+                          <CheckCircle2Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="mt-auto flex flex-col gap-2">
@@ -155,21 +186,6 @@ export function BillingPanel(props: BillingPanelProps) {
         </div>
 
         <div className="rounded-xl border border-border/70 bg-background/90 px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
-              Current plan
-            </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{currentPlan?.name ?? props.billing.currentPlan}</p>
-            {currentPlan ? (
-              <p className="mt-1 text-xs text-muted-foreground">{currentPlan.description}</p>
-            ) : null}
-            <p className="mt-1 text-xs text-muted-foreground">
-              Next renewal: {formatTimestamp(props.billing.nextRechargeAt)}.
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-background/90 px-4 py-3">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
             Subscription credits
           </p>
@@ -200,6 +216,14 @@ export function BillingPanel(props: BillingPanelProps) {
       </CardContent>
     </Card>
   );
+}
+
+function getPlanFeatures(plan: BillingPlanRecord): readonly string[] {
+  return planFeatureCopy[plan.key] ?? [formatPlanCredits(plan) + " included LLM credits / month"];
+}
+
+function formatPlanCredits(plan: BillingPlanRecord): string {
+  return UsageMetrics.formatUsdFromNano(plan.monthlyCreditsNanoUsd);
 }
 
 function findPlan(plans: ReadonlyArray<BillingPlanRecord>, key: string): BillingPlanRecord | null {

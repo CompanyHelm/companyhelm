@@ -7,11 +7,14 @@ test("CompanyBillingPlanCatalog exposes wallet credits and Paddle price metadata
   const plans = catalog.listPlans();
 
   assert.deepEqual(plans.map((plan) => plan.key), ["free", "plus", "pro"]);
+  assert.equal(catalog.requirePlan("free").description, "Starter workspace access");
   assert.equal(catalog.requirePlan("free").monthlyCreditsNanoUsd, 10_000_000_000);
+  assert.equal(catalog.requirePlan("plus").description, "For teams using agents weekly");
   assert.equal(catalog.requirePlan("plus").monthlyCreditsNanoUsd, 50_000_000_000);
-  assert.equal(catalog.requirePlan("plus").paddlePriceId, "pri_placeholder_plus_monthly");
+  assert.equal(catalog.requirePlan("plus").paddlePriceId, "pri_01kqjv0bbshwax37ww7e05myec");
   assert.equal(catalog.requirePlan("plus").priceCents, 900);
+  assert.equal(catalog.requirePlan("pro").description, "For teams running agents daily");
   assert.equal(catalog.requirePlan("pro").monthlyCreditsNanoUsd, 500_000_000_000);
-  assert.equal(catalog.requirePlan("pro").paddlePriceId, "pri_placeholder_pro_monthly");
+  assert.equal(catalog.requirePlan("pro").paddlePriceId, "pri_01kqjv285arzc036p0xjwwa0vd");
   assert.equal(catalog.requirePlan("pro").priceCents, 9_900);
 });
