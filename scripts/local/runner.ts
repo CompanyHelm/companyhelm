@@ -186,7 +186,7 @@ export class LocalRunner {
     console.log(`API:      ${this.input.apiPublicUrl}`);
     console.log(`GraphQL:  ${this.input.apiPublicUrl}/graphql`);
     console.log("Auth:     dev");
-    console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent with CompanyHelm provider");
+    console.log("Seeded:   Andrea Local / CompanyHelm Local / Operator onboarding agent with CompanyHelm provider");
     console.log("Models:   Set COMPANYHELM_LOCAL_OPENAI_API_KEY to validate and seed a local OpenAI route\n");
   }
 }

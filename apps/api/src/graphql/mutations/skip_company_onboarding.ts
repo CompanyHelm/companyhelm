@@ -5,7 +5,7 @@ import { CompanyOnboardingService } from "../../services/onboarding/company_onbo
 import { Mutation } from "./mutation.ts";
 
 /**
- * Records a deliberate company-level onboarding skip without deleting the CEO chat or workflow
+ * Records a deliberate company-level onboarding skip without deleting the Operator chat or workflow
  * history, which lets the product distinguish an intentional bypass from a completed setup.
  */
 @injectable()

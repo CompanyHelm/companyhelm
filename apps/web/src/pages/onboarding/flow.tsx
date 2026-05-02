@@ -320,7 +320,7 @@ export function useOnboardingFlowController(options?: {
       return;
     }
 
-    // The root onboarding route can remount while the CEO chat is provisioning. This keeps the
+    // The root onboarding route can remount while the Operator chat is provisioning. This keeps the
     // ensure mutation idempotent from the client side so we do not create duplicate requests.
     ensureRequestKeyRef.current = requestKey;
     setErrorMessage(null);
@@ -337,7 +337,7 @@ export function useOnboardingFlowController(options?: {
         const ensuredOnboarding = response.EnsureCompanyOnboarding;
         if (!ensuredOnboarding.agentId || !ensuredOnboarding.sessionId) {
           ensureRequestKeyRef.current = null;
-          setErrorMessage("Company onboarding did not return a CEO chat.");
+          setErrorMessage("Company onboarding did not return an Operator chat.");
         }
       },
       onError: (error) => {

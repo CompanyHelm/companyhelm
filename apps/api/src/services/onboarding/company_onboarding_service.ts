@@ -1,7 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
-  agents,
   companyGithubInstallations,
   companyOnboardings,
   modelProviderCredentials,
@@ -61,7 +60,7 @@ type CompanyOnboardingBootstrapService = {
       companyId: string;
       llmSetupStatus: CompanyOnboardingLlmSetupStatus;
     },
-  ): Promise<void>;
+  ): Promise<AgentRow>;
 };
 
 type CompanyOnboardingRow = CompanyOnboardingRecord;
@@ -91,7 +90,7 @@ type InsertableOnboardingDatabase = {
 
 /**
  * Owns the company-level onboarding state machine while deliberately leaving the actual guidance
- * work in the existing CEO chat and workflow runtime. The service only records whether a company
+ * work in the existing Operator chat and workflow runtime. The service only records whether a company
  * should be focused into onboarding and which durable chat/workflow represents that process.
  */
 @injectable()
@@ -274,11 +273,10 @@ export class CompanyOnboardingService {
       }
       const onboardingReadyForChat = await this.ensureDirectSetupResolved(tx, existingOnboarding);
 
-      await this.companyBootstrapService.ensureOnboardingAssets(tx, {
+      const agent = await this.companyBootstrapService.ensureOnboardingAssets(tx, {
         companyId: input.companyId,
         llmSetupStatus: onboardingReadyForChat.llmSetupStatus,
       });
-      const agent = await this.requireSeedAgent(tx, input.companyId);
       const workflow = await this.requireSeedWorkflow(tx, input.companyId);
       const startedRun = await this.workflowService.startWorkflowRunInTransaction(tx, {
         agentId: agent.id,
@@ -435,23 +433,6 @@ export class CompanyOnboardingService {
     }
 
     return updatedOnboarding;
-  }
-
-  private async requireSeedAgent(tx: AppRuntimeTransaction, companyId: string): Promise<AgentRow> {
-    const [agent] = await tx
-      .select({
-        id: agents.id,
-      })
-      .from(agents)
-      .where(and(
-        eq(agents.companyId, companyId),
-        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
-      )) as AgentRow[];
-    if (!agent) {
-      throw new Error("Company onboarding requires the CEO agent.");
-    }
-
-    return agent;
   }
 
   private async requireSeedWorkflow(tx: AppRuntimeTransaction, companyId: string): Promise<WorkflowRow> {

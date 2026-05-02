@@ -105,7 +105,8 @@ type LocalDevDemoSessionSeedRecord = {
 };
 
 /**
- * Seeds the deterministic dev-auth user, company, and CEO agent used by local-dev and local-e2b.
+ * Seeds the deterministic dev-auth user, company, and onboarding Operator agent used by local-dev
+ * and local-e2b.
  * It reuses the normal company bootstrap path so the agent is wired to the CompanyHelm-managed
  * model provider and the default CompanyHelm compute provider exactly like product onboarding.
  */
@@ -313,11 +314,11 @@ export class LocalDevSeedScript {
         plan: "pro",
       });
       await companyBootstrapService.ensureCompanyDefaults(transaction as DatabaseTransactionInterface, companyId);
-      await companyBootstrapService.ensureOnboardingAssets(transaction as DatabaseTransactionInterface, {
+      const seedAgent = await companyBootstrapService.ensureOnboardingAssets(transaction as DatabaseTransactionInterface, {
         companyId,
         llmSetupStatus: "company_managed",
       });
-      const agent = await this.loadSeedAgent(transaction as DatabaseTransactionInterface, companyId);
+      const agent = await this.loadSeedAgent(transaction as DatabaseTransactionInterface, seedAgent.id);
       await this.seedDemoChats(transaction as DatabaseTransactionInterface, {
         agent,
         baseDate: new Date(),
@@ -734,7 +735,10 @@ if (company.usesCompanyHelmManagedModel) {
       .onConflictDoNothing();
   }
 
-  private async loadSeedAgent(transaction: DatabaseTransactionInterface, companyId: string): Promise<LocalDevAgentRecord> {
+  private async loadSeedAgent(
+    transaction: DatabaseTransactionInterface,
+    agentId: string,
+  ): Promise<LocalDevAgentRecord> {
     const [agent] = await transaction
       .select({
         defaultModelCredentialSource: agents.defaultModelCredentialSource,
@@ -744,17 +748,15 @@ if (company.usesCompanyHelmManagedModel) {
         id: agents.id,
       })
       .from(agents)
-      .where(and(
-        eq(agents.companyId, companyId),
-        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
-      ))
+      .where(eq(agents.id, agentId))
       .limit(1) as LocalDevAgentRecord[];
     if (!agent) {
-      throw new Error("Failed to seed the local CEO agent.");
+      throw new Error("Failed to load the local Operator agent.");
     }
 
     return agent;
   }
+
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

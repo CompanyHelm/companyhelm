@@ -86,5 +86,5 @@ function OnboardingPageContent() {
     return <OnboardingPageLoadingState message="Opening agent creation..." />;
   }
 
-  return <OnboardingPageLoadingState message="Provisioning the CEO onboarding chat..." />;
+  return <OnboardingPageLoadingState message="Provisioning the Operator onboarding chat..." />;
 }

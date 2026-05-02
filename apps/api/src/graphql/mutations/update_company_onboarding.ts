@@ -18,7 +18,7 @@ type UpdateCompanyOnboardingMutationArguments = {
 };
 
 /**
- * Persists the static onboarding steps that must be completed or explicitly skipped before the CEO
+ * Persists the static onboarding steps that must be completed or explicitly skipped before the Operator
  * workflow starts. The page uses this to save mission capture plus the GitHub and LLM setup choices.
  */
 @injectable()
