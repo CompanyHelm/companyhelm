@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5103a2d80066a0479d5f2e695d56c563>>
+ * @generated SignedSource<<a7dee6f8139af738fd8c22ef97147206>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type usersPageGrantPlatformAdminMutation$variables = {
 };
 export type usersPageGrantPlatformAdminMutation$data = {
   readonly GrantPlatformAdmin: {
+    readonly clerkUserId: string | null | undefined;
     readonly companyCount: number;
     readonly createdAt: string;
     readonly email: string;
@@ -60,6 +61,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "clerkUserId",
         "storageKey": null
       },
       {
@@ -133,16 +141,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "4d6c447a246740d31cd32e3e402f1768",
+    "cacheID": "a25c3fbb8fedfa0672bfed97dbea8350",
     "id": null,
     "metadata": {},
     "name": "usersPageGrantPlatformAdminMutation",
     "operationKind": "mutation",
-    "text": "mutation usersPageGrantPlatformAdminMutation(\n  $input: GrantPlatformAdminInput!\n) {\n  GrantPlatformAdmin(input: $input) {\n    id\n    email\n    firstName\n    lastName\n    isPlatformAdmin\n    companyCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation usersPageGrantPlatformAdminMutation(\n  $input: GrantPlatformAdminInput!\n) {\n  GrantPlatformAdmin(input: $input) {\n    id\n    clerkUserId\n    email\n    firstName\n    lastName\n    isPlatformAdmin\n    companyCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c1207e4b3ae3f500e2d5c88e157f882e";
+(node as any).hash = "4335578e12cb23662f7a507a785cee4d";
 
 export default node;

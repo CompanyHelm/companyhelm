@@ -11,6 +11,7 @@ type GrantPlatformAdminMutationArguments = {
 };
 
 type PlatformAdminUserGrantRow = {
+  clerkUserId: string | null;
   companyCount: number;
   createdAt: Date;
   email: string;
@@ -21,6 +22,7 @@ type PlatformAdminUserGrantRow = {
 };
 
 type GraphqlPlatformAdminUser = {
+  clerkUserId: string | null;
   companyCount: number;
   createdAt: string;
   email: string;
@@ -64,6 +66,7 @@ export class GrantPlatformAdminMutation extends Mutation<
             from ${companyMembers}
             where ${companyMembers.userId} = ${users.id}
           )`,
+          clerkUserId: users.clerkUserId,
           createdAt: users.created_at,
           email: users.email,
           firstName: users.first_name,
@@ -88,6 +91,7 @@ export class GrantPlatformAdminMutation extends Mutation<
         .onConflictDoNothing();
 
       return {
+        clerkUserId: targetUser.clerkUserId,
         companyCount: targetUser.companyCount,
         createdAt: targetUser.createdAt.toISOString(),
         email: targetUser.email,

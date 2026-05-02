@@ -6,9 +6,11 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 type PlatformAdminUsersArguments = {
   page: number;
   pageSize: number;
+  search?: string | null;
 };
 
 type PlatformAdminUserRow = {
+  clerkUserId: string | null;
   createdAt: Date;
   email: string;
   firstName: string;
@@ -23,6 +25,7 @@ type PlatformAdminUserCountRow = {
 };
 
 type GraphqlPlatformAdminUser = {
+  clerkUserId: string | null;
   companyCount: number;
   createdAt: string;
   email: string;
@@ -67,13 +70,22 @@ export class PlatformAdminUsersQueryResolver {
     const page = this.normalizePage(arguments_.page);
     const pageSize = this.normalizePageSize(arguments_.pageSize);
     const offset = (page - 1) * pageSize;
+    const searchCondition = this.buildSearchCondition(arguments_.search);
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const [countRow] = await tx
-        .select({
-          totalCount: sql<number>`count(*)::int`,
-        })
-        .from(users) as PlatformAdminUserCountRow[];
+      const countRows = searchCondition
+        ? await tx
+          .select({
+            totalCount: sql<number>`count(*)::int`,
+          })
+          .from(users)
+          .where(searchCondition) as PlatformAdminUserCountRow[]
+        : await tx
+          .select({
+            totalCount: sql<number>`count(*)::int`,
+          })
+          .from(users) as PlatformAdminUserCountRow[];
+      const [countRow] = countRows;
       const totalCount = countRow?.totalCount ?? 0;
       const membershipCounts = tx
         .select({
@@ -83,29 +95,54 @@ export class PlatformAdminUsersQueryResolver {
         .from(companyMembers)
         .groupBy(companyMembers.userId)
         .as("membership_counts");
-      const userRows = await tx
-        .select({
-          companyCount: sql<number>`coalesce(${membershipCounts.companyCount}, 0)::int`,
-          createdAt: users.created_at,
-          email: users.email,
-          firstName: users.first_name,
-          id: users.id,
-          isPlatformAdmin: sql<boolean>`exists (
-            select 1
-            from ${platformAdmins}
-            where ${platformAdmins.userId} = ${users.id}
-          )`,
-          lastName: users.last_name,
-          updatedAt: users.updated_at,
-        })
-        .from(users)
-        .leftJoin(membershipCounts, eq(membershipCounts.userId, users.id))
-        .orderBy(desc(users.created_at), desc(users.id))
-        .limit(pageSize)
-        .offset(offset) as Array<PlatformAdminUserRow & { companyCount: number }>;
+      const userRows = searchCondition
+        ? await tx
+          .select({
+            clerkUserId: users.clerkUserId,
+            companyCount: sql<number>`coalesce(${membershipCounts.companyCount}, 0)::int`,
+            createdAt: users.created_at,
+            email: users.email,
+            firstName: users.first_name,
+            id: users.id,
+            isPlatformAdmin: sql<boolean>`exists (
+              select 1
+              from ${platformAdmins}
+              where ${platformAdmins.userId} = ${users.id}
+            )`,
+            lastName: users.last_name,
+            updatedAt: users.updated_at,
+          })
+          .from(users)
+          .leftJoin(membershipCounts, eq(membershipCounts.userId, users.id))
+          .where(searchCondition)
+          .orderBy(desc(users.created_at), desc(users.id))
+          .limit(pageSize)
+          .offset(offset) as Array<PlatformAdminUserRow & { companyCount: number }>
+        : await tx
+          .select({
+            clerkUserId: users.clerkUserId,
+            companyCount: sql<number>`coalesce(${membershipCounts.companyCount}, 0)::int`,
+            createdAt: users.created_at,
+            email: users.email,
+            firstName: users.first_name,
+            id: users.id,
+            isPlatformAdmin: sql<boolean>`exists (
+              select 1
+              from ${platformAdmins}
+              where ${platformAdmins.userId} = ${users.id}
+            )`,
+            lastName: users.last_name,
+            updatedAt: users.updated_at,
+          })
+          .from(users)
+          .leftJoin(membershipCounts, eq(membershipCounts.userId, users.id))
+          .orderBy(desc(users.created_at), desc(users.id))
+          .limit(pageSize)
+          .offset(offset) as Array<PlatformAdminUserRow & { companyCount: number }>;
 
       return {
         nodes: userRows.map((userRow) => ({
+          clerkUserId: userRow.clerkUserId,
           companyCount: userRow.companyCount,
           createdAt: userRow.createdAt.toISOString(),
           email: userRow.email,
@@ -122,6 +159,22 @@ export class PlatformAdminUsersQueryResolver {
       };
     });
   };
+
+  private buildSearchCondition(search: string | null | undefined) {
+    const trimmedSearch = search?.trim() ?? "";
+    if (trimmedSearch.length === 0) {
+      return null;
+    }
+
+    const searchPattern = `%${trimmedSearch}%`;
+    return sql<boolean>`
+      ${users.id}::text ilike ${searchPattern}
+      or coalesce(${users.clerkUserId}, '') ilike ${searchPattern}
+      or ${users.email} ilike ${searchPattern}
+      or ${users.first_name} ilike ${searchPattern}
+      or coalesce(${users.last_name}, '') ilike ${searchPattern}
+    `;
+  }
 
   private normalizePage(page: number): number {
     if (!Number.isInteger(page) || page < 1) {
