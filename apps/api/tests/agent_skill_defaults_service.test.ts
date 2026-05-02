@@ -366,6 +366,7 @@ test("SkillService expands attached system skill group into available system ski
     availableSkills.map((skill) => skill.id),
     [
       "system:company_directory",
+      "system:companyhelm_guide",
       "system:execute_workflows",
       "system:manage_agents",
       "system:manage_artifacts",

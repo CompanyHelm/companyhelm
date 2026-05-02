@@ -471,6 +471,14 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     fileList: [],
   }, {
     companyId: "company-123",
+    id: "system:companyhelm_guide",
+    name: "CompanyHelm guide",
+    skillGroupId: "system",
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
+  }, {
+    companyId: "company-123",
     id: "system:execute_workflows",
     name: "Execute workflows",
     skillGroupId: "system",
@@ -1058,6 +1066,9 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     skillGroupId: null,
   }, {
     id: "system:company_directory",
+    skillGroupId: "system",
+  }, {
+    id: "system:companyhelm_guide",
     skillGroupId: "system",
   }, {
     id: "system:execute_workflows",
