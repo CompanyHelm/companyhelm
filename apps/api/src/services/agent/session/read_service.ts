@@ -114,7 +114,7 @@ type SessionMessageRow = {
   updatedAt: Date;
 };
 
-export type SessionMessageErrorKind = "CYBERSECURITY_RISK" | "UNKNOWN";
+export type SessionMessageErrorKind = "CONTEXT_LENGTH_EXCEEDED" | "CYBERSECURITY_RISK" | "UNKNOWN";
 
 type SessionTurnRow = {
   id: string;
@@ -159,6 +159,14 @@ const MAX_SESSION_TRANSCRIPT_PAGE_SIZE = 200;
 const SESSION_MESSAGE_CURSOR_PREFIX = "session-message:";
 const CYBERSECURITY_RISK_ERROR_PREFIX =
   "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.";
+const CONTEXT_LENGTH_EXCEEDED_ERROR_PREFIX =
+  "Codex could not continue because this request exceeds the current model context window.";
+
+type CodexProviderErrorPayload = {
+  error?: {
+    code?: unknown;
+  };
+};
 
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
@@ -1271,6 +1279,25 @@ export class SessionReadService {
       return "CYBERSECURITY_RISK";
     }
 
+    if (messageRow.errorMessage.startsWith(CONTEXT_LENGTH_EXCEEDED_ERROR_PREFIX)
+      || this.parseCodexErrorCode(messageRow.errorMessage) === "context_length_exceeded") {
+      return "CONTEXT_LENGTH_EXCEEDED";
+    }
+
     return "UNKNOWN";
+  }
+
+  private parseCodexErrorCode(errorMessage: string): string | null {
+    const jsonStartIndex = errorMessage.indexOf("{");
+    if (jsonStartIndex < 0) {
+      return null;
+    }
+
+    try {
+      const parsedPayload = JSON.parse(errorMessage.slice(jsonStartIndex)) as CodexProviderErrorPayload;
+      return typeof parsedPayload.error?.code === "string" ? parsedPayload.error.code : null;
+    } catch {
+      return null;
+    }
   }
 }

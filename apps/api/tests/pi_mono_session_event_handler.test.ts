@@ -1025,6 +1025,57 @@ test("PiMonoSessionEventHandler formats Codex cyber policy errors before persist
   assert.doesNotMatch(String(messageRecord?.errorMessage), /cyber_policy/);
 });
 
+test("PiMonoSessionEventHandler formats Codex context length errors before persisting them", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create({
+    modelProvider: "openai-codex",
+  });
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      codexRateLimitService: {
+        async refreshCredentialLimits() {
+          return undefined;
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        errorMessage: `Codex error: ${JSON.stringify({
+          error: {
+            code: "context_length_exceeded",
+            message: "Your input exceeds the context window of this model. Please adjust your input and try again.",
+            param: "input",
+            type: "invalid_request_error",
+          },
+          sequence_number: 3,
+          type: "error",
+        })}`,
+        role: "assistant",
+        stopReason: "error",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.isError, true);
+  assert.match(
+    String(messageRecord?.errorMessage),
+    /exceeds the current model context window/,
+  );
+  assert.match(String(messageRecord?.errorMessage), /Switch this agent to the GPT-5\.4 model/);
+  assert.doesNotMatch(String(messageRecord?.errorMessage), /context_length_exceeded/);
+});
+
 test("PiMonoSessionEventHandler keeps default provider errors unchanged", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create({
     modelProvider: "openai",

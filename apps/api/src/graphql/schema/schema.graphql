@@ -901,6 +901,7 @@ type SessionMessage {
 }
 
 enum SessionMessageErrorKind {
+  CONTEXT_LENGTH_EXCEEDED
   CYBERSECURITY_RISK
   UNKNOWN
 }

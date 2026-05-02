@@ -742,7 +742,10 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                       isError={message.isError}
                       recoveryAction={
                         contentIndex === 0
-                          && message.errorKind === "CYBERSECURITY_RISK"
+                          && (
+                            message.errorKind === "CONTEXT_LENGTH_EXCEEDED"
+                            || message.errorKind === "CYBERSECURITY_RISK"
+                          )
                           && onSwitchCybersecurityRiskModel
                           ? { onClick: onSwitchCybersecurityRiskModel }
                           : null

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4c653edb6b03a992ec7a4fd0390a3da>>
+ * @generated SignedSource<<118f6d4bc6acc882ae3f5fb01b0ef221>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type SessionMessageErrorKind = "CYBERSECURITY_RISK" | "UNKNOWN" | "%future added value";
+export type SessionMessageErrorKind = "CONTEXT_LENGTH_EXCEEDED" | "CYBERSECURITY_RISK" | "UNKNOWN" | "%future added value";
 export type chatsPageDataTranscriptQuery$variables = {
   after?: string | null | undefined;
   first: number;
