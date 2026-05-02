@@ -698,13 +698,13 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                           <span
                             aria-hidden="true"
                             className={cn(
-                              "inline-flex size-5 items-center justify-center rounded-full border text-[11px] font-semibold leading-none",
+                              "inline-flex items-center justify-center leading-none",
                               templateOption.computerUse
-                                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                                : "border-muted-foreground/25 bg-muted text-muted-foreground",
+                                ? "text-emerald-600"
+                                : "text-muted-foreground",
                             )}
                           >
-                            {templateOption.computerUse ? <CheckIcon className="size-3.5" /> : <XIcon className="size-3.5" />}
+                            {templateOption.computerUse ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
                           </span>
                           <span>Computer use {templateOption.computerUse ? "enabled" : "disabled"}</span>
                         </p>
