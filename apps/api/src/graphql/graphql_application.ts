@@ -400,6 +400,7 @@ export class GraphqlApplication {
       meQueryResolver,
       companySettingsQueryResolver,
       undefined,
+      undefined,
       githubAppConfigQueryResolver,
       githubInstallationsQueryResolver,
       githubRepositoriesQueryResolver,

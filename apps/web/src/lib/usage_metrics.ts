@@ -41,7 +41,9 @@ type GraphqlUsageAggregateRecord = {
   requestCount: number;
   agentId: string | null | undefined;
   companyId: string;
+  modelCredentialSource?: string | null | undefined;
   modelProviderCredentialId: string | null | undefined;
+  platformModelProviderCredentialId?: string | null | undefined;
   sessionId: string | null | undefined;
   scopeType: string;
   totalCostNanoUsd: number;
@@ -90,6 +92,10 @@ export class UsageMetrics {
 
   private static resolveGraphqlScopeId(record: GraphqlUsageAggregateRecord): string {
     if (record.scopeType === "model_provider_credential") {
+      if (record.modelCredentialSource === "platform") {
+        return record.platformModelProviderCredentialId ?? "";
+      }
+
       return record.modelProviderCredentialId ?? "";
     }
     if (record.scopeType === "agent") {

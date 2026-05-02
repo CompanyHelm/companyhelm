@@ -149,8 +149,11 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   scopeType: llmUsageAggregateScopeEnum("scope_type").notNull(),
+  modelCredentialSource: modelCredentialSourceEnum("model_credential_source"),
   modelProviderCredentialId: uuid("model_provider_credential_id")
     .references(() => modelProviderCredentials.id, { onDelete: "cascade" }),
+  platformModelProviderCredentialId: uuid("platform_model_provider_credential_id")
+    .references(() => platformModelProviderCredentials.id, { onDelete: "cascade" }),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" }),
   sessionId: uuid("session_id")
@@ -182,14 +185,19 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
     .on(table.companyId, table.scopeType),
   modelProviderCredentialScopeIndex: index("llm_usage_aggregates_model_provider_credential_scope_idx")
     .on(table.companyId, table.modelProviderCredentialId),
+  platformModelProviderCredentialScopeIndex: index("llm_usage_aggregates_platform_model_provider_credential_scope_idx")
+    .on(table.companyId, table.platformModelProviderCredentialId),
   sessionScopeIndex: index("llm_usage_aggregates_session_scope_idx")
     .on(table.companyId, table.sessionId),
   companyScopePeriodUnique: uniqueIndex("llm_usage_aggregates_company_scope_period_uidx")
     .on(table.companyId, table.scopeType, table.period, table.periodStart)
     .where(sql`${table.scopeType} IN ('company', 'managed_model_provider_credential')`),
   modelProviderCredentialScopePeriodUnique: uniqueIndex("llm_usage_aggregates_model_provider_credential_scope_period_uidx")
-    .on(table.companyId, table.modelProviderCredentialId, table.period, table.periodStart)
-    .where(sql`${table.scopeType} = 'model_provider_credential'`),
+    .on(table.companyId, table.modelCredentialSource, table.modelProviderCredentialId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'user_provided'`),
+  platformModelProviderCredentialScopePeriodUnique: uniqueIndex("llm_usage_aggregates_platform_model_provider_credential_scope_period_uidx")
+    .on(table.companyId, table.modelCredentialSource, table.platformModelProviderCredentialId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'platform'`),
   agentScopePeriodUnique: uniqueIndex("llm_usage_aggregates_agent_scope_period_uidx")
     .on(table.companyId, table.agentId, table.period, table.periodStart)
     .where(sql`${table.scopeType} = 'agent'`),
@@ -199,13 +207,15 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
   scopeReferenceCheck: check(
     "llm_usage_aggregates_scope_reference_check",
     sql`(
-      (${table.scopeType} IN ('company', 'managed_model_provider_credential') AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} IN ('company', 'managed_model_provider_credential') AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'model_provider_credential' AND ${table.modelProviderCredentialId} IS NOT NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'user_provided' AND ${table.modelProviderCredentialId} IS NOT NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'agent' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NOT NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'platform' AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NOT NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'session' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NOT NULL)
+      (${table.scopeType} = 'agent' AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NOT NULL AND ${table.sessionId} IS NULL)
+      OR
+      (${table.scopeType} = 'session' AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NOT NULL)
     )`,
   ),
 }));

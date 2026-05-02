@@ -118,7 +118,9 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.ok(agentDay);
   assert.equal((agentDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(providerDay);
+  assert.equal(providerDay.modelCredentialSource, "user_provided");
   assert.equal(providerDay.modelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
+  assert.equal(providerDay.platformModelProviderCredentialId, null);
   assert.equal((providerDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(companyMonth);
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
@@ -173,8 +175,17 @@ test("SessionTurnUsageService stores platform subscription costs as managed virt
   const managedDay = harness.aggregateRows.find((row) => {
     return row.scopeType === "managed_model_provider_credential" && row.period === "day";
   });
+  const providerDay = harness.aggregateRows.find((row) => {
+    return row.scopeType === "model_provider_credential" && row.period === "day";
+  });
+
   assert.ok(managedDay);
   assert.equal(managedDay.modelProviderCredentialId, null);
+  assert.equal(managedDay.platformModelProviderCredentialId, null);
+  assert.ok(providerDay);
+  assert.equal(providerDay.modelCredentialSource, "platform");
+  assert.equal(providerDay.modelProviderCredentialId, null);
+  assert.equal(providerDay.platformModelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
 });
 
 

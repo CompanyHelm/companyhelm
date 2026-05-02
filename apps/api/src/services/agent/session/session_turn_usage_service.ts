@@ -58,9 +58,11 @@ type AggregatePeriod = "total" | "day" | "month";
 
 type AggregateRecord = {
   agentId: string | null;
+  modelCredentialSource: SessionTurnUsageCredentialSource | null;
   modelProviderCredentialId: string | null;
   period: AggregatePeriod;
   periodStart: Date;
+  platformModelProviderCredentialId: string | null;
   sessionId: string | null;
   scopeType: AggregateScopeType;
 };
@@ -132,11 +134,13 @@ export class SessionTurnUsageService {
             inputCostNanoUsd: usage.inputCostNanoUsd,
             inputCostNanoVirtualUsd: usage.inputCostNanoVirtualUsd,
             inputTokens: usage.inputTokens,
+            modelCredentialSource: aggregateRecord.modelCredentialSource,
             outputCostNanoUsd: usage.outputCostNanoUsd,
             outputCostNanoVirtualUsd: usage.outputCostNanoVirtualUsd,
             outputTokens: usage.outputTokens,
             agentId: aggregateRecord.agentId,
             modelProviderCredentialId: aggregateRecord.modelProviderCredentialId,
+            platformModelProviderCredentialId: aggregateRecord.platformModelProviderCredentialId,
             period: aggregateRecord.period,
             periodStart: aggregateRecord.periodStart,
             requestCount: 1,
@@ -245,94 +249,141 @@ export class SessionTurnUsageService {
   private buildAggregateRecords(input: SessionTurnUsageRecordInput): AggregateRecord[] {
     const dayPeriodStart = this.resolveUtcDayPeriodStart(input.recordedAt);
     const monthPeriodStart = this.resolveUtcMonthPeriodStart(input.recordedAt);
-    const modelProviderScopeType = input.credentialSource === "platform"
-      ? "managed_model_provider_credential"
-      : "model_provider_credential";
+    const modelProviderCredentialId = input.credentialSource === "user_provided" ? input.modelProviderCredentialId : null;
+    const platformModelProviderCredentialId = input.credentialSource === "platform" ? input.modelProviderCredentialId : null;
 
     return [
       {
         agentId: null,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
+        platformModelProviderCredentialId: null,
         sessionId: input.sessionId,
         scopeType: "session",
       },
       {
         agentId: input.agentId,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "agent",
       },
       {
         agentId: input.agentId,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "day",
         periodStart: dayPeriodStart,
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "agent",
       },
       {
         agentId: input.agentId,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "month",
         periodStart: monthPeriodStart,
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "agent",
       },
       {
         agentId: null,
-        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
-          ? input.modelProviderCredentialId
-          : null,
+        modelCredentialSource: input.credentialSource,
+        modelProviderCredentialId,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
+        platformModelProviderCredentialId,
         sessionId: null,
-        scopeType: modelProviderScopeType,
+        scopeType: "model_provider_credential",
       },
       {
         agentId: null,
-        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
-          ? input.modelProviderCredentialId
-          : null,
+        modelCredentialSource: input.credentialSource,
+        modelProviderCredentialId,
         period: "day",
         periodStart: dayPeriodStart,
+        platformModelProviderCredentialId,
         sessionId: null,
-        scopeType: modelProviderScopeType,
+        scopeType: "model_provider_credential",
       },
       {
         agentId: null,
-        modelProviderCredentialId: modelProviderScopeType === "model_provider_credential"
-          ? input.modelProviderCredentialId
-          : null,
+        modelCredentialSource: input.credentialSource,
+        modelProviderCredentialId,
         period: "month",
         periodStart: monthPeriodStart,
+        platformModelProviderCredentialId,
         sessionId: null,
-        scopeType: modelProviderScopeType,
+        scopeType: "model_provider_credential",
       },
+      ...(input.credentialSource === "platform"
+        ? [
+          {
+            agentId: null,
+            modelCredentialSource: null,
+            modelProviderCredentialId: null,
+            period: "total" as const,
+            periodStart: this.resolveTotalPeriodStart(),
+            platformModelProviderCredentialId: null,
+            sessionId: null,
+            scopeType: "managed_model_provider_credential" as const,
+          },
+          {
+            agentId: null,
+            modelCredentialSource: null,
+            modelProviderCredentialId: null,
+            period: "day" as const,
+            periodStart: dayPeriodStart,
+            platformModelProviderCredentialId: null,
+            sessionId: null,
+            scopeType: "managed_model_provider_credential" as const,
+          },
+          {
+            agentId: null,
+            modelCredentialSource: null,
+            modelProviderCredentialId: null,
+            period: "month" as const,
+            periodStart: monthPeriodStart,
+            platformModelProviderCredentialId: null,
+            sessionId: null,
+            scopeType: "managed_model_provider_credential" as const,
+          },
+        ]
+        : []),
       {
         agentId: null,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "total",
         periodStart: this.resolveTotalPeriodStart(),
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "company",
       },
       {
         agentId: null,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "day",
         periodStart: dayPeriodStart,
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "company",
       },
       {
         agentId: null,
+        modelCredentialSource: null,
         modelProviderCredentialId: null,
         period: "month",
         periodStart: monthPeriodStart,
+        platformModelProviderCredentialId: null,
         sessionId: null,
         scopeType: "company",
       },
@@ -359,14 +410,28 @@ export class SessionTurnUsageService {
     }
 
     if (aggregateRecord.scopeType === "model_provider_credential") {
+      if (aggregateRecord.modelCredentialSource === "platform") {
+        return {
+          target: [
+            llmUsageAggregates.companyId,
+            llmUsageAggregates.modelCredentialSource,
+            llmUsageAggregates.platformModelProviderCredentialId,
+            llmUsageAggregates.period,
+            llmUsageAggregates.periodStart,
+          ],
+          targetWhere: sql`${llmUsageAggregates.scopeType} = 'model_provider_credential' AND ${llmUsageAggregates.modelCredentialSource} = 'platform'`,
+        };
+      }
+
       return {
         target: [
           llmUsageAggregates.companyId,
+          llmUsageAggregates.modelCredentialSource,
           llmUsageAggregates.modelProviderCredentialId,
           llmUsageAggregates.period,
           llmUsageAggregates.periodStart,
         ],
-        targetWhere: sql`${llmUsageAggregates.scopeType} = 'model_provider_credential'`,
+        targetWhere: sql`${llmUsageAggregates.scopeType} = 'model_provider_credential' AND ${llmUsageAggregates.modelCredentialSource} = 'user_provided'`,
       };
     }
 

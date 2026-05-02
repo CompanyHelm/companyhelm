@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ab306b1d31523731d6ed4e4fd768c0e8>>
+ * @generated SignedSource<<e34d7f14e7271be3fbbd7ac33852f703>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,20 +16,49 @@ export type usagePageQuery$variables = {
   monthlyStart: string;
 };
 export type usagePageQuery$data = {
+  readonly LlmUsageProviderCredentials: ReadonlyArray<{
+    readonly baseUrl: string | null | undefined;
+    readonly credentialId: string;
+    readonly id: string;
+    readonly modelCredentialSource: string;
+    readonly modelProvider: string;
+    readonly name: string;
+    readonly status: string;
+    readonly total: {
+      readonly agentId: string | null | undefined;
+      readonly cacheReadCostNanoUsd: number;
+      readonly cacheReadCostNanoVirtualUsd: number;
+      readonly cacheReadTokens: number;
+      readonly cacheWriteCostNanoUsd: number;
+      readonly cacheWriteCostNanoVirtualUsd: number;
+      readonly cacheWriteTokens: number;
+      readonly companyId: string;
+      readonly inputCostNanoUsd: number;
+      readonly inputCostNanoVirtualUsd: number;
+      readonly inputTokens: number;
+      readonly modelCredentialSource: string | null | undefined;
+      readonly modelProviderCredentialId: string | null | undefined;
+      readonly outputCostNanoUsd: number;
+      readonly outputCostNanoVirtualUsd: number;
+      readonly outputTokens: number;
+      readonly period: LlmUsageAggregatePeriod;
+      readonly periodStart: string;
+      readonly platformModelProviderCredentialId: string | null | undefined;
+      readonly requestCount: number;
+      readonly scopeType: LlmUsageAggregateScope;
+      readonly sessionId: string | null | undefined;
+      readonly totalCostNanoUsd: number;
+      readonly totalCostNanoVirtualUsd: number;
+      readonly totalTokens: number;
+    };
+    readonly type: string;
+  }>;
   readonly Me: {
     readonly company: {
       readonly id: string;
       readonly name: string;
     };
   };
-  readonly ModelProviderCredentials: ReadonlyArray<{
-    readonly baseUrl: string | null | undefined;
-    readonly id: string;
-    readonly modelProvider: string;
-    readonly name: string;
-    readonly status: string;
-    readonly type: string;
-  }>;
   readonly companyDaily: ReadonlyArray<{
     readonly agentId: string | null | undefined;
     readonly cacheReadCostNanoUsd: number;
@@ -81,31 +110,6 @@ export type usagePageQuery$data = {
     readonly totalTokens: number;
   }>;
   readonly companyTotal: ReadonlyArray<{
-    readonly agentId: string | null | undefined;
-    readonly cacheReadCostNanoUsd: number;
-    readonly cacheReadCostNanoVirtualUsd: number;
-    readonly cacheReadTokens: number;
-    readonly cacheWriteCostNanoUsd: number;
-    readonly cacheWriteCostNanoVirtualUsd: number;
-    readonly cacheWriteTokens: number;
-    readonly companyId: string;
-    readonly inputCostNanoUsd: number;
-    readonly inputCostNanoVirtualUsd: number;
-    readonly inputTokens: number;
-    readonly modelProviderCredentialId: string | null | undefined;
-    readonly outputCostNanoUsd: number;
-    readonly outputCostNanoVirtualUsd: number;
-    readonly outputTokens: number;
-    readonly period: LlmUsageAggregatePeriod;
-    readonly periodStart: string;
-    readonly requestCount: number;
-    readonly scopeType: LlmUsageAggregateScope;
-    readonly sessionId: string | null | undefined;
-    readonly totalCostNanoUsd: number;
-    readonly totalCostNanoVirtualUsd: number;
-    readonly totalTokens: number;
-  }>;
-  readonly providerTotals: ReadonlyArray<{
     readonly agentId: string | null | undefined;
     readonly cacheReadCostNanoUsd: number;
     readonly cacheReadCostNanoVirtualUsd: number;
@@ -426,58 +430,56 @@ v31 = [
     "name": "input"
   }
 ],
-v32 = [
-  {
-    "kind": "Literal",
-    "name": "input",
-    "value": {
-      "period": "total",
-      "scopeType": "model_provider_credential"
-    }
-  }
-],
+v32 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "credentialId",
+  "storageKey": null
+},
 v33 = {
   "alias": null,
   "args": null,
-  "concreteType": "ModelProviderCredential",
-  "kind": "LinkedField",
-  "name": "ModelProviderCredentials",
-  "plural": true,
-  "selections": [
-    (v1/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "baseUrl",
-      "storageKey": null
-    },
-    (v2/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "modelProvider",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "status",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "type",
-      "storageKey": null
-    }
-  ],
+  "kind": "ScalarField",
+  "name": "modelCredentialSource",
   "storageKey": null
 },
-v34 = [
+v34 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProvider",
+  "storageKey": null
+},
+v35 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v36 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v37 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "baseUrl",
+  "storageKey": null
+},
+v38 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "platformModelProviderCredentialId",
+  "storageKey": null
+},
+v39 = [
   (v5/*: any*/),
   (v6/*: any*/),
   (v7/*: any*/),
@@ -542,16 +544,60 @@ return {
         "storageKey": null
       },
       {
-        "alias": "providerTotals",
-        "args": (v32/*: any*/),
-        "concreteType": "LlmUsageAggregate",
+        "alias": null,
+        "args": null,
+        "concreteType": "LlmUsageProviderCredential",
         "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
+        "name": "LlmUsageProviderCredentials",
         "plural": true,
-        "selections": (v28/*: any*/),
-        "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"model_provider_credential\"})"
-      },
-      (v33/*: any*/)
+        "selections": [
+          (v1/*: any*/),
+          (v32/*: any*/),
+          (v33/*: any*/),
+          (v2/*: any*/),
+          (v34/*: any*/),
+          (v35/*: any*/),
+          (v36/*: any*/),
+          (v37/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "LlmUsageAggregate",
+            "kind": "LinkedField",
+            "name": "total",
+            "plural": false,
+            "selections": [
+              (v5/*: any*/),
+              (v6/*: any*/),
+              (v7/*: any*/),
+              (v8/*: any*/),
+              (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/),
+              (v12/*: any*/),
+              (v13/*: any*/),
+              (v14/*: any*/),
+              (v15/*: any*/),
+              (v16/*: any*/),
+              (v17/*: any*/),
+              (v18/*: any*/),
+              (v19/*: any*/),
+              (v20/*: any*/),
+              (v21/*: any*/),
+              (v33/*: any*/),
+              (v22/*: any*/),
+              (v38/*: any*/),
+              (v23/*: any*/),
+              (v24/*: any*/),
+              (v25/*: any*/),
+              (v26/*: any*/),
+              (v27/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
     ],
     "type": "Query",
     "abstractKey": null
@@ -570,7 +616,7 @@ return {
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v34/*: any*/),
+        "selections": (v39/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"company\"})"
       },
       {
@@ -580,7 +626,7 @@ return {
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v34/*: any*/),
+        "selections": (v39/*: any*/),
         "storageKey": null
       },
       {
@@ -590,33 +636,78 @@ return {
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v34/*: any*/),
+        "selections": (v39/*: any*/),
         "storageKey": null
       },
       {
-        "alias": "providerTotals",
-        "args": (v32/*: any*/),
-        "concreteType": "LlmUsageAggregate",
+        "alias": null,
+        "args": null,
+        "concreteType": "LlmUsageProviderCredential",
         "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
+        "name": "LlmUsageProviderCredentials",
         "plural": true,
-        "selections": (v34/*: any*/),
-        "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"model_provider_credential\"})"
-      },
-      (v33/*: any*/)
+        "selections": [
+          (v1/*: any*/),
+          (v32/*: any*/),
+          (v33/*: any*/),
+          (v2/*: any*/),
+          (v34/*: any*/),
+          (v35/*: any*/),
+          (v36/*: any*/),
+          (v37/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "LlmUsageAggregate",
+            "kind": "LinkedField",
+            "name": "total",
+            "plural": false,
+            "selections": [
+              (v5/*: any*/),
+              (v6/*: any*/),
+              (v7/*: any*/),
+              (v8/*: any*/),
+              (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/),
+              (v12/*: any*/),
+              (v13/*: any*/),
+              (v14/*: any*/),
+              (v15/*: any*/),
+              (v16/*: any*/),
+              (v17/*: any*/),
+              (v18/*: any*/),
+              (v19/*: any*/),
+              (v20/*: any*/),
+              (v21/*: any*/),
+              (v33/*: any*/),
+              (v22/*: any*/),
+              (v38/*: any*/),
+              (v23/*: any*/),
+              (v24/*: any*/),
+              (v25/*: any*/),
+              (v26/*: any*/),
+              (v27/*: any*/),
+              (v1/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
     ]
   },
   "params": {
-    "cacheID": "664f1416ffa79a544447fabaf9bda6f4",
+    "cacheID": "a269c5a8dd50d4456748227440267ed9",
     "id": null,
     "metadata": {},
     "name": "usagePageQuery",
     "operationKind": "query",
-    "text": "query usagePageQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  providerTotals: LlmUsageAggregates(input: {scopeType: model_provider_credential, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    name\n    modelProvider\n    status\n    type\n  }\n}\n"
+    "text": "query usagePageQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  LlmUsageProviderCredentials {\n    id\n    credentialId\n    modelCredentialSource\n    name\n    modelProvider\n    status\n    type\n    baseUrl\n    total {\n      cacheReadCostNanoUsd\n      cacheReadCostNanoVirtualUsd\n      cacheReadTokens\n      cacheWriteCostNanoUsd\n      cacheWriteCostNanoVirtualUsd\n      cacheWriteTokens\n      inputCostNanoUsd\n      inputCostNanoVirtualUsd\n      inputTokens\n      outputCostNanoUsd\n      outputCostNanoVirtualUsd\n      outputTokens\n      period\n      periodStart\n      requestCount\n      companyId\n      agentId\n      modelCredentialSource\n      modelProviderCredentialId\n      platformModelProviderCredentialId\n      sessionId\n      scopeType\n      totalCostNanoUsd\n      totalCostNanoVirtualUsd\n      totalTokens\n      id\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "28da12666fa307eff8c8580c45409d62";
+(node as any).hash = "dcbfe5b8fd978ba4066fdb654641e034";
 
 export default node;

@@ -10,12 +10,15 @@ type LlmUsageAggregateScopeType =
   | "agent"
   | "session";
 type LlmUsageAggregatePeriod = "total" | "day" | "month";
+type LlmUsageModelCredentialSource = "platform" | "user_provided";
 
 type LlmUsageAggregatesInput = {
   agentId?: string | null;
+  modelCredentialSource?: LlmUsageModelCredentialSource | null;
   modelProviderCredentialId?: string | null;
   period?: LlmUsageAggregatePeriod | null;
   periodStartAfter?: string | null;
+  platformModelProviderCredentialId?: string | null;
   sessionId?: string | null;
   scopeType: LlmUsageAggregateScopeType;
 };
@@ -44,7 +47,9 @@ type LlmUsageAggregateRecord = {
   periodStart: Date;
   requestCount: number;
   agentId: string | null;
+  modelCredentialSource: LlmUsageModelCredentialSource | null;
   modelProviderCredentialId: string | null;
+  platformModelProviderCredentialId: string | null;
   sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
@@ -73,7 +78,9 @@ type GraphqlLlmUsageAggregateRecord = {
   periodStart: string;
   requestCount: number;
   agentId: string | null;
+  modelCredentialSource: LlmUsageModelCredentialSource | null;
   modelProviderCredentialId: string | null;
+  platformModelProviderCredentialId: string | null;
   sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
@@ -149,7 +156,9 @@ export class LlmUsageAggregatesQueryResolver {
           periodStart: llmUsageAggregates.periodStart,
           requestCount: llmUsageAggregates.requestCount,
           agentId: llmUsageAggregates.agentId,
+          modelCredentialSource: llmUsageAggregates.modelCredentialSource,
           modelProviderCredentialId: llmUsageAggregates.modelProviderCredentialId,
+          platformModelProviderCredentialId: llmUsageAggregates.platformModelProviderCredentialId,
           sessionId: llmUsageAggregates.sessionId,
           scopeType: llmUsageAggregates.scopeType,
           totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
@@ -168,8 +177,17 @@ export class LlmUsageAggregatesQueryResolver {
 
   private appendScopeConditions(conditions: SQL[], input: LlmUsageAggregatesInput): void {
     if (input.scopeType === "model_provider_credential") {
+      if (input.modelCredentialSource) {
+        conditions.push(eq(llmUsageAggregates.modelCredentialSource, input.modelCredentialSource));
+      }
       if (input.modelProviderCredentialId) {
         conditions.push(eq(llmUsageAggregates.modelProviderCredentialId, input.modelProviderCredentialId));
+      }
+      if (input.platformModelProviderCredentialId) {
+        conditions.push(eq(
+          llmUsageAggregates.platformModelProviderCredentialId,
+          input.platformModelProviderCredentialId,
+        ));
       }
       return;
     }

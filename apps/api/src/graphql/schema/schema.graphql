@@ -27,6 +27,7 @@ type Query {
   CompanyWallet: CompanyWallet!
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
+  LlmUsageProviderCredentials: [LlmUsageProviderCredential!]!
   PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String, userId: ID): PlatformAdminCompanyPage!
   PlatformAdminCompany(id: ID!): PlatformAdminCompanyDetail!
   PlatformAdminCompanyWallets(companyId: ID!): [PlatformAdminCompanyWallet!]!
@@ -914,7 +915,9 @@ enum LlmUsageAggregatePeriod {
 
 input LlmUsageAggregatesInput {
   scopeType: LlmUsageAggregateScope!
+  modelCredentialSource: String
   modelProviderCredentialId: ID
+  platformModelProviderCredentialId: ID
   agentId: ID
   sessionId: ID
   period: LlmUsageAggregatePeriod
@@ -925,7 +928,9 @@ type LlmUsageAggregate {
   id: ID!
   companyId: ID!
   scopeType: LlmUsageAggregateScope!
+  modelCredentialSource: String
   modelProviderCredentialId: ID
+  platformModelProviderCredentialId: ID
   agentId: ID
   sessionId: ID
   period: LlmUsageAggregatePeriod!
@@ -948,6 +953,18 @@ type LlmUsageAggregate {
   totalCostNanoVirtualUsd: Float!
   createdAt: String!
   updatedAt: String!
+}
+
+type LlmUsageProviderCredential {
+  id: ID!
+  credentialId: ID!
+  modelCredentialSource: String!
+  name: String!
+  modelProvider: String!
+  type: String!
+  status: String!
+  baseUrl: String
+  total: LlmUsageAggregate!
 }
 
 type CompanyWallet {

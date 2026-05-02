@@ -78,6 +78,7 @@ import { GithubRepositoriesQueryResolver } from "../resolvers/github_repositorie
 import { GithubSkillBranchesQueryResolver } from "../resolvers/github_skill_branches.ts";
 import { HealthQueryResolver } from "../resolvers/health.ts";
 import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregates.ts";
+import { LlmUsageProviderCredentialsQueryResolver } from "../resolvers/llm_usage_provider_credentials.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
@@ -153,6 +154,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly importPlatformModelMutation: ImportPlatformModelMutation;
   private readonly inviteCompanyMemberMutation: InviteCompanyMemberMutation;
   private readonly llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver;
+  private readonly llmUsageProviderCredentialsQueryResolver: LlmUsageProviderCredentialsQueryResolver;
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
@@ -198,6 +200,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     companySettingsQueryResolver: CompanySettingsQueryResolver = new CompanySettingsQueryResolver(),
     @inject(LlmUsageAggregatesQueryResolver)
     llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver = new LlmUsageAggregatesQueryResolver(),
+    @inject(LlmUsageProviderCredentialsQueryResolver)
+    llmUsageProviderCredentialsQueryResolver: LlmUsageProviderCredentialsQueryResolver =
+      new LlmUsageProviderCredentialsQueryResolver(),
     @inject(GithubAppConfigQueryResolver)
     githubAppConfigQueryResolver: GithubAppConfigQueryResolver =
       new GithubAppConfigQueryResolver(new GithubClient(config)),
@@ -468,6 +473,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.importPlatformModelMutation = importPlatformModelMutation;
     this.inviteCompanyMemberMutation = inviteCompanyMemberMutation;
     this.llmUsageAggregatesQueryResolver = llmUsageAggregatesQueryResolver;
+    this.llmUsageProviderCredentialsQueryResolver = llmUsageProviderCredentialsQueryResolver;
     this.mcpServerAuthTypeQueryResolver = mcpServerAuthTypeQueryResolver
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
@@ -588,6 +594,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         GithubSkillBranches: this.githubSkillBranchesQueryResolver.execute,
         health: this.healthQueryResolver.execute,
         LlmUsageAggregates: this.llmUsageAggregatesQueryResolver.execute,
+        LlmUsageProviderCredentials: this.llmUsageProviderCredentialsQueryResolver.execute,
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { MANAGED_MODEL_PROVIDER_CREDENTIAL_ID } from "../model-provider-credentials/managed_credential";
 import { formatProviderCredentialType, formatProviderLabel } from "../model-provider-credentials/provider_label";
 import type { usagePageQuery } from "./__generated__/usagePageQuery.graphql";
 
@@ -96,38 +97,42 @@ const usagePageQueryNode = graphql`
       totalCostNanoVirtualUsd
       totalTokens
     }
-    providerTotals: LlmUsageAggregates(input: { scopeType: model_provider_credential, period: total }) {
-      cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
-      cacheReadTokens
-      cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
-      cacheWriteTokens
-      inputCostNanoUsd
-      inputCostNanoVirtualUsd
-      inputTokens
-      outputCostNanoUsd
-      outputCostNanoVirtualUsd
-      outputTokens
-      period
-      periodStart
-      requestCount
-      companyId
-      agentId
-      modelProviderCredentialId
-      sessionId
-      scopeType
-      totalCostNanoUsd
-      totalCostNanoVirtualUsd
-      totalTokens
-    }
-    ModelProviderCredentials {
+    LlmUsageProviderCredentials {
       id
-      baseUrl
+      credentialId
+      modelCredentialSource
       name
       modelProvider
       status
       type
+      baseUrl
+      total {
+        cacheReadCostNanoUsd
+        cacheReadCostNanoVirtualUsd
+        cacheReadTokens
+        cacheWriteCostNanoUsd
+        cacheWriteCostNanoVirtualUsd
+        cacheWriteTokens
+        inputCostNanoUsd
+        inputCostNanoVirtualUsd
+        inputTokens
+        outputCostNanoUsd
+        outputCostNanoVirtualUsd
+        outputTokens
+        period
+        periodStart
+        requestCount
+        companyId
+        agentId
+        modelCredentialSource
+        modelProviderCredentialId
+        platformModelProviderCredentialId
+        sessionId
+        scopeType
+        totalCostNanoUsd
+        totalCostNanoVirtualUsd
+        totalTokens
+      }
     }
   }
 `;
@@ -165,21 +170,15 @@ function UsagePageContent() {
       ...data.companyMonthly,
     ]);
   }, [data.companyDaily, data.companyMonthly, data.companyTotal]);
-  const providerTotals = useMemo(() => {
-    return UsageMetrics.fromGraphqlAggregates(data.providerTotals);
-  }, [data.providerTotals]);
   const providerRows = useMemo(() => {
-    return data.ModelProviderCredentials.map((credential) => {
-      const total = UsageMetrics.findTotalAggregate(providerTotals, "model_provider_credential", credential.id);
-
-      return {
-        credential,
-        total,
-      };
-    }).sort((left, right) => {
+    return data.LlmUsageProviderCredentials.map((credential) => ({
+      credential,
+      total: UsageMetrics.fromGraphqlAggregates([credential.total])[0]
+        ?? UsageMetrics.emptyAggregate("model_provider_credential", credential.credentialId),
+    })).sort((left, right) => {
       return UsageMetrics.resolveCombinedCostNanoUsd(right.total) - UsageMetrics.resolveCombinedCostNanoUsd(left.total);
     });
-  }, [data.ModelProviderCredentials, providerTotals]);
+  }, [data.LlmUsageProviderCredentials]);
 
   return (
     <div className="grid gap-6">
@@ -229,7 +228,9 @@ function UsagePageContent() {
                     <div className="flex min-w-0 flex-col gap-1">
                       <span className="truncate font-medium text-foreground">{credential.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatProviderCredentialType(String(credential.type))}
+                        {credential.modelCredentialSource === "platform"
+                          ? "Managed"
+                          : formatProviderCredentialType(String(credential.type))}
                       </span>
                     </div>
                   </TableCell>
@@ -262,7 +263,9 @@ function UsagePageContent() {
                       render={(
                         <Link
                           params={{
-                            credentialId: credential.id,
+                            credentialId: credential.modelCredentialSource === "platform"
+                              ? MANAGED_MODEL_PROVIDER_CREDENTIAL_ID
+                              : credential.credentialId,
                             organizationSlug,
                           }}
                           search={{
