@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { ModelSelectionDialog } from "@/components/model_selection_dialog";
 import { Button } from "@/components/ui/button";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
@@ -704,7 +704,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                                 : "border-muted-foreground/25 bg-muted text-muted-foreground",
                             )}
                           >
-                            {templateOption.computerUse ? "V" : "X"}
+                            {templateOption.computerUse ? <CheckIcon className="size-3.5" /> : <XIcon className="size-3.5" />}
                           </span>
                           <span>Computer use {templateOption.computerUse ? "enabled" : "disabled"}</span>
                         </p>
