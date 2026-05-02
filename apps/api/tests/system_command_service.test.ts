@@ -1023,3 +1023,75 @@ test("SystemCommandService executes company directory commands when company_dire
     name: "Builder",
   }]);
 });
+
+test("SystemCommandService rejects access-past-messages commands when the skill is inactive", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return false;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("past_messages.list", {}, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Activate the access_past_messages system skill/,
+  );
+});
+
+test("SystemCommandService executes access-past-messages commands when the skill is active", async () => {
+  let capturedInput: Record<string, unknown> | null = null;
+  const service = new SystemCommandService({
+    pastMessageAccessService: {
+      async listMessages(_transactionProvider: unknown, input: Record<string, unknown>) {
+        capturedInput = input;
+        return {
+          messages: [],
+          nextCursor: null,
+        };
+      },
+    } as never,
+    sessionSkillService: {
+      async isSystemSkillActive(_transactionProvider: unknown, input: { systemSkillKey: string }) {
+        assert.equal(input.systemSkillKey, "access_past_messages");
+        return true;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("past_messages.list", {
+    includeContents: false,
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: "transaction-provider" as never,
+  });
+
+  assert.deepEqual(capturedInput, {
+    after: undefined,
+    agentId: "agent-1",
+    before: undefined,
+    companyId: "company-123",
+    contentTypes: undefined,
+    cursor: undefined,
+    includeContents: false,
+    limit: undefined,
+    principalTypes: undefined,
+    roles: undefined,
+    sessionId: undefined,
+    sort: undefined,
+    statuses: undefined,
+  });
+  assert.deepEqual(result, {
+    messages: [],
+    nextCursor: null,
+  });
+});
