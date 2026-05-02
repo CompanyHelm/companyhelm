@@ -37,6 +37,8 @@ import { McpService } from "../../../mcp/service.ts";
 import { WorkflowService } from "../../../workflows/service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
+import { SessionTurnUsageQueueService } from "../session_turn_usage_queue.ts";
+import { SessionTurnUsageService } from "../session_turn_usage_service.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -100,6 +102,7 @@ export class PiMonoSessionManagerService {
   private readonly openRouterCatalogService: OpenRouterCatalogService;
   private readonly appModelRegistry: ModelRegistry;
   private readonly mcpService: McpService;
+  private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly workflowService: WorkflowService;
   private readonly enhancedLoggingService: EnhancedLoggingService;
 
@@ -137,6 +140,8 @@ export class PiMonoSessionManagerService {
     } as never,
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
+    @inject(SessionTurnUsageQueueService)
+    sessionTurnUsageQueueService: SessionTurnUsageQueueService = null as never,
   ) {
     this.config = config;
     this.logger = new SessionPipelineLogger(logger.child({
@@ -155,6 +160,11 @@ export class PiMonoSessionManagerService {
     this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
     this.mcpService = mcpService;
+    this.sessionTurnUsageService = new SessionTurnUsageService(
+      undefined,
+      sessionTurnUsageQueueService,
+      logger.child({ component: "session_turn_usage_service" }),
+    );
     this.workflowService = workflowService;
     this.enhancedLoggingService = enhancedLoggingService;
   }
@@ -251,6 +261,7 @@ export class PiMonoSessionManagerService {
         enhancedLoggingService: this.enhancedLoggingService,
         initialContextMessagesSnapshotAt: storedContextMessagesSnapshot.contextMessagesSnapshotAt,
         logger: runtimeLogger,
+        sessionTurnUsageService: this.sessionTurnUsageService,
       },
     );
 

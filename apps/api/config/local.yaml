@@ -40,6 +40,8 @@ workers:
     concurrency: 2
   github_webhooks:
     concurrency: 10
+  llm_usage:
+    concurrency: 10
   session_process:
     concurrency: 100
   workflow_triggers:
