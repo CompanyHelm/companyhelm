@@ -143,6 +143,48 @@ const CompactionTranscriptMessage = memo(function CompactionTranscriptMessage(
 });
 
 CompactionTranscriptMessage.displayName = "CompactionTranscriptMessage";
+
+/**
+ * User-initiated aborts are persisted on assistant messages as errors, but they are not failures
+ * that need the destructive transcript treatment. This presenter keeps the message classification
+ * local to transcript rendering so the raw persisted message still remains available for audit and
+ * debugging while the chat UI shows an informational turn marker.
+ */
+export class RequestAbortedTranscriptPresenter {
+  static readonly markerText = "Request was aborted";
+
+  static isRequestAbortedMessage(message: SessionMessageRecord): boolean {
+    if (message.role !== "assistant" || !message.isError) {
+      return false;
+    }
+
+    const candidates = [
+      message.errorMessage,
+      message.text,
+      ...message.contents.map((content) => content.text),
+    ];
+
+    return candidates.some((candidate) => this.isRequestAbortedText(candidate));
+  }
+
+  private static isRequestAbortedText(value: string | null | undefined): boolean {
+    return typeof value === "string" && /^request was aborted\.?$/iu.test(value.trim());
+  }
+}
+
+const RequestAbortedTranscriptMessage = memo(function RequestAbortedTranscriptMessage() {
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex min-w-0 items-center gap-3 py-1`}>
+      <div aria-hidden="true" className="h-px flex-1 bg-border/60" />
+      <div className="inline-flex min-w-0 items-center rounded-full border border-border/70 bg-background/95 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+        <span className="truncate">{RequestAbortedTranscriptPresenter.markerText}</span>
+      </div>
+      <div aria-hidden="true" className="h-px flex-1 bg-border/60" />
+    </div>
+  );
+});
+
+RequestAbortedTranscriptMessage.displayName = "RequestAbortedTranscriptMessage";
 /**
  * Formats persisted transcript timestamps for hover-only display, keeping message rows visually
  * quiet while also keeping the hover popup inside the visible message transcript, away from
@@ -712,6 +754,10 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
 
   if (compactionMarker) {
     return <CompactionTranscriptMessage marker={compactionMarker} message={message} />;
+  }
+
+  if (RequestAbortedTranscriptPresenter.isRequestAbortedMessage(message)) {
+    return <RequestAbortedTranscriptMessage />;
   }
 
   if (!hasVisibleMessage(message, { assistantContentMode })) {
