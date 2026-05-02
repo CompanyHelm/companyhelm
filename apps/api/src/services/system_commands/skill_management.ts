@@ -15,6 +15,8 @@ type GithubSkillImportSelection = {
  * command layer thin preserves catalog validation and Git import behavior in one service boundary.
  */
 export class SkillManagementSystemCommandService {
+  private static readonly defaultSkillListLimit = 50;
+
   private readonly githubCatalog: SkillGithubCatalog;
   private readonly inputReader = new SystemCommandInputReader();
   private readonly jsonSerializer = new SystemCommandJsonSerializer();
@@ -35,7 +37,9 @@ export class SkillManagementSystemCommandService {
   ): Promise<Record<string, unknown>> {
     switch (commandId) {
       case "skill.list":
-        return this.listSkills(context);
+        return this.listSkills(input, context);
+      case "skill.get":
+        return this.getSkill(input, context);
       case "skill.create":
         return this.createSkill(input, context);
       case "skill.github.import":
@@ -55,16 +59,41 @@ export class SkillManagementSystemCommandService {
     }
   }
 
-  private async listSkills(context: SystemCommandExecutionContext): Promise<Record<string, unknown>> {
-    const [skillGroups, skills] = await Promise.all([
-      this.skillService.listSkillGroups(context.transactionProvider, context.companyId),
-      this.skillService.listSkills(context.transactionProvider, context.companyId),
-    ]);
+  private async listSkills(
+    input: unknown,
+    context: SystemCommandExecutionContext,
+  ): Promise<Record<string, unknown>> {
+    const payload = this.inputReader.requireRecord(input);
+    const limit = this.readSkillListLimit(payload);
+    const startIndex = this.readSkillListCursor(payload);
+    const skills = (await this.skillService.listSkills(context.transactionProvider, context.companyId))
+      .sort((left, right) => left.name.localeCompare(right.name));
+    const page = skills.slice(startIndex, startIndex + limit).map((skill) => ({
+      description: skill.description,
+      name: skill.name,
+    }));
+    const nextCursor = startIndex + limit < skills.length
+      ? this.encodeSkillListCursor(startIndex + limit)
+      : null;
 
     return this.jsonSerializer.serializeRecord({
-      skillGroups,
-      skills,
+      nextCursor,
+      skills: page,
     });
+  }
+
+  private async getSkill(
+    input: unknown,
+    context: SystemCommandExecutionContext,
+  ): Promise<Record<string, unknown>> {
+    const payload = this.inputReader.requireRecord(input);
+    const skill = await this.skillService.getSkillByName(
+      context.transactionProvider,
+      context.companyId,
+      this.inputReader.requireString(payload, "name"),
+    );
+
+    return this.jsonSerializer.serializeRecord({ skill });
   }
 
   private async createSkill(
@@ -181,5 +210,34 @@ export class SkillManagementSystemCommandService {
         skillDirectory: this.inputReader.requireString(record, "skillDirectory"),
       };
     });
+  }
+
+  private readSkillListLimit(payload: Record<string, unknown>): number {
+    const limit = this.inputReader.optionalInteger(payload, "limit")
+      ?? SkillManagementSystemCommandService.defaultSkillListLimit;
+    if (limit < 1) {
+      throw new Error("limit must be at least 1.");
+    }
+
+    return limit;
+  }
+
+  private readSkillListCursor(payload: Record<string, unknown>): number {
+    const cursor = this.inputReader.optionalString(payload, "cursor");
+    if (!cursor) {
+      return 0;
+    }
+
+    const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+    const offset = Number.parseInt(decoded, 10);
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new Error("cursor must be a valid skill.list cursor.");
+    }
+
+    return offset;
+  }
+
+  private encodeSkillListCursor(offset: number): string {
+    return Buffer.from(String(offset), "utf8").toString("base64url");
   }
 }

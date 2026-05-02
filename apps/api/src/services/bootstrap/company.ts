@@ -158,7 +158,7 @@ export class CompanyBootstrapService {
       "If they do not have a preference, propose a Superpowers-style development skill set for the Engineer and explain why it helps.",
       "Recommend a model before creating the Engineer: prefer GPT-5.5 with high reasoning for coding-heavy work, or GPT-5.5 with medium reasoning when speed and cost matter more.",
       "Ask for explicit confirmation before importing or creating skills, creating the Engineer agent, or attaching skills to it.",
-      "After confirmation, activate Manage skills and Manage agents as needed, then use skill.list, skill.github.import or skill.create, agent.list, agent.create, and agent.skill.attach.",
+      "After confirmation, activate Manage skills and Manage agents as needed, then use skill.list, skill.get, skill.github.import or skill.create, agent.list, agent.create, and agent.skill.attach.",
       "Ask whether the user wants to create the first task and assign it to the Engineer.",
       "If confirmed, activate Manage tasks and call task.create through system_command with assignedAgentId. Use status draft unless the user asks to start the task immediately, in which case use in_progress.",
     ].join("\n"),
