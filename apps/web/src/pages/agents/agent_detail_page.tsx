@@ -6,7 +6,7 @@ import { EditableField } from "@/components/editable_field";
 import { EditableModelField } from "@/components/editable_model_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -27,6 +27,7 @@ import type {
   AgentCreateMcpServerOption,
 } from "./create_agent_dialog";
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
+import type { agentDetailPageUpdateCompanySettingsMutation } from "./__generated__/agentDetailPageUpdateCompanySettingsMutation.graphql";
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
 
 const agentDetailPageQueryNode = graphql`
@@ -275,6 +276,15 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
   }
 `;
 
+const agentDetailPageUpdateCompanySettingsMutationNode = graphql`
+  mutation agentDetailPageUpdateCompanySettingsMutation($input: UpdateCompanySettingsInput!) {
+    UpdateCompanySettings(input: $input) {
+      companyId
+      baseSystemPrompt
+    }
+  }
+`;
+
 function AgentDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -380,7 +390,7 @@ function AgentDetailPageContent() {
   const params = useParams({ strict: false }) as { agentId?: string };
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
-  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" | "skills" | "usage" };
+  const search = useSearch({ strict: false }) as { tab?: "archived" | "instructions" | "overview" | "skills" | "usage" };
   const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   const { isEnabled } = useFeatureFlags();
@@ -403,9 +413,15 @@ function AgentDetailPageContent() {
   const [commitUpdateAgent] = useMutation<agentDetailPageUpdateAgentMutation>(
     agentDetailPageUpdateAgentMutationNode,
   );
+  const [commitUpdateCompanySettings] = useMutation<agentDetailPageUpdateCompanySettingsMutation>(
+    agentDetailPageUpdateCompanySettingsMutationNode,
+  );
 
   const agent = data.Agent;
-  const selectedTab = search.tab === "archived" || search.tab === "skills" || search.tab === "usage"
+  const selectedTab = search.tab === "archived"
+    || search.tab === "instructions"
+    || search.tab === "skills"
+    || search.tab === "usage"
     ? search.tab
     : "overview";
   const agentSecrets = data.AgentSecrets.map((secret) => ({
@@ -621,6 +637,36 @@ function AgentDetailPageContent() {
     });
   };
 
+  const saveCompanySettings = async (input: {
+    baseSystemPrompt?: string | null;
+  }) => {
+    await new Promise<void>((resolve, reject) => {
+      commitUpdateCompanySettings({
+        variables: {
+          input,
+        },
+        updater: (store) => {
+          const updatedSettings = store.getRootField("UpdateCompanySettings");
+          if (!updatedSettings) {
+            return;
+          }
+
+          store.getRoot().setLinkedRecord(updatedSettings, "CompanySettings");
+        },
+        onCompleted: (_response, errors) => {
+          const errorMessage = String(errors?.[0]?.message || "").trim();
+          if (errorMessage) {
+            reject(new Error(errorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  };
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <PageTabs
@@ -628,6 +674,10 @@ function AgentDetailPageContent() {
           {
             key: "overview" as const,
             label: "Overview",
+          },
+          {
+            key: "instructions" as const,
+            label: "Instructions",
           },
           {
             key: "skills" as const,
@@ -757,47 +807,6 @@ function AgentDetailPageContent() {
               </AgentOverviewSection>
 
               <AgentOverviewSection
-                description="The company prompt is applied first, then the agent-specific override. Edit the agent instructions here without leaving the page."
-                title="Instructions"
-              >
-                <div className="grid gap-5">
-                  <div className="grid gap-2">
-                    <p className="text-sm font-medium text-muted-foreground">Company instructions</p>
-                    <div className="rounded-lg bg-muted/20 px-4 py-3">
-                      <p className="whitespace-pre-wrap text-sm text-foreground">
-                        {companyBaseSystemPrompt && companyBaseSystemPrompt.length > 0
-                          ? companyBaseSystemPrompt
-                          : "No company base prompt configured"}
-                      </p>
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        Manage this layer from Settings, on the Agents / AI tab.
-                      </p>
-                    </div>
-                  </div>
-
-                  <EditableField
-                    emptyValueLabel="No agent-specific prompt override"
-                    fieldType="textarea"
-                    label="Agent instructions"
-                    onSave={async (value) => {
-                      await saveAgent({
-                        systemPrompt: value,
-                      });
-                    }}
-                    readOnlyFormat="markdown"
-                    readOnlyFullscreen={{
-                      buttonLabel: "Open agent instructions full screen",
-                      description: "Review the complete agent-specific prompt in a scrollable full-screen view.",
-                      title: "Agent instructions",
-                    }}
-                    readOnlyPreviewClassName="max-h-64 overflow-hidden"
-                    value={agent.systemPrompt ?? null}
-                    variant="plain"
-                  />
-                </div>
-              </AgentOverviewSection>
-
-              <AgentOverviewSection
                 description={isEnvironmentProviderSelectionEnabled
                   ? "Pick the compute provider, then choose the template card that best matches the environment shape this agent should use by default."
                   : "Choose the template card that best matches the environment shape this agent should use by default."}
@@ -908,6 +917,62 @@ function AgentDetailPageContent() {
             companyMcpServers={companyMcpServers}
           />
         </>
+      ) : selectedTab === "instructions" ? (
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Instructions</CardTitle>
+              <CardDescription>
+                The company prompt is applied first, then the agent-specific override.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-8">
+            <EditableField
+              editMode="fullscreen"
+              emptyValueLabel="No company base prompt configured"
+              fieldType="textarea"
+              label="Company instructions"
+              labelSize="large"
+              onSave={async (value) => {
+                await saveCompanySettings({
+                  baseSystemPrompt: value.length === 0 ? null : value,
+                });
+              }}
+              readOnlyFormat="markdown"
+              readOnlyFullscreen={{
+                buttonLabel: "Open company instructions full screen",
+                description: "Review and edit the complete company-wide prompt layer.",
+                title: "Company instructions",
+              }}
+              readOnlyPreviewClassName="max-h-64 overflow-hidden"
+              value={companyBaseSystemPrompt ?? null}
+              variant="plain"
+            />
+
+            <EditableField
+              editMode="fullscreen"
+              emptyValueLabel="No agent-specific prompt override"
+              fieldType="textarea"
+              label="Agent instructions"
+              labelSize="large"
+              onSave={async (value) => {
+                await saveAgent({
+                  systemPrompt: value,
+                });
+              }}
+              readOnlyFormat="markdown"
+              readOnlyFullscreen={{
+                buttonLabel: "Open agent instructions full screen",
+                description: "Review and edit the complete agent-specific prompt override.",
+                title: "Agent instructions",
+              }}
+              readOnlyPreviewClassName="max-h-64 overflow-hidden"
+              value={agent.systemPrompt ?? null}
+              variant="plain"
+            />
+          </CardContent>
+        </Card>
       ) : selectedTab === "skills" ? (
         <AgentSkillDefaultsCard
           agentId={agent.id}

@@ -32,6 +32,7 @@ type EditableFieldFullscreenPreview = {
 
 type EditableFieldTextProps = {
   displayValue?: string | null;
+  editMode?: "fullscreen" | "inline";
   emptyValueLabel: string;
   fieldType: "number" | "text" | "textarea";
   label: string;
@@ -61,6 +62,7 @@ type EditableFieldProps = EditableFieldTextProps | EditableFieldSelectProps;
 type EditableFieldVariant = "card" | "plain";
 
 interface EditableFieldLayoutProps {
+  labelSize?: "default" | "large";
   variant?: EditableFieldVariant;
 }
 
@@ -83,14 +85,20 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
   const shouldRenderMarkdown = props.fieldType !== "select" && props.readOnlyFormat === "markdown";
   const readOnlyFullscreen = props.fieldType !== "select" ? props.readOnlyFullscreen : undefined;
   const readOnlyPreviewClassName = props.fieldType !== "select" ? props.readOnlyPreviewClassName : undefined;
+  const editMode = props.fieldType !== "select" ? (props.editMode ?? "inline") : "inline";
+  const isFullscreenEditMode = editMode === "fullscreen" && readOnlyFullscreen !== undefined;
+  const isInlineEditing = isEditing && !isFullscreenEditMode;
   const shouldShowFullscreen = !isEditing && hasRenderedValue && readOnlyFullscreen !== undefined;
   const variant = props.variant ?? "card";
+  const labelSize = props.labelSize ?? "default";
   const containerClassName = variant === "plain"
     ? "grid gap-3"
     : "rounded-xl border border-border/60 bg-card/50 p-4";
-  const labelClassName = variant === "plain"
-    ? "text-sm font-medium text-muted-foreground"
-    : "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
+  const labelClassName = labelSize === "large"
+    ? "text-lg font-semibold tracking-tight text-foreground"
+    : variant === "plain"
+      ? "text-sm font-medium text-muted-foreground"
+      : "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
   const valueSpacingClassName = variant === "plain" ? "mt-0" : "mt-3";
 
   useEffect(() => {
@@ -163,6 +171,21 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
     }
   };
 
+  const startEditing = () => {
+    setDraftValue(props.value ?? "");
+    setErrorMessage(null);
+    setEditing(true);
+
+    if (props.fieldType === "select") {
+      setOpen(true);
+      return;
+    }
+
+    if (isFullscreenEditMode) {
+      setFullscreenOpen(true);
+    }
+  };
+
   return (
     <div className={containerClassName}>
       <div className="flex items-start justify-between gap-3">
@@ -188,14 +211,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
           {props.readOnly ? null : (
             <Button
               disabled={isSaving || (props.fieldType === "select" && props.options.length === 0)}
-              onClick={() => {
-                setDraftValue(props.value ?? "");
-                setErrorMessage(null);
-                setEditing(true);
-                if (props.fieldType === "select") {
-                  setOpen(true);
-                }
-              }}
+              onClick={startEditing}
               size="icon"
               variant="ghost"
             >
@@ -206,7 +222,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
       </div>
 
       <div className={valueSpacingClassName}>
-        {(props.fieldType === "text" || props.fieldType === "number") && isEditing ? (
+        {(props.fieldType === "text" || props.fieldType === "number") && isInlineEditing ? (
           <Input
             max={props.fieldType === "number" ? props.max : undefined}
             min={props.fieldType === "number" ? (props.min ?? 1) : undefined}
@@ -238,7 +254,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
           />
         ) : null}
 
-        {props.fieldType === "textarea" && isEditing ? (
+        {props.fieldType === "textarea" && isInlineEditing ? (
           <textarea
             className="min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
             onBlur={async (event) => {
@@ -298,7 +314,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
           </Select>
         ) : null}
 
-        {!isEditing ? (
+        {!isInlineEditing ? (
           hasRenderedValue ? (
             <div className="relative">
               {shouldRenderMarkdown ? (
@@ -317,11 +333,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
                 </p>
               )}
               {shouldShowFullscreen && isPreviewOverflowing ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-background via-background/95 to-transparent pt-8">
-                  <span className="rounded-full bg-background px-1.5 font-mono text-xs text-muted-foreground">
-                    ...
-                  </span>
-                </div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-background via-background/95 to-transparent" />
               ) : null}
             </div>
           ) : (
@@ -333,7 +345,17 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
       </div>
 
       {readOnlyFullscreen ? (
-        <Dialog onOpenChange={setFullscreenOpen} open={isFullscreenOpen}>
+        <Dialog
+          onOpenChange={(nextOpen) => {
+            setFullscreenOpen(nextOpen);
+            if (!nextOpen && isFullscreenEditMode && !isSaving) {
+              setDraftValue(props.value ?? "");
+              setErrorMessage(null);
+              setEditing(false);
+            }
+          }}
+          open={isFullscreenOpen}
+        >
           <DialogContent className="flex h-[90vh] w-[90vw] max-w-none flex-col overflow-hidden p-0">
             <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-4">
               <div className="flex items-start justify-between gap-4 pr-8">
@@ -341,26 +363,75 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
                   <DialogTitle>{readOnlyFullscreen.title}</DialogTitle>
                   <DialogDescription>{readOnlyFullscreen.description}</DialogDescription>
                 </div>
-                {props.readOnly ? null : (
-                  <Button
-                    disabled={isSaving}
-                    onClick={() => {
-                      setFullscreenOpen(false);
-                      setDraftValue(props.value ?? "");
-                      setErrorMessage(null);
-                      setEditing(true);
-                    }}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
-                    Edit
-                  </Button>
-                )}
+                <div className="flex shrink-0 items-center gap-2">
+                  {props.readOnly ? null : isEditing && isFullscreenEditMode ? (
+                    <>
+                      <Button
+                        disabled={isSaving}
+                        onClick={() => {
+                          setDraftValue(props.value ?? "");
+                          setErrorMessage(null);
+                          setEditing(false);
+                        }}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        disabled={isSaving}
+                        onClick={() => {
+                          void commitValue(draftValue);
+                        }}
+                        size="sm"
+                      >
+                        {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : null}
+                        Save
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      disabled={isSaving}
+                      onClick={() => {
+                        if (isFullscreenEditMode) {
+                          startEditing();
+                          return;
+                        }
+
+                        setFullscreenOpen(false);
+                        startEditing();
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </div>
             </DialogHeader>
             <div className="modern-scrollbar flex-1 overflow-y-auto px-6 py-5">
-              {shouldRenderMarkdown ? (
+              {isEditing && isFullscreenEditMode && props.fieldType === "textarea" ? (
+                <textarea
+                  className="min-h-full w-full resize-none rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                  onChange={(event) => {
+                    setDraftValue(event.target.value);
+                  }}
+                  value={draftValue}
+                />
+              ) : isEditing && isFullscreenEditMode && (props.fieldType === "text" || props.fieldType === "number") ? (
+                <Input
+                  max={props.fieldType === "number" ? props.max : undefined}
+                  min={props.fieldType === "number" ? (props.min ?? 1) : undefined}
+                  onChange={(event) => {
+                    setDraftValue(event.target.value);
+                  }}
+                  step={props.fieldType === "number" ? 1 : undefined}
+                  type={props.fieldType === "number" ? "number" : "text"}
+                  value={draftValue}
+                />
+              ) : shouldRenderMarkdown ? (
                 <MarkdownContent content={renderedValue ?? ""} />
               ) : (
                 <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">

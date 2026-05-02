@@ -82,7 +82,7 @@ type TaskArtifactDetailRouteSearch = {
 };
 
 type AgentDetailRouteSearch = {
-  tab?: "archived" | "overview" | "skills" | "usage";
+  tab?: "archived" | "instructions" | "overview" | "skills" | "usage";
 };
 
 type ModelProviderCredentialDetailRouteSearch = {
@@ -156,7 +156,11 @@ function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>):
 
 function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentDetailRouteSearch {
   return {
-    tab: search.tab === "archived" || search.tab === "overview" || search.tab === "skills" || search.tab === "usage"
+    tab: search.tab === "archived"
+      || search.tab === "instructions"
+      || search.tab === "overview"
+      || search.tab === "skills"
+      || search.tab === "usage"
       ? search.tab
       : undefined,
   };
