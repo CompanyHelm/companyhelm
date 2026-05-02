@@ -163,6 +163,7 @@ export const chatsPageTranscriptQueryNode = graphql`
           text
           isError
           errorMessage
+          errorKind
           createdAt
           updatedAt
         }
@@ -651,6 +652,7 @@ export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
       text
       isError
       errorMessage
+      errorKind
       createdAt
       updatedAt
     }

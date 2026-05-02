@@ -72,8 +72,8 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   status: "completed",
                                   toolCallId: null,
                                   toolName: null,
-                                  isError: false,
-                                  errorMessage: "Latest answer failed earlier",
+                                  isError: true,
+                                  errorMessage: "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.\n\nIf this is normal coding work and Codex keeps blocking the request, switch this agent to the GPT-5.4 model instead to avoid the Codex cybersecurity block.",
                                   createdAt: new Date("2026-03-24T08:02:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:03:00.000Z"),
                                 },
@@ -276,6 +276,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                 text
                 isError
                 errorMessage
+                errorKind
                 createdAt
                 updatedAt
               }
@@ -316,8 +317,9 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           toolName: null,
           contents: [],
           text: "",
-          isError: false,
-          errorMessage: "Latest answer failed earlier",
+          isError: true,
+          errorMessage: "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.\n\nIf this is normal coding work and Codex keeps blocking the request, switch this agent to the GPT-5.4 model instead to avoid the Codex cybersecurity block.",
+          errorKind: "CYBERSECURITY_RISK",
           createdAt: "2026-03-24T08:02:00.000Z",
           updatedAt: "2026-03-24T08:03:00.000Z",
         },
@@ -363,6 +365,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           text: "Line one\nLine two",
           isError: false,
           errorMessage: null,
+          errorKind: null,
           createdAt: "2026-03-24T08:01:00.000Z",
           updatedAt: "2026-03-24T08:02:00.000Z",
         },

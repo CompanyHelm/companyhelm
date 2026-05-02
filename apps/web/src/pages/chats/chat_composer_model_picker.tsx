@@ -15,6 +15,7 @@ export type ChatComposerModelOption = ModelSelectionOption & {
   modelCredentialSource: "platform" | "user_provided";
   platformModelId: string | null | undefined;
   modelProviderCredentialModelId: string | null | undefined;
+  providerOptionId: string;
   providerId: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];

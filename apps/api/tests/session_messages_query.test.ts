@@ -266,6 +266,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
             text
             isError
             errorMessage
+            errorKind
             createdAt
             updatedAt
           }
@@ -306,6 +307,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       text: "hi",
       isError: false,
       errorMessage: null,
+      errorKind: null,
       createdAt: "2026-03-24T08:00:00.000Z",
       updatedAt: "2026-03-24T08:00:00.000Z",
     },
@@ -355,6 +357,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       text: "Line one\nLine two",
       isError: false,
       errorMessage: "Assistant fallback error",
+      errorKind: null,
       createdAt: "2026-03-24T08:01:00.000Z",
       updatedAt: "2026-03-24T08:02:00.000Z",
     },

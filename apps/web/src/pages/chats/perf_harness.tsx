@@ -79,6 +79,7 @@ function buildModelOptions() {
     platformModelId: null,
     modelProviderCredentialModelId: "credential-model-1",
     name: "GPT-5.4",
+    providerOptionId: "provider-option-1",
     providerId: "companyhelm",
     providerLabel: "Perf Harness",
     reasoningLevels: ["low", "medium", "high"],

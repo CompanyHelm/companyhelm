@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0dbf2334a9550be2a41b92d7ff4259f8>>
+ * @generated SignedSource<<826766eb6a639ac91fff8296f773de5a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SessionMessageErrorKind = "CYBERSECURITY_RISK" | "UNKNOWN" | "%future added value";
 export type chatsPageDataSessionMessageUpdatedSubscription$variables = {
   sessionId: string;
 };
@@ -25,6 +26,7 @@ export type chatsPageDataSessionMessageUpdatedSubscription$data = {
       readonly type: string;
     }>;
     readonly createdAt: string;
+    readonly errorKind: SessionMessageErrorKind | null | undefined;
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isError: boolean;
@@ -267,6 +269,13 @@ v6 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "errorKind",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -299,16 +308,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "a052ea9f9db91f4100f45b978100a902",
+    "cacheID": "a78c289503d7e4348c475b3ce6de0d68",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    principalType\n    principalAgentId\n    principalSessionId\n    taskRunId\n    workflowRunId\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    principalType\n    principalAgentId\n    principalSessionId\n    taskRunId\n    workflowRunId\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    errorKind\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5f0fbac45e75f908a4f3e254732fc770";
+(node as any).hash = "54175859f0bdce22cb10b6bdf7c28a38";
 
 export default node;

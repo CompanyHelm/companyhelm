@@ -114,6 +114,8 @@ type SessionMessageRow = {
   updatedAt: Date;
 };
 
+export type SessionMessageErrorKind = "CYBERSECURITY_RISK" | "UNKNOWN";
+
 type SessionTurnRow = {
   id: string;
   sessionId: string;
@@ -155,6 +157,8 @@ type MessageContentRow = {
 const DEFAULT_SESSION_TRANSCRIPT_PAGE_SIZE = 50;
 const MAX_SESSION_TRANSCRIPT_PAGE_SIZE = 200;
 const SESSION_MESSAGE_CURSOR_PREFIX = "session-message:";
+const CYBERSECURITY_RISK_ERROR_PREFIX =
+  "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.";
 
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
@@ -215,6 +219,7 @@ export type SessionMessageGraphqlRecord = {
   text: string;
   isError: boolean;
   errorMessage: string | null;
+  errorKind: SessionMessageErrorKind | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -1247,8 +1252,25 @@ export class SessionReadService {
       text,
       isError: messageRow.isError,
       errorMessage: messageRow.errorMessage,
+      errorKind: this.resolveMessageErrorKind(messageRow),
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };
+  }
+
+  private resolveMessageErrorKind(messageRow: SessionMessageRow): SessionMessageErrorKind | null {
+    if (!messageRow.isError) {
+      return null;
+    }
+
+    if (typeof messageRow.errorMessage !== "string" || messageRow.errorMessage.length === 0) {
+      return "UNKNOWN";
+    }
+
+    if (messageRow.errorMessage.startsWith(CYBERSECURITY_RISK_ERROR_PREFIX)) {
+      return "CYBERSECURITY_RISK";
+    }
+
+    return "UNKNOWN";
   }
 }

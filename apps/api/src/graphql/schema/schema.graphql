@@ -888,8 +888,14 @@ type SessionMessage {
   text: String!
   isError: Boolean!
   errorMessage: String
+  errorKind: SessionMessageErrorKind
   createdAt: String!
   updatedAt: String!
+}
+
+enum SessionMessageErrorKind {
+  CYBERSECURITY_RISK
+  UNKNOWN
 }
 
 type SessionTurn {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<16b71dd68d339723cb3557ecdb3a5eaf>>
+ * @generated SignedSource<<b4c653edb6b03a992ec7a4fd0390a3da>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SessionMessageErrorKind = "CYBERSECURITY_RISK" | "UNKNOWN" | "%future added value";
 export type chatsPageDataTranscriptQuery$variables = {
   after?: string | null | undefined;
   first: number;
@@ -30,6 +31,7 @@ export type chatsPageDataTranscriptQuery$data = {
           readonly type: string;
         }>;
         readonly createdAt: string;
+        readonly errorKind: SessionMessageErrorKind | null | undefined;
         readonly errorMessage: string | null | undefined;
         readonly id: string;
         readonly isError: boolean;
@@ -319,6 +321,13 @@ v8 = [
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
+                "name": "errorKind",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
                 "name": "createdAt",
                 "storageKey": null
               },
@@ -390,16 +399,16 @@ return {
     "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "f4a2d8b9e8ba203322bd4a816dbea5b6",
+    "cacheID": "649ea7755900c5ce4b0b8362c4b1c858",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        principalType\n        principalAgentId\n        principalSessionId\n        taskRunId\n        workflowRunId\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageDataTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        principalType\n        principalAgentId\n        principalSessionId\n        taskRunId\n        workflowRunId\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        errorKind\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f421aa66fdae14997cf8da743888c00a";
+(node as any).hash = "8d1d640cd4b3f6cf0d357414b53cab16";
 
 export default node;

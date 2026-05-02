@@ -15,6 +15,7 @@ import {
   GithubIcon,
   Loader2Icon,
   ListTodoIcon,
+  RefreshCwIcon,
   WrenchIcon,
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
@@ -49,7 +50,15 @@ import { ChatsPagePreferenceStorage } from "./chats_page_preference_storage";
 import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
 const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
-  { isError, text }: { isError: boolean; text: string },
+  {
+    isError,
+    recoveryAction,
+    text,
+  }: {
+    isError: boolean;
+    recoveryAction?: AssistantTranscriptMessageRecoveryAction | null;
+    text: string;
+  },
 ) {
   if (!isError) {
     return <MarkdownContent content={text} variant="transcript" />;
@@ -66,11 +75,28 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
         content={text}
         variant="transcript"
       />
+      {recoveryAction ? (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button
+            className="h-7 rounded-full px-2.5 text-xs"
+            onClick={recoveryAction.onClick}
+            type="button"
+            variant="outline"
+          >
+            <RefreshCwIcon data-icon="inline-start" />
+            Use GPT-5.4
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 });
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
+
+type AssistantTranscriptMessageRecoveryAction = {
+  onClick(): void;
+};
 
 /**
  * Formats persisted transcript timestamps for hover-only display, keeping message rows visually
@@ -555,6 +581,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   session,
   timestampTooltipBoundary,
   toolCallSummary,
+  onSwitchCybersecurityRiskModel,
   useLeftGutter = true,
 }: {
   assistantContentMode: AssistantContentMode;
@@ -562,6 +589,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   session: SessionRecord;
   timestampTooltipBoundary: ChatTranscriptTimestampTooltipBoundary | null;
   toolCallSummary: ToolCallSummaryRecord | null;
+  onSwitchCybersecurityRiskModel?: (() => void) | null;
   useLeftGutter?: boolean;
 }) {
   const principalExecutionDisplay = resolvePrincipalExecutionMessageDisplay(message, session);
@@ -710,7 +738,17 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                     key={`${message.id}-assistant-content-${contentIndex}`}
                     className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
                   >
-                    <AssistantTranscriptMessage isError={message.isError} text={content.text} />
+                    <AssistantTranscriptMessage
+                      isError={message.isError}
+                      recoveryAction={
+                        contentIndex === 0
+                          && message.errorKind === "CYBERSECURITY_RISK"
+                          && onSwitchCybersecurityRiskModel
+                          ? { onClick: onSwitchCybersecurityRiskModel }
+                          : null
+                      }
+                      text={content.text}
+                    />
                   </div>
                 ))}
               </div>
@@ -1045,6 +1083,7 @@ type ChatTranscriptPaneProps = {
   onFileDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
   onJumpToLatest: () => void;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
+  onSwitchCybersecurityRiskModel?: (() => void) | null;
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
@@ -1066,6 +1105,7 @@ export function areChatTranscriptPanePropsEqual(previousProps: ChatTranscriptPan
     && previousProps.onFileDrop === nextProps.onFileDrop
     && previousProps.onJumpToLatest === nextProps.onJumpToLatest
     && previousProps.onScroll === nextProps.onScroll
+    && previousProps.onSwitchCybersecurityRiskModel === nextProps.onSwitchCybersecurityRiskModel
     && previousProps.session === nextProps.session
     && previousProps.sessionMessages === nextProps.sessionMessages
     && previousProps.transcriptScrollRef === nextProps.transcriptScrollRef;
@@ -1083,6 +1123,7 @@ function ChatTranscriptPaneComponent({
   onFileDrop,
   onJumpToLatest,
   onScroll,
+  onSwitchCybersecurityRiskModel,
   session,
   sessionMessages,
   transcriptScrollRef,
@@ -1218,6 +1259,7 @@ function ChatTranscriptPaneComponent({
                         assistantContentMode="all"
                         key={message.id}
                         message={message}
+                        onSwitchCybersecurityRiskModel={onSwitchCybersecurityRiskModel}
                         session={session}
                         timestampTooltipBoundary={timestampTooltipBoundary}
                         toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1248,6 +1290,7 @@ function ChatTranscriptPaneComponent({
                       assistantContentMode="text-only"
                       key={message.id}
                       message={message}
+                      onSwitchCybersecurityRiskModel={onSwitchCybersecurityRiskModel}
                       session={session}
                       timestampTooltipBoundary={timestampTooltipBoundary}
                       toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1271,6 +1314,7 @@ function ChatTranscriptPaneComponent({
                           assistantContentMode="all"
                           key={message.id}
                           message={message}
+                          onSwitchCybersecurityRiskModel={onSwitchCybersecurityRiskModel}
                           session={session}
                           timestampTooltipBoundary={timestampTooltipBoundary}
                           toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1281,6 +1325,7 @@ function ChatTranscriptPaneComponent({
                           assistantContentMode="thinking-only"
                           key={`${message.id}-thinking`}
                           message={message}
+                          onSwitchCybersecurityRiskModel={onSwitchCybersecurityRiskModel}
                           session={session}
                           timestampTooltipBoundary={timestampTooltipBoundary}
                           toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1293,6 +1338,7 @@ function ChatTranscriptPaneComponent({
                       assistantContentMode="text-only"
                       key={message.id}
                       message={message}
+                      onSwitchCybersecurityRiskModel={onSwitchCybersecurityRiskModel}
                       session={session}
                       timestampTooltipBoundary={timestampTooltipBoundary}
                       toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}

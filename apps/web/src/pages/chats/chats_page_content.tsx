@@ -303,6 +303,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
           modelId: modelOption.modelId,
           name: modelOption.name,
+          providerOptionId: providerOption.id,
           providerId: providerOption.modelProvider,
           providerLabel: providerOption.label,
           reasoningSupported: modelOption.reasoningSupported,
@@ -410,6 +411,33 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       .sort(compareInboxHumanQuestionsByCreatedAt)[0] ?? null;
   }, [inboxHumanQuestions, liveSessionHumanQuestionsBySessionId, selectedSessionId]);
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
+  const cybersecurityFallbackModelOption = useMemo(() => {
+    if (!selectedComposerModelOption) {
+      return null;
+    }
+
+    return composerModelOptions.find((modelOption) => {
+      return modelOption.providerOptionId === selectedComposerModelOption.providerOptionId
+        && modelOption.modelId === "gpt-5.4";
+    }) ?? null;
+  }, [composerModelOptions, selectedComposerModelOption]);
+  const canSwitchCybersecurityFallbackModel = Boolean(
+    cybersecurityFallbackModelOption
+      && selectedComposerModelOption
+      && cybersecurityFallbackModelOption.id !== selectedComposerModelOption.id,
+  );
+  const switchToCybersecurityFallbackModel = useCallback(() => {
+    if (!cybersecurityFallbackModelOption || !canSwitchCybersecurityFallbackModel) {
+      return;
+    }
+
+    setComposerModelOptionId(cybersecurityFallbackModelOption.id);
+    setComposerReasoningLevel(resolveComposerReasoningLevel(
+      cybersecurityFallbackModelOption,
+      composerReasoningLevel,
+    ));
+    setErrorMessage(null);
+  }, [canSwitchCybersecurityFallbackModel, composerReasoningLevel, cybersecurityFallbackModelOption]);
   const shouldUseCompactComposerSettings = isMobile;
   const isSelectedSessionRunning = selectedSession?.status === "running";
   const hasDraftInput = draftMessage.trim().length > 0 || draftImages.length > 0;
@@ -2431,6 +2459,9 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
               onFileDragOver={handleAttachmentDragOver}
               onFileDrop={handleAttachmentDrop}
               onScroll={handleTranscriptScroll}
+              onSwitchCybersecurityRiskModel={
+                canSwitchCybersecurityFallbackModel ? switchToCybersecurityFallbackModel : null
+              }
               organizationSlug={organizationSlug}
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
