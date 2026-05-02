@@ -141,11 +141,12 @@ export class CompanyBootstrapService {
   }> = [];
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
-      "Welcome the user to CompanyHelm as their Operator.",
-      "Explain briefly that CompanyHelm-managed model access is already available for this setup conversation.",
-      "Ask exactly one question: what does their business do, and what goal do they want to make progress on today?",
+      "Start with this exact greeting: \"Hi, I'm {name}, I'll help you get your workspace setup. What would you like to do today?\" Replace {name} with the agent's actual name.",
+      "Do not prepend or append any extra introduction before the exact greeting.",
+      "Treat the user's answer as the starting point for the rest of onboarding.",
+      "Explain CompanyHelm-managed model access only after the user responds or if they ask about it.",
       "Use the answer as the working business context for later recommendations in this chat.",
-      "Do not ask about GitHub, skills, agents, or tasks until the user has answered the business-and-goal question.",
+      "Do not ask about GitHub, skills, agents, or tasks until the user has answered what they want to do today.",
     ].join("\n"),
     name: "Understand the business goal",
     stepId: "understand-business-goal",

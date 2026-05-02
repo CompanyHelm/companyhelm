@@ -800,7 +800,8 @@ test("CompanyBootstrapService creates the Operator onboarding assets lazily", as
     "Connect repo if useful",
     "Create engineer and first task",
   ]);
-  assert.match(workflowSteps[0]?.instructions_template ?? "", /what does their business do/);
+  assert.match(workflowSteps[0]?.instructions_template ?? "", /What would you like to do today\?/);
+  assert.match(workflowSteps[0]?.instructions_template ?? "", /Replace \{name\} with the agent's actual name/);
   assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /Superpowers-style/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /GPT-5\.5 with high reasoning/);
