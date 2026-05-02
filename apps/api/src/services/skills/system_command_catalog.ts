@@ -12,8 +12,34 @@ export type SystemCommandDefinition = {
  */
 export class SystemCommandCatalog {
   private readonly commands: SystemCommandDefinition[] = [{
-    description: "List company skill groups and skills, including system skills.",
+    description: "List paginated company skill summaries, including system skills.",
     id: "skill.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        cursor: { type: "string" },
+        limit: { minimum: 1, type: "integer" },
+      },
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Get one company skill by its exact name.",
+    id: "skill.get",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        description: { type: "string" },
+        name: { type: "string" },
+        skillType: { enum: ["custom", "system"], type: "string" },
+      },
+      required: ["name"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "List company skill groups so group-targeted commands can discover IDs.",
+    id: "skill.group.list",
     inputSchema: {
       additionalProperties: false,
       properties: {},

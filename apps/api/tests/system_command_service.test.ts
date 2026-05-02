@@ -439,26 +439,101 @@ test("SystemCommandService executes skill-management commands when manage_skills
     transactionProvider: {} as never,
   });
 
-  assert.deepEqual(result.skillGroups, [{
-    companyId: "company-123",
-    id: "group-1",
+  assert.deepEqual(result.skills, [{
+    description: "Research guidance",
     name: "Research",
   }]);
-  assert.deepEqual(result.skills, [{
-    companyId: "company-123",
-    description: "Research guidance",
-    fileList: [],
-    branchName: null,
-    trackedCommitSha: null,
-    id: "skill-1",
-    instructions: "Read context first.",
+  assert.equal(result.nextCursor, null);
+});
+
+test("SystemCommandService executes skill.get when manage_skills is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    skillService: {
+      async listSkills(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          autoUpdate: false,
+          branchCommitSha: null,
+          branchName: null,
+          companyId,
+          description: "Research guidance",
+          fileList: [],
+          githubRepositoryId: null,
+          id: "skill-1",
+          instructions: "Read context first.",
+          name: "Research",
+          repository: null,
+          skillDirectory: null,
+          skillGroupId: "group-1",
+          skillType: "custom",
+          sourceType: "manual",
+          systemCommands: [],
+          systemKey: null,
+          trackedCommitSha: null,
+        }];
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("skill.get", {
     name: "Research",
-    repository: null,
-    skillDirectory: null,
-    skillGroupId: "group-1",
-    skillType: "custom",
-    systemCommands: [],
-    systemKey: null,
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.equal((result.skill as Record<string, unknown>).id, "skill-1");
+  assert.equal((result.skill as Record<string, unknown>).name, "Research");
+});
+
+test("SystemCommandService executes skill.group.list when manage_skills is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    skillService: {
+      async listSkillGroups(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          companyId,
+          id: "group-2",
+          name: "Workflows",
+        }, {
+          companyId,
+          id: "group-1",
+          name: "Research",
+        }];
+      },
+      async listSkills() {
+        return [];
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("skill.group.list", {}, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(result.skillGroups, [{
+    id: "group-1",
+    name: "Research",
+  }, {
+    id: "group-2",
+    name: "Workflows",
   }]);
 });
 
