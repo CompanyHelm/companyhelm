@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
-import { GitForkIcon, Loader2Icon, PlusIcon, SendHorizonalIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { GitForkIcon, Loader2Icon, Maximize2Icon, PlusIcon, SendHorizonalIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { Button } from "@/components/ui/button";
@@ -233,9 +233,7 @@ function ChatsQueuedMessagesComposerListItem({
               title="Full screen"
               type="button"
             >
-              <span aria-hidden="true" className="font-mono text-[11px] leading-none">
-                {"<>"}
-              </span>
+              <Maximize2Icon aria-hidden="true" className="size-3.5" />
             </button>
           ) : null}
           {canSteer ? (

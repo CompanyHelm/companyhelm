@@ -48,6 +48,7 @@ declare module "lucide-react" {
   export const Loader2Icon: LucideIcon;
   export const LockKeyholeIcon: LucideIcon;
   export const MailPlusIcon: LucideIcon;
+  export const Maximize2Icon: LucideIcon;
   export const MessageSquareIcon: LucideIcon;
   export const MessageSquareReplyIcon: LucideIcon;
   export const MessageSquareTextIcon: LucideIcon;

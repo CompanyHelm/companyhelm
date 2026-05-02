@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2Icon, PencilIcon } from "lucide-react";
+import { Loader2Icon, Maximize2Icon, PencilIcon } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import {
@@ -182,9 +182,7 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
               title="Full screen"
               variant="ghost"
             >
-              <span aria-hidden="true" className="font-mono text-[11px] leading-none">
-                {"<>"}
-              </span>
+              <Maximize2Icon className="size-3.5" />
             </Button>
           ) : null}
           {props.readOnly ? null : (
