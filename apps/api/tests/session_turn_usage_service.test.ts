@@ -124,6 +124,17 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.equal((providerDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(companyMonth);
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
+
+  const providerDayConflictUpdate = harness.aggregateConflictUpdates[harness.aggregateRows.indexOf(providerDay)] as {
+    target?: unknown[];
+  } | undefined;
+  assert.deepEqual(providerDayConflictUpdate?.target, [
+    llmUsageAggregates.companyId,
+    llmUsageAggregates.modelCredentialSource,
+    llmUsageAggregates.modelProviderCredentialId,
+    llmUsageAggregates.period,
+    llmUsageAggregates.periodStart,
+  ]);
 });
 
 test("SessionTurnUsageService stores platform subscription costs as managed virtual spend", async () => {
@@ -186,6 +197,17 @@ test("SessionTurnUsageService stores platform subscription costs as managed virt
   assert.equal(providerDay.modelCredentialSource, "platform");
   assert.equal(providerDay.modelProviderCredentialId, null);
   assert.equal(providerDay.platformModelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
+
+  const providerDayConflictUpdate = harness.aggregateConflictUpdates[harness.aggregateRows.indexOf(providerDay)] as {
+    target?: unknown[];
+  } | undefined;
+  assert.deepEqual(providerDayConflictUpdate?.target, [
+    llmUsageAggregates.companyId,
+    llmUsageAggregates.modelCredentialSource,
+    llmUsageAggregates.platformModelProviderCredentialId,
+    llmUsageAggregates.period,
+    llmUsageAggregates.periodStart,
+  ]);
 });
 
 

@@ -353,17 +353,27 @@ export class PiMonoSessionEventHandler {
 
     const attribution = await this.resolveSessionAttribution();
     const turnId = await this.resolveTurnId(attribution.companyId, recordedAt);
-    await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
-      agentId: attribution.agentId,
-      companyId: attribution.companyId,
-      credentialSource: attribution.credentialSource,
-      costKind: attribution.costKind,
-      modelProviderCredentialId: attribution.modelProviderCredentialId,
-      recordedAt,
-      sessionId: this.sessionId,
-      turnId,
-      usage: sessionMessage.usage,
-    });
+    try {
+      await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
+        agentId: attribution.agentId,
+        companyId: attribution.companyId,
+        credentialSource: attribution.credentialSource,
+        costKind: attribution.costKind,
+        modelProviderCredentialId: attribution.modelProviderCredentialId,
+        recordedAt,
+        sessionId: this.sessionId,
+        turnId,
+        usage: sessionMessage.usage,
+      });
+    } catch (error: unknown) {
+      this.logger.error({
+        event: "session_interrupted_assistant_usage_recording_failed",
+        error,
+        logMessage: "failed to record interrupted assistant usage",
+        session_id: this.sessionId,
+        turn_id: turnId,
+      });
+    }
   }
 
   private async waitForIdle(): Promise<void> {
@@ -981,17 +991,28 @@ export class PiMonoSessionEventHandler {
     }
 
     const attribution = await this.resolveSessionAttribution();
-    await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
-      agentId: attribution.agentId,
-      companyId: persistedMessageReference.companyId,
-      credentialSource: attribution.credentialSource,
-      costKind: attribution.costKind,
-      modelProviderCredentialId: attribution.modelProviderCredentialId,
-      recordedAt: persistedMessageReference.timestamp,
-      sessionId: this.sessionId,
-      turnId: persistedMessageReference.turnId,
-      usage: message.usage,
-    });
+    try {
+      await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
+        agentId: attribution.agentId,
+        companyId: persistedMessageReference.companyId,
+        credentialSource: attribution.credentialSource,
+        costKind: attribution.costKind,
+        modelProviderCredentialId: attribution.modelProviderCredentialId,
+        recordedAt: persistedMessageReference.timestamp,
+        sessionId: this.sessionId,
+        turnId: persistedMessageReference.turnId,
+        usage: message.usage,
+      });
+    } catch (error: unknown) {
+      this.logger.error({
+        event: "session_assistant_usage_recording_failed",
+        error,
+        logMessage: "failed to record assistant usage",
+        message_id: persistedMessageReference.messageId,
+        session_id: this.sessionId,
+        turn_id: persistedMessageReference.turnId,
+      });
+    }
   }
 
   private async refreshCodexRateLimitsAfterAssistantMessage(

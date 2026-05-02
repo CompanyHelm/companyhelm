@@ -904,6 +904,46 @@ test("PiMonoSessionEventHandler ignores completed assistant messages without usa
   assert.equal(harness.sessionMessageRecords.size, 1);
 });
 
+test("PiMonoSessionEventHandler logs assistant usage recording failures without dropping the completed message", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      logger: harness.logger,
+      sessionTurnUsageService: {
+        async recordUsage() {
+          throw new Error("usage aggregate conflict failed");
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: "Done",
+        role: "assistant",
+        timestamp: Date.parse("2026-04-20T16:30:00.000Z"),
+        usage: {
+          cost: { total: 0.000001 },
+          totalTokens: 100,
+        },
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.status, "completed");
+  assert.equal(harness.errorLogs.length, 1);
+  assert.equal((harness.errorLogs[0] as Record<string, unknown>).event, "session_assistant_usage_recording_failed");
+});
+
 test("PiMonoSessionEventHandler records current assistant usage when interrupted", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const usageRecords: SessionTurnUsageRecordInput[] = [];
@@ -954,6 +994,40 @@ test("PiMonoSessionEventHandler records current assistant usage when interrupted
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.recordedAt, interruptedAt);
   assert.equal(usageRecords[0]?.usage.totalTokens, 70);
+});
+
+test("PiMonoSessionEventHandler logs interrupted assistant usage failures without rejecting", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      logger: harness.logger,
+      sessionTurnUsageService: {
+        async recordUsage() {
+          throw new Error("interrupted usage aggregate conflict failed");
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.startPromptTurn(new Date("2026-04-20T16:30:00.000Z"));
+    await handler.recordInterruptedAssistantUsage({
+      role: "assistant",
+      timestamp: Date.parse("2026-04-20T16:30:30.000Z"),
+      usage: {
+        cost: { total: 0.000001 },
+        totalTokens: 100,
+      },
+    }, new Date("2026-04-20T16:31:00.000Z"));
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 1);
+  assert.equal((harness.errorLogs[0] as Record<string, unknown>).event, "session_interrupted_assistant_usage_recording_failed");
 });
 
 test("PiMonoSessionEventHandler persists assistant error text on failed message end", async () => {
