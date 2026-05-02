@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { ErrorState } from "@/components/error_state";
@@ -13,14 +13,14 @@ import type { environmentDetailPageQuery } from "./__generated__/environmentDeta
 
 type EnvironmentDetailPageTab = "metrics" | "overview";
 
-const environmentDetailMetricWindow = (() => {
+function createEnvironmentDetailMetricWindow() {
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - 60 * 60 * 1000);
   return {
     endTime: endTime.toISOString(),
     startTime: startTime.toISOString(),
   };
-})();
+}
 
 const environmentDetailPageQueryNode = graphql`
   query environmentDetailPageQuery($environmentId: ID!, $startTime: String!, $endTime: String!) {
@@ -84,6 +84,7 @@ function EnvironmentDetailPageContent() {
   const search = useSearch({ strict: false }) as { tab?: EnvironmentDetailPageTab };
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedEnvironmentId = String(environmentId || "").trim();
+  const selectedTab: EnvironmentDetailPageTab = search.tab === "metrics" ? "metrics" : "overview";
 
   if (!normalizedEnvironmentId) {
     return (
@@ -101,12 +102,16 @@ function EnvironmentDetailPageContent() {
     );
   }
 
+  const metricWindow = useMemo(
+    () => createEnvironmentDetailMetricWindow(),
+    [normalizedEnvironmentId, selectedTab],
+  );
   const data = useLazyLoadQuery<environmentDetailPageQuery>(
     environmentDetailPageQueryNode,
     {
-      endTime: environmentDetailMetricWindow.endTime,
+      endTime: metricWindow.endTime,
       environmentId: normalizedEnvironmentId,
-      startTime: environmentDetailMetricWindow.startTime,
+      startTime: metricWindow.startTime,
     },
     {
       fetchPolicy: "store-or-network",
@@ -132,8 +137,6 @@ function EnvironmentDetailPageContent() {
     templateId: environment.templateId,
     updatedAt: environment.updatedAt,
   };
-  const selectedTab: EnvironmentDetailPageTab = search.tab === "metrics" ? "metrics" : "overview";
-
   useEffect(() => {
     setDetailLabel(environment.displayName ?? environment.providerEnvironmentId);
 
