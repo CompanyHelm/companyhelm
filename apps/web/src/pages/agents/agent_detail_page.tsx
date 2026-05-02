@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { CheckIcon, XIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
@@ -531,6 +532,32 @@ function AgentDetailPageContent() {
   const selectedComputeProviderDefinitionOption = agent.defaultComputeProviderDefinitionId
     ? computeProviderDefinitionOptions.find((option) => option.id === agent.defaultComputeProviderDefinitionId) ?? null
     : null;
+  const orderedEnvironmentTemplateOptions = useMemo(() => {
+    const sizeOrder = ["small", "medium", "large"];
+
+    return (selectedComputeProviderDefinitionOption?.templates ?? [])
+      .map((templateOption, index) => ({
+        index,
+        templateOption,
+        templateOrder: sizeOrder.indexOf(templateOption.name),
+      }))
+      .sort((left, right) => {
+        if (left.templateOrder !== right.templateOrder) {
+          if (left.templateOrder === -1) {
+            return 1;
+          }
+
+          if (right.templateOrder === -1) {
+            return -1;
+          }
+
+          return left.templateOrder - right.templateOrder;
+        }
+
+        return left.index - right.index;
+      })
+      .map(({ templateOption }) => templateOption);
+  }, [selectedComputeProviderDefinitionOption?.templates]);
   const selectedModelOption = selectedProviderOption
     ? selectedProviderOption.models.find(
       (option) =>
@@ -833,9 +860,9 @@ function AgentDetailPageContent() {
                     />
                   ) : null}
 
-                  {(selectedComputeProviderDefinitionOption?.templates ?? []).length > 0 ? (
+                  {orderedEnvironmentTemplateOptions.length > 0 ? (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {(selectedComputeProviderDefinitionOption?.templates ?? []).map((template) => {
+                      {orderedEnvironmentTemplateOptions.map((template) => {
                         const isSelected = template.templateId === agent.defaultEnvironmentTemplateId;
 
                         return (
@@ -871,7 +898,20 @@ function AgentDetailPageContent() {
                             <div className="mt-4 grid gap-1.5 text-sm text-muted-foreground">
                               <p>{template.cpuCount} vCPU • {template.memoryGb} GB RAM</p>
                               <p>{template.diskSpaceGb} GB disk</p>
-                              <p>Computer use {template.computerUse ? "enabled" : "disabled"}</p>
+                              <p className="flex items-center gap-2">
+                                <span
+                                  aria-hidden="true"
+                                  className={cn(
+                                    "inline-flex items-center justify-center leading-none",
+                                    template.computerUse
+                                      ? "text-emerald-600"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {template.computerUse ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
+                                </span>
+                                <span>Computer use {template.computerUse ? "enabled" : "disabled"}</span>
+                              </p>
                             </div>
                           </button>
                         );
