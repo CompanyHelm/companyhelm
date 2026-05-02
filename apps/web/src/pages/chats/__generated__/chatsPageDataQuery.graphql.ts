@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<82f9f87c3f15858024becf40f77838e8>>
+ * @generated SignedSource<<921c97b56c951f645e5f464b85ebb5ac>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
+export type CompanySubscriptionPlan = "free" | "plus" | "pro" | "%future added value";
 export type chatsPageDataQuery$variables = Record<PropertyKey, never>;
 export type chatsPageDataQuery$data = {
   readonly AgentCreateOptions: ReadonlyArray<{

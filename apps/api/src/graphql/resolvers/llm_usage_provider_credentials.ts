@@ -244,7 +244,7 @@ export class LlmUsageProviderCredentialsQueryResolver {
       id: "platform:managed",
       modelCredentialSource: "platform",
       modelProvider: "companyhelm",
-      name: "CompanyHelm managed",
+      name: "CompanyHelm",
       status: "active",
       total: this.serializeAggregate(managedTotal),
       type: "api_key",

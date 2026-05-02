@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<70c44c4ee45244bbf1645efd11c72d2c>>
+ * @generated SignedSource<<f38ec2fe0ce6e6a27176ef225cee6639>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanySubscriptionPlan = "free" | "pro" | "%future added value";
+export type CompanySubscriptionPlan = "free" | "plus" | "pro" | "%future added value";
 export type companyWalletsPageQuery$variables = {
   companyId: string;
 };
