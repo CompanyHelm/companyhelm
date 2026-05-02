@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { LlmUsageAggregatesQueryResolver } from "../src/graphql/resolvers/llm_usage_aggregates.ts";
 
 class LlmUsageAggregatesQueryTestHarness {
-  static createContext(rows: Array<Record<string, unknown>>) {
+  static createContext(rows: Array<Record<string, unknown>>, isPlatformAdmin = false) {
     return {
       authSession: {
         company: {
@@ -15,6 +15,7 @@ class LlmUsageAggregatesQueryTestHarness {
           id: "user-1",
         },
       },
+      isPlatformAdmin,
       app_runtime_transaction_provider: {
         async transaction<T>(callback: (tx: unknown) => Promise<T>) {
           return callback({
@@ -102,6 +103,75 @@ test("LlmUsageAggregatesQueryResolver serializes aggregate rows for the authenti
   assert.equal(result[0]?.totalCostNanoUsd, 4_200);
   assert.equal(result[0]?.totalCostNanoVirtualUsd, 420);
   assert.equal(result[0]?.totalTokens, 35);
+});
+
+test("LlmUsageAggregatesQueryResolver redacts platform credential ids for company users", async () => {
+  const resolver = new LlmUsageAggregatesQueryResolver();
+  const rows = [
+    LlmUsageAggregatesQueryTestHarness.createAggregate({
+      id: "platform-provider-1",
+      modelCredentialSource: "platform",
+      platformModelProviderCredentialId: "platform-credential-1",
+      scopeType: "model_provider_credential",
+    }),
+  ];
+
+  const result = await resolver.execute(
+    null,
+    {
+      input: {
+        modelCredentialSource: "platform",
+        scopeType: "model_provider_credential",
+      },
+    },
+    LlmUsageAggregatesQueryTestHarness.createContext(rows),
+  );
+
+  assert.equal(result[0]?.platformModelProviderCredentialId, null);
+});
+
+test("LlmUsageAggregatesQueryResolver exposes platform credential ids to platform admins", async () => {
+  const resolver = new LlmUsageAggregatesQueryResolver();
+  const rows = [
+    LlmUsageAggregatesQueryTestHarness.createAggregate({
+      id: "platform-provider-1",
+      modelCredentialSource: "platform",
+      platformModelProviderCredentialId: "platform-credential-1",
+      scopeType: "model_provider_credential",
+    }),
+  ];
+
+  const result = await resolver.execute(
+    null,
+    {
+      input: {
+        modelCredentialSource: "platform",
+        platformModelProviderCredentialId: "platform-credential-1",
+        scopeType: "model_provider_credential",
+      },
+    },
+    LlmUsageAggregatesQueryTestHarness.createContext(rows, true),
+  );
+
+  assert.equal(result[0]?.platformModelProviderCredentialId, "platform-credential-1");
+});
+
+test("LlmUsageAggregatesQueryResolver rejects platform credential filters for company users", async () => {
+  const resolver = new LlmUsageAggregatesQueryResolver();
+
+  await assert.rejects(
+    resolver.execute(
+      null,
+      {
+        input: {
+          platformModelProviderCredentialId: "platform-credential-1",
+          scopeType: "model_provider_credential",
+        },
+      },
+      LlmUsageAggregatesQueryTestHarness.createContext([]),
+    ),
+    /Platform model provider credential filters require platform admin access/,
+  );
 });
 
 test("LlmUsageAggregatesQueryResolver requires scope ids for scoped aggregate reads", async () => {

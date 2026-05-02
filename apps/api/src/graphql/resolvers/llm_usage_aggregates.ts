@@ -126,7 +126,7 @@ export class LlmUsageAggregatesQueryResolver {
         eq(llmUsageAggregates.companyId, companyId),
         eq(llmUsageAggregates.scopeType, input.scopeType),
       ];
-      this.appendScopeConditions(conditions, input);
+      this.appendScopeConditions(conditions, input, context.isPlatformAdmin === true);
 
       if (input.period) {
         conditions.push(eq(llmUsageAggregates.period, input.period));
@@ -171,11 +171,15 @@ export class LlmUsageAggregatesQueryResolver {
 
       return [...rows]
         .sort(LlmUsageAggregatesQueryResolver.compareRecords)
-        .map(LlmUsageAggregatesQueryResolver.serializeRecord);
+        .map((record) => this.serializeRecord(record, context.isPlatformAdmin === true));
     });
   };
 
-  private appendScopeConditions(conditions: SQL[], input: LlmUsageAggregatesInput): void {
+  private appendScopeConditions(
+    conditions: SQL[],
+    input: LlmUsageAggregatesInput,
+    isPlatformAdmin: boolean,
+  ): void {
     if (input.scopeType === "model_provider_credential") {
       if (input.modelCredentialSource) {
         conditions.push(eq(llmUsageAggregates.modelCredentialSource, input.modelCredentialSource));
@@ -184,6 +188,10 @@ export class LlmUsageAggregatesQueryResolver {
         conditions.push(eq(llmUsageAggregates.modelProviderCredentialId, input.modelProviderCredentialId));
       }
       if (input.platformModelProviderCredentialId) {
+        if (!isPlatformAdmin) {
+          throw new Error("Platform model provider credential filters require platform admin access.");
+        }
+
         conditions.push(eq(
           llmUsageAggregates.platformModelProviderCredentialId,
           input.platformModelProviderCredentialId,
@@ -232,11 +240,17 @@ export class LlmUsageAggregatesQueryResolver {
     return left.periodStart.getTime() - right.periodStart.getTime();
   }
 
-  private static serializeRecord(record: LlmUsageAggregateRecord): GraphqlLlmUsageAggregateRecord {
+  private serializeRecord(
+    record: LlmUsageAggregateRecord,
+    canReadPlatformModelProviderCredentialId: boolean,
+  ): GraphqlLlmUsageAggregateRecord {
     return {
       ...record,
       createdAt: record.createdAt.toISOString(),
       periodStart: record.periodStart.toISOString(),
+      platformModelProviderCredentialId: canReadPlatformModelProviderCredentialId
+        ? record.platformModelProviderCredentialId
+        : null,
       updatedAt: record.updatedAt.toISOString(),
     };
   }
