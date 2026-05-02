@@ -28,6 +28,7 @@ export function ApplicationHeader(props: {
   const { detailLabel, headerActions, headerClassName, headerContent } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(normalizedPathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(normalizedPathname);
+  const isEnvironmentDetailPage = /^\/environments\/[^/]+$/.test(normalizedPathname);
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(normalizedPathname);
   const isSkillDetailPage = /^\/skills\/[^/]+$/.test(normalizedPathname);
   const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(normalizedPathname);
@@ -72,6 +73,8 @@ export function ApplicationHeader(props: {
   const detailPageTitle = detailLabel
     || (isAgentDetailPage
       ? "Agent"
+      : isEnvironmentDetailPage
+        ? "Environment"
       : isKnowledgeBaseDetailPage
         ? "Artifact"
         : isSkillDetailPage
@@ -85,6 +88,8 @@ export function ApplicationHeader(props: {
     ? OrganizationPath.route("/model-provider-credentials")
     : isAgentDetailPage
       ? OrganizationPath.route("/agents")
+      : isEnvironmentDetailPage
+        ? OrganizationPath.route("/environments")
       : isKnowledgeBaseDetailPage
         ? OrganizationPath.route("/knowledge-base")
         : isSkillDetailPage
@@ -96,6 +101,7 @@ export function ApplicationHeader(props: {
       : null;
   const isDetailPage = isCredentialDetailPage
     || isAgentDetailPage
+    || isEnvironmentDetailPage
     || isKnowledgeBaseDetailPage
     || isSkillDetailPage
     || isTaskDetailPage
