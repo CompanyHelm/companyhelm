@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type {
   ChangeEvent as ReactChangeEvent,
-  DragEvent as ReactDragEvent,
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
@@ -322,7 +321,6 @@ export function ChatComposerPane({
   selectedSessionHumanQuestion,
   draftMessage,
   draftImages,
-  isComposerDragActive,
   steeringQueuedMessageId,
   deletingQueuedMessageId,
   queuedMessages,
@@ -348,10 +346,6 @@ export function ChatComposerPane({
   onDraftImageInputChange,
   onOpenDraftImagePicker,
   onRemoveDraftImage,
-  onComposerDragEnter,
-  onComposerDragLeave,
-  onComposerDragOver,
-  onComposerDrop,
   onDismissHumanQuestion,
   onResolveHumanQuestion,
   onSteerQueuedMessage,
@@ -367,7 +361,6 @@ export function ChatComposerPane({
   selectedSessionHumanQuestion: InboxHumanQuestionRecord | null;
   draftMessage: string;
   draftImages: ReadonlyArray<DraftComposerImageRecord>;
-  isComposerDragActive: boolean;
   steeringQueuedMessageId: string | null;
   deletingQueuedMessageId: string | null;
   queuedMessages: ReadonlyArray<QueuedMessageRecord>;
@@ -392,10 +385,6 @@ export function ChatComposerPane({
   onDraftImageInputChange: (event: ReactChangeEvent<HTMLInputElement>) => void;
   onOpenDraftImagePicker: () => void;
   onRemoveDraftImage: (draftImageId: string) => void;
-  onComposerDragEnter: (event: ReactDragEvent<HTMLDivElement>) => void;
-  onComposerDragLeave: (event: ReactDragEvent<HTMLDivElement>) => void;
-  onComposerDragOver: (event: ReactDragEvent<HTMLDivElement>) => void;
-  onComposerDrop: (event: ReactDragEvent<HTMLDivElement>) => void;
   onDismissHumanQuestion: (inboxItemId: string) => void;
   onResolveHumanQuestion: (input: {
     customAnswerText?: string;
@@ -422,26 +411,8 @@ export function ChatComposerPane({
           type="button"
         />
       ) : null}
-      <div
-        className={`relative overflow-hidden rounded-[1.1rem] bg-input/20 transition focus-within:bg-input/25 ${
-          isComposerDragActive
-            ? "bg-primary/8"
-            : ""
-        }`}
-        onDragEnter={onComposerDragEnter}
-        onDragLeave={onComposerDragLeave}
-        onDragOver={onComposerDragOver}
-        onDrop={onComposerDrop}
-      >
-        {isComposerDragActive ? (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[1.1rem] bg-primary/10 px-6 text-center">
-            <div className="grid gap-1">
-              <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images here</p>
-              <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
-            </div>
-          </div>
-        ) : null}
-        <div className={`transition ${isComposerDragActive ? "opacity-35" : "opacity-100"}`}>
+      <div className="relative overflow-hidden rounded-[1.1rem] bg-input/20 transition focus-within:bg-input/25">
+        <div>
           {selectedSession && selectedSessionHumanQuestion ? (
             <SessionHumanQuestionSnippet
               isDismissing={isDismissInboxHumanQuestionInFlight}
