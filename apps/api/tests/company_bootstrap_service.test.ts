@@ -24,6 +24,7 @@ import { CompanyHelmComputeProviderService } from "../src/services/compute_provi
 const expectedSystemSkillKeys = [
   "access_past_messages",
   "company_directory",
+  "companyhelm_guide",
   "execute_workflows",
   "manage_agents",
   "manage_artifacts",
