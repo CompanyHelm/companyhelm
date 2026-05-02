@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bacdbd72e31d3a8703f31e1f7b369fec>>
+ * @generated SignedSource<<b3b3d0e4dfc7d9eab71163d2cdb23767>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -31,6 +31,7 @@ export type chatsPageDataSessionUpdatedSubscription$data = {
       }>;
       readonly workflowDefinitionId: string;
     } | null | undefined;
+    readonly canForkLatestSession: boolean;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
     readonly forkedFromSessionAgentId: string | null | undefined;
@@ -165,6 +166,13 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "hasUnread",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "canForkLatestSession",
         "storageKey": null
       },
       {
@@ -309,16 +317,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "5ef3c06e70287f240d410cd55d7febc1",
+    "cacheID": "f26103f78f250036f81f5bd2a1abca1d",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    canForkLatestSession\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e0ed55e8e8bbb4190c3c4400be99c2f3";
+(node as any).hash = "3ebd3a7892862c1c9dc4898c7c0c36ff";
 
 export default node;

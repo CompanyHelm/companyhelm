@@ -517,6 +517,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   });
 
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
+  const canForkSelectedSessionLatestContext = canForkLatestSession && selectedSession?.canForkLatestSession === true;
 
   useEffect(() => {
     setInboxHumanQuestions([...data.InboxHumanQuestions].sort(compareInboxHumanQuestionsByCreatedAt));
@@ -2283,7 +2284,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   );
   const chatComposer = selectedAgent && (!isFixedSessionMode || selectedSession) ? (
     <ChatComposerPane
-      canForkLatestSession={canForkLatestSession}
+      canForkLatestSession={canForkSelectedSessionLatestContext}
       canInterruptSelectedSession={canInterruptSelectedSession}
       canSubmitDraft={canSubmitDraft}
       composerModelOptionId={composerModelOptionId}

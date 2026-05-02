@@ -826,6 +826,7 @@ type Session {
   agentId: ID!
   associatedTask: SessionAssociatedTask
   associatedWorkflowRun: SessionAssociatedWorkflowRun
+  canForkLatestSession: Boolean!
   currentContextTokens: Int
   forkedFromSessionAgentId: ID
   forkedFromSessionId: ID

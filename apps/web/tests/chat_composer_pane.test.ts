@@ -3,12 +3,27 @@ import { test } from "node:test";
 import { createElement, createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ChatComposerPane } from "../src/pages/chats/chat_composer_pane";
+import type { SessionRecord } from "../src/pages/chats/chats_page_data";
 
-function renderChatComposerPane(canManuallyResizeDraftTextarea: boolean): string {
+function createSelectedSession(): SessionRecord {
+  return {
+    canForkLatestSession: true,
+    currentContextTokens: 1024,
+    isCompacting: false,
+    isThinking: false,
+    maxContextTokens: 64000,
+  } as SessionRecord;
+}
+
+function renderChatComposerPane(input: {
+  canForkLatestSession?: boolean;
+  canManuallyResizeDraftTextarea?: boolean;
+  selectedSession?: SessionRecord | null;
+} = {}): string {
   return renderToStaticMarkup(createElement(ChatComposerPane, {
-    canForkLatestSession: false,
+    canForkLatestSession: input.canForkLatestSession ?? false,
     canInterruptSelectedSession: false,
-    canManuallyResizeDraftTextarea,
+    canManuallyResizeDraftTextarea: input.canManuallyResizeDraftTextarea ?? false,
     canSubmitDraft: false,
     composerModelOptionId: "model-1",
     composerModelOptions: [],
@@ -44,7 +59,7 @@ function renderChatComposerPane(canManuallyResizeDraftTextarea: boolean): string
     onSubmitDraft: () => {},
     queueDraftAriaLabel: "Queue message",
     queuedMessages: [],
-    selectedSession: null,
+    selectedSession: input.selectedSession ?? null,
     selectedSessionHumanQuestion: null,
     shouldShowInterruptComposerAction: false,
     shouldShowQueueComposerAction: false,
@@ -54,13 +69,31 @@ function renderChatComposerPane(canManuallyResizeDraftTextarea: boolean): string
 }
 
 test("hides the composer resize handle when manual resizing is disabled", () => {
-  const html = renderChatComposerPane(false);
+  const html = renderChatComposerPane({ canManuallyResizeDraftTextarea: false });
 
   assert.doesNotMatch(html, /Resize message input/);
 });
 
 test("renders the composer resize handle when manual resizing is enabled", () => {
-  const html = renderChatComposerPane(true);
+  const html = renderChatComposerPane({ canManuallyResizeDraftTextarea: true });
 
   assert.match(html, /Resize message input/);
+});
+
+test("hides the latest-context fork button when forking is disabled", () => {
+  const html = renderChatComposerPane({
+    canForkLatestSession: false,
+    selectedSession: createSelectedSession(),
+  });
+
+  assert.doesNotMatch(html, /Fork latest context/);
+});
+
+test("renders the latest-context fork button when forking is enabled", () => {
+  const html = renderChatComposerPane({
+    canForkLatestSession: true,
+    selectedSession: createSelectedSession(),
+  });
+
+  assert.match(html, /Fork latest context/);
 });

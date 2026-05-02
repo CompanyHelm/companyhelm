@@ -103,6 +103,7 @@ export const chatsPageQueryNode = graphql`
         }
       }
       hasUnread
+      canForkLatestSession
       currentContextTokens
       forkedFromSessionAgentId
       forkedFromSessionId
@@ -538,6 +539,7 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
         }
       }
       hasUnread
+      canForkLatestSession
       currentContextTokens
       forkedFromSessionAgentId
       forkedFromSessionId

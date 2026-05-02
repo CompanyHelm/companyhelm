@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   agentSessions,
@@ -19,6 +19,7 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 type SessionRow = {
   id: string;
   agentId: string;
+  contextMessagesSnapshot: unknown;
   currentContextTokens: number | null;
   currentModelCredentialSource: "platform" | "user_provided";
   currentPlatformModelId: string | null;
@@ -185,6 +186,7 @@ export type SessionGraphqlRecord = {
   agentId: string;
   associatedTask: SessionAssociatedTaskGraphqlRecord | null;
   associatedWorkflowRun: SessionAssociatedWorkflowRunGraphqlRecord | null;
+  canForkLatestSession: boolean;
   currentContextTokens: number | null;
   forkedFromSessionAgentId: string | null;
   forkedFromSessionId: string | null;
@@ -318,6 +320,7 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
+          contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelCredentialSource: agentSessions.currentModelCredentialSource,
           currentPlatformModelId: agentSessions.currentPlatformModelId,
@@ -351,6 +354,7 @@ export class SessionReadService {
           desc(agentSessions.id),
         ) as SessionRow[];
       const accessibleSessionRows = sessionRows;
+      const forkableSessionIds = await this.loadForkableSessionIds(selectableDatabase, companyId, accessibleSessionRows);
       const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, accessibleSessionRows);
       const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
         selectableDatabase,
@@ -378,6 +382,7 @@ export class SessionReadService {
         .map((sessionRow) => this.serializeSession(
           sessionRow,
           forkSourceBySessionId,
+          forkableSessionIds,
           modelOptionIdBySessionKey,
           associatedTaskBySessionId,
           associatedWorkflowRunBySessionId,
@@ -398,6 +403,7 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
+          contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelCredentialSource: agentSessions.currentModelCredentialSource,
           currentPlatformModelId: agentSessions.currentPlatformModelId,
@@ -437,6 +443,7 @@ export class SessionReadService {
         companyId,
         [sessionRow],
       );
+      const forkableSessionIds = await this.loadForkableSessionIds(selectableDatabase, companyId, [sessionRow]);
       const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, [sessionRow]);
       const associatedTaskBySessionId = await this.loadAssociatedTaskBySessionId(
         selectableDatabase,
@@ -452,6 +459,7 @@ export class SessionReadService {
       return this.serializeSession(
         sessionRow,
         forkSourceBySessionId,
+        forkableSessionIds,
         modelOptionIdBySessionKey,
         associatedTaskBySessionId,
         associatedWorkflowRunBySessionId,
@@ -1173,9 +1181,41 @@ export class SessionReadService {
     return forkSourceBySessionId;
   }
 
+  /**
+   * Mirrors the fork mutation's prerequisites so clients can avoid offering a branch action that
+   * will immediately fail. A session needs both a persisted runtime context snapshot and at least
+   * one completed turn from the same session to anchor the fork lineage.
+   */
+  private async loadForkableSessionIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionRows: SessionRow[],
+  ): Promise<Set<string>> {
+    const sessionIdsWithSavedContext = sessionRows
+      .filter((sessionRow) => Array.isArray(sessionRow.contextMessagesSnapshot) && sessionRow.contextMessagesSnapshot.length > 0)
+      .map((sessionRow) => sessionRow.id);
+    if (sessionIdsWithSavedContext.length === 0) {
+      return new Set();
+    }
+
+    const completedTurnRows = await selectableDatabase
+      .select({
+        sessionId: sessionTurns.sessionId,
+      })
+      .from(sessionTurns)
+      .where(and(
+        eq(sessionTurns.companyId, companyId),
+        inArray(sessionTurns.sessionId, sessionIdsWithSavedContext),
+        isNotNull(sessionTurns.endedAt),
+      )) as Array<{ sessionId: string }>;
+
+    return new Set(completedTurnRows.map((turnRow) => turnRow.sessionId));
+  }
+
   private serializeSession(
     sessionRow: SessionRow,
     forkSourceBySessionId: Map<string, SessionForkSourceRecord>,
+    forkableSessionIds: Set<string>,
     modelIdByModelRecordId: Map<string, string>,
     associatedTaskBySessionId: Map<string, SessionAssociatedTaskGraphqlRecord>,
     associatedWorkflowRunBySessionId: Map<string, SessionAssociatedWorkflowRunGraphqlRecord>,
@@ -1197,6 +1237,7 @@ export class SessionReadService {
       agentId: sessionRow.agentId,
       associatedTask: associatedTaskBySessionId.get(sessionRow.id) ?? null,
       associatedWorkflowRun: associatedWorkflowRunBySessionId.get(sessionRow.id) ?? null,
+      canForkLatestSession: forkableSessionIds.has(sessionRow.id),
       currentContextTokens: sessionRow.currentContextTokens,
       forkedFromSessionAgentId: forkSource?.agentId ?? null,
       forkedFromSessionId: forkSource?.sessionId ?? null,

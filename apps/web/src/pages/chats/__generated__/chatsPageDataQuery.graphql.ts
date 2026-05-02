@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<921c97b56c951f645e5f464b85ebb5ac>>
+ * @generated SignedSource<<87ab69ac6e66edb132c0e75b7e3991a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -85,6 +85,7 @@ export type chatsPageDataQuery$data = {
       }>;
       readonly workflowDefinitionId: string;
     } | null | undefined;
+    readonly canForkLatestSession: boolean;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
     readonly forkedFromSessionAgentId: string | null | undefined;
@@ -496,6 +497,13 @@ v10 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "canForkLatestSession",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "currentContextTokens",
         "storageKey": null
       },
@@ -611,16 +619,16 @@ return {
     "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "cf831ad157f9233909ca44fe5292ebb0",
+    "cacheID": "965a5a6eea14e8915e3ea4e81959e080",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  BillingPlans {\n    key\n    name\n  }\n  CompanyWallet {\n    currentPlan\n  }\n  ModelProviders {\n    id\n    name\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    platformModelId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelCredentialSource\n      platformModelId\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  BillingPlans {\n    key\n    name\n  }\n  CompanyWallet {\n    currentPlan\n  }\n  ModelProviders {\n    id\n    name\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    canForkLatestSession\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    platformModelId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5e1c38ce77c45b83e913d1f94e9581cb";
+(node as any).hash = "ef1cf7417eb6bffc993e9c42e79c9b8d";
 
 export default node;

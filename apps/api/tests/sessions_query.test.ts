@@ -95,6 +95,7 @@ class SessionsQueryTestHarness {
                             {
                               id: "session-newer",
                               agentId: "agent-2",
+                              contextMessagesSnapshot: [],
                               currentContextTokens: null,
                               currentModelCredentialSource: "platform",
                               currentPlatformModelId: "platform-model-1",
@@ -116,6 +117,10 @@ class SessionsQueryTestHarness {
                             {
                               id: "session-older",
                               agentId: "agent-1",
+                              contextMessagesSnapshot: [{
+                                content: "Saved session context",
+                                role: "assistant",
+                              }],
                               currentContextTokens: 32000,
                               currentModelCredentialSource: "user_provided",
                               currentPlatformModelId: null,
@@ -149,6 +154,20 @@ class SessionsQueryTestHarness {
                   return {
                     async where() {
                       return [{
+                        sessionId: "session-older",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         id: "turn-source-1",
                         sessionId: "session-source",
                       }];
@@ -158,7 +177,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -175,7 +194,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -192,7 +211,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 6) {
               return {
                 from() {
                   return {
@@ -209,7 +228,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -258,7 +277,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 7) {
+            if (selectCallCount === 8) {
               return {
                 from() {
                   return {
@@ -286,7 +305,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 8) {
+            if (selectCallCount === 9) {
               return {
                 from() {
                   return {
@@ -313,7 +332,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 9) {
+            if (selectCallCount === 10) {
               return {
                 from() {
                   return {
@@ -334,7 +353,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 10) {
+            if (selectCallCount === 11) {
               return {
                 from() {
                   return {
@@ -361,7 +380,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 11) {
+            if (selectCallCount === 12) {
               return {
                 from() {
                   return {
@@ -461,6 +480,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
               }
             }
             hasUnread
+            canForkLatestSession
             currentContextTokens
             forkedFromSessionAgentId
             forkedFromSessionId
@@ -499,6 +519,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       },
       associatedWorkflowRun: null,
       hasUnread: true,
+      canForkLatestSession: false,
       currentContextTokens: null,
       forkedFromSessionAgentId: "agent-source",
       forkedFromSessionId: "session-source",
@@ -549,6 +570,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
         ],
       },
       hasUnread: false,
+      canForkLatestSession: true,
       currentContextTokens: 32000,
       forkedFromSessionAgentId: null,
       forkedFromSessionId: null,
