@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { EnvironmentActions } from "@/components/environment_actions";
 import {
@@ -80,6 +80,18 @@ function formatTimestamp(value: string | null | undefined): string {
  * which agent owns each environment and what its current runtime state looks like.
  */
 export function EnvironmentsTable(props: EnvironmentsTableProps) {
+  const navigate = useNavigate();
+
+  const openEnvironmentDetail = (environmentId: string) => {
+    void navigate({
+      params: {
+        environmentId,
+        organizationSlug: props.organizationSlug,
+      },
+      to: OrganizationPath.route("/environments/$environmentId"),
+    });
+  };
+
   if (props.isLoading) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
@@ -118,20 +130,28 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
       </TableHeader>
       <TableBody>
         {props.environments.map((environment) => (
-          <TableRow key={environment.id}>
+          <TableRow
+            key={environment.id}
+            aria-label={`Open environment ${environment.displayName ?? environment.providerEnvironmentId}`}
+            className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            onClick={() => {
+              openEnvironmentDetail(environment.id);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") {
+                return;
+              }
+
+              event.preventDefault();
+              openEnvironmentDetail(environment.id);
+            }}
+            role="link"
+            tabIndex={0}
+          >
             <TableCell>
               <div className="min-w-0">
                 <p className="truncate font-medium text-foreground">
-                  <Link
-                    className="underline-offset-4 hover:underline"
-                    params={{
-                      environmentId: environment.id,
-                      organizationSlug: props.organizationSlug,
-                    }}
-                    to={OrganizationPath.route("/environments/$environmentId")}
-                  >
-                    {environment.displayName ?? environment.providerEnvironmentId}
-                  </Link>
+                  {environment.displayName ?? environment.providerEnvironmentId}
                 </p>
               </div>
             </TableCell>
@@ -159,7 +179,15 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
             <TableCell>{environment.diskSpaceGb} GB</TableCell>
             <TableCell>{formatTimestamp(environment.lastSeenAt)}</TableCell>
             <TableCell>{formatTimestamp(environment.updatedAt)}</TableCell>
-            <TableCell className="text-right">
+            <TableCell
+              className="text-right"
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+              onKeyDown={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <EnvironmentActions
                 actingEnvironmentId={props.actingEnvironmentId}
                 className="justify-end"
