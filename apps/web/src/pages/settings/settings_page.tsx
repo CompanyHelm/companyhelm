@@ -150,6 +150,25 @@ function SettingsPageFallback() {
   );
 }
 
+function MembersPanelFallback() {
+  return (
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+      <CardHeader>
+        <div className="min-w-0">
+          <CardDescription>
+            Loading members...
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
+          Loading member access...
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SettingsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
@@ -482,7 +501,9 @@ function SettingsPageContent() {
       ) : null}
 
       {selectedTab === "members" ? (
-        <OrganizationMembersSettingsPanel />
+        <Suspense fallback={<MembersPanelFallback />}>
+          <OrganizationMembersSettingsPanel />
+        </Suspense>
       ) : null}
 
       <TaskStageDialog

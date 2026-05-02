@@ -116,7 +116,7 @@ export function OrganizationMembersSettingsPanel() {
     organizationMembersSettingsPanelQueryNode,
     {},
     {
-      fetchPolicy: "network-only",
+      fetchPolicy: "store-and-network",
     },
   );
   const [emailAddress, setEmailAddress] = useState("");
