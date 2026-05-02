@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0ff799381c41cf5935f42a3a1b7e8e70>>
+ * @generated SignedSource<<a0d91bd184692a4968b0da6b47d96c17>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,10 +12,12 @@ import { ConcreteRequest } from 'relay-runtime';
 export type usersPageQuery$variables = {
   page: number;
   pageSize: number;
+  search?: string | null | undefined;
 };
 export type usersPageQuery$data = {
   readonly PlatformAdminUsers: {
     readonly nodes: ReadonlyArray<{
+      readonly clerkUserId: string | null | undefined;
       readonly companyCount: number;
       readonly createdAt: string;
       readonly email: string;
@@ -47,6 +49,11 @@ var v0 = [
     "defaultValue": null,
     "kind": "LocalArgument",
     "name": "pageSize"
+  },
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "search"
   }
 ],
 v1 = [
@@ -62,6 +69,11 @@ v1 = [
         "kind": "Variable",
         "name": "pageSize",
         "variableName": "pageSize"
+      },
+      {
+        "kind": "Variable",
+        "name": "search",
+        "variableName": "search"
       }
     ],
     "concreteType": "PlatformAdminUserPage",
@@ -110,6 +122,13 @@ v1 = [
             "args": null,
             "kind": "ScalarField",
             "name": "id",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "clerkUserId",
             "storageKey": null
           },
           {
@@ -186,16 +205,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "b1e3470ad99a7046152193e79bbd6fd7",
+    "cacheID": "16cf464fd405dbd2c6e1ea2c6da5a606",
     "id": null,
     "metadata": {},
     "name": "usersPageQuery",
     "operationKind": "query",
-    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      companyCount\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      clerkUserId\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      companyCount\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "419b681c6a6c7405a221f496ab45212f";
+(node as any).hash = "a867c68d41d0a6f98c328755c6552b08";
 
 export default node;

@@ -57,9 +57,13 @@ class PlatformAdminUsersQueryTestHarness {
             if (selectCallCount === 2) {
               return {
                 from() {
-                  return [{
-                    totalCount: 2,
-                  }];
+                  return {
+                    where() {
+                      return [{
+                        totalCount: 2,
+                      }];
+                    },
+                  };
                 },
               };
             }
@@ -89,30 +93,36 @@ class PlatformAdminUsersQueryTestHarness {
                   return {
                     leftJoin() {
                       return {
-                        orderBy() {
+                        where() {
                           return {
-                            limit() {
+                            orderBy() {
                               return {
-                                async offset() {
-                                  return [{
-                                    companyCount: 2,
-                                    createdAt: new Date("2026-04-01T10:00:00.000Z"),
-                                    email: "jane@example.com",
-                                    firstName: "Jane",
-                                    id: "user-1",
-                                    isPlatformAdmin: true,
-                                    lastName: "Doe",
-                                    updatedAt: new Date("2026-04-15T09:30:00.000Z"),
-                                  }, {
-                                    companyCount: 1,
-                                    createdAt: new Date("2026-03-01T10:00:00.000Z"),
-                                    email: "alex@example.com",
-                                    firstName: "Alex",
-                                    id: "user-2",
-                                    isPlatformAdmin: false,
-                                    lastName: null,
-                                    updatedAt: new Date("2026-04-12T09:30:00.000Z"),
-                                  }];
+                                limit() {
+                                  return {
+                                    async offset() {
+                                      return [{
+                                        companyCount: 2,
+                                        createdAt: new Date("2026-04-01T10:00:00.000Z"),
+                                        email: "jane@example.com",
+                                        firstName: "Jane",
+                                        id: "user-1",
+                                        clerkUserId: "user_clerk_jane",
+                                        isPlatformAdmin: true,
+                                        lastName: "Doe",
+                                        updatedAt: new Date("2026-04-15T09:30:00.000Z"),
+                                      }, {
+                                        companyCount: 1,
+                                        createdAt: new Date("2026-03-01T10:00:00.000Z"),
+                                        email: "alex@example.com",
+                                        firstName: "Alex",
+                                        id: "user-2",
+                                        clerkUserId: "user_clerk_alex",
+                                        isPlatformAdmin: false,
+                                        lastName: null,
+                                        updatedAt: new Date("2026-04-12T09:30:00.000Z"),
+                                      }];
+                                    },
+                                  };
                                 },
                               };
                             },
@@ -186,13 +196,14 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
     payload: {
       query: `
         query PlatformAdminUsers {
-          PlatformAdminUsers(page: 1, pageSize: 25) {
+          PlatformAdminUsers(page: 1, pageSize: 25, search: "user_clerk") {
             page
             pageSize
             totalCount
             totalPages
             nodes {
               id
+              clerkUserId
               email
               firstName
               lastName
@@ -212,6 +223,7 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
   assert.deepEqual(document.data.PlatformAdminUsers, {
     nodes: [{
       id: "user-1",
+      clerkUserId: "user_clerk_jane",
       email: "jane@example.com",
       firstName: "Jane",
       lastName: "Doe",
@@ -221,6 +233,7 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
       updatedAt: "2026-04-15T09:30:00.000Z",
     }, {
       id: "user-2",
+      clerkUserId: "user_clerk_alex",
       email: "alex@example.com",
       firstName: "Alex",
       lastName: null,

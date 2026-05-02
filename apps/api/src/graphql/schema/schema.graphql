@@ -37,7 +37,7 @@ type Query {
   PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
   PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
   PlatformCodexRateLimits(platformModelProviderCredentialId: ID!): CodexRateLimits!
-  PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
+  PlatformAdminUsers(page: Int!, pageSize: Int!, search: String): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -586,6 +586,7 @@ type Me {
 
 type PlatformAdminUser {
   id: ID!
+  clerkUserId: String
   email: String!
   firstName: String!
   lastName: String
