@@ -27,9 +27,15 @@ function buildTranscriptPaneProps() {
     updatedAt: "2026-04-21T00:00:00.000Z",
   };
   const sessionMessages = [{
+    contents: [],
+    createdAt: "2026-04-21T00:00:00.000Z",
+    errorMessage: null,
     id: "message-1",
+    isError: false,
     role: "assistant",
+    status: "completed",
     text: "READY",
+    toolCallId: null,
   }];
   const transcriptScrollRef = {
     current: null,
@@ -111,6 +117,68 @@ test("chat transcript pane renders compaction status from session state", () => 
   }));
 
   assert.match(markup, /Compacting context/u);
+});
+
+test("chat transcript pane renders a streamed compaction marker with divider lines and suppresses the fallback pill", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    session: {
+      ...props.session,
+      isCompacting: true,
+    },
+    sessionMessages: [
+      {
+        contents: [{
+          structuredContent: {
+            type: "compaction",
+          },
+          text: "Compacting…",
+        }],
+        createdAt: "2026-04-21T00:00:00.000Z",
+        errorMessage: null,
+        id: "message-compaction-start",
+        isError: false,
+        role: "assistant",
+        status: "running",
+        text: "Compacting…",
+        toolCallId: null,
+        turnId: "turn-compaction-start",
+      },
+    ],
+  }));
+
+  assert.match(markup, /Compacting…/u);
+  assert.doesNotMatch(markup, /Compacting context/u);
+  assert.equal([...markup.matchAll(/bg-border\/60/gu)].length, 2);
+});
+
+test("chat transcript pane renders a completed compaction marker from a single message", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    sessionMessages: [
+      {
+        contents: [{
+          structuredContent: {
+            type: "compaction",
+          },
+          text: "Compaction complete",
+        }],
+        createdAt: "2026-04-21T00:00:05.000Z",
+        errorMessage: null,
+        id: "message-compaction-complete",
+        isError: false,
+        role: "assistant",
+        status: "completed",
+        text: "Compaction complete",
+        toolCallId: null,
+        turnId: "turn-compaction-complete",
+      },
+    ],
+  }));
+
+  assert.match(markup, /Compaction complete/u);
 });
 
 test("timestamp tooltip boundary starts below visible workflow chrome", () => {

@@ -120,6 +120,20 @@ type SessionEvent = {
   toolResults?: unknown;
 };
 
+type CompactionLifecycleRecord = {
+  contentId: string;
+  messageId: string;
+  turnId: string;
+  trigger: "automatic" | "manual";
+};
+
+type PersistedCompactionMessageRecord = {
+  contentId: string;
+  messageId: string;
+  trigger: "automatic" | "manual";
+  turnId: string;
+};
+
 type PiMonoSessionContextSnapshot = {
   currentContextTokens: number | null;
   isCompacting: boolean;
@@ -200,6 +214,7 @@ export class PiMonoSessionEventHandler {
   private readonly persistedMessageIds = new Set<string>();
   private readonly queuedUserMessageDispatches: QueuedUserMessageDispatch[] = [];
   private readonly completedToolExecutionKeys = new Set<string>();
+  private activeCompactionLifecycle: CompactionLifecycleRecord | null = null;
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private agentId?: string;
@@ -434,6 +449,7 @@ export class PiMonoSessionEventHandler {
       event: "pi_mono_agent_started",
       status_to: "running",
     });
+    await this.completePersistedRunningCompactionMessages(this.resolvePersistedTimestamp(new Date()));
     await this.updateSessionStatus("running");
   }
 
@@ -468,6 +484,7 @@ export class PiMonoSessionEventHandler {
     this.logDebug("pi mono compaction started", sessionEvent, {
       event: "pi_mono_compaction_started",
     });
+    await this.persistCompactionStartMessage(sessionEvent);
     await this.persistSessionState({}, true, true);
   }
 
@@ -475,7 +492,285 @@ export class PiMonoSessionEventHandler {
     this.logDebug("pi mono compaction ended", sessionEvent, {
       event: "pi_mono_compaction_ended",
     });
+    await this.persistCompactionEndMessage();
     await this.persistSessionState({}, true, true);
+  }
+
+  private async persistCompactionStartMessage(sessionEvent: SessionEvent): Promise<void> {
+    if (this.activeCompactionLifecycle) {
+      return;
+    }
+
+    const companyId = await this.resolveCompanyId();
+    const timestamp = this.resolvePersistedTimestamp(new Date());
+    await this.completePersistedRunningCompactionMessages(timestamp);
+    const turnId = randomUUID();
+    const messageId = randomUUID();
+    const trigger = this.resolveCompactionTrigger(sessionEvent);
+
+    await this.insertSyntheticTurn({
+      companyId,
+      endedAt: null,
+      startedAt: timestamp,
+      turnId,
+    });
+    const syntheticMessage = await this.insertSyntheticAssistantMessage({
+      companyId,
+      messageId,
+      status: "running",
+      structuredContent: {
+        trigger,
+        type: "compaction",
+      },
+      text: "Compacting…",
+      timestamp,
+      turnId,
+    });
+
+    this.activeCompactionLifecycle = {
+      contentId: syntheticMessage.contentId,
+      messageId,
+      turnId,
+      trigger,
+    };
+  }
+
+  private async persistCompactionEndMessage(): Promise<void> {
+    const timestamp = this.resolvePersistedTimestamp(new Date());
+    if (this.activeCompactionLifecycle) {
+      await this.completeSyntheticTurn(this.activeCompactionLifecycle.turnId, timestamp);
+      await this.updateSyntheticAssistantCompactionMessage({
+        contentId: this.activeCompactionLifecycle.contentId,
+        messageId: this.activeCompactionLifecycle.messageId,
+        status: "completed",
+        structuredContent: {
+          trigger: this.activeCompactionLifecycle.trigger,
+          type: "compaction",
+        },
+        text: "Compaction complete",
+        updatedAt: timestamp,
+      });
+      const staleMessages = (await this.loadPersistedRunningCompactionMessages()).filter((runningMessage) => {
+        return runningMessage.messageId !== this.activeCompactionLifecycle?.messageId;
+      });
+      await this.completePersistedCompactionMessages(staleMessages, timestamp);
+    } else {
+      await this.completePersistedRunningCompactionMessages(timestamp);
+    }
+    this.activeCompactionLifecycle = null;
+  }
+
+  private resolveCompactionTrigger(sessionEvent: SessionEvent): "automatic" | "manual" {
+    return sessionEvent.type?.startsWith("auto_") ? "automatic" : "manual";
+  }
+
+  private async completePersistedRunningCompactionMessages(timestamp: Date): Promise<void> {
+    const runningMessages = await this.loadPersistedRunningCompactionMessages();
+    await this.completePersistedCompactionMessages(runningMessages, timestamp);
+  }
+
+  private async completePersistedCompactionMessages(
+    runningMessages: ReadonlyArray<PersistedCompactionMessageRecord>,
+    timestamp: Date,
+  ): Promise<void> {
+    if (runningMessages.length === 0) {
+      return;
+    }
+
+    for (const runningMessage of runningMessages) {
+      await this.completeSyntheticTurn(runningMessage.turnId, timestamp);
+      await this.updateSyntheticAssistantCompactionMessage({
+        contentId: runningMessage.contentId,
+        messageId: runningMessage.messageId,
+        status: "completed",
+        structuredContent: {
+          trigger: runningMessage.trigger,
+          type: "compaction",
+        },
+        text: "Compaction complete",
+        updatedAt: timestamp,
+      });
+    }
+
+  }
+
+  private async loadPersistedRunningCompactionMessages(): Promise<PersistedCompactionMessageRecord[]> {
+    const persistedMessages = await this.transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as {
+        select(selection: Record<string, unknown>): {
+          from(table: unknown): {
+            where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+          };
+        };
+      };
+      const sessionMessageRows = await selectableDatabase
+        .select({
+          id: sessionMessages.id,
+          role: sessionMessages.role,
+          sessionId: sessionMessages.sessionId,
+          status: sessionMessages.status,
+          turnId: sessionMessages.turnId,
+        })
+        .from(sessionMessages)
+        .where(eq(sessionMessages.sessionId, this.sessionId));
+
+      const runningCompactionMessages: PersistedCompactionMessageRecord[] = [];
+      for (const sessionMessageRow of sessionMessageRows) {
+        if (
+          sessionMessageRow?.sessionId !== this.sessionId
+          || sessionMessageRow?.role !== "assistant"
+          || sessionMessageRow?.status !== "running"
+          || typeof sessionMessageRow?.id !== "string"
+          || typeof sessionMessageRow?.turnId !== "string"
+        ) {
+          continue;
+        }
+
+        const contentRows = await selectableDatabase
+          .select({
+            id: messageContents.id,
+            messageId: messageContents.messageId,
+            structuredContent: messageContents.structuredContent,
+          })
+          .from(messageContents)
+          .where(eq(messageContents.messageId, sessionMessageRow.id));
+        const compactionContentRow = contentRows.find((contentRow) => {
+          if (contentRow?.messageId !== sessionMessageRow.id || typeof contentRow?.id !== "string") {
+            return false;
+          }
+
+          const structuredContent = contentRow.structuredContent as Record<string, unknown> | null;
+          return structuredContent?.type === "compaction";
+        });
+        if (!compactionContentRow || typeof compactionContentRow.id !== "string") {
+          continue;
+        }
+
+        const structuredContent = compactionContentRow.structuredContent as Record<string, unknown> | null;
+        runningCompactionMessages.push({
+          contentId: compactionContentRow.id,
+          messageId: sessionMessageRow.id,
+          trigger: structuredContent?.trigger === "automatic" ? "automatic" : "manual",
+          turnId: sessionMessageRow.turnId,
+        });
+      }
+
+      return runningCompactionMessages;
+    });
+
+    return persistedMessages;
+  }
+
+  private async insertSyntheticTurn(input: {
+    companyId: string;
+    endedAt: Date | null;
+    startedAt: Date;
+    turnId: string;
+  }): Promise<void> {
+    await this.transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      await insertableDatabase.insert(sessionTurns).values({
+        companyId: input.companyId,
+        endedAt: input.endedAt,
+        id: input.turnId,
+        platformModelId: null,
+        platformModelProviderCredentialId: null,
+        platformModelProviderCredentialModelId: null,
+        sessionId: this.sessionId,
+        startedAt: input.startedAt,
+      });
+    });
+  }
+
+  private async completeSyntheticTurn(turnId: string, endedAt: Date): Promise<void> {
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionTurns)
+        .set({
+          endedAt,
+        })
+        .where(eq(sessionTurns.id, turnId));
+    });
+  }
+
+  private async insertSyntheticAssistantMessage(input: {
+    companyId: string;
+    messageId: string;
+    status: "running" | "completed";
+    structuredContent: Record<string, unknown>;
+    text: string;
+    timestamp: Date;
+    turnId: string;
+  }): Promise<{ contentId: string }> {
+    const contentId = randomUUID();
+    await this.transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      await insertableDatabase.insert(sessionMessages).values({
+        companyId: input.companyId,
+        createdAt: input.timestamp,
+        errorMessage: null,
+        id: input.messageId,
+        isError: false,
+        principalAgentId: null,
+        principalSessionId: null,
+        principalType: "user",
+        role: "assistant",
+        sessionId: this.sessionId,
+        status: input.status,
+        taskRunId: null,
+        toolCallId: null,
+        toolName: null,
+        turnId: input.turnId,
+        updatedAt: input.timestamp,
+        workflowRunId: null,
+      });
+      await insertableDatabase.insert(messageContents).values({
+        companyId: input.companyId,
+        createdAt: input.timestamp,
+        id: contentId,
+        messageId: input.messageId,
+        structuredContent: input.structuredContent,
+        text: input.text,
+        type: "text",
+        updatedAt: input.timestamp,
+      });
+    });
+
+    await this.publishMessageUpdate(input.messageId);
+    return {
+      contentId,
+    };
+  }
+
+  private async updateSyntheticAssistantCompactionMessage(input: {
+    contentId: string;
+    messageId: string;
+    status: "running" | "completed";
+    structuredContent: Record<string, unknown>;
+    text: string;
+    updatedAt: Date;
+  }): Promise<void> {
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionMessages)
+        .set({
+          status: input.status,
+          updatedAt: input.updatedAt,
+        })
+        .where(eq(sessionMessages.id, input.messageId));
+      await updatableDatabase
+        .update(messageContents)
+        .set({
+          structuredContent: input.structuredContent,
+          text: input.text,
+          updatedAt: input.updatedAt,
+        })
+        .where(eq(messageContents.id, input.contentId));
+    });
+
+    await this.publishMessageUpdate(input.messageId);
   }
 
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
