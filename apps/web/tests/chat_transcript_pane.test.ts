@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import type { MutableRefObject } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ChatTranscriptPane, ChatTranscriptTimestampPresenter, areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
+import { ChatTranscriptPane, ChatTranscriptTimestampPresenter, RequestAbortedTranscriptPresenter, areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
 
 function buildDomRect(properties: { height: number; left: number; top: number; width: number }): DOMRectReadOnly {
   return {
@@ -179,6 +179,60 @@ test("chat transcript pane renders a completed compaction marker from a single m
   }));
 
   assert.match(markup, /Compaction complete/u);
+});
+
+test("chat transcript pane renders request aborts as an informational divider instead of an error card", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    session: {
+      ...props.session,
+      status: "stopped",
+    },
+    sessionMessages: [
+      {
+        contents: [],
+        createdAt: "2026-04-21T00:00:00.000Z",
+        errorMessage: null,
+        id: "message-user",
+        isError: false,
+        role: "user",
+        status: "completed",
+        text: "Stop this run",
+        toolCallId: null,
+        turn: {
+          endedAt: "2026-04-21T00:01:15.000Z",
+          id: "turn-aborted",
+          sessionId: "session-1",
+          startedAt: "2026-04-21T00:00:00.000Z",
+        },
+        turnId: "turn-aborted",
+      },
+      {
+        contents: [],
+        createdAt: "2026-04-21T00:01:15.000Z",
+        errorMessage: RequestAbortedTranscriptPresenter.markerText,
+        id: "message-aborted",
+        isError: true,
+        role: "assistant",
+        status: "completed",
+        text: "",
+        toolCallId: null,
+        turn: {
+          endedAt: "2026-04-21T00:01:15.000Z",
+          id: "turn-aborted",
+          sessionId: "session-1",
+          startedAt: "2026-04-21T00:00:00.000Z",
+        },
+        turnId: "turn-aborted",
+      },
+    ],
+  }));
+
+  assert.match(markup, /Worked for 1m 15s/u);
+  assert.match(markup, /Request was aborted/u);
+  assert.doesNotMatch(markup, />Error</u);
+  assert.equal([...markup.matchAll(/bg-border\/60/gu)].length, 2);
 });
 
 test("timestamp tooltip boundary starts below visible workflow chrome", () => {
