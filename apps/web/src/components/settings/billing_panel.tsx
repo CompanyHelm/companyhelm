@@ -255,7 +255,7 @@ function resolvePlanAction(input: {
       isLoading: false,
       kind: "current",
       label: "Current plan",
-      note: "This is the active subscription for the workspace.",
+      note: null,
     };
   }
   if (input.plan.key === input.pendingPlanKey) {
@@ -303,7 +303,7 @@ function resolvePlanAction(input: {
     isLoading: input.isOpeningCheckout,
     kind: "upgrade",
     label: `Upgrade to ${input.plan.name}`,
-    note: "Checkout opens with Paddle and access changes after webhook confirmation.",
+    note: null,
   };
 }
 
