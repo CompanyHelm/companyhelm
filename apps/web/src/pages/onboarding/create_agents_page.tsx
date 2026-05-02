@@ -9,7 +9,7 @@ import {
 } from "./flow";
 
 /**
- * Hosts the CEO onboarding chat as the first onboarding experience after the workflow has
+ * Hosts the Operator onboarding chat as the first onboarding experience after the workflow has
  * provisioned its dedicated agent session.
  */
 export class CreateAgentsPagePresenter {
@@ -18,10 +18,10 @@ export class CreateAgentsPagePresenter {
     needsOnboardingStart: boolean;
   }): string {
     if (input.needsOnboardingStart || input.isEnsureCompanyOnboardingInFlight) {
-      return "Provisioning the CEO onboarding chat...";
+      return "Provisioning the Operator onboarding chat...";
     }
 
-    return "Opening the CEO onboarding chat...";
+    return "Opening the Operator onboarding chat...";
   }
 }
 
@@ -61,7 +61,7 @@ function CreateAgentsPageContent() {
     return (
       <ChatsPageContent
         canForkLatestSession={false}
-        headerSubtitle="CEO setup workflow"
+        headerSubtitle="Operator setup workflow"
         headerTitle="Company onboarding"
         routePath="/onboarding/create-agents"
         selectedAgentId={controller.onboarding.agentId}

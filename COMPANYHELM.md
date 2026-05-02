@@ -6,7 +6,7 @@ This file explains how to run CompanyHelm locally without CORS issues, and how t
 
 - Preferred one-command local dev auth setup: `npm run local-dev`.
 - Preferred one-command E2B setup after exposing ports: `COMPANYHELM_API_PUBLIC_URL=<api-url> COMPANYHELM_WEB_PUBLIC_URL=<web-url> npm run local-e2b`.
-- Both commands seed `andrea.local@companyhelm.dev`, `CompanyHelm Local`, and a `CEO` agent using the CompanyHelm provider.
+- Both commands seed `andrea.local@companyhelm.dev`, `CompanyHelm Local`, and an onboarding `Operator` agent using the CompanyHelm provider.
 - `npm run local-dev` does not require an OpenAI key; set `COMPANYHELM_LOCAL_OPENAI_API_KEY` only when you want real local agent execution.
 - Local OpenAI keys are validated against the OpenAI models API before the seed script activates a local platform route.
 - For a normal local setup, keep everything on localhost:

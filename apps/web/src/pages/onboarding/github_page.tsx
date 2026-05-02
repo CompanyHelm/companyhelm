@@ -30,5 +30,5 @@ function GithubPageContent() {
     });
   }, [navigate, organizationSlug]);
 
-  return <OnboardingPageLoadingState message="Opening CEO onboarding chat..." />;
+  return <OnboardingPageLoadingState message="Opening Operator onboarding chat..." />;
 }

@@ -40,7 +40,7 @@ export function OnboardingSkipAction(props: OnboardingSkipActionProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Skip onboarding?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will unlock the full workspace now. The CEO onboarding chat and workflow history
+            This will unlock the full workspace now. The Operator onboarding chat and workflow history
             will remain available if setup needs to be resumed later.
           </AlertDialogDescription>
         </AlertDialogHeader>

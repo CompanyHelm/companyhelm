@@ -5,7 +5,7 @@ import { CompanyOnboardingService } from "../../services/onboarding/company_onbo
 import { Mutation } from "./mutation.ts";
 
 /**
- * Idempotently starts the authenticated company's CEO onboarding chat when the app shell reaches a
+ * Idempotently starts the authenticated company's Operator onboarding chat when the app shell reaches a
  * newly provisioned company. Repeated calls return the existing onboarding chat instead of creating
  * competing workflow runs.
  */

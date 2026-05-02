@@ -22,6 +22,7 @@ import {
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { ModelRegistry } from "../ai_providers/model_registry.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
+import { AgentNameSuggestionService } from "../agents/name_suggestion_service.ts";
 import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
 import { CompanyWalletService } from "../wallet/service.ts";
@@ -69,6 +70,12 @@ type PlatformModelRecord = {
 
 type AgentRecord = {
   id: string;
+  name?: string;
+  title?: string | null;
+};
+
+type CompanyOnboardingRecord = {
+  agentId: string | null;
 };
 
 type BootstrapInsertableDatabase = DatabaseTransactionInterface & {
@@ -111,14 +118,15 @@ type BootstrapMutableDatabase = BootstrapUpdatableDatabase & {
 export class CompanyBootstrapService {
   static readonly DEFAULT_TASK_STAGE_NAME = TaskStageService.DEFAULT_TASK_STAGE_NAME;
   static readonly SEEDED_TASK_STAGE_NAMES = [CompanyBootstrapService.DEFAULT_TASK_STAGE_NAME, "TODO", "Archive"] as const;
-  static readonly SEED_AGENT_NAME = "CEO";
+  private static readonly LEGACY_SEED_AGENT_NAME = "CEO";
+  static readonly SEED_AGENT_TITLE = "Operator";
   static readonly SEED_ONBOARDING_WORKFLOW_NAME = "Company onboarding";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
   private static readonly SEED_AGENT_REASONING_LEVEL = "medium";
   private static readonly SEED_ONBOARDING_WORKFLOW_DESCRIPTION =
     "Guides a new company through repository discovery, skill options, and first agent recommendations.";
   private static readonly SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS = [
-    "Run this workflow in the CEO onboarding chat for newly created companies.",
+    "Run this workflow in the Operator onboarding chat for newly created companies.",
     "Keep the conversation focused and ask only one question at a time.",
     "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
     "Assume CompanyHelm-managed model access is active for the first conversation unless the user says otherwise.",
@@ -133,7 +141,7 @@ export class CompanyBootstrapService {
   }> = [];
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
-      "Welcome the user to CompanyHelm as their CEO.",
+      "Welcome the user to CompanyHelm as their Operator.",
       "Explain briefly that CompanyHelm-managed model access is already available for this setup conversation.",
       "Ask exactly one question: what does their business do, and what goal do they want to make progress on today?",
       "Use the answer as the working business context for later recommendations in this chat.",
@@ -168,6 +176,7 @@ export class CompanyBootstrapService {
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly modelRegistry: ModelRegistry;
   private readonly companyWalletService: CompanyWalletService;
+  private readonly agentNameSuggestionService: AgentNameSuggestionService;
   private readonly systemSkillRegistry = new SystemSkillRegistry();
 
   constructor(
@@ -177,10 +186,13 @@ export class CompanyBootstrapService {
     modelRegistry: ModelRegistry = new ModelRegistry(),
     @inject(CompanyWalletService)
     companyWalletService: CompanyWalletService = new CompanyWalletService(),
+    @inject(AgentNameSuggestionService)
+    agentNameSuggestionService: AgentNameSuggestionService = new AgentNameSuggestionService(),
   ) {
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
     this.modelRegistry = modelRegistry;
     this.companyWalletService = companyWalletService;
+    this.agentNameSuggestionService = agentNameSuggestionService;
   }
 
   async findOrCreateCompany(
@@ -320,14 +332,14 @@ export class CompanyBootstrapService {
       companyId: string;
       llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
     },
-  ): Promise<void> {
+  ): Promise<AgentRecord> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, input.companyId);
     await this.ensureCompanyModelProviderDefault(transaction, input.companyId);
     await this.ensureCompanyOnboardingWorkflow(transaction, input.companyId);
 
     const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, input.companyId);
     if (!computeProviderDefinition) {
-      throw new Error("Failed to resolve CompanyHelm compute provider definition for the CEO agent.");
+      throw new Error("Failed to resolve CompanyHelm compute provider definition for the Operator agent.");
     }
 
     const modelSelection = await this.resolveOnboardingAgentModelSelection(transaction, input);
@@ -338,6 +350,7 @@ export class CompanyBootstrapService {
       modelSelection,
     );
     await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, input.companyId, seedAgent.id);
+    return seedAgent;
   }
 
 
@@ -459,7 +472,8 @@ export class CompanyBootstrapService {
       defaultReasoningLevel: string | null;
     },
   ): Promise<AgentRecord> {
-    const existingAgent = await this.findCompanyHelmSeedAgent(transaction, companyId);
+    const onboarding = await this.ensureCompanyOnboardingRecord(transaction, companyId);
+    const existingAgent = await this.findCompanyHelmSeedAgent(transaction, companyId, onboarding);
     if (existingAgent) {
       await (transaction as BootstrapUpdatableDatabase)
         .update(agents)
@@ -469,6 +483,7 @@ export class CompanyBootstrapService {
           defaultPlatformModelId: modelSelection.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
           default_reasoning_level: modelSelection.defaultReasoningLevel,
+          title: existingAgent.title ?? CompanyBootstrapService.SEED_AGENT_TITLE,
           updated_at: new Date(),
         })
         .where(and(
@@ -480,6 +495,8 @@ export class CompanyBootstrapService {
 
     const now = new Date();
     const seedAgentId = randomUUID();
+    const existingNames = await this.findCompanyAgentNames(transaction, companyId);
+    const suggestion = this.agentNameSuggestionService.suggest(existingNames);
     await (transaction as BootstrapInsertableDatabase)
       .insert(agents)
       .values({
@@ -492,30 +509,130 @@ export class CompanyBootstrapService {
         defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
         default_reasoning_level: modelSelection.defaultReasoningLevel,
         id: seedAgentId,
-        name: CompanyBootstrapService.SEED_AGENT_NAME,
+        name: suggestion.name,
+        title: CompanyBootstrapService.SEED_AGENT_TITLE,
         system_prompt: null,
         updated_at: now,
       });
 
-    return { id: seedAgentId };
+    await (transaction as BootstrapUpdatableDatabase)
+      .update(companyOnboardings)
+      .set({
+        agentId: seedAgentId,
+        updatedAt: now,
+      })
+      .where(eq(companyOnboardings.companyId, companyId));
+
+    return {
+      id: seedAgentId,
+      name: suggestion.name,
+      title: CompanyBootstrapService.SEED_AGENT_TITLE,
+    };
+  }
+
+  private async ensureCompanyOnboardingRecord(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<CompanyOnboardingRecord> {
+    const [existingOnboarding] = await transaction
+      .select({
+        agentId: companyOnboardings.agentId,
+      })
+      .from(companyOnboardings)
+      .where(eq(companyOnboardings.companyId, companyId))
+      .limit(1) as CompanyOnboardingRecord[];
+    if (existingOnboarding) {
+      return existingOnboarding;
+    }
+
+    const now = new Date();
+    const insertOperation = (transaction as BootstrapInsertableDatabase)
+      .insert(companyOnboardings)
+      .values({
+        agentId: null,
+        companyMission: null,
+        companyId,
+        completedAt: null,
+        createdAt: now,
+        githubCompletedAt: null,
+        githubSetupStatus: "pending",
+        githubSkippedAt: null,
+        llmCompletedAt: null,
+        llmSetupStatus: "pending",
+        llmSkippedAt: null,
+        missionSkippedAt: null,
+        sessionId: null,
+        skippedAt: null,
+        skippedByUserId: null,
+        startedAt: null,
+        status: "not_started",
+        updatedAt: now,
+        workflowRunId: null,
+      }) as BootstrapInsertOperation;
+    insertOperation.onConflictDoNothing();
+
+    return { agentId: null };
   }
 
   private async findCompanyHelmSeedAgent(
     transaction: DatabaseTransactionInterface,
     companyId: string,
+    onboarding: CompanyOnboardingRecord,
   ): Promise<AgentRecord | null> {
-    const [existingAgent] = await transaction
+    if (onboarding.agentId) {
+      const [existingAgent] = await transaction
+        .select({
+          id: agents.id,
+          name: agents.name,
+          title: agents.title,
+        })
+        .from(agents)
+        .where(eq(agents.id, onboarding.agentId))
+        .limit(1) as AgentRecord[];
+
+      return existingAgent ?? null;
+    }
+
+    const [legacyAgent] = await transaction
       .select({
         id: agents.id,
+        name: agents.name,
+        title: agents.title,
       })
       .from(agents)
       .where(and(
         eq(agents.companyId, companyId),
-        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
+        eq(agents.name, CompanyBootstrapService.LEGACY_SEED_AGENT_NAME),
       ))
       .limit(1) as AgentRecord[];
+    if (!legacyAgent) {
+      return null;
+    }
 
-    return existingAgent ?? null;
+    await (transaction as BootstrapUpdatableDatabase)
+      .update(companyOnboardings)
+      .set({
+        agentId: legacyAgent.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(companyOnboardings.companyId, companyId));
+
+    return legacyAgent;
+  }
+
+  private async findCompanyAgentNames(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<string[]> {
+    const existingAgents = await transaction
+      .select({
+        name: agents.name,
+      })
+      .from(agents)
+      .where(eq(agents.companyId, companyId))
+      .limit(1000) as Array<{ name: string }>;
+
+    return existingAgents.map((agent) => agent.name);
   }
 
   private async ensureCompanyHelmSeedAgentSystemSkills(

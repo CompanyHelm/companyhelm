@@ -94,6 +94,7 @@ type AgentRow = {
   default_reasoning_level: string | null;
   id: string;
   name: string;
+  title: string | null;
   system_prompt: string | null;
   updated_at: Date;
 };
@@ -230,7 +231,7 @@ class CompanyBootstrapServiceTestHarness {
     this.workflowStepDefinitionRows = [...(params?.workflowStepDefinitionRows ?? [])];
   }
 
-  async buildService(): Promise<CompanyBootstrapService> {
+  async buildService(randomFirstName: () => string = () => "Ada"): Promise<CompanyBootstrapService> {
     const companyHelmConfig: {
       e2b: {
         api_key: string;
@@ -253,6 +254,14 @@ class CompanyBootstrapServiceTestHarness {
       {
         async ensureSubscriptionWalletForCompanyInTransaction() {
           return undefined;
+        },
+      } as never,
+      {
+        suggest() {
+          return {
+            name: randomFirstName(),
+            title: "",
+          };
         },
       } as never,
     );
@@ -339,7 +348,17 @@ class CompanyBootstrapServiceTestHarness {
                     agent.defaultModelProviderCredentialModelId = value.defaultModelProviderCredentialModelId as string | null;
                     agent.defaultPlatformModelId = value.defaultPlatformModelId as string | null;
                     agent.default_reasoning_level = value.default_reasoning_level as string | null;
+                    agent.title = value.title === undefined ? agent.title : value.title as string | null;
                     agent.updated_at = value.updated_at as Date;
+                  }
+                  return;
+                }
+
+                if (table === companyOnboardings) {
+                  const onboarding = companyOnboardingRows[0];
+                  if (onboarding) {
+                    onboarding.agentId = value.agentId === undefined ? onboarding.agentId : value.agentId as string | null;
+                    onboarding.updatedAt = value.updatedAt as Date;
                   }
                   return;
                 }
@@ -440,6 +459,7 @@ class CompanyBootstrapServiceTestHarness {
                 default_reasoning_level: value.default_reasoning_level as string | null,
                 id: value.id as string,
                 name: value.name as string,
+                title: value.title as string | null,
                 system_prompt: value.system_prompt as string | null,
                 updated_at: value.updated_at as Date,
               });
@@ -637,7 +657,11 @@ class CompanyBootstrapServiceTestHarness {
                       return [{ plan: "free" }];
                     }
                     if (table === agents) {
-                      return agentRows.filter((row) => row.name === "CEO").slice(0, 1);
+                      if (companyOnboardingRows[0]?.agentId) {
+                        return agentRows.filter((row) => row.id === companyOnboardingRows[0]?.agentId).slice(0, 1);
+                      }
+
+                      return agentRows.slice(0, 1);
                     }
                     if (table === computeProviderDefinitions) {
                       return [...baseDefinitions].slice(0, 1);
@@ -731,7 +755,7 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
-test("CompanyBootstrapService creates the CEO onboarding assets lazily", async () => {
+test("CompanyBootstrapService creates the Operator onboarding assets lazily", async () => {
   const harness = new CompanyBootstrapServiceTestHarness();
 
   await (await harness.buildService()).ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
@@ -745,9 +769,11 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
 
   const [seedAgent] = harness.listAgents();
   const defaultDefinition = harness.loadDefaultDefinition();
+  const [onboarding] = harness.listCompanyOnboardings();
 
   assert.equal(seedAgent?.companyId, "company-1");
-  assert.equal(seedAgent?.name, "CEO");
+  assert.equal(seedAgent?.name, "Ada");
+  assert.equal(seedAgent?.title, "Operator");
   assert.equal(seedAgent?.defaultComputeProviderDefinitionId, defaultDefinition?.id);
   assert.equal(seedAgent?.defaultEnvironmentTemplateId, "medium");
   assert.equal(seedAgent?.defaultModelCredentialSource, "platform");
@@ -780,7 +806,8 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.match(workflowSteps[2]?.instructions_template ?? "", /GPT-5\.5 with high reasoning/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /task\.create/);
 
-  assert.deepEqual(harness.listCompanyOnboardings(), []);
+  assert.equal(onboarding?.companyId, "company-1");
+  assert.equal(onboarding?.agentId, seedAgent?.id ?? null);
 });
 
 test("CompanyBootstrapService does not duplicate onboarding assets when rerun", async () => {
@@ -836,7 +863,8 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       defaultPlatformModelId: null,
       default_reasoning_level: "high",
       id: "agent-row-1",
-      name: "CEO",
+      name: "Ada",
+      title: "Operator",
       system_prompt: null,
       updated_at: now,
     }],
@@ -863,7 +891,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       createdByUserId: null,
       description: "Guides a new company through repository discovery, skill options, and first agent recommendations.",
       id: "workflow-1",
-      instructions_template: "Run this workflow in the CEO onboarding chat for newly created companies.",
+      instructions_template: "Run this workflow in the Operator onboarding chat for newly created companies.",
       isEnabled: true,
       name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
       updatedAt: now,
@@ -935,12 +963,14 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
   assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
   assert.equal(harness.listModelCredentials().length, 1);
   assert.equal(harness.listModels().filter((model) => model.modelId === "gpt-5.4").length, 1);
-  assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
+  assert.equal(harness.listAgents().filter((agent) => agent.name === "Ada").length, 1);
+  assert.equal(harness.listAgents()[0]?.title, "Operator");
   assert.equal(harness.listAgents()[0]?.default_reasoning_level, "medium");
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
   assert.equal(harness.listWorkflowDefinitions().length, 1);
   assert.equal(harness.listWorkflowInputs().length, 0);
   assert.equal(harness.listWorkflowSteps().length, 3);
   assert.equal(harness.listCompanyOnboardings().length, 1);
+  assert.equal(harness.listCompanyOnboardings()[0]?.agentId, "agent-row-1");
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

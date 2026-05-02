@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  agents,
   companyGithubInstallations,
   companyOnboardings,
   modelProviderCredentials,
@@ -84,6 +83,10 @@ class CompanyOnboardingServiceTestHarness {
             companyId: input.companyId,
             llmSetupStatus: input.llmSetupStatus,
           });
+
+          return {
+            id: "agent-1",
+          };
         },
       },
     );
@@ -151,9 +154,6 @@ class CompanyOnboardingServiceTestHarness {
                   where() {
                     if (table === companyOnboardings) {
                       return Promise.resolve([...onboardingRows]);
-                    }
-                    if (table === agents) {
-                      return Promise.resolve([{ id: "agent-1" }]);
                     }
                     if (table === workflowDefinitions) {
                       return Promise.resolve([{ id: "workflow-1" }]);
