@@ -71,10 +71,9 @@ test("SkillManagementSystemCommandService lists paginated skill summaries", asyn
 
 test("SkillManagementSystemCommandService gets a skill by name", async () => {
   const service = new SkillManagementSystemCommandService({
-    async getSkillByName(_transactionProvider: unknown, companyId: string, skillName: string) {
+    async listSkills(_transactionProvider: unknown, companyId: string) {
       assert.equal(companyId, "company-123");
-      assert.equal(skillName, "Research");
-      return {
+      return [{
         autoUpdate: false,
         branchCommitSha: null,
         branchName: null,
@@ -84,13 +83,16 @@ test("SkillManagementSystemCommandService gets a skill by name", async () => {
         githubRepositoryId: null,
         id: "skill-1",
         instructions: "Read context first.",
-        name: skillName,
+        name: "Research",
         repository: null,
         skillDirectory: null,
         skillGroupId: "group-1",
+        skillType: "custom",
         sourceType: "manual",
+        systemCommands: [],
+        systemKey: null,
         trackedCommitSha: null,
-      };
+      }];
     },
   } as never);
 
@@ -100,6 +102,103 @@ test("SkillManagementSystemCommandService gets a skill by name", async () => {
 
   assert.equal((result.skill as Record<string, unknown>).id, "skill-1");
   assert.equal((result.skill as Record<string, unknown>).name, "Research");
+});
+
+test("SkillManagementSystemCommandService gets system skills by name when skillType is provided", async () => {
+  const service = new SkillManagementSystemCommandService({
+    async listSkills(_transactionProvider: unknown, companyId: string) {
+      return [{
+        autoUpdate: false,
+        branchCommitSha: null,
+        branchName: null,
+        companyId,
+        description: "Custom duplicate",
+        fileList: [],
+        githubRepositoryId: null,
+        id: "skill-1",
+        instructions: "Custom instructions.",
+        name: "Manage skills",
+        repository: null,
+        skillDirectory: null,
+        skillGroupId: null,
+        skillType: "custom",
+        sourceType: "manual",
+        systemCommands: [],
+        systemKey: null,
+        trackedCommitSha: null,
+      }, {
+        autoUpdate: false,
+        branchCommitSha: null,
+        branchName: null,
+        companyId,
+        description: "System description",
+        fileList: [],
+        githubRepositoryId: null,
+        id: "system:manage_skills",
+        instructions: "System instructions.",
+        name: "Manage skills",
+        repository: null,
+        skillDirectory: null,
+        skillGroupId: "system",
+        skillType: "system",
+        sourceType: "manual",
+        systemCommands: [],
+        systemKey: "manage_skills",
+        trackedCommitSha: null,
+      }];
+    },
+  } as never);
+
+  const result = await service.execute("skill.get", {
+    name: "Manage skills",
+    skillType: "system",
+  }, context as never);
+
+  assert.equal((result.skill as Record<string, unknown>).id, "system:manage_skills");
+});
+
+test("SkillManagementSystemCommandService rejects invalid skill cursors", async () => {
+  const service = new SkillManagementSystemCommandService({
+    async listSkills() {
+      return [];
+    },
+  } as never);
+
+  await assert.rejects(
+    service.execute("skill.list", {
+      cursor: "not-base64",
+    }, context as never),
+    /cursor must be a valid skill.list cursor/,
+  );
+});
+
+test("SkillManagementSystemCommandService lists skill groups", async () => {
+  const service = new SkillManagementSystemCommandService({
+    async listSkillGroups(_transactionProvider: unknown, companyId: string) {
+      assert.equal(companyId, "company-123");
+      return [{
+        companyId,
+        id: "group-2",
+        name: "Workflows",
+      }, {
+        companyId,
+        id: "group-1",
+        name: "Research",
+      }];
+    },
+  } as never);
+
+  const result = await service.execute("skill.group.list", {}, context as never);
+
+  assert.deepEqual(result, {
+    skillGroups: [{
+      id: "group-1",
+      name: "Research",
+    }, {
+      id: "group-2",
+      name: "Workflows",
+    }],
+  });
 });
 
 test("SkillManagementSystemCommandService creates manual skills", async () => {

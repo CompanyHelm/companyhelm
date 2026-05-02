@@ -291,36 +291,6 @@ export class SkillService {
     });
   }
 
-  async getSkillByName(
-    transactionProvider: TransactionProviderInterface,
-    companyId: string,
-    skillName: string,
-  ): Promise<SkillRecord> {
-    const normalizedSkillName = this.requireNonEmptyValue(skillName, "Skill name");
-
-    return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const [skill] = await selectableDatabase
-        .select(this.skillSelection())
-        .from(skills)
-        .where(and(
-          eq(skills.companyId, companyId),
-          eq(skills.name, normalizedSkillName),
-        )) as SkillRecord[];
-
-      if (!skill) {
-        const systemSkill = this.systemSkillRegistry.findSkillByName(companyId, normalizedSkillName);
-        if (!systemSkill) {
-          throw new Error(`Skill ${normalizedSkillName} not found.`);
-        }
-
-        return systemSkill;
-      }
-
-      return (await this.hydrateSkillRepositories(selectableDatabase, [this.toCustomSkillRecord(skill)]))[0] as SkillRecord;
-    });
-  }
-
   async listSkillGroups(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

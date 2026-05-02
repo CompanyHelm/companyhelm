@@ -29,9 +29,20 @@ export class SystemCommandCatalog {
     inputSchema: {
       additionalProperties: false,
       properties: {
+        description: { type: "string" },
         name: { type: "string" },
+        skillType: { enum: ["custom", "system"], type: "string" },
       },
       required: ["name"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "List company skill groups so group-targeted commands can discover IDs.",
+    id: "skill.group.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {},
       type: "object",
     },
     systemSkillKey: "manage_skills",

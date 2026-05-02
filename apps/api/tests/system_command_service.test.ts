@@ -454,10 +454,9 @@ test("SystemCommandService executes skill.get when manage_skills is active", asy
       },
     } as never,
     skillService: {
-      async getSkillByName(_transactionProvider: unknown, companyId: string, skillName: string) {
+      async listSkills(_transactionProvider: unknown, companyId: string) {
         assert.equal(companyId, "company-123");
-        assert.equal(skillName, "Research");
-        return {
+        return [{
           autoUpdate: false,
           branchCommitSha: null,
           branchName: null,
@@ -467,7 +466,7 @@ test("SystemCommandService executes skill.get when manage_skills is active", asy
           githubRepositoryId: null,
           id: "skill-1",
           instructions: "Read context first.",
-          name: skillName,
+          name: "Research",
           repository: null,
           skillDirectory: null,
           skillGroupId: "group-1",
@@ -476,10 +475,7 @@ test("SystemCommandService executes skill.get when manage_skills is active", asy
           systemCommands: [],
           systemKey: null,
           trackedCommitSha: null,
-        };
-      },
-      async listSkills() {
-        throw new Error("listSkills should not be called for skill.get");
+        }];
       },
     } as never,
     workflowService: {} as never,
@@ -496,6 +492,49 @@ test("SystemCommandService executes skill.get when manage_skills is active", asy
 
   assert.equal((result.skill as Record<string, unknown>).id, "skill-1");
   assert.equal((result.skill as Record<string, unknown>).name, "Research");
+});
+
+test("SystemCommandService executes skill.group.list when manage_skills is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    skillService: {
+      async listSkillGroups(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          companyId,
+          id: "group-2",
+          name: "Workflows",
+        }, {
+          companyId,
+          id: "group-1",
+          name: "Research",
+        }];
+      },
+      async listSkills() {
+        return [];
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("skill.group.list", {}, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(result.skillGroups, [{
+    id: "group-1",
+    name: "Research",
+  }, {
+    id: "group-2",
+    name: "Workflows",
+  }]);
 });
 
 test("SystemCommandService executes task-management commands when manage_tasks is active", async () => {
