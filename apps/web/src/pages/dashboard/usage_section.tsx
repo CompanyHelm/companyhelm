@@ -11,6 +11,7 @@ import {
 import { OrganizationPath } from "@/lib/organization_path";
 import { type UsageAggregateRecord, UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { UsageSectionPresenter } from "./usage_section_presenter";
 
 type CompanyWalletRecord = {
   currentPlan: string;
@@ -45,6 +46,32 @@ function UsageMetricTile(props: {
   );
 }
 
+function UsageSpendSplitTile(props: {
+  actualValue: string;
+  description: string;
+  title: string;
+  virtualValue: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
+      <p className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {props.title}
+      </p>
+      <div className="mt-3 grid gap-2">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Spend</span>
+          <span className="font-semibold text-foreground">{props.actualValue}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Virtual spend</span>
+          <span className="font-semibold text-foreground">{props.virtualValue}</span>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">{props.description}</p>
+    </div>
+  );
+}
+
 function formatPlanLabel(plan: string): string {
   if (plan === "free") {
     return "Free";
@@ -62,6 +89,9 @@ function formatPlanLabel(plan: string): string {
  */
 export function UsageSection(props: UsageSectionProps) {
   const organizationSlug = useCurrentOrganizationSlug();
+  const currentDaySummary = UsageSectionPresenter.buildSpendSummary(props.currentDayUsage);
+  const currentMonthSummary = UsageSectionPresenter.buildSpendSummary(props.currentMonthUsage);
+  const totalSummary = UsageSectionPresenter.buildSpendSummary(props.totalUsage);
 
   return (
     <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
@@ -91,20 +121,23 @@ export function UsageSection(props: UsageSectionProps) {
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 lg:grid-cols-4">
-          <UsageMetricTile
-            description={`${UsageMetrics.formatRequestCount(props.currentDayUsage.requestCount)} requests • ${UsageMetrics.formatTokenBreakdown(props.currentDayUsage)}`}
-            title="UTC day spend"
-            value={UsageMetrics.formatUsdFromNano(UsageMetrics.resolveCombinedCostNanoUsd(props.currentDayUsage))}
+          <UsageSpendSplitTile
+            actualValue={currentDaySummary.actualValue}
+            description={currentDaySummary.supportingText}
+            title="UTC day"
+            virtualValue={currentDaySummary.virtualValue}
           />
-          <UsageMetricTile
-            description={`${UsageMetrics.formatRequestCount(props.currentMonthUsage.requestCount)} requests • ${UsageMetrics.formatTokenBreakdown(props.currentMonthUsage)}`}
-            title="UTC month spend"
-            value={UsageMetrics.formatUsdFromNano(UsageMetrics.resolveCombinedCostNanoUsd(props.currentMonthUsage))}
+          <UsageSpendSplitTile
+            actualValue={currentMonthSummary.actualValue}
+            description={currentMonthSummary.supportingText}
+            title="UTC month"
+            virtualValue={currentMonthSummary.virtualValue}
           />
-          <UsageMetricTile
-            description={`${UsageMetrics.formatRequestCount(props.totalUsage.requestCount)} requests • ${UsageMetrics.formatTokenBreakdown(props.totalUsage)}`}
-            title="All-time spend"
-            value={UsageMetrics.formatUsdFromNano(UsageMetrics.resolveCombinedCostNanoUsd(props.totalUsage))}
+          <UsageSpendSplitTile
+            actualValue={totalSummary.actualValue}
+            description={totalSummary.supportingText}
+            title="All-time"
+            virtualValue={totalSummary.virtualValue}
           />
           <UsageMetricTile
             description={`${UsageMetrics.formatTokenCount(props.totalUsage.totalTokens)} tokens processed`}

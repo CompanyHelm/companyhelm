@@ -1027,6 +1027,7 @@ function AgentDetailPageContent() {
           description="Agent-specific rollup across every session owned by this agent, including interrupted and completed assistant turns."
           scopeId={agent.id}
           scopeType="agent"
+          spendKind="split"
           title={`${agent.name} usage`}
         />
       ) : (

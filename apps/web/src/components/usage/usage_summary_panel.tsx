@@ -4,8 +4,8 @@ import { PageTabs } from "@/components/ui/page_tabs";
 import { UsageMetrics, type UsageAggregateRecord } from "@/lib/usage_metrics";
 import { cn } from "@/lib/utils";
 
-type UsageMetricView = "tokens" | "spend";
-type UsageSpendKind = "actual" | "mixed" | "virtual";
+type UsageMetricView = "actual_spend" | "tokens" | "virtual_spend";
+type UsageSpendKind = "actual" | "split" | "virtual";
 
 type UsageSummaryPanelProps = {
   aggregates: ReadonlyArray<UsageAggregateRecord>;
@@ -142,8 +142,8 @@ function UsageDailyBarChart(props: UsageDailyBarChartProps) {
 
 /**
  * Renders the repeated LLM usage dashboard block used by company, provider, and agent pages. It
- * separates token volume from spend while keeping the same current-day, current-month, and daily
- * trend math across every usage surface.
+ * separates token volume from actual and virtual spend while keeping the same current-day,
+ * current-month, and daily trend math across every usage surface.
  */
 export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
   const [selectedMetric, setSelectedMetric] = useState<UsageMetricView>("tokens");
@@ -153,10 +153,8 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
   const dailyRows = useMemo(() => {
     return UsageMetrics.buildRecentDailyAggregates(props.aggregates, props.scopeType, props.scopeId, 30);
   }, [props.aggregates, props.scopeId, props.scopeType]);
-  const spendKind = props.spendKind ?? "mixed";
-  const spendNoun = resolveSpendNoun(total, spendKind);
-  const spendTabLabel = capitalizeLabel(resolveSpendNoun(total, spendKind));
-  const chartNoun = selectedMetric === "tokens" ? "tokens" : spendNoun;
+  const spendKind = props.spendKind ?? "split";
+  const chartNoun = resolveMetricNoun(selectedMetric);
 
   return (
     <section className="flex flex-col gap-5">
@@ -168,16 +166,7 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
         <p className="max-w-3xl text-sm text-muted-foreground">{props.description}</p>
         <PageTabs
           className="border-b-0"
-          items={[
-            {
-              key: "tokens" as const,
-              label: "Tokens",
-            },
-            {
-              key: "spend" as const,
-              label: spendTabLabel,
-            },
-          ]}
+          items={resolveTabItems(spendKind)}
           onSelect={setSelectedMetric}
           selectedKey={selectedMetric}
         />
@@ -185,17 +174,17 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
 
       <div className="grid gap-3 md:grid-cols-3">
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "Tokens today" : `${capitalizeLabel(resolveSpendNoun(today, spendKind))} today`}
+          label={resolveMetricTileLabel(selectedMetric, "today")}
           supportingText={formatMetricSupportingText(today, selectedMetric, spendKind)}
           value={formatMetricValue(today, selectedMetric)}
         />
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "Tokens this month" : `${capitalizeLabel(resolveSpendNoun(currentMonth, spendKind))} this month`}
+          label={resolveMetricTileLabel(selectedMetric, "this month")}
           supportingText={formatMetricSupportingText(currentMonth, selectedMetric, spendKind)}
           value={formatMetricValue(currentMonth, selectedMetric)}
         />
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "All-time tokens" : `All-time ${spendNoun}`}
+          label={resolveMetricTileLabel(selectedMetric, "all-time")}
           supportingText={formatMetricSupportingText(total, selectedMetric, spendKind)}
           value={formatMetricValue(total, selectedMetric)}
         />
@@ -205,8 +194,8 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
         emptyLabel={`No daily ${chartNoun} recorded over the past month.`}
         metric={selectedMetric}
         rows={dailyRows}
-        spendNoun={spendNoun}
-        title={selectedMetric === "tokens" ? "Daily tokens" : `Daily ${spendNoun}`}
+        spendNoun={chartNoun}
+        title={`Daily ${chartNoun}`}
       />
     </section>
   );
@@ -233,11 +222,20 @@ function formatDailyTooltipDetail(aggregate: UsageAggregateRecord, metric: Usage
     return UsageMetrics.formatTokenBreakdown(aggregate);
   }
 
-  return UsageMetrics.formatCostBreakdown(aggregate);
+  return metric === "virtual_spend"
+    ? "Subscription-equivalent virtual spend"
+    : "Provider-billed spend";
 }
 
 function resolveMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricView): number {
-  return metric === "tokens" ? aggregate.totalTokens : UsageMetrics.resolveCombinedCostNanoUsd(aggregate);
+  if (metric === "tokens") {
+    return aggregate.totalTokens;
+  }
+  if (metric === "virtual_spend") {
+    return aggregate.totalCostNanoVirtualUsd;
+  }
+
+  return aggregate.totalCostNanoUsd;
 }
 
 function formatMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
@@ -245,7 +243,7 @@ function formatMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricV
     return UsageMetrics.formatTokenCount(aggregate.totalTokens);
   }
 
-  return UsageMetrics.formatUsdFromNano(UsageMetrics.resolveCombinedCostNanoUsd(aggregate));
+  return UsageMetrics.formatUsdFromNano(resolveMetricValue(aggregate, metric));
 }
 
 function formatMetricSupportingText(
@@ -258,14 +256,11 @@ function formatMetricSupportingText(
   }
 
   const requestsLabel = `${UsageMetrics.formatRequestCount(aggregate.requestCount)} requests`;
-  if (resolveSpendKind(aggregate, spendKind) === "virtual") {
+  if (resolveSelectedSpendKind(metric, spendKind) === "virtual") {
     return `${requestsLabel}, subscription-equivalent virtual spend`;
   }
-  if (aggregate.totalCostNanoUsd > 0 && aggregate.totalCostNanoVirtualUsd > 0) {
-    return `${UsageMetrics.formatCostBreakdown(aggregate)}, ${requestsLabel}`;
-  }
 
-  return requestsLabel;
+  return `${requestsLabel}, provider-billed spend`;
 }
 
 function formatDailyAxisLabel(periodStart: string): string {
@@ -277,19 +272,47 @@ function formatDailyAxisLabel(periodStart: string): string {
   return String(date.getUTCDate());
 }
 
-function resolveSpendKind(aggregate: UsageAggregateRecord, preferredKind: UsageSpendKind): UsageSpendKind {
-  if (preferredKind !== "mixed") {
-    return preferredKind;
+function resolveTabItems(spendKind: UsageSpendKind): Array<{ key: UsageMetricView; label: string }> {
+  if (spendKind === "actual") {
+    return [{ key: "tokens", label: "Tokens" }, { key: "actual_spend", label: "Spend" }];
   }
-  if (aggregate.totalCostNanoVirtualUsd > 0 && aggregate.totalCostNanoUsd === 0) {
-    return "virtual";
+  if (spendKind === "virtual") {
+    return [{ key: "tokens", label: "Tokens" }, { key: "virtual_spend", label: "Virtual spend" }];
   }
 
-  return "actual";
+  return [
+    { key: "tokens", label: "Tokens" },
+    { key: "actual_spend", label: "Spend" },
+    { key: "virtual_spend", label: "Virtual spend" },
+  ];
 }
 
-function resolveSpendNoun(aggregate: UsageAggregateRecord, preferredKind: UsageSpendKind): string {
-  return resolveSpendKind(aggregate, preferredKind) === "virtual" ? "virtual spend" : "spend";
+function resolveMetricNoun(metric: UsageMetricView): string {
+  if (metric === "tokens") {
+    return "tokens";
+  }
+
+  return metric === "virtual_spend" ? "virtual spend" : "spend";
+}
+
+function resolveMetricTileLabel(metric: UsageMetricView, timeframe: "all-time" | "this month" | "today"): string {
+  if (metric === "tokens") {
+    return timeframe === "all-time" ? "All-time tokens" : `Tokens ${timeframe}`;
+  }
+
+  const noun = capitalizeLabel(resolveMetricNoun(metric));
+  return timeframe === "all-time" ? `All-time ${resolveMetricNoun(metric)}` : `${noun} ${timeframe}`;
+}
+
+function resolveSelectedSpendKind(metric: UsageMetricView, spendKind: UsageSpendKind): UsageSpendKind {
+  if (metric === "virtual_spend") {
+    return "virtual";
+  }
+  if (metric === "actual_spend") {
+    return "actual";
+  }
+
+  return spendKind;
 }
 
 function capitalizeLabel(value: string): string {
