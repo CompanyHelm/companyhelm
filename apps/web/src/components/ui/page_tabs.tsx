@@ -15,7 +15,7 @@ interface PageTabsProps<T extends string> {
 export function PageTabs<T extends string>(props: PageTabsProps<T>) {
   return (
     <div className={cn("border-b border-border/60", props.className)}>
-      <div className="modern-scrollbar flex items-center gap-6 overflow-x-auto">
+      <div className="modern-scrollbar flex items-center gap-6 overflow-x-auto overflow-y-hidden">
         {props.items.map((item) => {
           const isSelected = props.selectedKey === item.key;
 
