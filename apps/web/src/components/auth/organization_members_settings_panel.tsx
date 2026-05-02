@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { MailPlusIcon, RotateCcwIcon, UsersIcon } from "lucide-react";
+import { MailPlusIcon, RotateCcwIcon, Trash2Icon, UsersIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import type { organizationMembersSettingsPanelInviteMutation } from "./__generated__/organizationMembersSettingsPanelInviteMutation.graphql";
 import type { organizationMembersSettingsPanelQuery } from "./__generated__/organizationMembersSettingsPanelQuery.graphql";
+import type { organizationMembersSettingsPanelRemoveMutation } from "./__generated__/organizationMembersSettingsPanelRemoveMutation.graphql";
 import type { organizationMembersSettingsPanelRevokeMutation } from "./__generated__/organizationMembersSettingsPanelRevokeMutation.graphql";
 import type { organizationMembersSettingsPanelUpdateRoleMutation } from "./__generated__/organizationMembersSettingsPanelUpdateRoleMutation.graphql";
 
@@ -92,6 +93,16 @@ const organizationMembersSettingsPanelRevokeMutationNode = graphql`
   }
 `;
 
+const organizationMembersSettingsPanelRemoveMutationNode = graphql`
+  mutation organizationMembersSettingsPanelRemoveMutation($input: RemoveCompanyMemberInput!) {
+    RemoveCompanyMember(input: $input) {
+      id
+      emailAddress
+      userId
+    }
+  }
+`;
+
 const organizationMembersSettingsPanelUpdateRoleMutationNode = graphql`
   mutation organizationMembersSettingsPanelUpdateRoleMutation($input: UpdateCompanyMemberRoleInput!) {
     UpdateCompanyMemberRole(input: $input) {
@@ -124,6 +135,7 @@ export function OrganizationMembersSettingsPanel() {
   const [inviteRole, setInviteRole] = useState<CompanyMemberRole>("member");
   const [isInviting, setInviting] = useState(false);
   const [isInviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [memberPendingRemoval, setMemberPendingRemoval] = useState<OrganizationMemberTableRecord | null>(null);
   const [members, setMembers] = useState<OrganizationMemberTableRecord[]>(() =>
     data.CompanyMembers.map((member) => ({
       createdAt: member.createdAt,
@@ -135,6 +147,7 @@ export function OrganizationMembersSettingsPanel() {
       updatedAt: member.updatedAt,
       userId: member.userId,
     })));
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [revokingMemberId, setRevokingMemberId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState<string | null>(null);
@@ -143,6 +156,9 @@ export function OrganizationMembersSettingsPanel() {
   );
   const [commitRevokeInvitation] = useMutation<organizationMembersSettingsPanelRevokeMutation>(
     organizationMembersSettingsPanelRevokeMutationNode,
+  );
+  const [commitRemoveMember] = useMutation<organizationMembersSettingsPanelRemoveMutation>(
+    organizationMembersSettingsPanelRemoveMutationNode,
   );
   const [commitUpdateRole] = useMutation<organizationMembersSettingsPanelUpdateRoleMutation>(
     organizationMembersSettingsPanelUpdateRoleMutationNode,
@@ -241,6 +257,45 @@ export function OrganizationMembersSettingsPanel() {
       setErrorMessage(error instanceof Error ? error.message : "Failed to revoke invitation.");
     }).finally(() => {
       setRevokingMemberId(null);
+    });
+  }
+
+  async function removeMember() {
+    if (!memberPendingRemoval || removingMemberId) {
+      return;
+    }
+
+    const member = memberPendingRemoval;
+    setRemovingMemberId(member.userId);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    await new Promise<void>((resolve, reject) => {
+      commitRemoveMember({
+        variables: {
+          input: {
+            userId: member.userId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      setMembers((currentMembers) => currentMembers.filter((currentMember) => currentMember.userId !== member.userId));
+      setMemberPendingRemoval(null);
+      setSuccessMessage(`Removed ${member.emailAddress}.`);
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to remove member.");
+    }).finally(() => {
+      setRemovingMemberId(null);
     });
   }
 
@@ -352,7 +407,12 @@ export function OrganizationMembersSettingsPanel() {
                     </TableCell>
                     <TableCell className="w-40">
                       <Select
-                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null || member.userId === currentUserId}
+                        disabled={
+                          !canManageMemberRoles
+                          || removingMemberId !== null
+                          || updatingRoleMemberId !== null
+                          || member.userId === currentUserId
+                        }
                         onValueChange={(value) => void updateRole(member, value as CompanyMemberRole)}
                         value={member.role}
                       >
@@ -377,6 +437,17 @@ export function OrganizationMembersSettingsPanel() {
                         >
                           <RotateCcwIcon className={revokingMemberId === member.id ? "animate-spin" : undefined} />
                           Revoke
+                        </Button>
+                      ) : member.status === "active" && canManageMemberRoles && member.userId !== currentUserId ? (
+                        <Button
+                          disabled={removingMemberId !== null}
+                          onClick={() => setMemberPendingRemoval(member)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon className={removingMemberId === member.userId ? "animate-pulse" : undefined} />
+                          Remove
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
@@ -436,6 +507,38 @@ export function OrganizationMembersSettingsPanel() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={memberPendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open && !removingMemberId) {
+            setMemberPendingRemoval(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[min(92vw,30rem)]">
+          <DialogHeader>
+            <DialogTitle>Remove member</DialogTitle>
+            <DialogDescription>
+              Remove {memberPendingRemoval?.emailAddress} from this organization. Their historical work stays in CompanyHelm.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              disabled={removingMemberId !== null}
+              onClick={() => setMemberPendingRemoval(null)}
+              type="button"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button disabled={removingMemberId !== null} onClick={() => void removeMember()} type="button" variant="destructive">
+              <Trash2Icon className={removingMemberId ? "animate-pulse" : undefined} />
+              Remove
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

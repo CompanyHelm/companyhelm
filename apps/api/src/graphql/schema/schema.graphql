@@ -97,6 +97,7 @@ type Mutation {
   DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   InviteCompanyMember(input: InviteCompanyMemberInput!): CompanyMemberInvitation!
+  RemoveCompanyMember(input: RemoveCompanyMemberInput!): CompanyMemberAccess!
   RevokeCompanyMemberInvitation(input: RevokeCompanyMemberInvitationInput!): CompanyMemberInvitation!
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
@@ -1543,6 +1544,10 @@ input InviteCompanyMemberInput {
 }
 
 input RevokeCompanyMemberInvitationInput {
+  userId: ID!
+}
+
+input RemoveCompanyMemberInput {
   userId: ID!
 }
 

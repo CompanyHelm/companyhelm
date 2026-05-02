@@ -47,6 +47,7 @@ import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refr
 import { RefreshPlatformCodexRateLimitsMutation } from "../mutations/refresh_platform_codex_rate_limits.ts";
 import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
 import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
+import { RemoveCompanyMemberMutation } from "../mutations/remove_company_member.ts";
 import { RevokeCompanyMemberInvitationMutation } from "../mutations/revoke_company_member_invitation.ts";
 import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
 import { SetPlatformModelRoutesMutation } from "../mutations/set_platform_model_routes.ts";
@@ -169,6 +170,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
   private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
   private readonly refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation;
+  private readonly removeCompanyMemberMutation: RemoveCompanyMemberMutation;
   private readonly revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
@@ -395,6 +397,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(RevokeCompanyMemberInvitationMutation)
     revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation =
       new RevokeCompanyMemberInvitationMutation(new CompanyMemberInvitationService(config)),
+    @inject(RemoveCompanyMemberMutation)
+    removeCompanyMemberMutation: RemoveCompanyMemberMutation =
+      new RemoveCompanyMemberMutation(new CompanyMemberInvitationService(config)),
     @inject(UpdateCompanyMemberRoleMutation)
     updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
       new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService(config)),
@@ -487,6 +492,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.refreshPlatformCodexRateLimitsMutation = refreshPlatformCodexRateLimitsMutation;
+    this.removeCompanyMemberMutation = removeCompanyMemberMutation;
     this.revokeCompanyMemberInvitationMutation = revokeCompanyMemberInvitationMutation;
     this.refreshPlatformModelProviderCredentialModelsMutation = refreshPlatformModelProviderCredentialModelsMutation;
     this.refreshPlatformModelProviderCredentialTokenMutation = refreshPlatformModelProviderCredentialTokenMutation;
@@ -563,6 +569,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         RefreshPlatformCodexRateLimits: this.refreshPlatformCodexRateLimitsMutation.execute,
         RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
         RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
+        RemoveCompanyMember: this.removeCompanyMemberMutation.execute,
         RevokeCompanyMemberInvitation: this.revokeCompanyMemberInvitationMutation.execute,
         SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
         SetPlatformModelRoutes: this.setPlatformModelRoutesMutation.execute,

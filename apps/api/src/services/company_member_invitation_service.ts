@@ -1,8 +1,8 @@
 import { createClerkClient } from "@clerk/backend";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
-import { companies, companyMembers, users } from "../db/schema.ts";
+import { companies, companyMembers, tasks, users } from "../db/schema.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import type { CompanyMemberRole, CompanyMemberStatus } from "./company_member_permission_service.ts";
 
@@ -47,11 +47,16 @@ type ClerkClientDependency = {
       organizationId: string;
       requestingUserId?: string;
     }): Promise<ClerkOrganizationInvitationRecord>;
+    deleteOrganizationMembership(params: {
+      organizationId: string;
+      userId: string;
+    }): Promise<unknown>;
   };
 };
 
 type CompanyMemberRow = {
   clerkInvitationId: string | null;
+  clerkUserId: string | null;
   createdAt: Date;
   emailAddress: string;
   firstName: string;
@@ -157,6 +162,7 @@ export class CompanyMemberInvitationService {
       return transaction
         .select({
           clerkInvitationId: companyMembers.clerkInvitationId,
+          clerkUserId: users.clerkUserId,
           createdAt: companyMembers.createdAt,
           emailAddress: users.email,
           firstName: users.first_name,
@@ -224,6 +230,68 @@ export class CompanyMemberInvitationService {
     };
   }
 
+  async removeMember(input: {
+    companyId: string;
+    transactionProvider: TransactionProviderInterface;
+    userId: string;
+  }): Promise<CompanyMemberAccessRecord> {
+    const row = await this.findCompanyMember(input.transactionProvider, {
+      companyId: input.companyId,
+      userId: input.userId,
+    });
+    if (!row) {
+      throw new Error("Company member not found.");
+    }
+    if (row.status !== "active") {
+      throw new Error("Pending invitations must be revoked instead.");
+    }
+
+    if (row.role === "admin") {
+      await this.assertAnotherActiveAdmin(input.transactionProvider, input);
+    }
+
+    const clerkOrganizationId = await this.resolveClerkOrganizationId(input.transactionProvider, input.companyId);
+    if (row.clerkUserId) {
+      await this.getClerkClient().organizations.deleteOrganizationMembership({
+        organizationId: clerkOrganizationId,
+        userId: row.clerkUserId,
+      });
+    }
+
+    const now = new Date();
+    await input.transactionProvider.transaction(async (transaction) => {
+      await transaction
+        .update(tasks)
+        .set({
+          assignedAt: null,
+          assignedUserId: null,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(tasks.companyId, input.companyId),
+          eq(tasks.assignedUserId, input.userId),
+          ne(tasks.status, "completed"),
+        ));
+      await transaction
+        .delete(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, input.companyId),
+          eq(companyMembers.userId, input.userId),
+        ));
+    });
+
+    return {
+      createdAt: row.createdAt.toISOString(),
+      emailAddress: row.emailAddress,
+      id: this.createAccessGraphqlId(input.companyId, row.userId),
+      name: this.formatMemberName(row),
+      role: row.role,
+      status: row.status,
+      updatedAt: row.updatedAt.toISOString(),
+      userId: row.userId,
+    };
+  }
+
   async updateMemberRole(input: {
     companyId: string;
     role: CompanyMemberRole;
@@ -284,6 +352,33 @@ export class CompanyMemberInvitationService {
     }
   }
 
+  private async assertAnotherActiveAdmin(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      userId: string;
+    },
+  ): Promise<void> {
+    const [anotherAdmin] = await transactionProvider.transaction(async (transaction) => {
+      return transaction
+        .select({
+          userId: companyMembers.userId,
+        })
+        .from(companyMembers)
+        .where(and(
+          eq(companyMembers.companyId, input.companyId),
+          eq(companyMembers.role, "admin"),
+          eq(companyMembers.status, "active"),
+          ne(companyMembers.userId, input.userId),
+        ))
+        .limit(1) as Promise<Array<{ userId: string }>>;
+    });
+
+    if (!anotherAdmin) {
+      throw new Error("You cannot remove the last active company admin.");
+    }
+  }
+
   private async findCompanyMember(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -295,6 +390,7 @@ export class CompanyMemberInvitationService {
       return transaction
         .select({
           clerkInvitationId: companyMembers.clerkInvitationId,
+          clerkUserId: users.clerkUserId,
           createdAt: companyMembers.createdAt,
           emailAddress: users.email,
           firstName: users.first_name,
