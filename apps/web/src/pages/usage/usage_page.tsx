@@ -187,7 +187,7 @@ function UsagePageContent() {
         description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
         scopeId={data.Me.company.id}
         scopeType="company"
-        spendKind="mixed"
+        spendKind="virtual"
         title="Company usage"
       />
 
