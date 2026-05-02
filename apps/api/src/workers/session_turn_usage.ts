@@ -61,9 +61,13 @@ export class SessionTurnUsageWorker {
         const activeJobId = String(job.id ?? this.names.getRecordJobId(job.data.turnId));
         this.activeJobIds.add(activeJobId);
         try {
+          const recordInput = {
+            ...job.data,
+            recordedAt: new Date(job.data.recordedAt),
+          };
           await this.processor.processUsage(
             new AppRuntimeTransactionProvider(this.appRuntimeDatabase, job.data.companyId),
-            job.data,
+            recordInput,
           );
         } finally {
           this.activeJobIds.delete(activeJobId);
