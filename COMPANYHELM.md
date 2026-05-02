@@ -5,6 +5,8 @@ This file explains how to run CompanyHelm locally without CORS issues, and how t
 ## The short version
 
 - Preferred one-command local dev auth setup: `npm run local-dev`.
+- Preferred one-command demo bootstrap for localhost demos: `npm run demo:up`.
+- Preferred command for task-specific local demo scripts: `npm run demo:run -- <script>`.
 - Preferred one-command E2B setup after exposing ports: `COMPANYHELM_API_PUBLIC_URL=<api-url> COMPANYHELM_WEB_PUBLIC_URL=<web-url> npm run local-e2b`.
 - Both commands seed `andrea.local@companyhelm.dev`, `CompanyHelm Local`, and a `CEO` agent using the CompanyHelm provider.
 - `npm run local-dev` does not require an OpenAI key; set `COMPANYHELM_LOCAL_OPENAI_API_KEY` only when you want real local agent execution.
@@ -235,6 +237,93 @@ Use localhost only, and omit model credentials unless you are testing real agent
 - expose both ports with `get_e2b_port_url`
 - point `VITE_GRAPHQL_URL` at the forwarded API URL
 - add the forwarded web origin to API CORS if the browser will load the web app from that forwarded URL
+
+### Best flow for local task demos
+
+Use the shared demo bootstrap and then run a scenario script that composes Playwright CLI building
+blocks for the task you are showing.
+
+1. Start the local stack and wait for demo readiness:
+
+```bash
+npm run demo:up
+```
+
+This starts the same real local stack as `npm run local-dev`, then verifies:
+
+- API health on `http://localhost:4000/health`
+- GraphQL health on `http://localhost:4000/graphql`
+- web availability on `http://localhost:5173`
+- dev-auth seed availability on `http://localhost:4000/auth/dev/users`
+
+2. Run a task-specific demo script:
+
+```bash
+npm run demo:run -- ./scripts/demo/my_scenario.ts
+```
+
+`demo:run` does not hardcode one walkthrough. Instead it runs any TypeScript script you point at,
+which lets different tasks define different UI scenarios without changing the shared command.
+
+The script receives these environment defaults automatically unless you override them:
+
+- `DEMO_API_URL=http://localhost:4000`
+- `DEMO_WEB_URL=http://localhost:5173`
+- `DEMO_ORGANIZATION_SLUG=companyhelm-local`
+
+The shared building blocks live in:
+
+- `scripts/demo/context.ts`
+- `scripts/demo/playwright_cli.ts`
+- `scripts/demo/companyhelm_playwright.ts`
+
+Example scenario:
+
+```ts
+import { DemoCompanyHelmPlaywright } from "../../scripts/demo/companyhelm_playwright.ts";
+
+class SkillsScenario {
+  async run(): Promise<void> {
+    const companyhelm = new DemoCompanyHelmPlaywright();
+    await companyhelm.openOrganizationPath("/skills");
+  }
+}
+
+void new SkillsScenario().run().catch((error: unknown) => {
+  throw error;
+});
+```
+
+### Manual Playwright CLI demos
+
+When you do not want a committed scenario script, you can drive the demo manually with
+`playwright-cli` against the real local app.
+
+Typical manual flow:
+
+```bash
+playwright-cli open http://localhost:5173
+playwright-cli goto http://localhost:5173/orgs/companyhelm-local/skills
+playwright-cli snapshot
+playwright-cli click e12
+playwright-cli fill e15 "search text"
+playwright-cli press Enter
+```
+
+To record a manual demo without introducing new wrapper commands, use Playwright CLI's built-in
+video support directly:
+
+```bash
+playwright-cli video-start /tmp/companyhelm-demo.webm
+# drive the browser manually or with more playwright-cli commands
+playwright-cli video-stop
+```
+
+You can also annotate a recording with chapters:
+
+```bash
+playwright-cli video-chapter "Open skills page" --description="Show the seeded local company skills"
+```
 
 ## Troubleshooting checklist
 
