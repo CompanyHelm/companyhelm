@@ -290,7 +290,10 @@ export function OrganizationMembersSettingsPanel() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Invite teammates and review CompanyHelm access.
+              <ul className="list-disc space-y-1 pl-4">
+                <li>Admin: can invite members, revoke pending invitations, and update member roles.</li>
+                <li>Member: can access the organization without managing members or roles.</li>
+              </ul>
             </CardDescription>
           </div>
           <CardAction>
