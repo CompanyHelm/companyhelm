@@ -11,7 +11,7 @@ import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRela
 import { ModelSelectionDialog, type ModelSelectionOption } from "@/components/model_selection_dialog";
 import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
@@ -110,31 +110,6 @@ import { CompanyHelmWalletDepletedDialog } from "./companyhelm_wallet_depleted_d
 import { useChatTranscript } from "./use_chat_transcript";
 
 const COMPANYHELM_WALLET_DEPLETED_MESSAGE = "CompanyHelm AI wallet balance is depleted for this company.";
-
-export function ChatsPageFallback() {
-  return (
-    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-      <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
-        <CardHeader className="pl-3 pr-3 md:pl-4 md:pr-3">
-          <CardTitle>Chats</CardTitle>
-          <CardDescription>Loading agents and sessions…</CardDescription>
-        </CardHeader>
-        <CardContent className="pl-3 pr-3 md:pl-4 md:pr-3">
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading chats…
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader className="px-2 md:px-3">
-          <CardTitle>Chat</CardTitle>
-          <CardDescription>Loading selected chat…</CardDescription>
-        </CardHeader>
-      </Card>
-    </main>
-  );
-}
 
 function ChatsReconnectBanner({ visible }: { visible: boolean }) {
   if (!visible) {
