@@ -76,6 +76,7 @@ export const ConfigDocument = z.object({
   workers: z.object({
     company_deletions: DefaultWorkerConcurrencySchema,
     github_webhooks: DefaultWorkerConcurrencySchema,
+    llm_usage: DefaultWorkerConcurrencySchema,
     session_process: z.object({
       concurrency: PositiveIntegerSchema,
     }),

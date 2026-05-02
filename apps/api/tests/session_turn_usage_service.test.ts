@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { llmUsageAggregates, sessionTurns } from "../src/db/schema.ts";
+import { SessionTurnUsageProcessor } from "../src/services/agent/session/session_turn_usage_processor.ts";
 import { SessionTurnUsageService } from "../src/services/agent/session/session_turn_usage_service.ts";
 
 class SessionTurnUsageServiceTestHarness {
@@ -40,7 +41,9 @@ class SessionTurnUsageServiceTestHarness {
               set: (value: Record<string, unknown>) => {
                 this.turnUpdates.push(value);
                 return {
-                  where: async () => undefined,
+                  where: () => ({
+                    returning: async () => [{ id: "turn-1" }],
+                  }),
                 };
               },
             };
@@ -128,7 +131,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
 
 test("SessionTurnUsageService stores platform subscription costs as managed virtual spend", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();
-  const service = new SessionTurnUsageService(harness.createWalletService() as never);
+  const service = new SessionTurnUsageService(new SessionTurnUsageProcessor(harness.createWalletService() as never));
 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
@@ -191,7 +194,7 @@ test("SessionTurnUsageService stores platform subscription costs as managed virt
 
 test("SessionTurnUsageService debits the managed wallet for platform virtual spend", async () => {
   const harness = new SessionTurnUsageServiceTestHarness();
-  const service = new SessionTurnUsageService(harness.createWalletService() as never);
+  const service = new SessionTurnUsageService(new SessionTurnUsageProcessor(harness.createWalletService() as never));
 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
@@ -272,4 +275,80 @@ test("SessionTurnUsageService skips empty usage payloads", async () => {
 
   assert.equal(harness.turnUpdates.length, 0);
   assert.equal(harness.aggregateRows.length, 0);
+});
+
+test("SessionTurnUsageService enqueues usage when an async queue is configured", async () => {
+  const enqueueUsage = vi.fn(async () => undefined);
+  const processor = {
+    processUsage: vi.fn(async () => undefined),
+  };
+  const service = new SessionTurnUsageService(
+    processor as never,
+    { enqueueUsage } as never,
+  );
+
+  await service.recordUsage({} as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      totalTokens: 1,
+    },
+  });
+
+  assert.equal(enqueueUsage.mock.calls.length, 1);
+  assert.equal(processor.processUsage.mock.calls.length, 0);
+});
+
+test("SessionTurnUsageService logs and swallows queue failures", async () => {
+  const error = vi.fn();
+  const service = new SessionTurnUsageService(
+    { processUsage: vi.fn(async () => undefined) } as never,
+    {
+      enqueueUsage: vi.fn(async () => {
+        throw new Error("redis down");
+      }),
+    } as never,
+    { error } as never,
+  );
+
+  await service.recordUsage({} as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      totalTokens: 1,
+    },
+  });
+
+  assert.equal(error.mock.calls.length, 1);
+});
+
+test("SessionTurnUsageService accepts queue-deserialized recordedAt strings", async () => {
+  const harness = new SessionTurnUsageServiceTestHarness();
+  const service = new SessionTurnUsageService();
+
+  await service.recordUsage(harness.createTransactionProvider() as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    credentialSource: "user_provided",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: "2026-04-20T23:30:00.000Z" as never,
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      totalTokens: 3,
+    },
+  });
+
+  assert.equal(harness.turnUpdates.length, 1);
+  assert.equal(harness.aggregateRows.length, 10);
 });
