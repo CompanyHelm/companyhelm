@@ -63,6 +63,7 @@ type Query {
   Artifact(id: ID!): Artifact!
   Artifacts(input: ArtifactsInput!): [Artifact!]!
   AgentCreateOptions: [AgentCreateProviderOption!]!
+  suggestAgentName: AgentNameSuggestion!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
@@ -694,6 +695,7 @@ type PlatformAdminWalletTransaction {
 }
 
 type Agent {
+  title: String
   defaultComputeProvider: String
   defaultComputeProviderDefinitionId: ID
   defaultComputeProviderDefinitionName: String
@@ -713,6 +715,11 @@ type Agent {
   environmentTemplate: AgentEnvironmentTemplate!
   createdAt: String!
   updatedAt: String!
+}
+
+type AgentNameSuggestion {
+  name: String!
+  title: String!
 }
 
 type AgentEnvironmentTemplate {
@@ -1495,6 +1502,7 @@ input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
   name: String!
+  title: String
   llmModelId: ID!
   reasoningLevel: String
   secretGroupIds: [ID!]
@@ -1510,6 +1518,7 @@ input UpdateAgentInput {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
+  title: String
   llmModelId: ID!
   reasoningLevel: String
   systemPrompt: String

@@ -1,6 +1,6 @@
 import { Suspense, useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   type AgentCreateMcpServerOption,
 } from "./create_agent_dialog";
 import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAgentMutation.graphql";
+import type { agentsPageNameSuggestionQuery } from "./__generated__/agentsPageNameSuggestionQuery.graphql";
 import type { agentsPageDeleteAgentMutation } from "./__generated__/agentsPageDeleteAgentMutation.graphql";
 import type { agentsPageQuery } from "./__generated__/agentsPageQuery.graphql";
 
@@ -24,12 +25,17 @@ const agentsPageQueryNode = graphql`
     Agents {
       id
       name
+      title
       modelProvider
       modelName
       reasoningLevel
       systemPrompt
       createdAt
       updatedAt
+    }
+    suggestAgentName {
+      name
+      title
     }
     AgentCreateOptions {
       id
@@ -93,11 +99,22 @@ const agentsPageQueryNode = graphql`
   }
 `;
 
+
+const agentsPageNameSuggestionQueryNode = graphql`
+  query agentsPageNameSuggestionQuery {
+    suggestAgentName {
+      name
+      title
+    }
+  }
+`;
+
 const agentsPageAddAgentMutationNode = graphql`
   mutation agentsPageAddAgentMutation($input: AddAgentInput!) {
     AddAgent(input: $input) {
       id
       name
+      title
       modelProvider
       modelName
       reasoningLevel
@@ -149,7 +166,13 @@ function AgentsPageFallback() {
 function AgentsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isNameSuggestionLoading, setNameSuggestionLoading] = useState(false);
+  const [nameSuggestion, setNameSuggestion] = useState({
+    name: "",
+    title: "",
+  });
   const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null);
+  const relayEnvironment = useRelayEnvironment();
   const data = useLazyLoadQuery<agentsPageQuery>(
     agentsPageQueryNode,
     {},
@@ -166,6 +189,7 @@ function AgentsPageContent() {
   const agents: AgentsTableRecord[] = data.Agents.map((agent) => ({
     id: agent.id,
     name: agent.name,
+    title: agent.title,
     modelProvider: agent.modelProvider,
     modelName: agent.modelName,
     reasoningLevel: agent.reasoningLevel,
@@ -256,14 +280,35 @@ function AgentsPageContent() {
           </div>
           <CardAction>
             <Button
-              disabled={providerOptions.length === 0 || computeProviderDefinitionOptions.length === 0}
+              disabled={isNameSuggestionLoading || providerOptions.length === 0 || computeProviderDefinitionOptions.length === 0}
               onClick={() => {
-                setCreateDialogOpen(true);
+                if (isNameSuggestionLoading) {
+                  return;
+                }
+
+                setNameSuggestionLoading(true);
+                void fetchQuery<agentsPageNameSuggestionQuery>(
+                  relayEnvironment,
+                  agentsPageNameSuggestionQueryNode,
+                  {},
+                  {
+                    fetchPolicy: "network-only",
+                  },
+                ).toPromise().then((response) => {
+                  setNameSuggestion(response?.suggestAgentName ?? data.suggestAgentName);
+                  setCreateDialogOpen(true);
+                }).catch((error: unknown) => {
+                  setNameSuggestion(data.suggestAgentName);
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to suggest an agent name.");
+                  setCreateDialogOpen(true);
+                }).finally(() => {
+                  setNameSuggestionLoading(false);
+                });
               }}
               size="sm"
             >
               <PlusIcon />
-              Create agent
+              {isNameSuggestionLoading ? "Preparing…" : "Create agent"}
             </Button>
           </CardAction>
         </CardHeader>
@@ -357,6 +402,7 @@ function AgentsPageContent() {
         skillGroupOptions={skillGroupOptions}
         skillOptions={skillOptions}
         mcpServerOptions={mcpServerOptions}
+        nameSuggestion={nameSuggestion.name.length > 0 ? nameSuggestion : data.suggestAgentName}
         onCreate={async (input) => {
           setErrorMessage(null);
 

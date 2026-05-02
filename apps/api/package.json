@@ -25,6 +25,7 @@
   "dependencies": {
     "@clerk/backend": "^3.2.2",
     "@e2b/desktop": "^2.2.2",
+    "@faker-js/faker": "^10.4.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/websocket": "^11.2.0",
     "@mariozechner/pi-agent-core": "^0.70.6",

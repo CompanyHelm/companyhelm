@@ -208,6 +208,7 @@ class AddAgentMutationTestHarness {
                     return [{
                       id: "agent-1",
                       name: String(value.name),
+                      title: value.title ?? null,
                       defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
                       defaultModelProviderCredentialModelId: String(value.defaultModelProviderCredentialModelId),
                       defaultReasoningLevel: value.default_reasoning_level ?? null,
@@ -282,6 +283,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
           AddAgent(input: $input) {
             id
             name
+            title
             modelProvider
             modelName
             reasoningLevel
@@ -295,6 +297,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
           defaultEnvironmentTemplateId: "e2b/desktop",
           llmModelId: "model-row-1",
           name: "Research Agent",
+          title: "Software Engineer",
           reasoningLevel: "high",
           secretIds: ["secret-1"],
           systemPrompt: "You are concise.",
@@ -308,6 +311,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
   assert.deepEqual(document.data.AddAgent, {
     id: "agent-1",
     name: "Research Agent",
+    title: "Software Engineer",
     modelProvider: "openai",
     modelName: "GPT-5.4",
     reasoningLevel: "high",
@@ -316,6 +320,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
   assert.equal(database.insertedValues.length, 2);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
+  assert.equal(database.insertedValues[0]?.title, "Software Engineer");
   assert.equal(database.insertedValues[0]?.defaultEnvironmentTemplateId, "e2b/desktop");
   assert.equal(database.insertedValues[0]?.default_reasoning_level, "high");
   assert.equal(database.insertedValues[0]?.system_prompt, "You are concise.");
@@ -469,6 +474,7 @@ test("AddAgentMutation attaches each secret group once when secretGroupIds are p
                     defaultModelProviderCredentialModelId: String(value.defaultModelProviderCredentialModelId),
                     id: "agent-1",
                     name: String(value.name),
+                    title: value.title ?? null,
                     systemPrompt: value.system_prompt ?? null,
                     updatedAt: new Date("2026-03-24T12:00:00.000Z"),
                   }];

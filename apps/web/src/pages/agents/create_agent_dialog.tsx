@@ -100,11 +100,16 @@ interface CreateAgentDialogProps {
   skillGroupOptions: AgentCreateSkillGroupOption[];
   skillOptions: AgentCreateSkillOption[];
   mcpServerOptions: AgentCreateMcpServerOption[];
+  nameSuggestion: {
+    name: string;
+    title: string;
+  };
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     llmModelId: string;
     name: string;
+    title?: string;
     reasoningLevel?: string;
     secretGroupIds?: string[];
     secretIds?: string[];
@@ -123,6 +128,7 @@ interface CreateAgentDialogProps {
  */
 export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
+  const [agentTitle, setAgentTitle] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
@@ -228,6 +234,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setAgentName("");
+      setAgentTitle("");
       setIsAdvancedOpen(false);
       setIsModelDialogOpen(false);
       setComputeProviderDefinitionId("");
@@ -243,6 +250,15 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setSelectedMcpServerIds([]);
     }
   }, [props.isOpen]);
+
+  useEffect(() => {
+    if (!props.isOpen) {
+      return;
+    }
+
+    setAgentName(props.nameSuggestion.name);
+    setAgentTitle(props.nameSuggestion.title);
+  }, [props.isOpen, props.nameSuggestion.name, props.nameSuggestion.title]);
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -474,6 +490,20 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               }}
               placeholder="Research Agent"
               value={agentName}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="agent-title">
+              Title (optional)
+            </label>
+            <Input
+              id="agent-title"
+              onChange={(event) => {
+                setAgentTitle(event.target.value);
+              }}
+              placeholder="Software Engineer"
+              value={agentTitle}
             />
           </div>
 
@@ -808,6 +838,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 defaultEnvironmentTemplateId: environmentTemplateId,
                 llmModelId: selectedModelOption.llmModelId,
                 name: agentName,
+                title: agentTitle.length === 0 ? undefined : agentTitle,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretGroupIds: selectedSecretGroupIds.length > 0 ? selectedSecretGroupIds : undefined,
                 secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,

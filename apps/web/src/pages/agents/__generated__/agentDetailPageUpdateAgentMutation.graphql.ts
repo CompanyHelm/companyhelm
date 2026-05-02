@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ade2e2350a55d12ca16679d428ac84c6>>
+ * @generated SignedSource<<84bf7af1e71c66a388f37fb826616e8f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type UpdateAgentInput = {
   name: string;
   reasoningLevel?: string | null | undefined;
   systemPrompt?: string | null | undefined;
+  title?: string | null | undefined;
 };
 export type agentDetailPageUpdateAgentMutation$variables = {
   input: UpdateAgentInput;
@@ -47,6 +48,7 @@ export type agentDetailPageUpdateAgentMutation$data = {
     readonly platformModelId: string | null | undefined;
     readonly reasoningLevel: string | null | undefined;
     readonly systemPrompt: string | null | undefined;
+    readonly title: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -93,6 +95,13 @@ v2 = [
         "storageKey": null
       },
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "title",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -267,16 +276,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "212c9c8f3fadc00fc433abfb6ded013c",
+    "cacheID": "5ecbf50352cc10a8ac98d9bbb3b86182",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageUpdateAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelCredentialSource\n    llmModelId\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    title\n    modelCredentialSource\n    llmModelId\n    platformModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ebfbf875930a11c9ff6fff0139544ea5";
+(node as any).hash = "c6bf1e473c4d1eccff963e280c92f822";
 
 export default node;

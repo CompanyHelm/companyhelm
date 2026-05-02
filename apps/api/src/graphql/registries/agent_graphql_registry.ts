@@ -22,6 +22,7 @@ import { UpdateAgentMutation } from "../mutations/update_agent.ts";
 import { AgentQueryResolver } from "../resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "../resolvers/agent_create_options.ts";
 import { AgentEnvironmentTemplateResolver } from "../resolvers/agent_environment_template.ts";
+import { AgentNameSuggestionQueryResolver } from "../resolvers/agent_name_suggestion.ts";
 import { AgentSecretsQueryResolver } from "../resolvers/agent_secrets.ts";
 import { AgentSecretGroupsQueryResolver } from "../resolvers/agent_secret_groups.ts";
 import { AgentMcpServersQueryResolver } from "../resolvers/agent_mcp_servers.ts";
@@ -45,6 +46,7 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
   private agentQueryResolver: AgentQueryResolver;
   private agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver;
+  private agentNameSuggestionQueryResolver: AgentNameSuggestionQueryResolver;
   private agentSecretsQueryResolver: AgentSecretsQueryResolver;
   private agentSecretGroupsQueryResolver: AgentSecretGroupsQueryResolver;
   private agentMcpServersQueryResolver: AgentMcpServersQueryResolver;
@@ -102,6 +104,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     agentEnvironmentTemplateService?: AgentEnvironmentTemplateService,
     @inject(AgentEnvironmentTemplateResolver)
     agentEnvironmentTemplateResolver?: AgentEnvironmentTemplateResolver,
+    @inject(AgentNameSuggestionQueryResolver)
+    agentNameSuggestionQueryResolver: AgentNameSuggestionQueryResolver = new AgentNameSuggestionQueryResolver(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -130,6 +134,7 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentEnvironmentTemplateResolver = agentEnvironmentTemplateResolver
       ?? new AgentEnvironmentTemplateResolver(defaultAgentEnvironmentTemplateService);
+    this.agentNameSuggestionQueryResolver = agentNameSuggestionQueryResolver;
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
     this.agentSecretGroupsQueryResolver = agentSecretGroupsQueryResolver
@@ -178,6 +183,7 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
       Query: {
         Agent: this.agentQueryResolver.execute,
         AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
+        suggestAgentName: this.agentNameSuggestionQueryResolver.execute,
         AgentSecrets: this.agentSecretsQueryResolver.execute,
         AgentSecretGroups: this.agentSecretGroupsQueryResolver.execute,
         AgentMcpServers: this.agentMcpServersQueryResolver.execute,

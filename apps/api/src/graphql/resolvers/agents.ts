@@ -14,6 +14,7 @@ import { Resolver } from "./resolver.ts";
 type AgentRecord = {
   id: string;
   name: string;
+  title: string | null;
   defaultModelCredentialSource: "platform" | "user_provided";
   defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
@@ -55,6 +56,7 @@ type GraphqlAgentRecord = {
   defaultEnvironmentTemplateId: string;
   id: string;
   name: string;
+  title: string | null;
   modelCredentialSource: "platform" | "user_provided";
   llmModelId: string | null;
   platformModelId: string | null;
@@ -98,6 +100,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
         .select({
           id: agents.id,
           name: agents.name,
+          title: agents.title,
           defaultModelCredentialSource: agents.defaultModelCredentialSource,
           defaultPlatformModelId: agents.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
@@ -235,6 +238,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
       defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
       id: agentRecord.id,
       name: agentRecord.name,
+      title: agentRecord.title,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
       llmModelId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
       platformModelId: agentRecord.defaultPlatformModelId,

@@ -51,6 +51,7 @@ class AgentsQueryTestHarness {
                         defaultEnvironmentTemplateId: "e2b/desktop",
                         id: "agent-1",
                         name: "Research Agent",
+                        title: "Software Engineer",
                         defaultModelProviderCredentialModelId: "model-row-1",
                         defaultReasoningLevel: "high",
                         systemPrompt: "You are concise.",
@@ -187,6 +188,7 @@ test("GraphQL Agents query lists agents for the authenticated company", async ()
           Agents {
             id
             name
+            title
             modelProvider
             modelName
             reasoningLevel
@@ -204,6 +206,7 @@ test("GraphQL Agents query lists agents for the authenticated company", async ()
   assert.deepEqual(document.data.Agents, [{
     id: "agent-1",
     name: "Research Agent",
+    title: "Software Engineer",
     modelProvider: "openai",
     modelName: "GPT-5.4",
     reasoningLevel: "high",

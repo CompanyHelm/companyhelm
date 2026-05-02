@@ -24,6 +24,7 @@ type AddAgentMutationArguments = {
     defaultEnvironmentTemplateId: string;
     llmModelId: string;
     name: string;
+    title?: string | null;
     reasoningLevel?: string | null;
     secretGroupIds?: string[] | null;
     secretIds?: string[] | null;
@@ -37,6 +38,7 @@ type AddAgentMutationArguments = {
 type AgentRecord = {
   id: string;
   name: string;
+  title: string | null;
   defaultModelCredentialSource: "platform" | "user_provided";
   defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
@@ -76,6 +78,7 @@ type GraphqlAgentRecord = {
   environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
+  title: string | null;
   modelCredentialSource: "platform" | "user_provided";
   llmModelId: string | null;
   platformModelId: string | null;
@@ -237,6 +240,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         .values({
           companyId: company.id,
           name: arguments_.input.name,
+          title: AddAgentMutation.resolveTitle(arguments_.input.title),
           defaultModelCredentialSource: modelRecord.modelCredentialSource,
           defaultPlatformModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
           defaultModelProviderCredentialModelId: modelRecord.modelCredentialSource === "user_provided" ? modelRecord.id : null,
@@ -250,6 +254,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         .returning?.({
           id: agents.id,
           name: agents.name,
+          title: agents.title,
           defaultModelCredentialSource: agents.defaultModelCredentialSource,
           defaultPlatformModelId: agents.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
@@ -450,6 +455,14 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     };
   }
 
+  private static resolveTitle(title: string | null | undefined): string | null {
+    if (title === undefined || title === null || title === "") {
+      return null;
+    }
+
+    return title;
+  }
+
   private static resolveSystemPrompt(systemPrompt: string | null | undefined): string | null {
     if (systemPrompt === undefined || systemPrompt === null || systemPrompt === "") {
       return null;
@@ -485,6 +498,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
+      title: agentRecord.title,
       modelCredentialSource: agentRecord.defaultModelCredentialSource,
       llmModelId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
       platformModelId: agentRecord.defaultPlatformModelId,

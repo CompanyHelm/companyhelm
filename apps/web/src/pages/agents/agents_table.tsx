@@ -30,6 +30,7 @@ import { formatProviderLabel } from "../model-provider-credentials/provider_labe
 export type AgentsTableRecord = {
   id: string;
   name: string;
+  title: string | null | undefined;
   modelName: string | null | undefined;
   modelProvider: string | null | undefined;
   reasoningLevel: string | null | undefined;
@@ -114,7 +115,14 @@ export function AgentsTable(props: AgentsTableProps) {
               });
             }}
           >
-            <TableCell className="font-medium text-foreground">{agent.name}</TableCell>
+            <TableCell>
+              <div className="grid gap-1">
+                <span className="font-medium text-foreground">{agent.name}</span>
+                {agent.title ? (
+                  <span className="text-xs text-muted-foreground">{agent.title}</span>
+                ) : null}
+              </div>
+            </TableCell>
             <TableCell>
               {agent.modelProvider ? (
                 <Badge variant="outline">{formatProviderLabel(agent.modelProvider)}</Badge>
