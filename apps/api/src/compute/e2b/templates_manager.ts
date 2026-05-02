@@ -8,6 +8,10 @@ export class E2bTemplatesManager {
   private static readonly DEFAULT_NODE_MAJOR_VERSION = "25";
   private static readonly DEFAULT_GIT_USER_EMAIL = "agent@companyhelm.internal";
   private static readonly DEFAULT_GIT_USER_NAME = "CompanyHelm Agent";
+  private static readonly GITHUB_CLI_APT_SOURCE_PATH = "/etc/apt/sources.list.d/github-cli.list";
+  private static readonly GITHUB_CLI_KEYRING_PATH = "/etc/apt/keyrings/githubcli-archive-keyring.gpg";
+  private static readonly GITHUB_CLI_REPOSITORY_URL = "https://cli.github.com/packages";
+  private static readonly GITHUB_CLI_VERSION = "2.88.1";
   private static readonly NVM_INSTALL_VERSION = "v0.40.3";
   private static readonly NVM_DIRECTORY = "/usr/local/nvm";
   private static readonly PLAYWRIGHT_CLI_PACKAGE = "@playwright/cli@latest";
@@ -59,10 +63,10 @@ export class E2bTemplatesManager {
   private installCommonRuntimeTools(template: TemplateBuilder): TemplateBuilder {
     return template
       .aptInstall("awscli")
-      .aptInstall("gh")
       .aptInstall("ripgrep")
       .aptInstall("tmux")
       .runCmd(this.buildGitIdentityCommand())
+      .runCmd(this.buildGithubCliInstallCommand())
       .runCmd("curl -fsSL https://get.docker.com | sudo sh")
       .runCmd(this.buildDockerGroupCommand())
       .runCmd(this.buildNvmInstallCommand());
@@ -77,6 +81,24 @@ export class E2bTemplatesManager {
       `git config --global user.name ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_NAME)}`,
       `git config --global user.email ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_EMAIL)}`,
     ].join(" && ");
+  }
+
+  /**
+   * Installs a reproducible GitHub CLI version from GitHub's official apt repository instead of
+   * the stale Ubuntu universe package. The explicit repo setup keeps template rebuilds predictable
+   * while still letting operators roll the version forward in one reviewed change.
+   */
+  private buildGithubCliInstallCommand(): string {
+    return `bash -lc '
+set -euo pipefail
+GH_VERSION="${E2bTemplatesManager.GITHUB_CLI_VERSION}"
+sudo mkdir -p -m 755 /etc/apt/keyrings
+curl -fsSL ${E2bTemplatesManager.GITHUB_CLI_REPOSITORY_URL}/githubcli-archive-keyring.gpg | sudo tee ${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH} >/dev/null
+sudo chmod go+r ${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH}
+echo "deb [arch=$(dpkg --print-architecture) signed-by=${E2bTemplatesManager.GITHUB_CLI_KEYRING_PATH}] ${E2bTemplatesManager.GITHUB_CLI_REPOSITORY_URL} stable main" | sudo tee ${E2bTemplatesManager.GITHUB_CLI_APT_SOURCE_PATH} >/dev/null
+sudo apt update
+DEBIAN_FRONTEND=noninteractive sudo apt install -y "gh=$GH_VERSION*"
+'`;
   }
 
   private buildNvmInstallCommand(): string {
