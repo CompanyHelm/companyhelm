@@ -23,9 +23,7 @@ export class SystemSkillRegistry {
     {
       description: "Use when users ask how to use CompanyHelm or what agents can do in the product.",
       instructions: [
-        "Use this skill to answer CompanyHelm how-to questions for normal company users. Do not describe platform-admin pages or platform operations unless the user explicitly says they are a platform admin.",
-        "",
-        "CompanyHelm is a workspace where company users create agents, chat with them, give them tools and credentials, and track the work they produce. Agents should answer from the point of view of an authenticated company member or owner, not an internal platform operator.",
+        "CompanyHelm is a workspace where company users create agents, chat with them, give them tools and credentials, and track the work they produce. Agents should answer from the point of view of an authenticated company member or owner.",
         "",
         "## What CompanyHelm agents can do",
         "",
@@ -64,7 +62,7 @@ export class SystemSkillRegistry {
         "",
         "## Answering how-to questions",
         "",
-        "Give short, UI-oriented steps first. Mention exact page names when known: Chats, Agents, LLM Credentials, Skills, Skill Groups, MCP Servers, Secrets, Secret Groups, Repositories, Environments, Tasks, Workflows, Usage, Inbox, and Settings. If the user asks for something that sounds like a platform-admin action, say ordinary company users may not have that page and offer the closest company-user path.",
+        "Give short, UI-oriented steps first. Mention exact page names when known: Chats, Agents, LLM Credentials, Skills, Skill Groups, MCP Servers, Secrets, Secret Groups, Repositories, Environments, Tasks, Workflows, Usage, Inbox, and Settings.",
       ].join("\n"),
       key: "companyhelm_guide",
       name: "CompanyHelm guide",

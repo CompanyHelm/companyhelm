@@ -46,4 +46,4 @@
 # Application specific instructions
 - read the apps/*/AGENTS.md when making changes to the specific apps e.g. web or api and follow the instructions in the specific AGENTS.md
 - app specific instructions are additonal from this AGENTS.md
-- When changing CompanyHelm user-facing capabilities, navigation, setup flows, or these agent-facing repo instructions, also update the `CompanyHelm guide` system skill instructions in `apps/api/src/services/skills/system_registry.ts` if the change affects what agents should tell non-platform-admin users they can do in CompanyHelm.
+- When changing CompanyHelm user-facing capabilities, navigation, setup flows, or these agent-facing repo instructions, also update the `CompanyHelm guide` system skill instructions in `apps/api/src/services/skills/system_registry.ts` if the change affects what agents should tell company users they can do in CompanyHelm.
