@@ -3,7 +3,7 @@ import { MailPlusIcon, RotateCcwIcon, UsersIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -289,7 +289,6 @@ export function OrganizationMembersSettingsPanel() {
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
-            <CardTitle>Members</CardTitle>
             <CardDescription>
               Invite teammates and review CompanyHelm access.
             </CardDescription>

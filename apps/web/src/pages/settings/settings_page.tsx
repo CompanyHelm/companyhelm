@@ -6,7 +6,7 @@ import { EditableField } from "@/components/editable_field";
 import { OrganizationMembersSettingsPanel } from "@/components/auth/organization_members_settings_panel";
 import { BillingPanel } from "@/components/settings/billing_panel";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { ClerkChooseOrganizationTaskUrl } from "@/lib/clerk_choose_organization_task_url";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -239,7 +239,6 @@ function SettingsPageContent() {
         <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
-              <CardTitle>Task Stages</CardTitle>
               <CardDescription>
                 Stages appear as dedicated lanes on the tasks board and stay available for all
                 future tasks.
@@ -363,18 +362,19 @@ function SettingsPageContent() {
         <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
-              <CardTitle>Agents / AI</CardTitle>
               <CardDescription>
-                Configure the company-wide prompt layer that is appended after the static
-                CompanyHelm system prompt and before each agent prompt override.
+                Configure the company-wide prompt layer. Prompt order is static CompanyHelm prompt,
+                then company instructions, then each agent prompt override.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="grid gap-4">
             <EditableField
+              editMode="fullscreen"
               emptyValueLabel="No company base prompt configured"
               fieldType="textarea"
-              label="Company base prompt"
+              label="Company instructions"
+              labelSize="large"
               onSave={async (value) => {
                 await new Promise<void>((resolve, reject) => {
                   commitUpdateCompanySettings({
@@ -404,17 +404,16 @@ function SettingsPageContent() {
                   });
                 });
               }}
+              readOnlyFormat="markdown"
+              readOnlyFullscreen={{
+                buttonLabel: "Open company instructions full screen",
+                description: "Review and edit the complete company-wide prompt layer.",
+                title: "Company instructions",
+              }}
+              readOnlyPreviewClassName="max-h-64 overflow-hidden"
               value={data.CompanySettings.baseSystemPrompt ?? null}
+              variant="plain"
             />
-
-            <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Prompt order
-              </p>
-              <p className="mt-3 text-sm text-foreground">Static CompanyHelm prompt</p>
-              <p className="text-sm text-foreground">Company base prompt</p>
-              <p className="text-sm text-foreground">Agent prompt override</p>
-            </div>
           </CardContent>
         </Card>
       ) : null}
@@ -423,7 +422,6 @@ function SettingsPageContent() {
         <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
-              <CardTitle>Company</CardTitle>
               <CardDescription>
                 Manage the current Clerk organization and CompanyHelm workspace.
               </CardDescription>

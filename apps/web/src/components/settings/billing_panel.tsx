@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowRightIcon, CheckCircle2Icon, Loader2Icon, MailPlusIcon, WalletIcon } from "lucide-react";
 import { config } from "@/config";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PaddleCheckout } from "@/lib/paddle_checkout";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,6 @@ export function BillingPanel(props: BillingPanelProps) {
     <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <div className="min-w-0">
-          <CardTitle>Billing</CardTitle>
           <CardDescription>
             Subscription plans with LLM credits for the current CompanyHelm workspace.
           </CardDescription>
