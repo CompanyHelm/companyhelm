@@ -95,29 +95,41 @@ test("LlmUsageProviderCredentialsQueryResolver returns user and managed credenti
         totalCostNanoVirtualUsd: 0,
       }),
       LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
-        id: "platform-total",
+        id: "managed-total",
+        modelCredentialSource: null,
+        platformModelProviderCredentialId: null,
+        scopeType: "managed_model_provider_credential",
+        totalCostNanoVirtualUsd: 5_000,
+      }),
+      LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
+        id: "platform-openai-total",
+        platformModelProviderCredentialId: "platform-credential-1",
+        totalCostNanoVirtualUsd: 1_000,
+      }),
+      LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
+        id: "platform-codex-total",
+        platformModelProviderCredentialId: "platform-credential-2",
+        totalCostNanoVirtualUsd: 1_500,
       }),
     ],
-    [{
-      baseUrl: null,
-      id: "platform-credential-1",
-      modelProvider: "openai",
-      name: "Operator OpenAI",
-      status: "active",
-      type: "api_key",
-    }],
+    [
+      { id: "platform-credential-1" },
+      { id: "platform-credential-2" },
+    ],
   ]);
 
   const result = await resolver.execute(null, null, harness.createContext());
 
   assert.deepEqual(result.map((row) => row.id), [
+    "platform:managed",
     "user_provided:user-credential-1",
-    "platform:platform-credential-1",
   ]);
-  assert.equal(result[0]?.name, "OpenAI");
-  assert.equal(result[0]?.total.totalCostNanoUsd, 2_000);
-  assert.equal(result[1]?.name, "CompanyHelm managed");
-  assert.equal(result[1]?.modelCredentialSource, "platform");
-  assert.equal(result[1]?.total.platformModelProviderCredentialId, "platform-credential-1");
-  assert.equal(result[1]?.total.totalCostNanoVirtualUsd, 1_000);
+  assert.equal(result[0]?.name, "CompanyHelm managed");
+  assert.equal(result[0]?.modelCredentialSource, "platform");
+  assert.equal(result[0]?.modelProvider, "companyhelm");
+  assert.equal(result[0]?.total.scopeType, "managed_model_provider_credential");
+  assert.equal(result[0]?.total.platformModelProviderCredentialId, null);
+  assert.equal(result[0]?.total.totalCostNanoVirtualUsd, 5_000);
+  assert.equal(result[1]?.name, "OpenAI");
+  assert.equal(result[1]?.total.totalCostNanoUsd, 2_000);
 });

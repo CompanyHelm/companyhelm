@@ -11,7 +11,12 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type ModelCredentialSource = typeof modelCredentialSourceEnum.enumValues[number];
 type LlmUsageAggregatePeriod = "total" | "day" | "month";
-type LlmUsageAggregateScopeType = "company" | "model_provider_credential" | "agent" | "session";
+type LlmUsageAggregateScopeType =
+  | "company"
+  | "managed_model_provider_credential"
+  | "model_provider_credential"
+  | "agent"
+  | "session";
 
 type CredentialRecord = {
   baseUrl: string | null;
@@ -80,10 +85,9 @@ type SelectableDatabase = {
 };
 
 /**
- * Presents provider credentials as a single usage-facing collection even though CompanyHelm stores
- * company-owned credentials and operator-managed credentials in different tables. The resolver only
- * selects non-secret platform fields and pairs each credential with the authenticated company's
- * total aggregate so the web app does not need to understand backend credential storage boundaries.
+ * Presents provider credentials as a usage-facing collection. Operator-managed credentials remain
+ * internal implementation detail: companies see one CompanyHelm managed credential whose usage is
+ * backed by the combined managed aggregate, while user-provided credentials stay itemized.
  */
 @injectable()
 export class LlmUsageProviderCredentialsQueryResolver {
@@ -148,25 +152,26 @@ export class LlmUsageProviderCredentialsQueryResolver {
         .from(llmUsageAggregates)
         .where(and(
           eq(llmUsageAggregates.companyId, companyId),
-          eq(llmUsageAggregates.scopeType, "model_provider_credential"),
+          inArray(llmUsageAggregates.scopeType, [
+            "managed_model_provider_credential",
+            "model_provider_credential",
+          ]),
           eq(llmUsageAggregates.period, "total"),
         )) as LlmUsageAggregateRecord[];
-
-      const platformCredentialIdsWithUsage = totals
-        .filter((total) => total.modelCredentialSource === "platform" && total.platformModelProviderCredentialId)
-        .map((total) => total.platformModelProviderCredentialId as string);
-      const platformCredentials = await this.loadPlatformCredentials(tx, platformCredentialIdsWithUsage);
 
       const totalByProviderKey = new Map(
         totals.map((total) => [this.createProviderKey(total), total]),
       );
+      const managedTotal = totals.find((total) => total.scopeType === "managed_model_provider_credential");
+      const hasManagedCredentials = await this.hasManagedCredentials(tx);
+      const managedRows = hasManagedCredentials || managedTotal
+        ? [this.serializeManagedRow(companyId, managedTotal)]
+        : [];
       const rows = [
         ...userCredentials.map((credential) =>
           this.serializeRow(companyId, "user_provided", credential, totalByProviderKey)
         ),
-        ...platformCredentials.map((credential) =>
-          this.serializeRow(companyId, "platform", credential, totalByProviderKey)
-        ),
+        ...managedRows,
       ];
 
       return rows.sort((left, right) => {
@@ -175,51 +180,23 @@ export class LlmUsageProviderCredentialsQueryResolver {
     });
   };
 
-  private async loadPlatformCredentials(tx: unknown, idsWithUsage: string[]): Promise<CredentialRecord[]> {
+  private async hasManagedCredentials(tx: unknown): Promise<boolean> {
     await PlatformAdminAccess.enable(tx as never);
     const platformTx = tx as {
       select(selection: Record<string, unknown>): {
         from(table: unknown): {
-          where(condition: unknown): Promise<CredentialRecord[]>;
+          where(condition: unknown): Promise<Array<{ id: string }>>;
         };
       };
     };
     const activeCredentials = await platformTx
       .select({
-        baseUrl: platformModelProviderCredentials.baseUrl,
         id: platformModelProviderCredentials.id,
-        modelProvider: platformModelProviderCredentials.modelProvider,
-        name: platformModelProviderCredentials.name,
-        status: platformModelProviderCredentials.status,
-        type: platformModelProviderCredentials.type,
       })
       .from(platformModelProviderCredentials)
       .where(eq(platformModelProviderCredentials.status, "active"));
 
-    if (idsWithUsage.length === 0) {
-      return activeCredentials;
-    }
-
-    const missingCredentialIds = idsWithUsage.filter((credentialId) =>
-      !activeCredentials.some((credential) => credential.id === credentialId)
-    );
-    if (missingCredentialIds.length === 0) {
-      return activeCredentials;
-    }
-
-    const inactiveCredentialsWithUsage = await platformTx
-      .select({
-        baseUrl: platformModelProviderCredentials.baseUrl,
-        id: platformModelProviderCredentials.id,
-        modelProvider: platformModelProviderCredentials.modelProvider,
-        name: platformModelProviderCredentials.name,
-        status: platformModelProviderCredentials.status,
-        type: platformModelProviderCredentials.type,
-      })
-      .from(platformModelProviderCredentials)
-      .where(inArray(platformModelProviderCredentials.id, missingCredentialIds));
-
-    return [...activeCredentials, ...inactiveCredentialsWithUsage];
+    return activeCredentials.length > 0;
   }
 
   private serializeRow(
@@ -245,11 +222,33 @@ export class LlmUsageProviderCredentialsQueryResolver {
   }
 
   private createProviderKey(total: LlmUsageAggregateRecord): string {
+    if (total.scopeType === "managed_model_provider_credential") {
+      return "platform:managed";
+    }
     if (total.modelCredentialSource === "platform") {
       return `platform:${total.platformModelProviderCredentialId ?? ""}`;
     }
 
     return `user_provided:${total.modelProviderCredentialId ?? ""}`;
+  }
+
+  private serializeManagedRow(
+    companyId: string,
+    total: LlmUsageAggregateRecord | undefined,
+  ): GraphqlLlmUsageProviderCredentialRecord {
+    const managedTotal = total ?? this.createEmptyManagedAggregate(companyId);
+
+    return {
+      baseUrl: null,
+      credentialId: "managed",
+      id: "platform:managed",
+      modelCredentialSource: "platform",
+      modelProvider: "companyhelm",
+      name: "CompanyHelm managed",
+      status: "active",
+      total: this.serializeAggregate(managedTotal),
+      type: "api_key",
+    };
   }
 
   private createEmptyAggregate(
@@ -287,6 +286,18 @@ export class LlmUsageProviderCredentialsQueryResolver {
       totalCostNanoVirtualUsd: 0,
       totalTokens: 0,
       updatedAt: epoch,
+    };
+  }
+
+  private createEmptyManagedAggregate(companyId: string): LlmUsageAggregateRecord {
+    const aggregate = this.createEmptyAggregate(companyId, "platform", "managed");
+
+    return {
+      ...aggregate,
+      id: "empty:platform:managed",
+      modelCredentialSource: null,
+      platformModelProviderCredentialId: null,
+      scopeType: "managed_model_provider_credential",
     };
   }
 
