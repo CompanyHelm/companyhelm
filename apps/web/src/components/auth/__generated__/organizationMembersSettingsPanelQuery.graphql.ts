@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<29a24a27c3f0539049c7562f27ef869e>>
+ * @generated SignedSource<<69edc2826e10d3fd7007c3502436fb16>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type organizationMembersSettingsPanelQuery$data = {
     readonly role: CompanyMemberRole;
     readonly status: CompanyMemberStatus;
     readonly updatedAt: string;
+    readonly userId: string;
   }>;
   readonly Me: {
     readonly companyEntitlements: {
@@ -144,6 +145,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "updatedAt",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userId",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -167,16 +175,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d5256738b0e8882a1c7a19929bbcd63e",
+    "cacheID": "c763c1a5d454c6aa588575975fd84ad3",
     "id": null,
     "metadata": {},
     "name": "organizationMembersSettingsPanelQuery",
     "operationKind": "query",
-    "text": "query organizationMembersSettingsPanelQuery {\n  Me {\n    user {\n      id\n    }\n    companyEntitlements {\n      canInviteMembers\n      canManageMemberRoles\n    }\n  }\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n  }\n}\n"
+    "text": "query organizationMembersSettingsPanelQuery {\n  Me {\n    user {\n      id\n    }\n    companyEntitlements {\n      canInviteMembers\n      canManageMemberRoles\n    }\n  }\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n    userId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c020eda4ab406480265be4d6c25f940e";
+(node as any).hash = "2596e08b6116a05f6ce3c6e4baddea3c";
 
 export default node;

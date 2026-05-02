@@ -341,6 +341,7 @@ type CompanyMemberInvitation {
   emailAddress: String!
   role: CompanyMemberRole!
   status: CompanyMemberStatus!
+  userId: ID!
 }
 
 type CompanyMemberAccess {
@@ -351,6 +352,7 @@ type CompanyMemberAccess {
   role: CompanyMemberRole!
   status: CompanyMemberStatus!
   updatedAt: String!
+  userId: ID!
 }
 
 enum CompanyMemberRole {

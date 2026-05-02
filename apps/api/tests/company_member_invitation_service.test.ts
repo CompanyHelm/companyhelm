@@ -150,9 +150,10 @@ test("CompanyMemberInvitationService creates Clerk invitations with the configur
   assert.deepEqual(result, {
     createdAt: "2026-04-29T12:00:00.000Z",
     emailAddress: "teammate@example.com",
-    id: "user-invited-1",
+    id: "CompanyMemberInvitation:company-1:user-invited-1",
     role: "member",
     status: "invited",
+    userId: "user-invited-1",
   });
 });
 
@@ -160,9 +161,10 @@ test("InviteCompanyMemberMutation invites against the authenticated company cont
   const inviteMember = vi.fn(async () => ({
     createdAt: "2026-04-29T12:00:00.000Z",
     emailAddress: "teammate@example.com",
-    id: "user-invited-1",
+    id: "CompanyMemberInvitation:company-1:user-invited-1",
     role: "member",
     status: "invited",
+    userId: "user-invited-1",
   }));
   const mutation = new InviteCompanyMemberMutation({
     inviteMember,
@@ -191,11 +193,12 @@ test("UpdateCompanyMemberRoleMutation rejects changes to the current user's own 
   const updateMemberRole = vi.fn(async () => ({
     createdAt: "2026-04-29T12:00:00.000Z",
     emailAddress: "founder@example.com",
-    id: "user-1",
+    id: "CompanyMemberAccess:company-1:user-1",
     name: "Ada",
     role: "member",
     status: "active",
     updatedAt: "2026-04-29T12:00:00.000Z",
+    userId: "user-1",
   }));
   const requireActiveAdmin = vi.fn(async () => {});
   const mutation = new UpdateCompanyMemberRoleMutation({

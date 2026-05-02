@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3c4450588c956764710ef4786cc8f9f3>>
+ * @generated SignedSource<<ae7cd39ba5cd39e9d849eea84488ff18>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,6 +27,7 @@ export type organizationMembersSettingsPanelUpdateRoleMutation$data = {
     readonly role: CompanyMemberRole;
     readonly status: CompanyMemberStatus;
     readonly updatedAt: string;
+    readonly userId: string;
   };
 };
 export type organizationMembersSettingsPanelUpdateRoleMutation = {
@@ -105,6 +106,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "updatedAt",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userId",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -128,16 +136,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e20c4145132125c6ff23dca19417c736",
+    "cacheID": "7f5f456da8e43ff7b3cbe3b326251735",
     "id": null,
     "metadata": {},
     "name": "organizationMembersSettingsPanelUpdateRoleMutation",
     "operationKind": "mutation",
-    "text": "mutation organizationMembersSettingsPanelUpdateRoleMutation(\n  $input: UpdateCompanyMemberRoleInput!\n) {\n  UpdateCompanyMemberRole(input: $input) {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n  }\n}\n"
+    "text": "mutation organizationMembersSettingsPanelUpdateRoleMutation(\n  $input: UpdateCompanyMemberRoleInput!\n) {\n  UpdateCompanyMemberRole(input: $input) {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n    userId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f05b368bfcce55d60139f392d6a06086";
+(node as any).hash = "aace93c14d227b3c8adc98496c483e1c";
 
 export default node;

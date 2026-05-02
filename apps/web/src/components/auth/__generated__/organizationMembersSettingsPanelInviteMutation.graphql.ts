@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<73d41821d1b9ea83826d1bc089c20dcd>>
+ * @generated SignedSource<<b7f2c8c0e5bd0b1a7fcc6fb5a5ceb2db>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,6 +25,7 @@ export type organizationMembersSettingsPanelInviteMutation$data = {
     readonly id: string;
     readonly role: CompanyMemberRole;
     readonly status: CompanyMemberStatus;
+    readonly userId: string;
   };
 };
 export type organizationMembersSettingsPanelInviteMutation = {
@@ -89,6 +90,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "status",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userId",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -112,16 +120,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "fc991113b9aa6f471cd1b4a890f7e676",
+    "cacheID": "cc645bc3d4737a5bcb5d5e7d76fe981a",
     "id": null,
     "metadata": {},
     "name": "organizationMembersSettingsPanelInviteMutation",
     "operationKind": "mutation",
-    "text": "mutation organizationMembersSettingsPanelInviteMutation(\n  $input: InviteCompanyMemberInput!\n) {\n  InviteCompanyMember(input: $input) {\n    id\n    createdAt\n    emailAddress\n    role\n    status\n  }\n}\n"
+    "text": "mutation organizationMembersSettingsPanelInviteMutation(\n  $input: InviteCompanyMemberInput!\n) {\n  InviteCompanyMember(input: $input) {\n    id\n    createdAt\n    emailAddress\n    role\n    status\n    userId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0e3ac09609139cc24d6df76b4e5d9cfa";
+(node as any).hash = "e1ae826643a47bc56042592b2c60e7f0";
 
 export default node;

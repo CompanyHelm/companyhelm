@@ -12,6 +12,7 @@ export type CompanyMemberInvitationRecord = {
   id: string;
   role: CompanyMemberRole;
   status: CompanyMemberStatus;
+  userId: string;
 };
 
 export type CompanyMemberAccessRecord = {
@@ -22,6 +23,7 @@ export type CompanyMemberAccessRecord = {
   role: CompanyMemberRole;
   status: CompanyMemberStatus;
   updatedAt: string;
+  userId: string;
 };
 
 type ClerkOrganizationInvitationRecord = {
@@ -140,9 +142,10 @@ export class CompanyMemberInvitationService {
     return {
       createdAt: this.formatClerkTimestamp(invitation.createdAt),
       emailAddress: invitation.emailAddress,
-      id: user.id,
+      id: this.createInvitationGraphqlId(input.companyId, user.id),
       role: input.role,
       status: "invited",
+      userId: user.id,
     };
   }
 
@@ -172,11 +175,12 @@ export class CompanyMemberInvitationService {
     return rows.map((row) => ({
       createdAt: row.createdAt.toISOString(),
       emailAddress: row.emailAddress,
-      id: row.userId,
+      id: this.createAccessGraphqlId(input.companyId, row.userId),
       name: this.formatMemberName(row),
       role: row.role,
       status: row.status,
       updatedAt: row.updatedAt.toISOString(),
+      userId: row.userId,
     }));
   }
 
@@ -213,9 +217,10 @@ export class CompanyMemberInvitationService {
     return {
       createdAt: row.createdAt.toISOString(),
       emailAddress: invitation.emailAddress,
-      id: input.userId,
+      id: this.createInvitationGraphqlId(input.companyId, input.userId),
       role: row.role,
       status: "invited",
+      userId: input.userId,
     };
   }
 
@@ -249,12 +254,21 @@ export class CompanyMemberInvitationService {
     return {
       createdAt: row.createdAt.toISOString(),
       emailAddress: row.emailAddress,
-      id: row.userId,
+      id: this.createAccessGraphqlId(input.companyId, row.userId),
       name: this.formatMemberName(row),
       role: row.role,
       status: row.status,
       updatedAt: row.updatedAt.toISOString(),
+      userId: row.userId,
     };
+  }
+
+  private createAccessGraphqlId(companyId: string, userId: string): string {
+    return `CompanyMemberAccess:${companyId}:${userId}`;
+  }
+
+  private createInvitationGraphqlId(companyId: string, userId: string): string {
+    return `CompanyMemberInvitation:${companyId}:${userId}`;
   }
 
   private async assertCanInviteUser(

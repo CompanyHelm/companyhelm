@@ -44,6 +44,7 @@ type OrganizationMemberTableRecord = {
   role: CompanyMemberRole;
   status: CompanyMemberStatus;
   updatedAt: string;
+  userId: string;
 };
 
 const organizationMembersSettingsPanelQueryNode = graphql`
@@ -65,6 +66,7 @@ const organizationMembersSettingsPanelQueryNode = graphql`
       role
       status
       updatedAt
+      userId
     }
   }
 `;
@@ -77,6 +79,7 @@ const organizationMembersSettingsPanelInviteMutationNode = graphql`
       emailAddress
       role
       status
+      userId
     }
   }
 `;
@@ -99,6 +102,7 @@ const organizationMembersSettingsPanelUpdateRoleMutationNode = graphql`
       role
       status
       updatedAt
+      userId
     }
   }
 `;
@@ -129,6 +133,7 @@ export function OrganizationMembersSettingsPanel() {
       role: coerceRole(member.role),
       status: coerceStatus(member.status),
       updatedAt: member.updatedAt,
+      userId: member.userId,
     })));
   const [revokingMemberId, setRevokingMemberId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -184,6 +189,7 @@ export function OrganizationMembersSettingsPanel() {
               role: coerceRole(response.InviteCompanyMember.role),
               status: coerceStatus(response.InviteCompanyMember.status),
               updatedAt: response.InviteCompanyMember.createdAt,
+              userId: response.InviteCompanyMember.userId,
             });
           },
           onError: reject,
@@ -214,7 +220,7 @@ export function OrganizationMembersSettingsPanel() {
       commitRevokeInvitation({
         variables: {
           input: {
-            userId: member.id,
+            userId: member.userId,
           },
         },
         onCompleted: (_response, errors) => {
@@ -229,7 +235,7 @@ export function OrganizationMembersSettingsPanel() {
         onError: reject,
       });
     }).then(() => {
-      setMembers((currentMembers) => currentMembers.filter((currentMember) => currentMember.id !== member.id));
+      setMembers((currentMembers) => currentMembers.filter((currentMember) => currentMember.userId !== member.userId));
       setSuccessMessage(`Invitation revoked for ${member.emailAddress}.`);
     }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to revoke invitation.");
@@ -252,7 +258,7 @@ export function OrganizationMembersSettingsPanel() {
         variables: {
           input: {
             role,
-            userId: member.id,
+            userId: member.userId,
           },
         },
         onCompleted: (response, errors) => {
@@ -270,6 +276,7 @@ export function OrganizationMembersSettingsPanel() {
             role: coerceRole(response.UpdateCompanyMemberRole.role),
             status: coerceStatus(response.UpdateCompanyMemberRole.status),
             updatedAt: response.UpdateCompanyMemberRole.updatedAt,
+            userId: response.UpdateCompanyMemberRole.userId,
           });
         },
         onError: reject,
@@ -345,7 +352,7 @@ export function OrganizationMembersSettingsPanel() {
                     </TableCell>
                     <TableCell className="w-40">
                       <Select
-                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null || member.id === currentUserId}
+                        disabled={!canManageMemberRoles || updatingRoleMemberId !== null || member.userId === currentUserId}
                         onValueChange={(value) => void updateRole(member, value as CompanyMemberRole)}
                         value={member.role}
                       >
@@ -460,7 +467,7 @@ function upsertMember(
   members: OrganizationMemberTableRecord[],
   member: OrganizationMemberTableRecord,
 ): OrganizationMemberTableRecord[] {
-  const existingIndex = members.findIndex((currentMember) => currentMember.id === member.id);
+  const existingIndex = members.findIndex((currentMember) => currentMember.userId === member.userId);
   if (existingIndex === -1) {
     return [...members, member];
   }
