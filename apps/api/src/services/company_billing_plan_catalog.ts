@@ -32,7 +32,7 @@ export class CompanyBillingPlanCatalog {
       key: "plus",
       monthlyCreditsNanoUsd: 50 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Plus",
-      paddlePriceId: "pri_placeholder_plus_monthly",
+      paddlePriceId: "pri_01kqjv0bbshwax37ww7e05myec",
       priceCents: 900,
     },
     {
@@ -41,7 +41,7 @@ export class CompanyBillingPlanCatalog {
       key: "pro",
       monthlyCreditsNanoUsd: 500 * CompanyBillingPlanCatalog.nanoUsdPerUsd,
       name: "Pro",
-      paddlePriceId: "pri_placeholder_pro_monthly",
+      paddlePriceId: "pri_01kqjv285arzc036p0xjwwa0vd",
       priceCents: 9_900,
     },
   ];
