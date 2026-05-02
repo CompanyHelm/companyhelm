@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { E2bTemplatesManager } from "../src/compute/e2b/templates_manager.ts";
 
-test("E2bTemplatesManager adds nvm-backed Node 25 setup to every template", () => {
+test("E2bTemplatesManager adds pinned official GitHub CLI and nvm-backed Node 25 setup to every template", () => {
   const manager = new E2bTemplatesManager();
   const mediumBuild = manager.findBuild("medium") as unknown as {
     template: {
@@ -35,8 +35,13 @@ test("E2bTemplatesManager adds nvm-backed Node 25 setup to every template", () =
     [smallInstructions, smallRunCommands],
   ] as const) {
     assert.match(instructions, /awscli/);
+    assert.doesNotMatch(instructions, /"gh"/);
     assert.ok(runCommands.some((command) => command.includes("git config --global user.name 'CompanyHelm Agent'")));
     assert.ok(runCommands.some((command) => command.includes("git config --global user.email 'agent@companyhelm.internal'")));
+    assert.ok(runCommands.some((command) => command.includes("https://cli.github.com/packages")));
+    assert.ok(runCommands.some((command) => command.includes("githubcli-archive-keyring.gpg")));
+    assert.ok(runCommands.some((command) => command.includes('GH_VERSION="2.88.1"')));
+    assert.ok(runCommands.some((command) => command.includes("apt install -y \"gh=$GH_VERSION*\"")));
     assert.ok(runCommands.includes("curl -fsSL https://get.docker.com | sudo sh"));
     assert.ok(runCommands.includes("sudo usermod -aG docker user"));
     assert.ok(runCommands.some((command) => command.includes("nvm install 25")));
