@@ -92,21 +92,6 @@ const agentDetailPageQueryNode = graphql`
       skillGroupId
       skillType
     }
-    Sessions {
-      id
-      agentId
-      associatedTask {
-        id
-        name
-        status
-      }
-      inferredTitle
-      status
-      createdAt
-      updatedAt
-      lastUserMessageAt
-      userSetTitle
-    }
     AgentCreateOptions {
       id
       isDefault
@@ -564,17 +549,6 @@ function AgentDetailPageContent() {
         option.llmModelId === agent.llmModelId,
     ) ?? null
     : null;
-  const archivedChats = data.Sessions.filter((session) => {
-    return session.agentId === agent.id && session.status.trim().toLowerCase() === "archived";
-  }).map((session) => {
-    return {
-      ...session,
-      associatedTask: session.associatedTask ?? null,
-      inferredTitle: session.inferredTitle ?? null,
-      lastUserMessageAt: session.lastUserMessageAt ?? null,
-      userSetTitle: session.userSetTitle ?? null,
-    };
-  });
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
   const agentUsageAggregates = useMemo(() => {
     return UsageMetrics.fromGraphqlAggregates([
@@ -1031,7 +1005,7 @@ function AgentDetailPageContent() {
           title={`${agent.name} usage`}
         />
       ) : (
-        <AgentArchivedChatsTab sessions={archivedChats} />
+        <AgentArchivedChatsTab agentId={agent.id} />
       )}
     </main>
   );

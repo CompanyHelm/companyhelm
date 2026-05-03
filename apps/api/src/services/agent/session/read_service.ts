@@ -157,6 +157,9 @@ type MessageContentRow = {
 
 const DEFAULT_SESSION_TRANSCRIPT_PAGE_SIZE = 50;
 const MAX_SESSION_TRANSCRIPT_PAGE_SIZE = 200;
+const DEFAULT_ARCHIVED_SESSION_PAGE_SIZE = 40;
+const MAX_ARCHIVED_SESSION_PAGE_SIZE = 100;
+const ARCHIVED_SESSION_CURSOR_PREFIX = "archived-session:";
 const SESSION_MESSAGE_CURSOR_PREFIX = "session-message:";
 const CYBERSECURITY_RISK_ERROR_PREFIX =
   "Codex could not continue because OpenAI flagged this request for possible cybersecurity risk.";
@@ -267,6 +270,16 @@ type SessionTranscriptMessageEdgeGraphqlRecord = {
   node: SessionMessageGraphqlRecord;
 };
 
+type SessionEdgeGraphqlRecord = {
+  cursor: string;
+  node: SessionGraphqlRecord;
+};
+
+export type SessionConnectionGraphqlRecord = {
+  edges: SessionEdgeGraphqlRecord[];
+  pageInfo: PageInfoGraphqlRecord;
+};
+
 export type SessionTranscriptMessageConnectionGraphqlRecord = {
   edges: SessionTranscriptMessageEdgeGraphqlRecord[];
   pageInfo: PageInfoGraphqlRecord;
@@ -309,6 +322,90 @@ function decodeSessionMessageCursor(cursor?: string | null): { createdAt: string
  */
 @injectable()
 export class SessionReadService {
+  async listArchivedAgentSessions(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    userId: string,
+    first?: number | null,
+    after?: string | null,
+  ): Promise<SessionConnectionGraphqlRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const pageSize = SessionReadService.normalizeArchivedSessionPageSize(first);
+      const cursor = SessionReadService.decodeArchivedSessionCursor(after);
+      const sessionFilter = cursor
+        ? and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.agentId, agentId),
+          eq(agentSessions.status, "archived"),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
+          or(
+            lt(agentSessions.updated_at, new Date(cursor.updatedAt)),
+            and(
+              eq(agentSessions.updated_at, new Date(cursor.updatedAt)),
+              lt(agentSessions.id, cursor.sessionId),
+            ),
+          )!,
+        )
+        : and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.agentId, agentId),
+          eq(agentSessions.status, "archived"),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
+        );
+
+      const sessionRows = await selectableDatabase
+        .select({
+          id: agentSessions.id,
+          agentId: agentSessions.agentId,
+          contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
+          currentContextTokens: agentSessions.currentContextTokens,
+          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
+          currentPlatformModelId: agentSessions.currentPlatformModelId,
+          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          forkedFromTurnId: agentSessions.forkedFromTurnId,
+          inferredTitle: agentSessions.inferredTitle,
+          isCompacting: agentSessions.isCompacting,
+          isThinking: agentSessions.isThinking,
+          lastUserMessageAt: agentSessions.lastUserMessageAt,
+          maxContextTokens: agentSessions.maxContextTokens,
+          ownerUserId: agentSessions.ownerUserId,
+          status: agentSessions.status,
+          thinkingText: agentSessions.thinkingText,
+          createdAt: agentSessions.created_at,
+          updatedAt: agentSessions.updated_at,
+          userSetTitle: agentSessions.userSetTitle,
+        })
+        .from(agentSessions)
+        .where(sessionFilter)
+        .orderBy(desc(agentSessions.updated_at), desc(agentSessions.id))
+        .limit(pageSize + 1) as SessionRow[];
+
+      const hasNextPage = sessionRows.length > pageSize;
+      const pageSessionRows = hasNextPage ? sessionRows.slice(0, pageSize) : sessionRows;
+      if (pageSessionRows.length === 0) {
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            endCursor: null,
+          },
+        };
+      }
+
+      return this.serializeSessionConnection(selectableDatabase, companyId, userId, pageSessionRows, hasNextPage);
+    });
+  }
+
   async listSessions(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -693,6 +790,59 @@ export class SessionReadService {
     return [...persistedMessages]
       .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
       .map((message) => this.serializeMessage(message, contentsByMessageId, turnsById));
+  }
+
+  private async serializeSessionConnection(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    userId: string,
+    sessionRows: SessionRow[],
+    hasNextPage: boolean,
+  ): Promise<SessionConnectionGraphqlRecord> {
+    const forkableSessionIds = await this.loadForkableSessionIds(selectableDatabase, companyId, sessionRows);
+    const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, sessionRows);
+    const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(selectableDatabase, companyId, sessionRows);
+    const associatedTaskBySessionId = await this.loadAssociatedTaskBySessionId(
+      selectableDatabase,
+      companyId,
+      sessionRows.map((sessionRow) => sessionRow.id),
+    );
+    const associatedWorkflowRunBySessionId = await this.loadAssociatedWorkflowRunBySessionId(
+      selectableDatabase,
+      companyId,
+      sessionRows.map((sessionRow) => sessionRow.id),
+    );
+    const readSessionIds = await this.loadReadSessionIds(
+      selectableDatabase,
+      companyId,
+      userId,
+      sessionRows.map((sessionRow) => sessionRow.id),
+    );
+
+    const edges = sessionRows.map((sessionRow) => {
+      const node = this.serializeSession(
+        sessionRow,
+        forkSourceBySessionId,
+        forkableSessionIds,
+        modelOptionIdBySessionKey,
+        associatedTaskBySessionId,
+        associatedWorkflowRunBySessionId,
+        readSessionIds.has(sessionRow.id),
+      );
+
+      return {
+        cursor: SessionReadService.encodeArchivedSessionCursor(node.updatedAt, node.id),
+        node,
+      };
+    });
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.at(-1)?.cursor ?? null,
+      },
+    };
   }
 
   private async loadTurnsById(
@@ -1262,6 +1412,36 @@ export class SessionReadService {
       updatedAt: sessionRow.updatedAt.toISOString(),
       userSetTitle: sessionRow.userSetTitle,
     };
+  }
+
+  private static normalizeArchivedSessionPageSize(first?: number | null): number {
+    if (!Number.isInteger(first) || Number(first) <= 0) {
+      return DEFAULT_ARCHIVED_SESSION_PAGE_SIZE;
+    }
+
+    return Math.min(Number(first), MAX_ARCHIVED_SESSION_PAGE_SIZE);
+  }
+
+  private static encodeArchivedSessionCursor(updatedAt: string, sessionId: string): string {
+    return Buffer.from(`${ARCHIVED_SESSION_CURSOR_PREFIX}${updatedAt}|${sessionId}`, "utf8").toString("base64url");
+  }
+
+  private static decodeArchivedSessionCursor(cursor?: string | null): { updatedAt: string; sessionId: string } | null {
+    if (!cursor) {
+      return null;
+    }
+
+    const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+    if (!decoded.startsWith(ARCHIVED_SESSION_CURSOR_PREFIX)) {
+      throw new Error("Invalid cursor.");
+    }
+
+    const [updatedAt = "", sessionId = ""] = decoded.slice(ARCHIVED_SESSION_CURSOR_PREFIX.length).split("|");
+    if (!updatedAt || !sessionId || Number.isNaN(new Date(updatedAt).getTime())) {
+      throw new Error("Invalid cursor.");
+    }
+
+    return { updatedAt, sessionId };
   }
 
   private createSessionModelLookupKey(modelCredentialSource: "platform" | "user_provided", modelRecordId: string): string {

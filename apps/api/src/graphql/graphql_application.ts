@@ -359,6 +359,7 @@ export class GraphqlApplication {
       sessionQueuedMessagesUpdatedSubscriptionResolver,
       sessionSecretsQueryResolver,
       sessionTranscriptMessagesQueryResolver,
+      undefined,
       sessionsQueryResolver,
       sessionUpdatedSubscriptionResolver,
       steerSessionQueuedMessageMutation,

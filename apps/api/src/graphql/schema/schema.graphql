@@ -51,6 +51,11 @@ type Query {
   AgentMcpServers(agentId: ID!): [McpServer!]!
   AgentSkillGroups(agentId: ID!): [SkillGroup!]!
   AgentSkills(agentId: ID!): [Skill!]!
+  ArchivedAgentSessions(
+    agentId: ID!
+    first: Int!
+    after: String
+  ): SessionConnection!
   Sessions: [Session!]!
   SessionEnvironment(sessionId: ID!): SessionEnvironmentInfo!
   SessionSecrets(sessionId: ID!): [Secret!]!
@@ -1109,6 +1114,16 @@ type SessionMessageContent {
 type PageInfo {
   hasNextPage: Boolean!
   endCursor: String
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
 }
 
 type SessionTranscriptMessageEdge {
