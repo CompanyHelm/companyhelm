@@ -12,6 +12,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import { SessionReadService } from "../src/services/agent/session/read_service.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class SessionsQueryTestHarness {
@@ -421,7 +422,160 @@ class SessionsQueryTestHarness {
       },
     };
   }
+
+  static createArchivedSessionTransactionProviderMock() {
+    const limitValues: number[] = [];
+    let selectCallCount = 0;
+
+    const database = {
+      select() {
+        selectCallCount += 1;
+        if (selectCallCount === 1) {
+          return {
+            from() {
+              return {
+                where(condition: unknown) {
+                  assert.equal(
+                    SessionsQueryTestHarness.conditionIncludes(condition, "agent_id"),
+                    true,
+                    SessionsQueryTestHarness.stringifyQueryChunk(condition),
+                  );
+                  assert.equal(
+                    SessionsQueryTestHarness.conditionIncludes(condition, "archived"),
+                    true,
+                    SessionsQueryTestHarness.stringifyQueryChunk(condition),
+                  );
+
+                  return {
+                    orderBy() {
+                      return {
+                        async limit(limit: number) {
+                          limitValues.push(limit);
+                          return [
+                            SessionsQueryTestHarness.createArchivedSessionRow({
+                              id: "archived-session-3",
+                              updatedAt: new Date("2026-04-03T12:00:00.000Z"),
+                              userSetTitle: "Newest archived chat",
+                            }),
+                            SessionsQueryTestHarness.createArchivedSessionRow({
+                              id: "archived-session-2",
+                              updatedAt: new Date("2026-04-02T12:00:00.000Z"),
+                              userSetTitle: "Middle archived chat",
+                            }),
+                            SessionsQueryTestHarness.createArchivedSessionRow({
+                              id: "archived-session-1",
+                              updatedAt: new Date("2026-04-01T12:00:00.000Z"),
+                              userSetTitle: "Oldest archived chat",
+                            }),
+                          ];
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 2) {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [
+                    {
+                      id: "platform-model-1",
+                      modelId: "gpt-5.4",
+                    },
+                  ];
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 3 || selectCallCount === 4 || selectCallCount === 5) {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [];
+                },
+              };
+            },
+          };
+        }
+
+        throw new Error("Unexpected select call.");
+      },
+    };
+
+    return {
+      limitValues,
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback(database);
+      },
+    };
+  }
+
+  static createArchivedSessionRow(input: {
+    id: string;
+    updatedAt: Date;
+    userSetTitle: string;
+  }) {
+    return {
+      id: input.id,
+      agentId: "agent-archive",
+      contextMessagesSnapshot: [],
+      currentContextTokens: null,
+      currentModelCredentialSource: "platform",
+      currentPlatformModelId: "platform-model-1",
+      currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
+      currentModelProviderCredentialModelId: null,
+      currentReasoningLevel: "medium",
+      forkedFromTurnId: null,
+      inferredTitle: null,
+      isCompacting: false,
+      isThinking: false,
+      lastUserMessageAt: null,
+      maxContextTokens: 200000,
+      ownerUserId: null,
+      status: "archived",
+      thinkingText: null,
+      createdAt: new Date("2026-03-30T12:00:00.000Z"),
+      updatedAt: input.updatedAt,
+      userSetTitle: input.userSetTitle,
+    };
+  }
 }
+
+test("SessionReadService paginates archived agent sessions in descending archive order", async () => {
+  const transactionProvider = SessionsQueryTestHarness.createArchivedSessionTransactionProviderMock();
+  const service = new SessionReadService();
+
+  const connection = await service.listArchivedAgentSessions(
+    transactionProvider as never,
+    "company-123",
+    "agent-archive",
+    "user-123",
+    2,
+    null,
+  );
+
+  assert.deepEqual(transactionProvider.limitValues, [3]);
+  assert.equal(connection.pageInfo.hasNextPage, true);
+  assert.equal(connection.edges.length, 2);
+  assert.deepEqual(
+    connection.edges.map((edge) => edge.node.id),
+    ["archived-session-3", "archived-session-2"],
+  );
+  assert.deepEqual(
+    connection.edges.map((edge) => edge.node.userSetTitle),
+    ["Newest archived chat", "Middle archived chat"],
+  );
+  assert.match(connection.pageInfo.endCursor ?? "", /^[A-Za-z0-9_-]+$/);
+});
 
 test("GraphQL Sessions query lists non-archived company sessions ordered by most recently updated first", async () => {
   const app = Fastify();
