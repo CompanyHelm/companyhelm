@@ -99,6 +99,7 @@ import {
   resolveComposerModelOptionId,
   resolveComposerReasoningLevel,
   resolveDraftTextareaHeightBounds,
+  resolveDraftTextareaMinimumLines,
   resolveSessionTitle,
   shouldEnableDraftTextareaManualResize,
   shouldHydrateComposerSelection,
@@ -374,6 +375,18 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     ? resolvedSelectedSession
     : null;
   const selectedSessionId = selectedSession?.id ?? null;
+  const shouldUseCenteredNewChatLayout = Boolean(
+    selectedAgent
+      && !selectedSession
+      && !isFixedSessionMode
+      && !routeSessionId
+      && !pendingCreatedSessionId
+      && !isCreateSessionInFlight,
+  );
+  const draftTextareaMinimumLines = resolveDraftTextareaMinimumLines({
+    isMobile,
+    shouldUseCenteredNewChatLayout,
+  });
   const selectedSessionHumanQuestion = useMemo<InboxHumanQuestionRecord | null>(() => {
     if (!selectedSessionId) {
       return null;
@@ -1184,7 +1197,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     }
 
     textarea.style.height = "auto";
-    const { maxHeight, minHeight } = resolveDraftTextareaHeightBounds(textarea);
+    const { maxHeight, minHeight } = resolveDraftTextareaHeightBounds(textarea, draftTextareaMinimumLines);
     const nextHeight = Math.min(
       Math.max(textarea.scrollHeight, draftTextareaHeight ?? minHeight, minHeight),
       maxHeight,
@@ -1192,7 +1205,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
 
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = textarea.scrollHeight > nextHeight ? "auto" : "hidden";
-  }, [draftMessage, draftTextareaHeight, selectedAgent?.id, selectedSession?.id]);
+  }, [draftMessage, draftTextareaHeight, draftTextareaMinimumLines, selectedAgent?.id, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -2036,14 +2049,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
     : "Untitled chat";
   const selectedSessionTask = selectedSession?.associatedTask ?? null;
-  const shouldUseCenteredNewChatLayout = Boolean(
-    selectedAgent
-      && !selectedSession
-      && !isFixedSessionMode
-      && !routeSessionId
-      && !pendingCreatedSessionId
-      && !isCreateSessionInFlight,
-  );
   const chatsHeaderTitle = props.headerTitle ?? (selectedSession
     ? selectedSessionTask?.name ?? selectedSessionTitle
     : selectedAgent
@@ -2273,6 +2278,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       draftImages={draftImages}
       draftMessage={draftMessage}
       draftSubmitAriaLabel={draftSubmitAriaLabel}
+      draftTextareaMinimumLines={draftTextareaMinimumLines}
       draftTextareaRef={draftTextareaRef}
       hasDraftInput={hasDraftInput}
       isForkingLatestSession={isForkingLatestSession}

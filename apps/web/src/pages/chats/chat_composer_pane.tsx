@@ -340,6 +340,7 @@ export function ChatComposerPane({
   canInterruptSelectedSession,
   shouldShowQueueComposerAction,
   shouldShowInterruptComposerAction,
+  draftTextareaMinimumLines = CHAT_DRAFT_MIN_LINES,
   draftImageFileInputRef,
   draftTextareaRef,
   canManuallyResizeDraftTextarea,
@@ -384,6 +385,7 @@ export function ChatComposerPane({
   canInterruptSelectedSession: boolean;
   shouldShowQueueComposerAction: boolean;
   shouldShowInterruptComposerAction: boolean;
+  draftTextareaMinimumLines?: number;
   draftImageFileInputRef: RefObject<HTMLInputElement>;
   draftTextareaRef: RefObject<HTMLTextAreaElement>;
   canManuallyResizeDraftTextarea: boolean;
@@ -511,7 +513,7 @@ export function ChatComposerPane({
               placeholder={selectedSessionHumanQuestion?.allowCustomAnswer
                 ? "Type your own answer to the pending question or choose one of the options above."
                 : "Ask the agent to summarize a repo, draft a plan, or investigate a problem."}
-              rows={CHAT_DRAFT_MIN_LINES}
+              rows={draftTextareaMinimumLines}
               value={draftMessage}
             />
           </div>

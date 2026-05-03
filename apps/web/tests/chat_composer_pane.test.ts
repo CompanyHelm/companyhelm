@@ -18,6 +18,7 @@ function createSelectedSession(): SessionRecord {
 function renderChatComposerPane(input: {
   canForkLatestSession?: boolean;
   canManuallyResizeDraftTextarea?: boolean;
+  draftTextareaMinimumLines?: number;
   selectedSession?: SessionRecord | null;
 } = {}): string {
   return renderToStaticMarkup(createElement(ChatComposerPane, {
@@ -29,6 +30,7 @@ function renderChatComposerPane(input: {
     composerModelOptions: [],
     composerReasoningLevel: "high",
     deletingQueuedMessageId: null,
+    draftTextareaMinimumLines: input.draftTextareaMinimumLines ?? 1,
     draftImageFileInputRef: createRef<HTMLInputElement>(),
     draftImages: [],
     draftMessage: "",
@@ -96,4 +98,10 @@ test("renders the latest-context fork button when forking is enabled", () => {
   });
 
   assert.match(html, /Fork latest context/);
+});
+
+test("uses the requested minimum visible rows for the draft textarea", () => {
+  const html = renderChatComposerPane({ draftTextareaMinimumLines: 3 });
+
+  assert.match(html, /rows="3"/);
 });

@@ -6,6 +6,7 @@ import {
   type ToolCallSummaryRecord,
   hasVisibleMessage,
   resolveAssistantContentDisplay,
+  resolveDraftTextareaMinimumLines,
   resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
   resolvePrincipalExecutionMessageDisplay,
@@ -60,6 +61,24 @@ test("shouldHydrateComposerSelection returns true when the chat target changes",
 
 test("shouldEnableDraftTextareaManualResize disables the drag handle on mobile", () => {
   assert.equal(shouldEnableDraftTextareaManualResize(true), false);
+});
+
+test("resolveDraftTextareaMinimumLines expands the centered mobile composer", () => {
+  assert.equal(resolveDraftTextareaMinimumLines({
+    isMobile: true,
+    shouldUseCenteredNewChatLayout: true,
+  }), 3);
+});
+
+test("resolveDraftTextareaMinimumLines keeps the single-line default outside centered mobile layout", () => {
+  assert.equal(resolveDraftTextareaMinimumLines({
+    isMobile: false,
+    shouldUseCenteredNewChatLayout: true,
+  }), 1);
+  assert.equal(resolveDraftTextareaMinimumLines({
+    isMobile: true,
+    shouldUseCenteredNewChatLayout: false,
+  }), 1);
 });
 
 test("shouldEnableDraftTextareaManualResize keeps the drag handle on desktop", () => {
