@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<951b7bb51a0af456dee0955ed2573154>>
+ * @generated SignedSource<<d4e35f1fe933048d5ca32efc6f395dff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,15 +14,6 @@ export type settingsPageQuery$data = {
   readonly CompanySettings: {
     readonly baseSystemPrompt: string | null | undefined;
     readonly companyId: string;
-  };
-  readonly Me: {
-    readonly company: {
-      readonly id: string;
-      readonly name: string;
-    };
-    readonly companyEntitlements: {
-      readonly canDeleteCompany: boolean;
-    };
   };
   readonly TaskStages: ReadonlyArray<{
     readonly createdAt: string;
@@ -39,63 +30,7 @@ export type settingsPageQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
-v1 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "name",
-  "storageKey": null
-},
-v2 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "MeCompanyEntitlements",
-        "kind": "LinkedField",
-        "name": "companyEntitlements",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "canDeleteCompany",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AuthenticatedCompany",
-        "kind": "LinkedField",
-        "name": "company",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/),
-          (v1/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
+var v0 = [
   {
     "alias": null,
     "args": null,
@@ -129,8 +64,20 @@ v2 = [
     "name": "TaskStages",
     "plural": true,
     "selections": [
-      (v0/*: any*/),
-      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "name",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -169,7 +116,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "settingsPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v0/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -178,19 +125,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "settingsPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "ceeab6e22c4fe9fd2c53db5705e3a787",
+    "cacheID": "0c5e3313c3e8718baf3fb5fb5e6102c4",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  Me {\n    companyEntitlements {\n      canDeleteCompany\n    }\n    company {\n      id\n      name\n    }\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f583628ae5ee60afc0cc24a2d8de19c9";
+(node as any).hash = "4e677291f61bbbeff7decec6d658394c";
 
 export default node;

@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageTabs } from "@/components/ui/page_tabs";
+import { useMeCompany } from "@/contextes/me_context";
 import type { repositoriesPageCreateGithubRepositoryProvisioningMutation } from "./__generated__/repositoriesPageCreateGithubRepositoryProvisioningMutation.graphql";
 import type { repositoriesPageCreateGithubInstallationUrlMutation } from "./__generated__/repositoriesPageCreateGithubInstallationUrlMutation.graphql";
 import type { repositoriesPageDeleteGithubInstallationMutation } from "./__generated__/repositoriesPageDeleteGithubInstallationMutation.graphql";
@@ -51,12 +52,6 @@ import type { repositoriesPageRefreshGithubInstallationRepositoriesMutation } fr
 
 const repositoriesPageQueryNode = graphql`
   query repositoriesPageQuery {
-    Me {
-      company {
-        id
-        name
-      }
-    }
     GithubInstallations {
       id
       installationId
@@ -273,6 +268,7 @@ function RepositoriesPageFallback() {
 }
 
 function RepositoriesPageContent() {
+  const meCompany = useMeCompany();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [refreshedInstallationId, setRefreshedInstallationId] = useState<string | null>(null);
@@ -536,7 +532,7 @@ function RepositoriesPageContent() {
           <div className="min-w-0">
             <CardTitle>GitHub Repositories</CardTitle>
             <CardDescription>
-              Link GitHub App installations to {data.Me.company.name} and mirror their repositories into CompanyHelm.
+              Link GitHub App installations to {meCompany.name} and mirror their repositories into CompanyHelm.
             </CardDescription>
           </div>
           <CardAction>

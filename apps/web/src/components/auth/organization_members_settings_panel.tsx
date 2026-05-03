@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useMe } from "@/contextes/me_context";
 import type { organizationMembersSettingsPanelInviteMutation } from "./__generated__/organizationMembersSettingsPanelInviteMutation.graphql";
 import type { organizationMembersSettingsPanelQuery } from "./__generated__/organizationMembersSettingsPanelQuery.graphql";
 import type { organizationMembersSettingsPanelRemoveMutation } from "./__generated__/organizationMembersSettingsPanelRemoveMutation.graphql";
@@ -50,15 +51,6 @@ type OrganizationMemberTableRecord = {
 
 const organizationMembersSettingsPanelQueryNode = graphql`
   query organizationMembersSettingsPanelQuery {
-    Me {
-      user {
-        id
-      }
-      companyEntitlements {
-        canInviteMembers
-        canManageMemberRoles
-      }
-    }
     CompanyMembers {
       id
       createdAt
@@ -123,6 +115,7 @@ const organizationMembersSettingsPanelUpdateRoleMutationNode = graphql`
  * source of truth for invitations and member access.
  */
 export function OrganizationMembersSettingsPanel() {
+  const me = useMe();
   const data = useLazyLoadQuery<organizationMembersSettingsPanelQuery>(
     organizationMembersSettingsPanelQueryNode,
     {},
@@ -163,9 +156,9 @@ export function OrganizationMembersSettingsPanel() {
   const [commitUpdateRole] = useMutation<organizationMembersSettingsPanelUpdateRoleMutation>(
     organizationMembersSettingsPanelUpdateRoleMutationNode,
   );
-  const canInviteMembers = data.Me.companyEntitlements.canInviteMembers;
-  const canManageMemberRoles = data.Me.companyEntitlements.canManageMemberRoles;
-  const currentUserId = data.Me.user.id;
+  const canInviteMembers = me.companyEntitlements.canInviteMembers;
+  const canManageMemberRoles = me.companyEntitlements.canManageMemberRoles;
+  const currentUserId = me.user.id;
 
   async function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

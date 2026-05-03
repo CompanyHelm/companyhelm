@@ -7,6 +7,7 @@ import { OrganizationMembersSettingsPanel } from "@/components/auth/organization
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
+import { useMe } from "@/contextes/me_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { SelectedOrganizationStorage } from "@/pages/root/selected_organization_storage";
@@ -24,15 +25,6 @@ type SettingsPageSearch = {
 
 const settingsPageQueryNode = graphql`
   query settingsPageQuery {
-    Me {
-      companyEntitlements {
-        canDeleteCompany
-      }
-      company {
-        id
-        name
-      }
-    }
     CompanySettings {
       companyId
       baseSystemPrompt
@@ -158,6 +150,7 @@ function SettingsPageContent() {
   const [isTaskStageDialogOpen, setTaskStageDialogOpen] = useState(false);
   const [isDeleteCompanyDialogOpen, setDeleteCompanyDialogOpen] = useState(false);
   const [deletingTaskStageId, setDeletingTaskStageId] = useState<string | null>(null);
+  const me = useMe();
   const data = useLazyLoadQuery<settingsPageQuery>(
     settingsPageQueryNode,
     {},
@@ -180,7 +173,7 @@ function SettingsPageContent() {
   const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "members"
     ? search.tab
     : "tasks";
-  const companyName = data.Me.company.name;
+  const companyName = me.company.name;
 
   return (
     <main className="flex flex-col gap-6">
@@ -455,7 +448,7 @@ function SettingsPageContent() {
               </div>
               <Button
                 className="w-full sm:w-auto"
-                disabled={deletionRequestStatus !== null || !data.Me.companyEntitlements.canDeleteCompany}
+                disabled={deletionRequestStatus !== null || !me.companyEntitlements.canDeleteCompany}
                 onClick={() => {
                   setCompanyErrorMessage(null);
                   setDeleteCompanyDialogOpen(true);

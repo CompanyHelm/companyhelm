@@ -1,36 +1,22 @@
 import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { graphql, useMutation } from "react-relay";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
 import type { OnboardingSkipActionProps } from "@/components/layout/onboarding_skip_action";
 import { ErrorBoundary } from "@/components/error_boundary";
 import { ErrorState } from "@/components/error_state";
+import { useMe } from "@/contextes/me_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { cn } from "@/lib/utils";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import type { pageContainerCompanyOnboardingQuery } from "./__generated__/pageContainerCompanyOnboardingQuery.graphql";
 import type { pageContainerSkipCompanyOnboardingMutation } from "./__generated__/pageContainerSkipCompanyOnboardingMutation.graphql";
 
 interface PageContainerProps {
   children: ReactNode;
 }
-
-const pageContainerCompanyOnboardingQueryNode = graphql`
-  query pageContainerCompanyOnboardingQuery {
-    Me {
-      company {
-        id
-        onboarding {
-          id
-          status
-        }
-      }
-    }
-  }
-`;
 
 const pageContainerSkipCompanyOnboardingMutationNode = graphql`
   mutation pageContainerSkipCompanyOnboardingMutation {
@@ -78,23 +64,14 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   pathname: string;
 }) {
   const navigate = useNavigate();
-  const relayEnvironment = useRelayEnvironment();
   const organizationSlug = props.pathname.split("/")[2] ?? "";
-  const data = useLazyLoadQuery<pageContainerCompanyOnboardingQuery>(
-    pageContainerCompanyOnboardingQueryNode,
-    {},
-    {
-      // The org shell must reflect the currently selected company, not a partial cached `Me.company`
-      // object from a previous route that did not include onboarding.
-      fetchPolicy: "network-only",
-    },
-  );
+  const me = useMe();
   const [commitSkipCompanyOnboarding, isSkipCompanyOnboardingInFlight] =
     useMutation<pageContainerSkipCompanyOnboardingMutation>(
       pageContainerSkipCompanyOnboardingMutationNode,
     );
   const [onboardingErrorMessage, setOnboardingErrorMessage] = useState<string | null>(null);
-  const onboarding = data.Me.company.onboarding;
+  const onboarding = me.company.onboarding;
   if (!onboarding) {
     return <PageContainerOrganizationFallback />;
   }
@@ -184,20 +161,13 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
     }
 
     const intervalId = window.setInterval(() => {
-      void fetchQuery<pageContainerCompanyOnboardingQuery>(
-        relayEnvironment,
-        pageContainerCompanyOnboardingQueryNode,
-        {},
-        {
-          fetchPolicy: "network-only",
-        },
-      ).toPromise().catch(() => undefined);
+      void me.refreshMe().catch(() => undefined);
     }, 10_000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [onboarding.status, relayEnvironment]);
+  }, [me, onboarding.status]);
 
   const locationKey = props.locationHref;
   return (

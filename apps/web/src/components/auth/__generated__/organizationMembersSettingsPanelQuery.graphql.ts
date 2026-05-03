@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<69edc2826e10d3fd7007c3502436fb16>>
+ * @generated SignedSource<<7fbd6401a178f325e118f331d9d3be97>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,15 +23,6 @@ export type organizationMembersSettingsPanelQuery$data = {
     readonly updatedAt: string;
     readonly userId: string;
   }>;
-  readonly Me: {
-    readonly companyEntitlements: {
-      readonly canInviteMembers: boolean;
-      readonly canManageMemberRoles: boolean;
-    };
-    readonly user: {
-      readonly id: string;
-    };
-  };
 };
 export type organizationMembersSettingsPanelQuery = {
   response: organizationMembersSettingsPanelQuery$data;
@@ -39,62 +30,7 @@ export type organizationMembersSettingsPanelQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "id",
-  "storageKey": null
-},
-v1 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "MeUser",
-        "kind": "LinkedField",
-        "name": "user",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/)
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "MeCompanyEntitlements",
-        "kind": "LinkedField",
-        "name": "companyEntitlements",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "canInviteMembers",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "canManageMemberRoles",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
+var v0 = [
   {
     "alias": null,
     "args": null,
@@ -103,7 +39,13 @@ v1 = [
     "name": "CompanyMembers",
     "plural": true,
     "selections": [
-      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "id",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -163,7 +105,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "organizationMembersSettingsPanelQuery",
-    "selections": (v1/*: any*/),
+    "selections": (v0/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -172,19 +114,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "organizationMembersSettingsPanelQuery",
-    "selections": (v1/*: any*/)
+    "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "c763c1a5d454c6aa588575975fd84ad3",
+    "cacheID": "2c945b76b2c9530d2c7d2108e87560f5",
     "id": null,
     "metadata": {},
     "name": "organizationMembersSettingsPanelQuery",
     "operationKind": "query",
-    "text": "query organizationMembersSettingsPanelQuery {\n  Me {\n    user {\n      id\n    }\n    companyEntitlements {\n      canInviteMembers\n      canManageMemberRoles\n    }\n  }\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n    userId\n  }\n}\n"
+    "text": "query organizationMembersSettingsPanelQuery {\n  CompanyMembers {\n    id\n    createdAt\n    emailAddress\n    name\n    role\n    status\n    updatedAt\n    userId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2596e08b6116a05f6ce3c6e4baddea3c";
+(node as any).hash = "8ac206df4c6ab3e145ad379c361d85ac";
 
 export default node;

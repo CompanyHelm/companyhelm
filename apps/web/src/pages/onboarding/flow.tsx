@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CheckCircle2Icon, Loader2Icon } from "lucide-react";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
+import { useMe, type MeCompanyOnboarding } from "@/contextes/me_context";
 import { cn } from "@/lib/utils";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -21,28 +22,6 @@ export type { OnboardingStepKey } from "./steps";
 
 const onboardingPageQueryNode = graphql`
   query flowQuery {
-    Me {
-      company {
-        id
-        onboarding {
-          id
-          companyId
-          status
-          companyMission
-          missionSkippedAt
-          githubSetupStatus
-          githubCompletedAt
-          githubSkippedAt
-          llmSetupStatus
-          llmCompletedAt
-          llmSkippedAt
-          agentId
-          sessionId
-          workflowRunId
-          updatedAt
-        }
-      }
-    }
     GithubInstallations {
       accountLogin
       id
@@ -190,7 +169,7 @@ export interface OnboardingFlowController {
   missionDraft: string;
   missionResolved: boolean;
   needsOnboardingStart: boolean;
-  onboarding: flowQuery["response"]["Me"]["company"]["onboarding"];
+  onboarding: MeCompanyOnboarding;
   setupResolved: boolean;
   thirdPartyProviders: ReturnType<typeof ModelProviderCredentialCatalog.toDialogProviders>;
   clearErrorMessage(): void;
@@ -230,6 +209,7 @@ export function useOnboardingFlowController(options?: {
   ensureOnboardingStart?: boolean;
 }): OnboardingFlowController {
   const relayEnvironment = useRelayEnvironment();
+  const me = useMe();
   const data = useLazyLoadQuery<flowQuery>(
     onboardingPageQueryNode,
     {},
@@ -262,7 +242,7 @@ export function useOnboardingFlowController(options?: {
   const [isCredentialDialogOpen, setIsCredentialDialogOpen] = useState(false);
   const [missionDraft, setMissionDraft] = useState("");
   const ensureRequestKeyRef = useRef<string | null>(null);
-  const onboarding = data.Me.company.onboarding;
+  const onboarding = me.company.onboarding;
   const missionResolved = Boolean(onboarding.companyMission?.trim() || onboarding.missionSkippedAt);
   const githubResolved = onboarding.githubSetupStatus !== "pending";
   const llmResolved = onboarding.llmSetupStatus !== "pending";
@@ -358,20 +338,23 @@ export function useOnboardingFlowController(options?: {
     }
 
     const intervalId = window.setInterval(() => {
-      void fetchQuery<flowQuery>(
-        relayEnvironment,
-        onboardingPageQueryNode,
-        {},
-        {
-          fetchPolicy: "network-only",
-        },
-      ).toPromise().catch(() => undefined);
+      void Promise.all([
+        fetchQuery<flowQuery>(
+          relayEnvironment,
+          onboardingPageQueryNode,
+          {},
+          {
+            fetchPolicy: "network-only",
+          },
+        ).toPromise(),
+        me.refreshMe(),
+      ]).catch(() => undefined);
     }, 10_000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [onboarding.status, relayEnvironment]);
+  }, [me, onboarding.status, relayEnvironment]);
 
   async function updateOnboarding(input: {
     companyMission?: string | null;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8345c3f807c9996d6fe740ffdbb80f9a>>
+ * @generated SignedSource<<0dd6b6a09f2587c20160aefbc0df7336>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -48,12 +48,6 @@ export type repositoriesPageQuery$data = {
     readonly id: string;
     readonly updatedAt: string;
   }>;
-  readonly Me: {
-    readonly company: {
-      readonly id: string;
-      readonly name: string;
-    };
-  };
 };
 export type repositoriesPageQuery = {
   response: repositoriesPageQuery$data;
@@ -72,24 +66,17 @@ v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "createdAt",
   "storageKey": null
 },
 v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
-  "storageKey": null
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "updatedAt",
   "storageKey": null
 },
-v4 = [
+v3 = [
   (v0/*: any*/),
   {
     "alias": null,
@@ -105,7 +92,13 @@ v4 = [
     "name": "externalId",
     "storageKey": null
   },
-  (v1/*: any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "name",
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -141,34 +134,10 @@ v4 = [
     "name": "archived",
     "storageKey": null
   },
-  (v2/*: any*/),
-  (v3/*: any*/)
+  (v1/*: any*/),
+  (v2/*: any*/)
 ],
-v5 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AuthenticatedCompany",
-        "kind": "LinkedField",
-        "name": "company",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/),
-          (v1/*: any*/)
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
+v4 = [
   {
     "alias": null,
     "args": null,
@@ -185,7 +154,7 @@ v5 = [
         "name": "installationId",
         "storageKey": null
       },
-      (v2/*: any*/)
+      (v1/*: any*/)
     ],
     "storageKey": null
   },
@@ -196,7 +165,7 @@ v5 = [
     "kind": "LinkedField",
     "name": "GithubRepositories",
     "plural": true,
-    "selections": (v4/*: any*/),
+    "selections": (v3/*: any*/),
     "storageKey": null
   },
   {
@@ -215,8 +184,8 @@ v5 = [
         "name": "companyId",
         "storageKey": null
       },
+      (v1/*: any*/),
       (v2/*: any*/),
-      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -224,7 +193,7 @@ v5 = [
         "kind": "LinkedField",
         "name": "githubRepository",
         "plural": false,
-        "selections": (v4/*: any*/),
+        "selections": (v3/*: any*/),
         "storageKey": null
       }
     ],
@@ -237,7 +206,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "repositoriesPageQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -246,19 +215,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "repositoriesPageQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "da2d9630aa47af290992c0f9049a05fb",
+    "cacheID": "3a728136df0cbdead478c05541416154",
     "id": null,
     "metadata": {},
     "name": "repositoriesPageQuery",
     "operationKind": "query",
-    "text": "query repositoriesPageQuery {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  GithubInstallations {\n    id\n    installationId\n    createdAt\n  }\n  GithubRepositories {\n    id\n    githubInstallationId\n    externalId\n    name\n    fullName\n    htmlUrl\n    isPrivate\n    defaultBranch\n    archived\n    createdAt\n    updatedAt\n  }\n  GithubRepositoryProvisionings {\n    id\n    companyId\n    createdAt\n    updatedAt\n    githubRepository {\n      id\n      githubInstallationId\n      externalId\n      name\n      fullName\n      htmlUrl\n      isPrivate\n      defaultBranch\n      archived\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query repositoriesPageQuery {\n  GithubInstallations {\n    id\n    installationId\n    createdAt\n  }\n  GithubRepositories {\n    id\n    githubInstallationId\n    externalId\n    name\n    fullName\n    htmlUrl\n    isPrivate\n    defaultBranch\n    archived\n    createdAt\n    updatedAt\n  }\n  GithubRepositoryProvisionings {\n    id\n    companyId\n    createdAt\n    updatedAt\n    githubRepository {\n      id\n      githubInstallationId\n      externalId\n      name\n      fullName\n      htmlUrl\n      isPrivate\n      defaultBranch\n      archived\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "38a50749fb64e57173bed427c2671bcf";
+(node as any).hash = "de35ffbdb6d38ee4125e44df13cff14d";
 
 export default node;

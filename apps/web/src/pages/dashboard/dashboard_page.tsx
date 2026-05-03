@@ -1,5 +1,6 @@
 import { Suspense, useMemo } from "react";
 import { useOrganization } from "@/components/auth/auth_provider";
+import { useMeCompany } from "@/contextes/me_context";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { EnvironmentsSection, type DashboardEnvironmentRecord } from "./environments_section";
@@ -14,12 +15,6 @@ const thirtyDaysInMilliseconds = 30 * oneDayInMilliseconds;
 
 const dashboardPageQueryNode = graphql`
   query dashboardPageQuery($dailyStart: String!, $monthlyStart: String!) {
-    Me {
-      company {
-        id
-        name
-      }
-    }
     Agents {
       id
       name
@@ -155,6 +150,7 @@ function DashboardPageFallback() {
 
 function DashboardPageContent() {
   const organizationState = useOrganization();
+  const meCompany = useMeCompany();
   const data = useLazyLoadQuery<dashboardPageQuery>(
     dashboardPageQueryNode,
     {
@@ -226,11 +222,11 @@ function DashboardPageContent() {
     ]);
   }, [data.companyDaily, data.companyMonthly, data.companyTotal]);
 
-  const companyId = data.Me.company.id;
+  const companyId = meCompany.id;
   const totalUsage = UsageMetrics.findTotalAggregate(companyAggregates, "company", companyId);
   const currentDayUsage = UsageMetrics.findCurrentDayAggregate(companyAggregates, "company", companyId);
   const currentMonthUsage = UsageMetrics.findCurrentMonthAggregate(companyAggregates, "company", companyId);
-  const organizationName = organizationState.organization?.name || data.Me.company.name;
+  const organizationName = organizationState.organization?.name || meCompany.name;
   const now = Date.now();
 
   const runningTasks = [...tasks]

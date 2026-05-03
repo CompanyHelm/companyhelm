@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<85220b5b42397cd452b16b7f553faed2>>
+ * @generated SignedSource<<aaf691ad23ea21806d3ff59df5438ea5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -29,12 +29,6 @@ export type dashboardPageQuery$data = {
     readonly status: string;
     readonly updatedAt: string;
   }>;
-  readonly Me: {
-    readonly company: {
-      readonly id: string;
-      readonly name: string;
-    };
-  };
   readonly Tasks: ReadonlyArray<{
     readonly assignee: {
       readonly id: string;
@@ -170,27 +164,6 @@ v3 = [
 v4 = {
   "alias": null,
   "args": null,
-  "concreteType": "Me",
-  "kind": "LinkedField",
-  "name": "Me",
-  "plural": false,
-  "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "concreteType": "AuthenticatedCompany",
-      "kind": "LinkedField",
-      "name": "company",
-      "plural": false,
-      "selections": (v3/*: any*/),
-      "storageKey": null
-    }
-  ],
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
   "concreteType": "Agent",
   "kind": "LinkedField",
   "name": "Agents",
@@ -198,28 +171,28 @@ v5 = {
   "selections": (v3/*: any*/),
   "storageKey": null
 },
-v6 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v7 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "completedAt",
   "storageKey": null
 },
-v8 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "updatedAt",
   "storageKey": null
 },
-v9 = {
+v8 = {
   "alias": null,
   "args": null,
   "concreteType": "Task",
@@ -229,7 +202,7 @@ v9 = {
   "selections": [
     (v1/*: any*/),
     (v2/*: any*/),
-    (v6/*: any*/),
+    (v5/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -237,8 +210,8 @@ v9 = {
       "name": "taskStageName",
       "storageKey": null
     },
+    (v6/*: any*/),
     (v7/*: any*/),
-    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -252,7 +225,7 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = {
+v9 = {
   "alias": null,
   "args": null,
   "concreteType": "Workflow",
@@ -272,21 +245,21 @@ v10 = {
   ],
   "storageKey": null
 },
-v11 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "agentId",
   "storageKey": null
 },
-v12 = {
+v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sessionId",
   "storageKey": null
 },
-v13 = {
+v12 = {
   "alias": null,
   "args": null,
   "concreteType": "WorkflowRun",
@@ -302,9 +275,9 @@ v13 = {
       "name": "workflowDefinitionId",
       "storageKey": null
     },
-    (v6/*: any*/),
+    (v5/*: any*/),
+    (v10/*: any*/),
     (v11/*: any*/),
-    (v12/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -319,8 +292,8 @@ v13 = {
       "name": "startedAt",
       "storageKey": null
     },
+    (v6/*: any*/),
     (v7/*: any*/),
-    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -345,14 +318,14 @@ v13 = {
           "name": "ordinal",
           "storageKey": null
         },
-        (v6/*: any*/)
+        (v5/*: any*/)
       ],
       "storageKey": null
     }
   ],
   "storageKey": null
 },
-v14 = {
+v13 = {
   "alias": null,
   "args": null,
   "concreteType": "Environment",
@@ -389,12 +362,12 @@ v14 = {
       "name": "providerEnvironmentId",
       "storageKey": null
     },
-    (v6/*: any*/),
-    (v8/*: any*/)
+    (v5/*: any*/),
+    (v7/*: any*/)
   ],
   "storageKey": null
 },
-v15 = [
+v14 = [
   {
     "kind": "Literal",
     "name": "input",
@@ -404,119 +377,120 @@ v15 = [
     }
   }
 ],
-v16 = {
+v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheReadCostNanoUsd",
   "storageKey": null
 },
-v17 = {
+v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheReadTokens",
   "storageKey": null
 },
-v18 = {
+v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheWriteCostNanoUsd",
   "storageKey": null
 },
-v19 = {
+v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheWriteTokens",
   "storageKey": null
 },
-v20 = {
+v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "inputCostNanoUsd",
   "storageKey": null
 },
-v21 = {
+v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "inputTokens",
   "storageKey": null
 },
-v22 = {
+v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "outputCostNanoUsd",
   "storageKey": null
 },
-v23 = {
+v22 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "outputTokens",
   "storageKey": null
 },
-v24 = {
+v23 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "period",
   "storageKey": null
 },
-v25 = {
+v24 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "periodStart",
   "storageKey": null
 },
-v26 = {
+v25 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "requestCount",
   "storageKey": null
 },
-v27 = {
+v26 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "companyId",
   "storageKey": null
 },
-v28 = {
+v27 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "modelProviderCredentialId",
   "storageKey": null
 },
-v29 = {
+v28 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "scopeType",
   "storageKey": null
 },
-v30 = {
+v29 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalCostNanoUsd",
   "storageKey": null
 },
-v31 = {
+v30 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalTokens",
   "storageKey": null
 },
-v32 = [
+v31 = [
+  (v15/*: any*/),
   (v16/*: any*/),
   (v17/*: any*/),
   (v18/*: any*/),
@@ -528,20 +502,19 @@ v32 = [
   (v24/*: any*/),
   (v25/*: any*/),
   (v26/*: any*/),
+  (v10/*: any*/),
   (v27/*: any*/),
   (v11/*: any*/),
   (v28/*: any*/),
-  (v12/*: any*/),
   (v29/*: any*/),
-  (v30/*: any*/),
-  (v31/*: any*/)
+  (v30/*: any*/)
 ],
-v33 = {
+v32 = {
   "kind": "Literal",
   "name": "scopeType",
   "value": "company"
 },
-v34 = [
+v33 = [
   {
     "fields": [
       {
@@ -554,13 +527,13 @@ v34 = [
         "name": "periodStartAfter",
         "variableName": "dailyStart"
       },
-      (v33/*: any*/)
+      (v32/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v35 = [
+v34 = [
   {
     "fields": [
       {
@@ -573,13 +546,14 @@ v35 = [
         "name": "periodStartAfter",
         "variableName": "monthlyStart"
       },
-      (v33/*: any*/)
+      (v32/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v36 = [
+v35 = [
+  (v15/*: any*/),
   (v16/*: any*/),
   (v17/*: any*/),
   (v18/*: any*/),
@@ -591,13 +565,12 @@ v36 = [
   (v24/*: any*/),
   (v25/*: any*/),
   (v26/*: any*/),
+  (v10/*: any*/),
   (v27/*: any*/),
   (v11/*: any*/),
   (v28/*: any*/),
-  (v12/*: any*/),
   (v29/*: any*/),
   (v30/*: any*/),
-  (v31/*: any*/),
   (v1/*: any*/)
 ];
 return {
@@ -608,39 +581,38 @@ return {
     "name": "dashboardPageQuery",
     "selections": [
       (v4/*: any*/),
-      (v5/*: any*/),
+      (v8/*: any*/),
       (v9/*: any*/),
-      (v10/*: any*/),
+      (v12/*: any*/),
       (v13/*: any*/),
-      (v14/*: any*/),
       {
         "alias": "companyTotal",
-        "args": (v15/*: any*/),
+        "args": (v14/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v32/*: any*/),
+        "selections": (v31/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"company\"})"
       },
       {
         "alias": "companyDaily",
+        "args": (v33/*: any*/),
+        "concreteType": "LlmUsageAggregate",
+        "kind": "LinkedField",
+        "name": "LlmUsageAggregates",
+        "plural": true,
+        "selections": (v31/*: any*/),
+        "storageKey": null
+      },
+      {
+        "alias": "companyMonthly",
         "args": (v34/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v32/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": "companyMonthly",
-        "args": (v35/*: any*/),
-        "concreteType": "LlmUsageAggregate",
-        "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
-        "plural": true,
-        "selections": (v32/*: any*/),
+        "selections": (v31/*: any*/),
         "storageKey": null
       }
     ],
@@ -654,54 +626,53 @@ return {
     "name": "dashboardPageQuery",
     "selections": [
       (v4/*: any*/),
-      (v5/*: any*/),
+      (v8/*: any*/),
       (v9/*: any*/),
-      (v10/*: any*/),
+      (v12/*: any*/),
       (v13/*: any*/),
-      (v14/*: any*/),
       {
         "alias": "companyTotal",
-        "args": (v15/*: any*/),
+        "args": (v14/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v36/*: any*/),
+        "selections": (v35/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"company\"})"
       },
       {
         "alias": "companyDaily",
+        "args": (v33/*: any*/),
+        "concreteType": "LlmUsageAggregate",
+        "kind": "LinkedField",
+        "name": "LlmUsageAggregates",
+        "plural": true,
+        "selections": (v35/*: any*/),
+        "storageKey": null
+      },
+      {
+        "alias": "companyMonthly",
         "args": (v34/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v36/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": "companyMonthly",
-        "args": (v35/*: any*/),
-        "concreteType": "LlmUsageAggregate",
-        "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
-        "plural": true,
-        "selections": (v36/*: any*/),
+        "selections": (v35/*: any*/),
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "83a7a639e93ad5a71c9a04f828c0dabf",
+    "cacheID": "eba08ad44fd7ff07486e9edd85abf1f8",
     "id": null,
     "metadata": {},
     "name": "dashboardPageQuery",
     "operationKind": "query",
-    "text": "query dashboardPageQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  Agents {\n    id\n    name\n  }\n  Tasks {\n    id\n    name\n    status\n    taskStageName\n    completedAt\n    updatedAt\n    assignee {\n      id\n      name\n    }\n  }\n  Workflows {\n    id\n    name\n    isEnabled\n  }\n  WorkflowRuns {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    source\n    startedAt\n    completedAt\n    updatedAt\n    steps {\n      id\n      workflowRunId\n      name\n      ordinal\n      status\n    }\n  }\n  Environments {\n    id\n    agentName\n    displayName\n    provider\n    providerEnvironmentId\n    status\n    updatedAt\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n}\n"
+    "text": "query dashboardPageQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Agents {\n    id\n    name\n  }\n  Tasks {\n    id\n    name\n    status\n    taskStageName\n    completedAt\n    updatedAt\n    assignee {\n      id\n      name\n    }\n  }\n  Workflows {\n    id\n    name\n    isEnabled\n  }\n  WorkflowRuns {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    source\n    startedAt\n    completedAt\n    updatedAt\n    steps {\n      id\n      workflowRunId\n      name\n      ordinal\n      status\n    }\n  }\n  Environments {\n    id\n    agentName\n    displayName\n    provider\n    providerEnvironmentId\n    status\n    updatedAt\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "44ab5238de925f648ff1b61d3d4b88b9";
+(node as any).hash = "f747435acff245dc8f41cc2300bfc7ed";
 
 export default node;

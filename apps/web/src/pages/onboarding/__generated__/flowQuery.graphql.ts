@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7227e9926a8857141b83d2e6ff79cdc8>>
+ * @generated SignedSource<<2c3eb4736b5b80f6cfb8c133613eb729>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,9 +9,6 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanyOnboardingLlmSetupStatus = "pending" | "skipped" | "third_party" | "%future added value";
-export type CompanyOnboardingSetupStatus = "completed" | "pending" | "skipped" | "%future added value";
-export type CompanyOnboardingStatus = "completed" | "in_progress" | "not_started" | "skipped" | "%future added value";
 export type flowQuery$variables = Record<PropertyKey, never>;
 export type flowQuery$data = {
   readonly GithubInstallations: ReadonlyArray<{
@@ -19,28 +16,6 @@ export type flowQuery$data = {
     readonly id: string;
     readonly installationId: string;
   }>;
-  readonly Me: {
-    readonly company: {
-      readonly id: string;
-      readonly onboarding: {
-        readonly agentId: string | null | undefined;
-        readonly companyId: string;
-        readonly companyMission: string | null | undefined;
-        readonly githubCompletedAt: string | null | undefined;
-        readonly githubSetupStatus: CompanyOnboardingSetupStatus;
-        readonly githubSkippedAt: string | null | undefined;
-        readonly id: string;
-        readonly llmCompletedAt: string | null | undefined;
-        readonly llmSetupStatus: CompanyOnboardingLlmSetupStatus;
-        readonly llmSkippedAt: string | null | undefined;
-        readonly missionSkippedAt: string | null | undefined;
-        readonly sessionId: string | null | undefined;
-        readonly status: CompanyOnboardingStatus;
-        readonly updatedAt: string;
-        readonly workflowRunId: string | null | undefined;
-      };
-    };
-  };
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly baseUrl: string | null | undefined;
     readonly id: string;
@@ -76,139 +51,6 @@ v1 = {
   "storageKey": null
 },
 v2 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AuthenticatedCompany",
-        "kind": "LinkedField",
-        "name": "company",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "CompanyOnboarding",
-            "kind": "LinkedField",
-            "name": "onboarding",
-            "plural": false,
-            "selections": [
-              (v0/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "companyId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "status",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "companyMission",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "missionSkippedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "githubSetupStatus",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "githubCompletedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "githubSkippedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "llmSetupStatus",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "llmCompletedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "llmSkippedAt",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "agentId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "sessionId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "workflowRunId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "updatedAt",
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
   {
     "alias": null,
     "args": null,
@@ -315,16 +157,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "59c970c55cfcbbf9ea4756306319fd75",
+    "cacheID": "1afb1818a8310b2e92bc35ba4faccf5b",
     "id": null,
     "metadata": {},
     "name": "flowQuery",
     "operationKind": "query",
-    "text": "query flowQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        companyMission\n        missionSkippedAt\n        githubSetupStatus\n        githubCompletedAt\n        githubSkippedAt\n        llmSetupStatus\n        llmCompletedAt\n        llmSkippedAt\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n  GithubInstallations {\n    accountLogin\n    id\n    installationId\n  }\n  ModelProviders {\n    id\n    isAvailable\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n  }\n}\n"
+    "text": "query flowQuery {\n  GithubInstallations {\n    accountLogin\n    id\n    installationId\n  }\n  ModelProviders {\n    id\n    isAvailable\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    baseUrl\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1a8566aafb09d4d0ada126c06d7cca40";
+(node as any).hash = "e6bb562109f47d0357bbd07e9ebec99f";
 
 export default node;

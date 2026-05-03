@@ -3,6 +3,7 @@ import { ThemeProvider } from "./components/theme_provider";
 import { ToastProvider } from "./components/toast_provider";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { FeatureFlagProvider } from "./contextes/feature_flag_context";
+import { MeProvider } from "./contextes/me_context";
 import { applicationRouter } from "./routes";
 
 export default function App() {
@@ -11,7 +12,9 @@ export default function App() {
       <TooltipProvider>
         <ToastProvider>
           <FeatureFlagProvider>
-            <RouterProvider router={applicationRouter} />
+            <MeProvider>
+              <RouterProvider router={applicationRouter} />
+            </MeProvider>
           </FeatureFlagProvider>
         </ToastProvider>
       </TooltipProvider>

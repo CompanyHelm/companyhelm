@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMeCompany } from "@/contextes/me_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -15,12 +16,6 @@ import type { usagePageQuery } from "./__generated__/usagePageQuery.graphql";
 
 const usagePageQueryNode = graphql`
   query usagePageQuery($dailyStart: String!, $monthlyStart: String!) {
-    Me {
-      company {
-        id
-        name
-      }
-    }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
       cacheReadTokens
@@ -129,6 +124,7 @@ function UsagePageFallback() {
 
 function UsagePageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
+  const meCompany = useMeCompany();
   const data = useLazyLoadQuery<usagePageQuery>(
     usagePageQueryNode,
     {
@@ -160,8 +156,8 @@ function UsagePageContent() {
     <div className="grid gap-6">
       <UsageSummaryPanel
         aggregates={companyAggregates}
-        description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
-        scopeId={data.Me.company.id}
+        description={`Company-wide LLM spend, token volume, and request count for ${meCompany.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
+        scopeId={meCompany.id}
         scopeType="company"
         title="Company usage"
       />
