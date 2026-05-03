@@ -2,7 +2,7 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 export type ComputeProvider = "e2b";
-export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
+export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy" | "unknown";
 
 /**
  * Describes one provider-backed environment template that an agent can select for future
