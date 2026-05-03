@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7712e1cf177dd91adc9731a06487e152>>
+ * @generated SignedSource<<1ab475d2bbe87e5c05dfed4bd4f1abe0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,9 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type environmentDetailPageQuery$variables = {
-  endTime: string;
   environmentId: string;
-  startTime: string;
 };
 export type environmentDetailPageQuery$data = {
   readonly Environment: {
@@ -39,12 +37,6 @@ export type environmentDetailPageQuery$data = {
     readonly templateId: string;
     readonly updatedAt: string;
   };
-  readonly EnvironmentMetricSamples: ReadonlyArray<{
-    readonly cpuUsedPct: number | null | undefined;
-    readonly diskUsedBytes: number | null | undefined;
-    readonly memUsedBytes: number | null | undefined;
-    readonly sampledAt: string;
-  }>;
 };
 export type environmentDetailPageQuery = {
   response: environmentDetailPageQuery$data;
@@ -52,43 +44,14 @@ export type environmentDetailPageQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "endTime"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "environmentId"
-},
-v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "startTime"
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "cpuUsedPct",
-  "storageKey": null
-},
-v4 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "memUsedBytes",
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "diskUsedBytes",
-  "storageKey": null
-},
-v6 = [
+var v0 = [
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "environmentId"
+  }
+],
+v1 = [
   {
     "alias": null,
     "args": [
@@ -215,9 +178,27 @@ v6 = [
         "name": "metricsSampledAt",
         "storageKey": null
       },
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "cpuUsedPct",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "memUsedBytes",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "diskUsedBytes",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -241,81 +222,36 @@ v6 = [
       }
     ],
     "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": [
-      {
-        "kind": "Variable",
-        "name": "endTime",
-        "variableName": "endTime"
-      },
-      {
-        "kind": "Variable",
-        "name": "environmentId",
-        "variableName": "environmentId"
-      },
-      {
-        "kind": "Variable",
-        "name": "startTime",
-        "variableName": "startTime"
-      }
-    ],
-    "concreteType": "EnvironmentMetricSample",
-    "kind": "LinkedField",
-    "name": "EnvironmentMetricSamples",
-    "plural": true,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "sampledAt",
-        "storageKey": null
-      },
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/)
-    ],
-    "storageKey": null
   }
 ];
 return {
   "fragment": {
-    "argumentDefinitions": [
-      (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/)
-    ],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
     "name": "environmentDetailPageQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v1/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v0/*: any*/)
-    ],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "environmentDetailPageQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "2d36f5dbc562f9296a6a2f3ba660bddf",
+    "cacheID": "4f83128701b3066c6d28c4d9a375007a",
     "id": null,
     "metadata": {},
     "name": "environmentDetailPageQuery",
     "operationKind": "query",
-    "text": "query environmentDetailPageQuery(\n  $environmentId: ID!\n  $startTime: String!\n  $endTime: String!\n) {\n  Environment(id: $environmentId) {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    templateId\n    displayName\n    platform\n    status\n    statusErrorMessage\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    metricsSampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n    lastSeenAt\n    createdAt\n    updatedAt\n  }\n  EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {\n    sampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n  }\n}\n"
+    "text": "query environmentDetailPageQuery(\n  $environmentId: ID!\n) {\n  Environment(id: $environmentId) {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    templateId\n    displayName\n    platform\n    status\n    statusErrorMessage\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    metricsSampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n    lastSeenAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9dd48a101b7ff8a2b2acc61e69048946";
+(node as any).hash = "59cb3eec94697601efee7acd3cf2c488";
 
 export default node;

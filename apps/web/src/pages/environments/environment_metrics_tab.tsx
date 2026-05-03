@@ -1,12 +1,24 @@
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { graphql, useLazyLoadQuery } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EnvironmentMetricWindow, type EnvironmentMetricWindowRange } from "./environment_metric_window";
+import type { environmentMetricsTabQuery } from "./__generated__/environmentMetricsTabQuery.graphql";
 
 type MetricsTabKey = "cpuUsedPct" | "memUsedBytes" | "diskUsedBytes";
 
 interface EnvironmentMetricsTabProps {
+  environmentId: string;
+}
+
+interface EnvironmentMetricsTabContentProps {
+  environmentId: string;
+  metricWindow: EnvironmentMetricWindowRange;
+}
+
+interface EnvironmentMetricsChartProps {
   samples: ReadonlyArray<{
     cpuUsedPct: number | null | undefined;
     diskUsedBytes: number | null | undefined;
@@ -14,6 +26,17 @@ interface EnvironmentMetricsTabProps {
     sampledAt: string;
   }>;
 }
+
+const environmentMetricsTabQueryNode = graphql`
+  query environmentMetricsTabQuery($environmentId: ID!, $startTime: String!, $endTime: String!) {
+    EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {
+      sampledAt
+      cpuUsedPct
+      memUsedBytes
+      diskUsedBytes
+    }
+  }
+`;
 
 const chartConfig: ChartConfig = {
   cpuUsedPct: {
@@ -88,7 +111,7 @@ function hasMetricValue(value: number | null | undefined): value is number {
  * Renders the last hour of environment usage in a shadcn area chart with a selectable metric so
  * operators can inspect CPU, memory, and disk independently without mixing incompatible units.
  */
-export function EnvironmentMetricsTab(props: EnvironmentMetricsTabProps) {
+function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricsTabKey>("cpuUsedPct");
   const chartData = useMemo(() => {
     return props.samples.map((sample) => ({
@@ -174,5 +197,46 @@ export function EnvironmentMetricsTab(props: EnvironmentMetricsTabProps) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function EnvironmentMetricsTabFallback() {
+  return (
+    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+      Loading metrics...
+    </div>
+  );
+}
+
+function EnvironmentMetricsTabContent(props: EnvironmentMetricsTabContentProps) {
+  const data = useLazyLoadQuery<environmentMetricsTabQuery>(
+    environmentMetricsTabQueryNode,
+    {
+      endTime: props.metricWindow.endTime,
+      environmentId: props.environmentId,
+      startTime: props.metricWindow.startTime,
+    },
+    {
+      fetchPolicy: "store-or-network",
+    },
+  );
+
+  return <EnvironmentMetricsChart samples={data.EnvironmentMetricSamples} />;
+}
+
+/**
+ * Owns the metrics-only query boundary so environment detail pages do not request chart samples
+ * until operators open the metrics tab.
+ */
+export function EnvironmentMetricsTab(props: EnvironmentMetricsTabProps) {
+  const metricWindow = useMemo(
+    () => EnvironmentMetricWindow.createLastHour(),
+    [props.environmentId],
+  );
+
+  return (
+    <Suspense fallback={<EnvironmentMetricsTabFallback />}>
+      <EnvironmentMetricsTabContent environmentId={props.environmentId} metricWindow={metricWindow} />
+    </Suspense>
   );
 }

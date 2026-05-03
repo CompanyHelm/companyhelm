@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { ErrorState } from "@/components/error_state";
@@ -21,17 +21,8 @@ import type { environmentActionMutationsStopEnvironmentMutation } from "./__gene
 
 type EnvironmentDetailPageTab = "metrics" | "overview";
 
-function createEnvironmentDetailMetricWindow() {
-  const endTime = new Date();
-  const startTime = new Date(endTime.getTime() - 60 * 60 * 1000);
-  return {
-    endTime: endTime.toISOString(),
-    startTime: startTime.toISOString(),
-  };
-}
-
 const environmentDetailPageQueryNode = graphql`
-  query environmentDetailPageQuery($environmentId: ID!, $startTime: String!, $endTime: String!) {
+  query environmentDetailPageQuery($environmentId: ID!) {
     Environment(id: $environmentId) {
       id
       agentId
@@ -55,12 +46,6 @@ const environmentDetailPageQueryNode = graphql`
       lastSeenAt
       createdAt
       updatedAt
-    }
-    EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {
-      sampledAt
-      cpuUsedPct
-      memUsedBytes
-      diskUsedBytes
     }
   }
 `;
@@ -122,16 +107,10 @@ function EnvironmentDetailPageContent() {
     );
   }
 
-  const metricWindow = useMemo(
-    () => createEnvironmentDetailMetricWindow(),
-    [normalizedEnvironmentId, selectedTab],
-  );
   const data = useLazyLoadQuery<environmentDetailPageQuery>(
     environmentDetailPageQueryNode,
     {
-      endTime: metricWindow.endTime,
       environmentId: normalizedEnvironmentId,
-      startTime: metricWindow.startTime,
     },
     {
       fetchPolicy: "store-or-network",
@@ -359,7 +338,7 @@ function EnvironmentDetailPageContent() {
               }}
             />
           ) : (
-            <EnvironmentMetricsTab samples={data.EnvironmentMetricSamples} />
+            <EnvironmentMetricsTab environmentId={environment.id} />
           )}
         </CardContent>
       </Card>
