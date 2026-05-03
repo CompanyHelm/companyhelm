@@ -106,4 +106,3 @@ test("uses the requested minimum visible rows for the draft textarea", () => {
 
   assert.match(html, /rows="3"/);
 });
-});
