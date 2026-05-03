@@ -10,7 +10,6 @@ TERMS_OF_SERVICE_URL="${VITE_CLERK_TERMS_OF_SERVICE_URL:-}"
 AMPLITUDE_ENABLED="${VITE_AMPLITUDE_ENABLED:-false}"
 AMPLITUDE_ID="${VITE_AMPLITUDE_ID:-}"
 GOOGLE_ADS_ID="${VITE_GOOGLE_ADS_ID:-}"
-GOOGLE_ADS_SIGNUP_LABEL="${VITE_GOOGLE_ADS_SIGNUP_LABEL:-}"
 PADDLE_CLIENT_TOKEN="${VITE_PADDLE_CLIENT_TOKEN:-}"
 PADDLE_ENVIRONMENT="${VITE_PADDLE_ENVIRONMENT:-sandbox}"
 
@@ -51,14 +50,6 @@ build_optional_amplitude_id_property() {
 build_optional_google_ads_properties() {
   if [ -n "$GOOGLE_ADS_ID" ]; then
     printf '\n      id: "%s"' "$(escape_javascript_string "$GOOGLE_ADS_ID")"
-  fi
-
-  if [ -n "$GOOGLE_ADS_SIGNUP_LABEL" ]; then
-    if [ -n "$GOOGLE_ADS_ID" ]; then
-      printf ','
-    fi
-
-    printf '\n      signUpConversionLabel: "%s"' "$(escape_javascript_string "$GOOGLE_ADS_SIGNUP_LABEL")"
   fi
 }
 

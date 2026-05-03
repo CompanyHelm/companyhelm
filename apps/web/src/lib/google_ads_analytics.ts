@@ -26,6 +26,12 @@ declare global {
  * await the post-sign-up conversion callback without blocking users longer than the timeout.
  */
 export class GoogleAdsAnalytics {
+  /**
+   * Proposed sign-up conversion label placeholder. Replace this with the real Google Ads
+   * conversion label from the account before expecting production conversions to register.
+   */
+  private static readonly signUpConversionLabel = "signup_complete";
+
   static initialize(configuration: GoogleAdsConfiguration): void {
     if (typeof window === "undefined" || typeof configuration.id !== "string" || configuration.id.length === 0) {
       return;
@@ -68,8 +74,6 @@ export class GoogleAdsAnalytics {
       typeof window === "undefined"
       || typeof configuration.id !== "string"
       || configuration.id.length === 0
-      || typeof configuration.signUpConversionLabel !== "string"
-      || configuration.signUpConversionLabel.length === 0
       || typeof window.gtag !== "function"
     ) {
       return Promise.resolve();
@@ -100,7 +104,7 @@ export class GoogleAdsAnalytics {
 
       try {
         window.gtag?.("event", "conversion", {
-          send_to: `${configuration.id}/${configuration.signUpConversionLabel}`,
+          send_to: `${configuration.id}/${GoogleAdsAnalytics.signUpConversionLabel}`,
           event_callback: finish,
           event_timeout: timeoutMs,
         });
@@ -125,5 +129,9 @@ export class GoogleAdsAnalytics {
     }
 
     return window.__COMPANYHELM_GOOGLE_ADS__;
+  }
+
+  static getSignUpConversionLabel(): string {
+    return GoogleAdsAnalytics.signUpConversionLabel;
   }
 }

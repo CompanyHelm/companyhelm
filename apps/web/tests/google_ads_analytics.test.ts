@@ -67,13 +67,12 @@ test("resolves the sign-up conversion promise when gtag invokes the event callba
 
     await GoogleAdsAnalytics.trackSignUpConversion({
       id: "AW-18135921456",
-      signUpConversionLabel: "signup-label",
     }, {
       timeoutMs: 5,
     });
 
     assert.equal(sentEvent, "conversion");
-    assert.equal(sentPayload?.send_to, "AW-18135921456/signup-label");
+    assert.equal(sentPayload?.send_to, "AW-18135921456/signup_complete");
     assert.equal(sentPayload?.event_timeout, 5);
   } finally {
     if (originalWindow) {
@@ -101,7 +100,6 @@ test("resolves the sign-up conversion promise after the timeout when Google neve
 
     await GoogleAdsAnalytics.trackSignUpConversion({
       id: "AW-18135921456",
-      signUpConversionLabel: "signup-label",
     }, {
       timeoutMs: 10,
     });
@@ -110,6 +108,32 @@ test("resolves the sign-up conversion promise after the timeout when Google neve
   } finally {
     globalThis.setTimeout = originalSetTimeout;
 
+    if (originalWindow) {
+      globalThis.window = originalWindow;
+    } else {
+      delete (globalThis as typeof globalThis & { window?: unknown }).window;
+    }
+  }
+});
+
+test("resolves the sign-up conversion promise when gtag throws so the redirect path can continue", async () => {
+  const originalWindow = globalThis.window;
+
+  try {
+    globalThis.window = {
+      gtag: () => {
+        throw new Error("gtag is unavailable");
+      },
+    } as Window;
+
+    await assert.doesNotReject(async () => {
+      await GoogleAdsAnalytics.trackSignUpConversion({
+        id: "AW-18135921456",
+      }, {
+        timeoutMs: 10,
+      });
+    });
+  } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;
     } else {
