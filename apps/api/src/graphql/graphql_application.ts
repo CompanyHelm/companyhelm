@@ -407,7 +407,6 @@ export class GraphqlApplication {
       githubRepositoriesQueryResolver,
       createGithubInstallationUrlMutation,
       addGithubInstallationMutation,
-      undefined,
       deleteGithubInstallationMutation,
       refreshGithubInstallationRepositoriesMutation,
       createSecretMutation,

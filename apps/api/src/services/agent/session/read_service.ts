@@ -4,7 +4,6 @@ import {
   agentSessions,
   messageContents,
   modelProviderCredentialModels,
-  platformModels,
   sessionMessages,
   sessionTurns,
   taskRuns,
@@ -21,9 +20,6 @@ type SessionRow = {
   agentId: string;
   contextMessagesSnapshot: unknown;
   currentContextTokens: number | null;
-  currentModelCredentialSource: "platform" | "user_provided";
-  currentPlatformModelId: string | null;
-  currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   forkedFromTurnId: string | null;
@@ -197,9 +193,6 @@ export type SessionGraphqlRecord = {
   forkedFromTurnId: string | null;
   hasUnread: boolean;
   lastUserMessageAt: string | null;
-  modelCredentialSource: "platform" | "user_provided";
-  platformModelId: string | null;
-  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -367,9 +360,6 @@ export class SessionReadService {
           agentId: agentSessions.agentId,
           contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
           currentContextTokens: agentSessions.currentContextTokens,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
@@ -419,9 +409,6 @@ export class SessionReadService {
           agentId: agentSessions.agentId,
           contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
           currentContextTokens: agentSessions.currentContextTokens,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
@@ -503,9 +490,6 @@ export class SessionReadService {
           agentId: agentSessions.agentId,
           contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
           currentContextTokens: agentSessions.currentContextTokens,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
@@ -933,14 +917,7 @@ export class SessionReadService {
     const modelIdByLookupKey = new Map<string, string>();
     const modelProviderCredentialModelIds = [...new Set(
       sessionRows
-        .filter((sessionRow) => sessionRow.currentModelCredentialSource === "user_provided")
         .map((sessionRow) => sessionRow.currentModelProviderCredentialModelId)
-        .filter((modelId) => typeof modelId === "string"),
-    )];
-    const platformModelIds = [...new Set(
-      sessionRows
-        .filter((sessionRow) => sessionRow.currentModelCredentialSource === "platform")
-        .map((sessionRow) => sessionRow.currentPlatformModelId)
         .filter((modelId) => typeof modelId === "string"),
     )];
 
@@ -957,27 +934,7 @@ export class SessionReadService {
         )) as SessionModelRecord[];
 
       for (const modelRecord of modelRecords) {
-        modelIdByLookupKey.set(
-          this.createSessionModelLookupKey("user_provided", modelRecord.id),
-          modelRecord.modelId,
-        );
-      }
-    }
-
-    if (platformModelIds.length > 0) {
-      const modelRecords = await selectableDatabase
-        .select({
-          id: platformModels.id,
-          modelId: platformModels.modelId,
-        })
-        .from(platformModels)
-        .where(inArray(platformModels.id, platformModelIds)) as SessionModelRecord[];
-
-      for (const modelRecord of modelRecords) {
-        modelIdByLookupKey.set(
-          this.createSessionModelLookupKey("platform", modelRecord.id),
-          modelRecord.modelId,
-        );
+        modelIdByLookupKey.set(modelRecord.id, modelRecord.modelId);
       }
     }
 
@@ -1372,11 +1329,9 @@ export class SessionReadService {
     associatedWorkflowRunBySessionId: Map<string, SessionAssociatedWorkflowRunGraphqlRecord>,
     isRead: boolean,
   ): SessionGraphqlRecord {
-    const modelLookupId = sessionRow.currentModelCredentialSource === "platform"
-      ? sessionRow.currentPlatformModelId
-      : sessionRow.currentModelProviderCredentialModelId;
+    const modelLookupId = sessionRow.currentModelProviderCredentialModelId;
     const modelId = modelLookupId
-      ? modelIdByModelRecordId.get(this.createSessionModelLookupKey(sessionRow.currentModelCredentialSource, modelLookupId))
+      ? modelIdByModelRecordId.get(modelLookupId)
       : null;
     if (!modelId) {
       throw new Error("Session model not found.");
@@ -1396,9 +1351,6 @@ export class SessionReadService {
       forkedFromTurnId: sessionRow.forkedFromTurnId,
       hasUnread: !isRead,
       lastUserMessageAt: sessionRow.lastUserMessageAt?.toISOString() ?? null,
-      modelCredentialSource: sessionRow.currentModelCredentialSource,
-      platformModelId: sessionRow.currentPlatformModelId,
-      platformModelProviderCredentialModelId: sessionRow.currentPlatformModelProviderCredentialModelId,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
@@ -1442,10 +1394,6 @@ export class SessionReadService {
     }
 
     return { updatedAt, sessionId };
-  }
-
-  private createSessionModelLookupKey(modelCredentialSource: "platform" | "user_provided", modelRecordId: string): string {
-    return `${modelCredentialSource}:${modelRecordId}`;
   }
 
   private serializeMessage(

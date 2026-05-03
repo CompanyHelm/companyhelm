@@ -152,7 +152,6 @@ export class LocalAuthService {
         .values({
           clerkOrganizationId: null,
           name: companyName,
-          plan: "free",
           slug: companySlug,
         })
         .returning({
@@ -168,10 +167,6 @@ export class LocalAuthService {
       await this.companyBootstrapService.ensureMembership(transaction as never, {
         companyId: createdCompany.id,
         userId: createdUser.id,
-      });
-      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction as never, {
-        companyId: createdCompany.id,
-        plan: "free",
       });
       await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 

@@ -556,20 +556,10 @@ export function loadChatListWidth(): number {
 
 export function resolveComposerModelOptionId(
   modelOptions: ReadonlyArray<ChatComposerModelOption>,
-  preferredPlatformModelId: string | null | undefined,
   preferredModelProviderCredentialModelId: string | null | undefined,
   preferredModelId: string | null | undefined,
-  fallbackPlatformModelId: string | null | undefined,
   fallbackModelProviderCredentialModelId: string | null | undefined,
 ): string {
-  if (preferredPlatformModelId) {
-    const matchedPreferredPlatformOption = modelOptions.find((modelOption) => {
-      return modelOption.platformModelId === preferredPlatformModelId;
-    });
-    if (matchedPreferredPlatformOption) {
-      return matchedPreferredPlatformOption.id;
-    }
-  }
   if (preferredModelProviderCredentialModelId) {
     const matchedPreferredOption = modelOptions.find((modelOption) => {
       return modelOption.modelProviderCredentialModelId === preferredModelProviderCredentialModelId;
@@ -582,14 +572,6 @@ export function resolveComposerModelOptionId(
     const matchedModelOption = modelOptions.find((modelOption) => modelOption.modelId === preferredModelId);
     if (matchedModelOption) {
       return matchedModelOption.id;
-    }
-  }
-  if (fallbackPlatformModelId) {
-    const matchedFallbackPlatformOption = modelOptions.find((modelOption) => {
-      return modelOption.platformModelId === fallbackPlatformModelId;
-    });
-    if (matchedFallbackPlatformOption) {
-      return matchedFallbackPlatformOption.id;
     }
   }
   if (fallbackModelProviderCredentialModelId) {

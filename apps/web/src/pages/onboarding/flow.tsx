@@ -173,7 +173,6 @@ export interface OnboardingFlowController {
   }>;
   githubResolved: boolean;
   hasGithubInstallation: boolean;
-  hasManagedLlmProvider: boolean;
   hasThirdPartyCredential: boolean;
   isAddModelProviderCredentialInFlight: boolean;
   isCreateGithubInstallationUrlInFlight: boolean;
@@ -212,7 +211,7 @@ export interface OnboardingFlowController {
   updateOnboarding(input: {
     companyMission?: string | null;
     githubSetupStatus?: "completed" | "skipped";
-    llmSetupStatus?: "third_party" | "company_managed" | "skipped";
+    llmSetupStatus?: "third_party" | "skipped";
     skipMission?: boolean | null;
   }): Promise<void>;
 }
@@ -281,9 +280,6 @@ export function useOnboardingFlowController(options?: {
       modelProvider: credential.modelProvider,
       name: credential.name,
     }));
-  const hasManagedLlmProvider = data.ModelProviders.some((provider) => (
-    provider.id === "companyhelm" && provider.isAvailable
-  ));
   const hasThirdPartyCredential = data.ModelProviderCredentials.length > 0;
   const thirdPartyProviders = useMemo(() => {
     return ModelProviderCredentialCatalog.toDialogProviders(
@@ -380,7 +376,7 @@ export function useOnboardingFlowController(options?: {
   async function updateOnboarding(input: {
     companyMission?: string | null;
     githubSetupStatus?: "completed" | "skipped";
-    llmSetupStatus?: "third_party" | "company_managed" | "skipped";
+    llmSetupStatus?: "third_party" | "skipped";
     skipMission?: boolean | null;
   }): Promise<void> {
     await new Promise<void>((resolve, reject) => {
@@ -529,7 +525,6 @@ export function useOnboardingFlowController(options?: {
     githubInstallations,
     githubResolved,
     hasGithubInstallation,
-    hasManagedLlmProvider,
     hasThirdPartyCredential,
     isAddModelProviderCredentialInFlight,
     isCreateGithubInstallationUrlInFlight,

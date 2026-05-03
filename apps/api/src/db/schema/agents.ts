@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
   boolean,
-  check,
   index,
   pgTable,
   primaryKey,
@@ -13,17 +12,14 @@ import {
 import { sql } from "drizzle-orm/sql";
 
 import {
-  modelCredentialSourceEnum,
   modelProviderCredentialStatusEnum,
   modelProviderCredentialTypeEnum,
   modelProviderEnum,
 } from "./ai_common.ts";
 import { companySecrets, companies, secret_groups, users } from "./company.ts";
 import { computeProviderDefinitions } from "./environments.ts";
-import { platformModels } from "./platform_ai.ts";
 
 export {
-  modelCredentialSourceEnum,
   modelProviderCredentialStatusEnum,
   modelProviderCredentialTypeEnum,
   modelProviderEnum,
@@ -40,9 +36,6 @@ export const agents = pgTable("agents", {
     .notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
-  defaultModelCredentialSource: modelCredentialSourceEnum("default_model_credential_source").notNull().default("user_provided"),
-  defaultPlatformModelId: uuid("default_platform_model_id")
-    .references(() => platformModels.id, { onDelete: "set null" }),
   defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
@@ -52,14 +45,6 @@ export const agents = pgTable("agents", {
   system_prompt: text("system_prompt"),
 }, (table) => ({
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
-  defaultModelSelectionCheck: check(
-    "agents_default_model_selection_check",
-    sql`(
-      (${table.defaultModelCredentialSource} = 'platform' AND ${table.defaultPlatformModelId} IS NOT NULL AND ${table.defaultModelProviderCredentialModelId} IS NULL)
-      OR
-      (${table.defaultModelCredentialSource} = 'user_provided' AND ${table.defaultPlatformModelId} IS NULL AND ${table.defaultModelProviderCredentialModelId} IS NOT NULL)
-    )`,
-  ),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {
@@ -89,22 +74,14 @@ export const companyModelProviderDefaults = pgTable("company_model_provider_defa
     .references(() => companies.id, { onDelete: "cascade" })
     .primaryKey()
     .notNull(),
-  modelCredentialSource: modelCredentialSourceEnum("model_credential_source").notNull(),
   modelProviderCredentialId: uuid("model_provider_credential_id")
-    .references(() => modelProviderCredentials.id, { onDelete: "cascade" }),
+    .references(() => modelProviderCredentials.id, { onDelete: "cascade" })
+    .notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   modelProviderCredentialIndex: index("company_model_provider_defaults_credential_idx")
     .on(table.modelProviderCredentialId),
-  sourceCheck: check(
-    "company_model_provider_defaults_source_check",
-    sql`(
-      (${table.modelCredentialSource} = 'platform' AND ${table.modelProviderCredentialId} IS NULL)
-      OR
-      (${table.modelCredentialSource} = 'user_provided' AND ${table.modelProviderCredentialId} IS NOT NULL)
-    )`,
-  ),
 }));
 
 // avaialbe models based on the model provider credential

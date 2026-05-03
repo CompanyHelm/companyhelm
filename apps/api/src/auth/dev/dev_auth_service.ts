@@ -149,7 +149,6 @@ export class DevAuthService {
         .values({
           clerkOrganizationId: null,
           name: companyName,
-          plan: "free",
           slug: companySlug,
         })
         .returning({
@@ -164,10 +163,6 @@ export class DevAuthService {
       await this.companyBootstrapService.ensureMembership(transaction as never, {
         companyId: createdCompany.id,
         userId: user.id,
-      });
-      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction as never, {
-        companyId: createdCompany.id,
-        plan: "free",
       });
       await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id);
 

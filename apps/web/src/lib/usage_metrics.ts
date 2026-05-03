@@ -2,16 +2,12 @@ export type UsageAggregatePeriod = "total" | "day" | "month";
 
 export type UsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
-  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
-  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   inputCostNanoUsd: number;
-  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
-  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: UsageAggregatePeriod;
   periodStart: string;
@@ -19,35 +15,27 @@ export type UsageAggregateRecord = {
   scopeId: string;
   scopeType: string;
   totalCostNanoUsd: number;
-  totalCostNanoVirtualUsd: number;
   totalTokens: number;
 };
 
 type GraphqlUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
-  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
-  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   inputCostNanoUsd: number;
-  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
-  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: string;
   periodStart: string;
   requestCount: number;
   agentId: string | null | undefined;
   companyId: string;
-  modelCredentialSource?: string | null | undefined;
   modelProviderCredentialId: string | null | undefined;
-  platformModelProviderCredentialId?: string | null | undefined;
   sessionId: string | null | undefined;
   scopeType: string;
   totalCostNanoUsd: number;
-  totalCostNanoVirtualUsd: number;
   totalTokens: number;
 };
 
@@ -67,16 +55,12 @@ export class UsageMetrics {
 
       return [{
         cacheReadCostNanoUsd: record.cacheReadCostNanoUsd,
-        cacheReadCostNanoVirtualUsd: record.cacheReadCostNanoVirtualUsd,
         cacheReadTokens: record.cacheReadTokens,
         cacheWriteCostNanoUsd: record.cacheWriteCostNanoUsd,
-        cacheWriteCostNanoVirtualUsd: record.cacheWriteCostNanoVirtualUsd,
         cacheWriteTokens: record.cacheWriteTokens,
         inputCostNanoUsd: record.inputCostNanoUsd,
-        inputCostNanoVirtualUsd: record.inputCostNanoVirtualUsd,
         inputTokens: record.inputTokens,
         outputCostNanoUsd: record.outputCostNanoUsd,
-        outputCostNanoVirtualUsd: record.outputCostNanoVirtualUsd,
         outputTokens: record.outputTokens,
         period,
         periodStart: record.periodStart,
@@ -84,7 +68,6 @@ export class UsageMetrics {
         scopeId: UsageMetrics.resolveGraphqlScopeId(record),
         scopeType: record.scopeType,
         totalCostNanoUsd: record.totalCostNanoUsd,
-        totalCostNanoVirtualUsd: record.totalCostNanoVirtualUsd,
         totalTokens: record.totalTokens,
       }];
     });
@@ -92,10 +75,6 @@ export class UsageMetrics {
 
   private static resolveGraphqlScopeId(record: GraphqlUsageAggregateRecord): string {
     if (record.scopeType === "model_provider_credential") {
-      if (record.modelCredentialSource === "platform") {
-        return record.platformModelProviderCredentialId ?? "";
-      }
-
       return record.modelProviderCredentialId ?? "";
     }
     if (record.scopeType === "agent") {
@@ -116,16 +95,12 @@ export class UsageMetrics {
   ): UsageAggregateRecord {
     return {
       cacheReadCostNanoUsd: 0,
-      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
-      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       inputCostNanoUsd: 0,
-      inputCostNanoVirtualUsd: 0,
       inputTokens: 0,
       outputCostNanoUsd: 0,
-      outputCostNanoVirtualUsd: 0,
       outputTokens: 0,
       period,
       periodStart,
@@ -133,7 +108,6 @@ export class UsageMetrics {
       scopeId,
       scopeType,
       totalCostNanoUsd: 0,
-      totalCostNanoVirtualUsd: 0,
       totalTokens: 0,
     };
   }
@@ -275,19 +249,11 @@ export class UsageMetrics {
   }
 
   static resolveCombinedCostNanoUsd(aggregate: UsageAggregateRecord): number {
-    return aggregate.totalCostNanoUsd + aggregate.totalCostNanoVirtualUsd;
+    return aggregate.totalCostNanoUsd;
   }
 
   static formatCostBreakdown(aggregate: UsageAggregateRecord): string {
-    const parts: string[] = [];
-    if (aggregate.totalCostNanoUsd > 0) {
-      parts.push(`${UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoUsd)} actual`);
-    }
-    if (aggregate.totalCostNanoVirtualUsd > 0) {
-      parts.push(`${UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoVirtualUsd)} virtual`);
-    }
-
-    return parts.length > 0 ? parts.join(", ") : "$0.00 actual";
+    return UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoUsd);
   }
 
   static formatPeriodLabel(periodStart: string, period: UsageAggregatePeriod): string {

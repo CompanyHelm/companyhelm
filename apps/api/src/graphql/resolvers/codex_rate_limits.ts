@@ -93,7 +93,6 @@ export class CodexRateLimitsQueryResolver {
         baseUrl: rateLimits.credential?.baseUrl ?? null,
         companyId,
         credentialId,
-        credentialSource: "user_provided",
         modelProvider: rateLimits.credential?.modelProvider ?? "",
       });
     } catch (error: unknown) {

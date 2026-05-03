@@ -1,14 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
 import pino, { type Logger as PinoLogger } from "pino";
-import { PlatformAdminAccess } from "../../../../db/platform_admin_access.ts";
 import {
   agentSessions,
   messageContents,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -19,8 +16,6 @@ import { RedisService } from "../../../redis/service.ts";
 import { CodexRateLimitService } from "../../../ai_providers/codex_rate_limit_service.ts";
 import {
   SessionTurnUsageService,
-  type SessionTurnUsageCredentialSource,
-  type SessionTurnUsageCostKind,
   type SessionTurnUsagePayload,
 } from "../session_turn_usage_service.ts";
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
@@ -156,13 +151,8 @@ type SessionAttribution = {
   apiKey: string | null;
   baseUrl: string | null;
   companyId: string;
-  credentialSource: SessionTurnUsageCredentialSource;
-  costKind: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   modelProvider: string | null;
-  platformModelId: string | null;
-  platformModelProviderCredentialId: string | null;
-  platformModelProviderCredentialModelId: string | null;
 };
 
 type PersistedSessionMessageReference = {
@@ -220,13 +210,8 @@ export class PiMonoSessionEventHandler {
   private agentId?: string;
   private modelProviderCredentialApiKey?: string;
   private modelProviderCredentialBaseUrl?: string | null;
-  private modelProviderCredentialSource?: SessionTurnUsageCredentialSource;
-  private modelProviderCredentialCostKind?: SessionTurnUsageCostKind;
   private modelProviderCredentialId?: string;
   private modelProviderCredentialProvider?: string;
-  private platformModelId?: string | null;
-  private platformModelProviderCredentialId?: string | null;
-  private platformModelProviderCredentialModelId?: string | null;
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -303,7 +288,6 @@ export class PiMonoSessionEventHandler {
     }
 
     const companyId = await this.resolveCompanyId();
-    const attribution = await this.resolveSessionAttribution();
     const turnId = randomUUID();
     await this.transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as unknown as InsertableDatabase;
@@ -311,9 +295,6 @@ export class PiMonoSessionEventHandler {
         companyId,
         endedAt: null,
         id: turnId,
-        platformModelId: attribution.platformModelId,
-        platformModelProviderCredentialId: attribution.platformModelProviderCredentialId,
-        platformModelProviderCredentialModelId: attribution.platformModelProviderCredentialModelId,
         sessionId: this.sessionId,
         startedAt,
       });
@@ -356,8 +337,6 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: attribution.companyId,
-      credentialSource: attribution.credentialSource,
-      costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt,
       sessionId: this.sessionId,
@@ -673,9 +652,6 @@ export class PiMonoSessionEventHandler {
         companyId: input.companyId,
         endedAt: input.endedAt,
         id: input.turnId,
-        platformModelId: null,
-        platformModelProviderCredentialId: null,
-        platformModelProviderCredentialModelId: null,
         sessionId: this.sessionId,
         startedAt: input.startedAt,
       });
@@ -984,8 +960,6 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: persistedMessageReference.companyId,
-      credentialSource: attribution.credentialSource,
-      costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt: persistedMessageReference.timestamp,
       sessionId: this.sessionId,
@@ -1008,7 +982,6 @@ export class PiMonoSessionEventHandler {
         baseUrl: attribution.baseUrl,
         companyId: attribution.companyId,
         credentialId: attribution.modelProviderCredentialId,
-        credentialSource: attribution.credentialSource,
         modelProvider: attribution.modelProvider,
       }, persistedMessageReference.timestamp);
     } catch (error: unknown) {
@@ -1651,21 +1624,14 @@ export class PiMonoSessionEventHandler {
       this.companyId
       && this.agentId
       && this.modelProviderCredentialId
-      && this.modelProviderCredentialSource
-      && this.modelProviderCredentialCostKind
     ) {
       return {
         agentId: this.agentId,
         apiKey: this.modelProviderCredentialApiKey ?? null,
         baseUrl: this.modelProviderCredentialBaseUrl ?? null,
         companyId: this.companyId,
-        credentialSource: this.modelProviderCredentialSource,
-        costKind: this.modelProviderCredentialCostKind,
         modelProviderCredentialId: this.modelProviderCredentialId,
         modelProvider: this.modelProviderCredentialProvider ?? null,
-        platformModelId: this.platformModelId ?? null,
-        platformModelProviderCredentialId: this.platformModelProviderCredentialId ?? null,
-        platformModelProviderCredentialModelId: this.platformModelProviderCredentialModelId ?? null,
       };
     }
 
@@ -1682,74 +1648,34 @@ export class PiMonoSessionEventHandler {
         .select({
           agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, this.sessionId));
       const companyId = sessionRecord?.companyId;
-      const currentModelCredentialSource = sessionRecord?.currentModelCredentialSource;
       const currentModelProviderCredentialModelId = typeof sessionRecord?.currentModelProviderCredentialModelId === "string"
         ? sessionRecord.currentModelProviderCredentialModelId
         : "";
-      const currentPlatformModelProviderCredentialModelId =
-        typeof sessionRecord?.currentPlatformModelProviderCredentialModelId === "string"
-          ? sessionRecord.currentPlatformModelProviderCredentialModelId
-          : "";
-      if (typeof companyId !== "string" || typeof currentModelCredentialSource !== "string") {
+      if (typeof companyId !== "string") {
         return {
           agentId: sessionRecord?.agentId,
           apiKey: null,
           baseUrl: null,
           companyId,
-          credentialSource: undefined,
-          costKind: undefined,
           modelProviderCredentialId: undefined,
           modelProvider: null,
-          platformModelId: null,
-          platformModelProviderCredentialId: null,
-          platformModelProviderCredentialModelId: null,
-        };
-      }
-      const credentialSource = PiMonoSessionEventHandler.resolveCredentialSource(currentModelCredentialSource);
-      if (!credentialSource) {
-        return {
-          agentId: sessionRecord?.agentId,
-          apiKey: null,
-          baseUrl: null,
-          companyId,
-          credentialSource: undefined,
-          costKind: undefined,
-          modelProviderCredentialId: undefined,
-          modelProvider: null,
-          platformModelId: null,
-          platformModelProviderCredentialId: null,
-          platformModelProviderCredentialModelId: null,
         };
       }
 
-      if (credentialSource === "platform") {
-        await PlatformAdminAccess.enable(selectableDatabase);
-      }
-
-      const [credentialModelRecord] = credentialSource === "platform"
-        ? await selectableDatabase
-          .select({
-            modelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-          })
-          .from(platformModelProviderCredentialModels)
-          .where(eq(platformModelProviderCredentialModels.id, currentPlatformModelProviderCredentialModelId ?? ""))
-        : await selectableDatabase
-          .select({
-            modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-          })
-          .from(modelProviderCredentialModels)
-          .where(and(
-            eq(modelProviderCredentialModels.companyId, companyId),
-            eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId ?? ""),
-          ));
+      const [credentialModelRecord] = await selectableDatabase
+        .select({
+          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        })
+        .from(modelProviderCredentialModels)
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId),
+        ));
       const modelProviderCredentialId = credentialModelRecord?.modelProviderCredentialId;
       if (typeof modelProviderCredentialId !== "string") {
         return {
@@ -1757,67 +1683,35 @@ export class PiMonoSessionEventHandler {
           apiKey: null,
           baseUrl: null,
           companyId,
-          credentialSource,
-          costKind: undefined,
-          modelProviderCredentialId,
+          modelProviderCredentialId: undefined,
           modelProvider: null,
-          platformModelId: null,
-          platformModelProviderCredentialId: null,
-          platformModelProviderCredentialModelId: null,
         };
       }
 
-      const [credentialRecord] = credentialSource === "platform"
-        ? await selectableDatabase
-          .select({
-            baseUrl: platformModelProviderCredentials.baseUrl,
-            encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
-            modelProvider: platformModelProviderCredentials.modelProvider,
-            type: platformModelProviderCredentials.type,
-          })
-          .from(platformModelProviderCredentials)
-          .where(eq(platformModelProviderCredentials.id, modelProviderCredentialId))
-        : await selectableDatabase
-          .select({
-            baseUrl: modelProviderCredentials.baseUrl,
-            encryptedApiKey: modelProviderCredentials.encryptedApiKey,
-            modelProvider: modelProviderCredentials.modelProvider,
-            type: modelProviderCredentials.type,
-          })
-          .from(modelProviderCredentials)
-          .where(and(
-            eq(modelProviderCredentials.companyId, companyId),
-            eq(modelProviderCredentials.id, modelProviderCredentialId),
-          ));
+      const [credentialRecord] = await selectableDatabase
+        .select({
+          baseUrl: modelProviderCredentials.baseUrl,
+          encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+          modelProvider: modelProviderCredentials.modelProvider,
+        })
+        .from(modelProviderCredentials)
+        .where(and(
+          eq(modelProviderCredentials.companyId, companyId),
+          eq(modelProviderCredentials.id, modelProviderCredentialId),
+        ));
 
       return {
         agentId: sessionRecord?.agentId,
         apiKey: typeof credentialRecord?.encryptedApiKey === "string" ? credentialRecord.encryptedApiKey : null,
         baseUrl: typeof credentialRecord?.baseUrl === "string" ? credentialRecord.baseUrl : null,
         companyId,
-        credentialSource,
-        costKind: credentialSource === "platform"
-          ? "virtual"
-          : credentialRecord
-          ? PiMonoSessionEventHandler.resolveCredentialCostKind(credentialRecord)
-          : undefined,
         modelProviderCredentialId,
         modelProvider: typeof credentialRecord?.modelProvider === "string" ? credentialRecord.modelProvider : null,
-        platformModelId: credentialSource === "platform"
-          && typeof sessionRecord?.currentPlatformModelId === "string"
-          ? sessionRecord.currentPlatformModelId
-          : null,
-        platformModelProviderCredentialId: credentialSource === "platform" ? modelProviderCredentialId : null,
-        platformModelProviderCredentialModelId: credentialSource === "platform"
-          ? currentPlatformModelProviderCredentialModelId
-          : null,
       };
     });
 
     const companyId = attribution.companyId;
     const agentId = attribution.agentId;
-    const credentialSource = attribution.credentialSource;
-    const costKind = attribution.costKind;
     const apiKey = attribution.apiKey;
     const baseUrl = attribution.baseUrl;
     const modelProviderCredentialId = attribution.modelProviderCredentialId;
@@ -1825,8 +1719,6 @@ export class PiMonoSessionEventHandler {
     if (
       typeof companyId !== "string"
       || typeof agentId !== "string"
-      || typeof credentialSource !== "string"
-      || typeof costKind !== "string"
       || typeof modelProviderCredentialId !== "string"
     ) {
       throw new Error("Session attribution not found.");
@@ -1836,42 +1728,16 @@ export class PiMonoSessionEventHandler {
     this.agentId = agentId;
     this.modelProviderCredentialApiKey = apiKey ?? undefined;
     this.modelProviderCredentialBaseUrl = typeof baseUrl === "string" ? baseUrl : null;
-    this.modelProviderCredentialSource = credentialSource;
-    this.modelProviderCredentialCostKind = costKind;
     this.modelProviderCredentialId = modelProviderCredentialId;
     this.modelProviderCredentialProvider = modelProvider ?? undefined;
-    this.platformModelId = attribution.platformModelId;
-    this.platformModelProviderCredentialId = attribution.platformModelProviderCredentialId;
-    this.platformModelProviderCredentialModelId = attribution.platformModelProviderCredentialModelId;
     return {
       agentId,
       apiKey,
       baseUrl: this.modelProviderCredentialBaseUrl,
       companyId,
-      credentialSource,
-      costKind,
       modelProviderCredentialId,
       modelProvider,
-      platformModelId: attribution.platformModelId,
-      platformModelProviderCredentialId: attribution.platformModelProviderCredentialId,
-      platformModelProviderCredentialModelId: attribution.platformModelProviderCredentialModelId,
     };
-  }
-
-  private static resolveCredentialCostKind(credential: Record<string, unknown> | undefined): SessionTurnUsageCostKind {
-    if (credential?.type === "oauth_token") {
-      return "virtual";
-    }
-
-    return "actual";
-  }
-
-  private static resolveCredentialSource(value: string): SessionTurnUsageCredentialSource | null {
-    if (value === "platform" || value === "user_provided") {
-      return value;
-    }
-
-    return null;
   }
 
   private async resolveMessageId(sessionEvent: SessionEvent): Promise<string> {

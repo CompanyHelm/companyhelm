@@ -23,16 +23,12 @@ import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
 import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
-import { CompanyWalletService } from "../../../wallet/service.ts";
 import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 import { RuntimeModelResolver } from "../runtime/model_resolver.ts";
 import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
-  currentModelCredentialSource: "platform" | "user_provided";
-  currentPlatformModelId: string | null;
-  currentPlatformModelProviderCredentialModelId: string | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   ownerUserId: string | null;
@@ -73,7 +69,6 @@ type SelectableDatabase = {
 @injectable()
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
-  private readonly companyWalletService: CompanyWalletService;
   private readonly companySettingsService: CompanySettingsService;
   private readonly logger: SessionPipelineLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
@@ -101,15 +96,12 @@ export class SessionProcessExecutionService {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(CompanySettingsService)
     companySettingsService: CompanySettingsService = new CompanySettingsService(),
-    @inject(CompanyWalletService)
-    companyWalletService: CompanyWalletService = new CompanyWalletService(),
     @inject(EnhancedLoggingService)
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
     @inject(RuntimeModelResolver)
     runtimeModelResolver: RuntimeModelResolver = new RuntimeModelResolver(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
-    this.companyWalletService = companyWalletService;
     this.companySettingsService = companySettingsService;
     this.logger = new SessionPipelineLogger(logger.child({
       component: "session_process_execution_service",
@@ -170,21 +162,6 @@ export class SessionProcessExecutionService {
       if (!runtimeConfig) {
         await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
         return;
-      }
-      if (runtimeConfig.isCompanyHelmManagedCredential) {
-        const walletStatus = await this.companyWalletService.checkCompanyHasPositiveBalance(transactionProvider, {
-          companyId,
-        });
-        if (!walletStatus.allowed) {
-          sessionLogger.info({
-            event: "session_wallet_depleted_clear_queue",
-            companyId,
-            balanceNanoUsd: walletStatus.balanceNanoUsd,
-            sessionId,
-          }, "clearing queued session work because CompanyHelm managed LLM wallet is depleted");
-          await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
-          return;
-        }
       }
       const companySettings = await this.companySettingsService.getSettings(transactionProvider, companyId);
       runtime = await this.piMonoSessionManagerService.createRuntime(
@@ -562,7 +539,6 @@ export class SessionProcessExecutionService {
     baseUrl?: string | null;
     companyId: string;
     companyName: string;
-    isCompanyHelmManagedCredential: boolean;
     modelId: string;
     modelName?: string | null;
     modelProviderCredentialId: string;
@@ -576,9 +552,6 @@ export class SessionProcessExecutionService {
       const [sessionRow] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           ownerUserId: agentSessions.ownerUserId,
@@ -623,10 +596,7 @@ export class SessionProcessExecutionService {
       }
 
       const runtimeModel = await this.runtimeModelResolver.resolve(selectableDatabase, companyId, {
-        currentModelCredentialSource: sessionRow.currentModelCredentialSource,
         currentModelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
-        currentPlatformModelId: sessionRow.currentPlatformModelId,
-        currentPlatformModelProviderCredentialModelId: sessionRow.currentPlatformModelProviderCredentialModelId,
       });
 
       return {
@@ -637,7 +607,6 @@ export class SessionProcessExecutionService {
         ...(runtimeModel.baseUrl ? { baseUrl: runtimeModel.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
-        isCompanyHelmManagedCredential: sessionRow.currentModelCredentialSource === "platform",
         modelId: runtimeModel.modelId,
         ...(runtimeModel.modelName ? { modelName: runtimeModel.modelName } : {}),
         modelProviderCredentialId: runtimeModel.modelProviderCredentialId,

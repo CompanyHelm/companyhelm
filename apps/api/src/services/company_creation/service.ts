@@ -5,13 +5,6 @@ import type { TransactionSql } from "postgres";
 import { Config } from "../../config/schema.ts";
 import { AdminDatabase } from "../../db/admin_database.ts";
 
-export type FreeCompanyCreationEligibility = {
-  allowed: boolean;
-  currentFreeCompanyCount: number;
-  limit: number;
-  reason: string | null;
-};
-
 export type CreatedCompanyRecord = {
   id: string;
   name: string;
@@ -44,19 +37,13 @@ type CompanyUpdateRow = {
   clerk_organization_id: string | null;
 };
 
-type CountRow = {
-  count: string;
-};
-
 /**
  * Owns user-initiated company creation so the application database remains the source of truth for
- * names, slugs, plans, and membership limits while Clerk receives a mirrored organization record.
+ * names, slugs, and membership links while Clerk receives a mirrored organization record only when
+ * the deployment uses Clerk auth.
  */
 @injectable()
 export class CompanyCreationService {
-  private static readonly PLATFORM_ADMIN_FREE_COMPANY_LIMIT = 1000;
-  private static readonly STANDARD_FREE_COMPANY_LIMIT = 3;
-
   private readonly adminDatabase: AdminDatabase;
   private readonly config: Config;
   private clerkClient: ClerkClientDependency | null = null;
@@ -79,34 +66,8 @@ export class CompanyCreationService {
     return service;
   }
 
-  async getFreeCompanyCreationEligibility(input: {
-    isPlatformAdmin: boolean;
-    userId: string;
-  }): Promise<FreeCompanyCreationEligibility> {
-    const sql = this.adminDatabase.getSqlClient();
-    const [countRow] = await sql<CountRow[]>`
-      select count(*)::text as count
-      from company_members
-      join companies on companies.id = company_members.company_id
-      where company_members.user_id = ${input.userId}
-        and companies.plan = 'free'
-        and not exists (
-          select 1
-          from company_deletion_requests
-          where company_deletion_requests.company_id = companies.id
-            and company_deletion_requests.status in ('requested', 'processing', 'failed')
-        )
-    `;
-
-    return this.buildEligibility({
-      currentFreeCompanyCount: Number.parseInt(countRow?.count ?? "0", 10),
-      isPlatformAdmin: input.isPlatformAdmin,
-    });
-  }
-
   async createCompany(input: {
     clerkUserId: string | null;
-    isPlatformAdmin: boolean;
     name: string;
     userId: string;
   }): Promise<CreatedCompanyRecord> {
@@ -115,32 +76,11 @@ export class CompanyCreationService {
     try {
       return await this.adminDatabase.getSqlClient().begin(async (sql) => {
         await sql.unsafe("select pg_advisory_xact_lock(hashtextextended($1, 0))", [input.userId]);
-        const [countRow] = await sql.unsafe<CountRow[]>([
-          "select count(*)::text as count",
-          "from company_members",
-          "join companies on companies.id = company_members.company_id",
-          "where company_members.user_id = $1",
-          "and companies.plan = 'free'",
-          "and not exists (",
-          "  select 1",
-          "  from company_deletion_requests",
-          "  where company_deletion_requests.company_id = companies.id",
-          "    and company_deletion_requests.status in ('requested', 'processing', 'failed')",
-          ")",
-        ].join("\n"), [input.userId]);
-        const eligibility = this.buildEligibility({
-          currentFreeCompanyCount: Number.parseInt(countRow?.count ?? "0", 10),
-          isPlatformAdmin: input.isPlatformAdmin,
-        });
-        if (!eligibility.allowed) {
-          throw new Error(eligibility.reason ?? this.buildFreeCompanyLimitReason(eligibility.limit));
-        }
-
         const companyId = this.createCompanyId();
         const slug = await this.createUniqueCompanySlug(sql, companyName);
         const [company] = await sql.unsafe<CompanyInsertRow[]>([
-          "insert into companies (id, name, slug, plan)",
-          "values ($1, $2, $3, 'free')",
+          "insert into companies (id, name, slug)",
+          "values ($1, $2, $3)",
           "returning id, slug",
         ].join("\n"), [companyId, companyName, slug]);
         if (!company) {
@@ -152,8 +92,6 @@ export class CompanyCreationService {
           "values ($1, $2, 'admin', 'active', now(), now())",
           "on conflict do nothing",
         ].join("\n"), [company.id, input.userId]);
-
-        await this.createOpeningSubscriptionWallet(sql, company.id);
 
         const clerkOrganization = await this.createClerkOrganization({
           clerkUserId: input.clerkUserId,
@@ -183,54 +121,6 @@ export class CompanyCreationService {
       await this.deleteCreatedClerkOrganization(createdClerkOrganizationId);
       throw error;
     }
-  }
-
-  private async createOpeningSubscriptionWallet(sql: TransactionSql, companyId: string): Promise<void> {
-    const walletId = randomUUID();
-    const transactionId = randomUUID();
-    await sql.unsafe([
-      "with inserted_wallet as (",
-      "  insert into wallets (id, company_id, type, amount_nano_usd, created_at, updated_at)",
-      "  values ($1, $2, 'subscription', 10000000000, now(), now())",
-      "  on conflict (company_id, type) do nothing",
-      "  returning id, company_id",
-      ")",
-      "insert into wallet_transactions (",
-      "  id, company_id, wallet_id, category, amount_nano_usd,",
-      "  period_start, period_end, session_id, session_turn_id, created_at",
-      ")",
-      "select",
-      "  $3, company_id, id, 'opening', 10000000000,",
-      "  date_trunc('month', timezone('UTC', now()))::timestamptz,",
-      "  (date_trunc('month', timezone('UTC', now())) + interval '1 month')::timestamptz,",
-      "  null, null, now()",
-      "from inserted_wallet",
-      "on conflict do nothing",
-    ].join("\n"), [walletId, companyId, transactionId]);
-  }
-
-  private buildEligibility(input: {
-    currentFreeCompanyCount: number;
-    isPlatformAdmin: boolean;
-  }): FreeCompanyCreationEligibility {
-    const limit = this.resolveFreeCompanyLimit(input.isPlatformAdmin);
-    const allowed = input.currentFreeCompanyCount < limit;
-    return {
-      allowed,
-      currentFreeCompanyCount: input.currentFreeCompanyCount,
-      limit,
-      reason: allowed ? null : this.buildFreeCompanyLimitReason(limit),
-    };
-  }
-
-  private resolveFreeCompanyLimit(isPlatformAdmin: boolean): number {
-    return isPlatformAdmin
-      ? CompanyCreationService.PLATFORM_ADMIN_FREE_COMPANY_LIMIT
-      : CompanyCreationService.STANDARD_FREE_COMPANY_LIMIT;
-  }
-
-  private buildFreeCompanyLimitReason(limit: number): string {
-    return `Free accounts can belong to at most ${limit} free companies.`;
   }
 
   private createCompanyId(): string {

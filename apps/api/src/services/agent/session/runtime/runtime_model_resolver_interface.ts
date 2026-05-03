@@ -1,10 +1,7 @@
 import type { SelectableDatabase } from "../session_manager_service_types.ts";
 
 export type RuntimeModelResolverInput = {
-  currentModelCredentialSource: "platform" | "user_provided";
   currentModelProviderCredentialModelId: string | null;
-  currentPlatformModelId: string | null;
-  currentPlatformModelProviderCredentialModelId: string | null;
 };
 
 export type RuntimeModelResolution = {
@@ -20,8 +17,7 @@ export type RuntimeModelResolution = {
 
 /**
  * Loads the selected session model and credential, then resolves the concrete runtime provider PI
- * Mono should use. The session keeps product-facing platform model state; this boundary turns it
- * into executable auth and provider details.
+ * Mono should use from the company-provided credential attached to the session.
  */
 export interface RuntimeModelResolverInterface {
   /**

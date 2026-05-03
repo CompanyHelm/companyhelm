@@ -22,8 +22,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
         VITE_GRAPHQL_URL: "https://api.companyhelm.com/graphql",
         VITE_CLERK_PRIVACY_POLICY_URL: "https://companyhelm.com/privacy",
         VITE_CLERK_TERMS_OF_SERVICE_URL: "https://companyhelm.com/terms",
-        VITE_PADDLE_CLIENT_TOKEN: "live_runtime_token",
-        VITE_PADDLE_ENVIRONMENT: "production",
       },
       stdio: "pipe",
     });
@@ -35,9 +33,7 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
     assert.match(runtimeConfig, /graphqlUrl: "https:\/\/api\.companyhelm\.com\/graphql"/);
     assert.match(runtimeConfig, /privacyPolicyUrl: "https:\/\/companyhelm\.com\/privacy"/);
     assert.match(runtimeConfig, /termsOfServiceUrl: "https:\/\/companyhelm\.com\/terms"/);
-    assert.match(runtimeConfig, /paddle: \{/);
-    assert.match(runtimeConfig, /clientToken: "live_runtime_token"/);
-    assert.match(runtimeConfig, /environment: "production"/);
+    assert.doesNotMatch(runtimeConfig, /paddle/u);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

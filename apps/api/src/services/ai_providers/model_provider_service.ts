@@ -6,8 +6,7 @@ export type ModelProviderId =
   | "openai"
   | "openai-codex"
   | "openai-compatible"
-  | "openrouter"
-  | "companyhelm";
+  | "openrouter";
 
 export enum ModelProviderAuthorizationType {
   ApiKey = "api_key",
@@ -29,16 +28,6 @@ export type ModelProviderDefinition = {
 @injectable()
 export class ModelProviderService {
   private readonly providers = new Map<string, ModelProviderDefinition>([
-    [
-      "companyhelm",
-      {
-        id: "companyhelm",
-        name: "CompanyHelm",
-        type: ModelProviderAuthorizationType.ApiKey,
-        authorizationInstructionsMarkdown:
-          "Included and managed by CompanyHelm.",
-      },
-    ],
     [
       "openai",
       {
@@ -119,6 +108,7 @@ export class ModelProviderService {
   }
 
   isSystemManagedProviderId(providerId: string): boolean {
-    return providerId === "companyhelm";
+    void providerId;
+    return false;
   }
 }

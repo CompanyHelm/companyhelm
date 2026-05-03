@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<07ad2630098eaf585f698ebc926afe9e>>
+ * @generated SignedSource<<fa40f10daa53080a6e5374559f5b75d7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,17 +15,14 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly id: string;
     readonly isDefault: boolean;
     readonly label: string;
-    readonly modelCredentialSource: string;
     readonly modelProvider: string;
     readonly modelProviderCredentialId: string | null | undefined;
     readonly models: ReadonlyArray<{
       readonly modelProviderCredentialModelId: string | null | undefined;
-      readonly platformModelId: string | null | undefined;
     }>;
   }>;
   readonly Agents: ReadonlyArray<{
     readonly id: string;
-    readonly modelCredentialSource: string;
     readonly modelProviderCredentialId: string | null | undefined;
     readonly name: string;
   }>;
@@ -51,9 +48,7 @@ export type modelProviderCredentialsPageQuery$data = {
   }>;
   readonly Sessions: ReadonlyArray<{
     readonly id: string;
-    readonly modelCredentialSource: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
-    readonly platformModelId: string | null | undefined;
   }>;
 };
 export type modelProviderCredentialsPageQuery = {
@@ -80,17 +75,10 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "modelCredentialSource",
-  "storageKey": null
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "modelProviderCredentialId",
   "storageKey": null
 },
-v4 = {
+v3 = {
   "alias": null,
   "args": null,
   "concreteType": "Agent",
@@ -100,54 +88,46 @@ v4 = {
   "selections": [
     (v0/*: any*/),
     (v1/*: any*/),
-    (v2/*: any*/),
-    (v3/*: any*/)
+    (v2/*: any*/)
   ],
   "storageKey": null
 },
-v5 = {
+v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "isDefault",
   "storageKey": null
 },
-v6 = {
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "label",
   "storageKey": null
 },
-v7 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "modelProvider",
   "storageKey": null
 },
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "platformModelId",
-  "storageKey": null
-},
-v9 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "modelProviderCredentialModelId",
   "storageKey": null
 },
-v10 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "type",
   "storageKey": null
 },
-v11 = {
+v9 = {
   "alias": null,
   "args": null,
   "concreteType": "ModelProvider",
@@ -157,7 +137,7 @@ v11 = {
   "selections": [
     (v0/*: any*/),
     (v1/*: any*/),
-    (v10/*: any*/),
+    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -168,7 +148,7 @@ v11 = {
   ],
   "storageKey": null
 },
-v12 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "ModelProviderCredential",
@@ -184,10 +164,10 @@ v12 = {
       "name": "baseUrl",
       "storageKey": null
     },
-    (v5/*: any*/),
+    (v4/*: any*/),
     (v1/*: any*/),
-    (v7/*: any*/),
-    (v10/*: any*/),
+    (v6/*: any*/),
+    (v8/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -233,7 +213,7 @@ v12 = {
   ],
   "storageKey": null
 },
-v13 = {
+v11 = {
   "alias": null,
   "args": null,
   "concreteType": "Session",
@@ -242,9 +222,7 @@ v13 = {
   "plural": true,
   "selections": [
     (v0/*: any*/),
-    (v2/*: any*/),
-    (v8/*: any*/),
-    (v9/*: any*/)
+    (v7/*: any*/)
   ],
   "storageKey": null
 };
@@ -255,7 +233,7 @@ return {
     "metadata": null,
     "name": "modelProviderCredentialsPageQuery",
     "selections": [
-      (v4/*: any*/),
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -266,10 +244,9 @@ return {
         "selections": [
           (v0/*: any*/),
           (v2/*: any*/),
-          (v3/*: any*/),
+          (v4/*: any*/),
           (v5/*: any*/),
           (v6/*: any*/),
-          (v7/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -278,17 +255,16 @@ return {
             "name": "models",
             "plural": true,
             "selections": [
-              (v8/*: any*/),
-              (v9/*: any*/)
+              (v7/*: any*/)
             ],
             "storageKey": null
           }
         ],
         "storageKey": null
       },
-      (v11/*: any*/),
-      (v12/*: any*/),
-      (v13/*: any*/)
+      (v9/*: any*/),
+      (v10/*: any*/),
+      (v11/*: any*/)
     ],
     "type": "Query",
     "abstractKey": null
@@ -299,7 +275,7 @@ return {
     "kind": "Operation",
     "name": "modelProviderCredentialsPageQuery",
     "selections": [
-      (v4/*: any*/),
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -310,10 +286,9 @@ return {
         "selections": [
           (v0/*: any*/),
           (v2/*: any*/),
-          (v3/*: any*/),
+          (v4/*: any*/),
           (v5/*: any*/),
           (v6/*: any*/),
-          (v7/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -322,8 +297,7 @@ return {
             "name": "models",
             "plural": true,
             "selections": [
-              (v8/*: any*/),
-              (v9/*: any*/),
+              (v7/*: any*/),
               (v0/*: any*/)
             ],
             "storageKey": null
@@ -331,22 +305,22 @@ return {
         ],
         "storageKey": null
       },
-      (v11/*: any*/),
-      (v12/*: any*/),
-      (v13/*: any*/)
+      (v9/*: any*/),
+      (v10/*: any*/),
+      (v11/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "749280aecb262373e108cd334995c885",
+    "cacheID": "1dffe2d25533ffa081bf72a1df719825",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelCredentialSource\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelCredentialSource\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    models {\n      platformModelId\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelCredentialSource\n    platformModelId\n    modelProviderCredentialModelId\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    models {\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d9f3c1be1794741e4225abab581d8edb";
+(node as any).hash = "147dcd8072f2b37121e09bb16a273628";
 
 export default node;

@@ -4,7 +4,7 @@
 
 
 CompanyHelm is an open-source control plane for running AI coding agent in dedicated environments. Each agent session is completely isolated and allows to run coding tasks in a distributed fashion.
-Agents are model agnostic and multiple model providers are supported (OpenAi, Anthropic, OpenRouter). Agents can be customized with MCP, Skills and custom instructions.
+Agents are model agnostic and multiple company-provided model providers are supported (OpenAI, Anthropic, Google, OpenRouter, OpenAI-compatible APIs, and OpenAI Codex OAuth). Agents can be customized with MCP, Skills and custom instructions.
 
 A few things it can do today:
 
@@ -61,9 +61,10 @@ npm install -g npm@11.6.2
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-For local API development, export the required Clerk, GitHub, Exa, and E2B variables in your shell
-before starting `npm run dev:api`. `apps/api/config/local.yaml` reads those values directly from the
-environment.
+Copy `apps/api/.env.example` to `apps/api/.env.local`, then fill in the required GitHub App, Exa,
+E2B, local-auth, and encryption-related values before starting `npm run dev:api`.
+`apps/api/config/local.yaml` reads those values directly from the environment. Clerk is optional and
+only needed when you switch the API and web auth provider from local auth to Clerk.
 
 3. Install dependencies.
 
@@ -108,15 +109,16 @@ Local development defaults to HTTP for both the web app and API. Keep `VITE_GRAP
 A few notes:
 
 - Copy it to `apps/web/.env.local` so Vite picks it up automatically.
-- `apps/api/config/local.yaml` reads Clerk, GitHub, and CompanyHelm E2B values from environment variables.
+- `apps/api/config/local.yaml` uses local auth by default and reads GitHub App, Exa, and E2B values from environment variables.
 - The placeholder values in `apps/web/.env.example` are enough to boot the web shell locally.
-- Replace the placeholders with real secrets before using auth, GitHub install flows, or CompanyHelm-backed compute.
+- Self-hosters must configure their own GitHub App before using GitHub install flows.
+- Replace the placeholders with real secrets before using GitHub install flows, model provider credentials, or CompanyHelm-backed compute.
 
 ### Web runtime config
 
-Local Vite development uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
-local environment. To show Clerk's terms/privacy consent during sign-up, also set
-`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`.
+Local Vite development uses `VITE_AUTH_PROVIDER=local` and `VITE_GRAPHQL_URL` from your local
+environment by default. If you opt into Clerk, set `VITE_AUTH_PROVIDER=clerk`,
+`VITE_CLERK_PUBLISHABLE_KEY`, and any Clerk legal URLs required by your hosted sign-up flow.
 
 ## Common commands
 

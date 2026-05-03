@@ -5,7 +5,6 @@ import type { DatabaseClientInterface } from "../../db/database_interface.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import { UserBootstrapService } from "../../services/bootstrap/user.ts";
 import { CompanyHelmComputeProviderService } from "../../services/compute_provider_definitions/companyhelm_service.ts";
-import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
 import {
   AuthProvider,
   type AuthenticateBearerTokenHeaders,
@@ -96,7 +95,6 @@ export class ClerkAuthProvider extends AuthProvider {
       dependencies.userBootstrapService ?? new UserBootstrapService(),
       dependencies.companyBootstrapService ?? new CompanyBootstrapService(
         new CompanyHelmComputeProviderService(config),
-        new ModelRegistry(),
       ),
     );
     provider.clerkClient = dependencies.clerkClient ?? provider.clerkClient;
@@ -181,10 +179,6 @@ export class ClerkAuthProvider extends AuthProvider {
         throw new Error("Configured database does not support company context binding.");
       }
       await database.applyCompanyContext(transaction as DatabaseClientInterface, company.id);
-      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction, {
-        companyId: company.id,
-        plan: company.plan,
-      });
       await this.companyBootstrapService.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,

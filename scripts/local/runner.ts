@@ -85,12 +85,7 @@ export class LocalRunner {
   }
 
   private resolveSeedCommandArguments(): string[] {
-    const seedArguments = ["run", "seed:local-dev", "-w", "@companyhelm/api"];
-    if (process.env.COMPANYHELM_LOCAL_OPENAI_API_KEY) {
-      seedArguments.push("--", "--seed-openai-from-env");
-    }
-
-    return seedArguments;
+    return ["run", "seed:local-dev", "-w", "@companyhelm/api"];
   }
 
   private async waitForPort(host: string, port: number, label: string): Promise<void> {
@@ -261,7 +256,7 @@ export class LocalRunner {
       console.log("Readiness: API, GraphQL, web, and dev auth verified");
     }
     console.log("Auth:     dev");
-    console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent with CompanyHelm provider");
-    console.log("Models:   Set COMPANYHELM_LOCAL_OPENAI_API_KEY to validate and seed a local OpenAI route\n");
+    console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent");
+    console.log("Models:   Add company-owned LLM credentials in the app before running real agent prompts\n");
   }
 }

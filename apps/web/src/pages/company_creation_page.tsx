@@ -1,5 +1,5 @@
 import { Suspense, useState } from "react";
-import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { graphql, useMutation } from "react-relay";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2Icon, Loader2Icon, PlusIcon } from "lucide-react";
 import { useOrganizationList } from "@/components/auth/auth_provider";
@@ -15,18 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { OrganizationPath } from "@/lib/organization_path";
 import type { companyCreationPageCreateMutation } from "./__generated__/companyCreationPageCreateMutation.graphql";
-import type { companyCreationPageQuery } from "./__generated__/companyCreationPageQuery.graphql";
-
-const companyCreationPageQueryNode = graphql`
-  query companyCreationPageQuery {
-    FreeCompanyCreationEligibility {
-      allowed
-      currentFreeCompanyCount
-      limit
-      reason
-    }
-  }
-`;
 
 const companyCreationPageCreateMutationNode = graphql`
   mutation companyCreationPageCreateMutation($input: CreateCompanyInput!) {
@@ -41,7 +29,7 @@ const companyCreationPageCreateMutationNode = graphql`
 
 /**
  * Owns the CompanyHelm company creation flow that Clerk's organization switcher delegates to,
- * keeping the application database in charge of eligibility, slug allocation, and Clerk linking.
+ * keeping the application database in charge of slug allocation and optional Clerk linking.
  */
 export function CompanyCreationPage() {
   return (
@@ -52,13 +40,6 @@ export function CompanyCreationPage() {
 }
 
 function CompanyCreationPageContent() {
-  const data = useLazyLoadQuery<companyCreationPageQuery>(
-    companyCreationPageQueryNode,
-    {},
-    {
-      fetchPolicy: "store-and-network",
-    },
-  );
   const navigate = useNavigate();
   const organizationListState = useOrganizationList();
   const [companyName, setCompanyName] = useState("");
@@ -66,9 +47,8 @@ function CompanyCreationPageContent() {
   const [commitCreateCompany, isCreateCompanyInFlight] = useMutation<companyCreationPageCreateMutation>(
     companyCreationPageCreateMutationNode,
   );
-  const eligibility = data.FreeCompanyCreationEligibility;
   const trimmedCompanyName = companyName.trim();
-  const canSubmit = eligibility.allowed && trimmedCompanyName.length > 0 && !isCreateCompanyInFlight;
+  const canSubmit = trimmedCompanyName.length > 0 && !isCreateCompanyInFlight;
 
   function createCompany() {
     if (!canSubmit) {
@@ -116,11 +96,8 @@ function CompanyCreationPageContent() {
     <CompanyCreationPageShell
       canSubmit={canSubmit}
       companyName={companyName}
-      currentFreeCompanyCount={eligibility.currentFreeCompanyCount}
-      errorMessage={errorMessage ?? eligibility.reason}
-      isAllowed={eligibility.allowed}
+      errorMessage={errorMessage}
       isSubmitting={isCreateCompanyInFlight}
-      limit={eligibility.limit}
       onCompanyNameChange={setCompanyName}
       onSubmit={createCompany}
     />
@@ -130,18 +107,12 @@ function CompanyCreationPageContent() {
 function CompanyCreationPageShell(props: {
   canSubmit?: boolean;
   companyName?: string;
-  currentFreeCompanyCount?: number;
   errorMessage?: string | null;
-  isAllowed?: boolean;
   isSubmitting?: boolean;
-  limit?: number;
   onCompanyNameChange?: (companyName: string) => void;
   onSubmit?: () => void;
 } = {}) {
-  const isAllowed = props.isAllowed ?? true;
   const isSubmitting = props.isSubmitting ?? false;
-  const currentFreeCompanyCount = props.currentFreeCompanyCount ?? 0;
-  const limit = props.limit ?? 3;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-10">
@@ -152,7 +123,7 @@ function CompanyCreationPageShell(props: {
           </div>
           <CardTitle>Create company</CardTitle>
           <CardDescription>
-            Add a CompanyHelm workspace with a matching Clerk organization.
+            Add a CompanyHelm workspace for this self-hosted installation.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,15 +141,12 @@ function CompanyCreationPageShell(props: {
               <Input
                 aria-invalid={Boolean(props.errorMessage)}
                 autoComplete="organization"
-                disabled={!isAllowed || isSubmitting}
+                disabled={isSubmitting}
                 id="company-name"
                 onChange={(event) => props.onCompanyNameChange?.(event.target.value)}
                 placeholder="Acme Operations"
                 value={props.companyName ?? ""}
               />
-              <p className="text-xs text-muted-foreground">
-                {currentFreeCompanyCount} of {limit} active free companies used.
-              </p>
             </div>
             {props.errorMessage ? (
               <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">

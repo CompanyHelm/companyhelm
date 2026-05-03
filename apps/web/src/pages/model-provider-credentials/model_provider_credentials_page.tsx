@@ -6,14 +6,12 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { CreateCredentialDialog } from "./create_credential_dialog";
 import { type DeleteCredentialDialogReplacementRecord } from "./delete_credential_dialog";
 import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
-import { MANAGED_MODEL_PROVIDER_CREDENTIAL_ID } from "./managed_credential";
 import { ModelProviderCredentialCatalog } from "./provider_catalog";
 import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
 import type { modelProviderCredentialsPageSetDefaultCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultCredentialMutation.graphql";
-import type { modelProviderCredentialsPageSetDefaultManagedCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultManagedCredentialMutation.graphql";
 
 type StoreCredentialRecord = {
   getDataID(): string;
@@ -35,18 +33,15 @@ const modelProviderCredentialsPageQueryNode = graphql`
     Agents {
       id
       name
-      modelCredentialSource
       modelProviderCredentialId
     }
     AgentCreateOptions {
       id
-      modelCredentialSource
       modelProviderCredentialId
       isDefault
       label
       modelProvider
       models {
-        platformModelId
         modelProviderCredentialModelId
       }
     }
@@ -72,8 +67,6 @@ const modelProviderCredentialsPageQueryNode = graphql`
     }
     Sessions {
       id
-      modelCredentialSource
-      platformModelId
       modelProviderCredentialModelId
     }
   }
@@ -118,12 +111,6 @@ const modelProviderCredentialsPageSetDefaultCredentialMutationNode = graphql`
       id
       isDefault
     }
-  }
-`;
-
-const modelProviderCredentialsPageSetDefaultManagedCredentialMutationNode = graphql`
-  mutation modelProviderCredentialsPageSetDefaultManagedCredentialMutation {
-    SetDefaultManagedModelProviderCredential
   }
 `;
 
@@ -186,10 +173,6 @@ function ModelProviderCredentialsPageContent() {
     useMutation<modelProviderCredentialsPageSetDefaultCredentialMutation>(
       modelProviderCredentialsPageSetDefaultCredentialMutationNode,
     );
-  const [commitSetDefaultManagedCredential, isSetDefaultManagedCredentialInFlight] =
-    useMutation<modelProviderCredentialsPageSetDefaultManagedCredentialMutation>(
-      modelProviderCredentialsPageSetDefaultManagedCredentialMutationNode,
-    );
   const credentialNameById = useMemo(() => {
     return new Map(
       data.ModelProviderCredentials.map((credential) => [credential.id, credential.name]),
@@ -197,9 +180,7 @@ function ModelProviderCredentialsPageContent() {
   }, [data.ModelProviderCredentials]);
   const replacementOptions = useMemo<DeleteCredentialDialogReplacementRecord[]>(() => {
     return data.AgentCreateOptions
-      .filter((providerOption) =>
-        providerOption.modelCredentialSource === "user_provided" && providerOption.modelProviderCredentialId
-      )
+      .filter((providerOption) => providerOption.modelProviderCredentialId)
       .map((providerOption) => ({
         id: String(providerOption.modelProviderCredentialId),
         isDefault: providerOption.isDefault,
@@ -209,7 +190,7 @@ function ModelProviderCredentialsPageContent() {
   const credentialIdByModelId = useMemo(() => {
     const nextCredentialIdByModelId = new Map<string, string>();
     for (const providerOption of data.AgentCreateOptions) {
-      if (providerOption.modelCredentialSource !== "user_provided" || !providerOption.modelProviderCredentialId) {
+      if (!providerOption.modelProviderCredentialId) {
         continue;
       }
 
@@ -230,14 +211,6 @@ function ModelProviderCredentialsPageContent() {
   const sessionCountByCredentialId = useMemo(() => {
     const nextSessionCountByCredentialId = new Map<string, number>();
     for (const session of data.Sessions) {
-      if (session.modelCredentialSource === "platform") {
-        nextSessionCountByCredentialId.set(
-          MANAGED_MODEL_PROVIDER_CREDENTIAL_ID,
-          (nextSessionCountByCredentialId.get(MANAGED_MODEL_PROVIDER_CREDENTIAL_ID) ?? 0) + 1,
-        );
-        continue;
-      }
-
       const modelProviderCredentialModelId = String(session.modelProviderCredentialModelId || "").trim();
       if (modelProviderCredentialModelId.length === 0) {
         continue;
@@ -257,32 +230,7 @@ function ModelProviderCredentialsPageContent() {
     return nextSessionCountByCredentialId;
   }, [credentialIdByModelId, data.Sessions]);
   const credentials = useMemo<CredentialsTableRecord[]>(() => {
-    const managedProviderOption = data.AgentCreateOptions.find((providerOption) =>
-      providerOption.modelCredentialSource === "platform" && providerOption.models.length > 0
-    );
-    const managedCredential: CredentialsTableRecord[] = managedProviderOption ? [{
-      baseUrl: null,
-      createdAt: null,
-      credentialKind: "managed",
-      defaultModelId: managedProviderOption.models.find((model) => model.platformModelId)?.platformModelId ?? null,
-      errorMessage: null,
-      id: MANAGED_MODEL_PROVIDER_CREDENTIAL_ID,
-      isDefault: managedProviderOption.isDefault,
-      modelProvider: managedProviderOption.modelProvider,
-      name: managedProviderOption.label,
-      refreshedAt: null,
-      sessionCount: sessionCountByCredentialId.get(MANAGED_MODEL_PROVIDER_CREDENTIAL_ID) ?? 0,
-      status: "active",
-      type: "api_key",
-      updatedAt: null,
-      usingAgents: data.Agents
-        .filter((agent) => agent.modelCredentialSource === "platform")
-        .map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-        })),
-    }] : [];
-    const userProvidedCredentials = data.ModelProviderCredentials.map((credential) => ({
+    return data.ModelProviderCredentials.map((credential) => ({
       baseUrl: credential.baseUrl ?? null,
       createdAt: credential.createdAt,
       credentialKind: "user_provided" as const,
@@ -298,18 +246,15 @@ function ModelProviderCredentialsPageContent() {
       type: credential.type as "api_key" | "oauth_token",
       updatedAt: credential.updatedAt,
       usingAgents: data.Agents
-        .filter((agent) =>
-          agent.modelCredentialSource === "user_provided" && agent.modelProviderCredentialId === credential.id
-        )
+        .filter((agent) => agent.modelProviderCredentialId === credential.id)
         .map((agent) => ({
           id: agent.id,
           name: agent.name,
         })),
     }));
-    return [...managedCredential, ...userProvidedCredentials];
-  }, [data.AgentCreateOptions, data.Agents, data.ModelProviderCredentials, sessionCountByCredentialId]);
+  }, [data.Agents, data.ModelProviderCredentials, sessionCountByCredentialId]);
   const providers = ModelProviderCredentialCatalog.toDialogProviders(
-    data.ModelProviders.filter((provider) => provider.id !== "companyhelm").map((provider) => ({
+    data.ModelProviders.map((provider) => ({
       authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown ?? null,
       id: provider.id,
       name: formatProviderLabel(provider.id),
@@ -406,37 +351,12 @@ function ModelProviderCredentialsPageContent() {
               });
             }}
             onSetDefault={async (credentialId) => {
-              if (isSetDefaultCredentialInFlight || isSetDefaultManagedCredentialInFlight) {
+              if (isSetDefaultCredentialInFlight) {
                 return;
               }
 
               setErrorMessage(null);
               setDefaultingCredentialId(credentialId);
-
-              if (credentialId === MANAGED_MODEL_PROVIDER_CREDENTIAL_ID) {
-                await new Promise<void>((resolve, reject) => {
-                  commitSetDefaultManagedCredential({
-                    variables: {},
-                    onCompleted: (_response, errors) => {
-                      const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                      if (nextErrorMessage) {
-                        reject(new Error(nextErrorMessage));
-                        return;
-                      }
-
-                      resolve();
-                    },
-                    onError: reject,
-                  });
-                }).then(() => {
-                  setFetchKey((current) => current + 1);
-                }).catch((error: unknown) => {
-                  setErrorMessage(error instanceof Error ? error.message : "Failed to update default credential.");
-                }).finally(() => {
-                  setDefaultingCredentialId(null);
-                });
-                return;
-              }
 
               await new Promise<void>((resolve, reject) => {
                 commitSetDefaultCredential({

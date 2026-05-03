@@ -1,8 +1,6 @@
 import {
   BotIcon,
   BookOpenIcon,
-  BoxesIcon,
-  Building2Icon,
   ChartPieIcon,
   FolderGit2Icon,
   InboxIcon,
@@ -13,10 +11,8 @@ import {
   MessageSquareIcon,
   MessagesSquareIcon,
   PlugIcon,
-  ShieldCheckIcon,
   ServerIcon,
   SparklesIcon,
-  UsersIcon,
   WorkflowIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -45,7 +41,6 @@ export class ApplicationNavigationCatalog {
    */
   public static buildMainGroups(input: {
     isComputeProvidersEnabled: boolean;
-    isPlatformAdmin?: boolean;
     isOnboardingFocused?: boolean;
   }): readonly ApplicationNavigationGroupRecord[] {
     if (input.isOnboardingFocused) {
@@ -173,43 +168,6 @@ export class ApplicationNavigationCatalog {
         ],
         label: "Sources",
       },
-      ...(input.isPlatformAdmin
-        ? [{
-          items: [
-            {
-              icon: ShieldCheckIcon,
-              label: "Admin",
-              scope: "root",
-              to: "/admin",
-            },
-            {
-              icon: UsersIcon,
-              label: "Users",
-              scope: "root",
-              to: "/admin/users",
-            },
-            {
-              icon: Building2Icon,
-              label: "Companies",
-              scope: "root",
-              to: "/admin/companies",
-            },
-            {
-              icon: KeyRoundIcon,
-              label: "LLM credentials",
-              scope: "root",
-              to: "/admin/llm-credentials",
-            },
-            {
-              icon: BoxesIcon,
-              label: "Platform models",
-              scope: "root",
-              to: "/admin/models",
-            },
-          ],
-          label: "Platform",
-        } satisfies ApplicationNavigationGroupRecord]
-        : []),
     ];
   }
 }

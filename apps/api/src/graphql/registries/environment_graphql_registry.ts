@@ -12,7 +12,6 @@ import { RefreshCodexRateLimitsMutation } from "../mutations/refresh_codex_rate_
 import { RefreshModelProviderCredentialModelsMutation } from "../mutations/refresh_model_provider_credential_models.ts";
 import { RefreshModelProviderCredentialTokenMutation } from "../mutations/refresh_model_provider_credential_token.ts";
 import { SetDefaultComputeProviderDefinitionMutation } from "../mutations/set_default_compute_provider_definition.ts";
-import { SetDefaultManagedModelProviderCredentialMutation } from "../mutations/set_default_managed_model_provider_credential.ts";
 import { SetDefaultModelProviderCredentialMutation } from "../mutations/set_default_model_provider_credential.ts";
 import { SetDefaultModelProviderCredentialModelMutation } from "../mutations/set_default_model_provider_credential_model.ts";
 import { StartEnvironmentMutation } from "../mutations/start_environment.ts";
@@ -63,7 +62,6 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly refreshModelProviderCredentialTokenMutation: RefreshModelProviderCredentialTokenMutation;
   private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
   private readonly setDefaultComputeProviderDefinitionMutation: SetDefaultComputeProviderDefinitionMutation;
-  private readonly setDefaultManagedModelProviderCredentialMutation: SetDefaultManagedModelProviderCredentialMutation;
   private readonly setDefaultModelProviderCredentialMutation: SetDefaultModelProviderCredentialMutation;
   private readonly setDefaultModelProviderCredentialModelMutation: SetDefaultModelProviderCredentialModelMutation;
   private startEnvironmentMutation: MutationLike;
@@ -172,9 +170,6 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("SetDefaultModelProviderCredentialModel mutation is not configured.");
       },
     } as never,
-    @inject(SetDefaultManagedModelProviderCredentialMutation)
-    setDefaultManagedModelProviderCredentialMutation: SetDefaultManagedModelProviderCredentialMutation =
-      new SetDefaultManagedModelProviderCredentialMutation(),
     @inject(RefreshCodexRateLimitsMutation)
     refreshCodexRateLimitsMutation: RefreshCodexRateLimitsMutation = new RefreshCodexRateLimitsMutation(),
   ) {
@@ -202,7 +197,6 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     this.refreshModelProviderCredentialTokenMutation = refreshModelProviderCredentialTokenMutation;
     this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
     this.setDefaultComputeProviderDefinitionMutation = setDefaultComputeProviderDefinitionMutation;
-    this.setDefaultManagedModelProviderCredentialMutation = setDefaultManagedModelProviderCredentialMutation;
     this.setDefaultModelProviderCredentialMutation = setDefaultModelProviderCredentialMutation;
     this.setDefaultModelProviderCredentialModelMutation = setDefaultModelProviderCredentialModelMutation;
     this.startEnvironmentMutation = startEnvironmentMutation;
@@ -227,7 +221,6 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
         RefreshModelProviderCredentialToken: this.refreshModelProviderCredentialTokenMutation.execute,
         SetDefaultComputeProviderDefinition: this.setDefaultComputeProviderDefinitionMutation.execute,
-        SetDefaultManagedModelProviderCredential: this.setDefaultManagedModelProviderCredentialMutation.execute,
         SetDefaultModelProviderCredential: this.setDefaultModelProviderCredentialMutation.execute,
         SetDefaultModelProviderCredentialModel: this.setDefaultModelProviderCredentialModelMutation.execute,
         StartEnvironment: this.startEnvironmentMutation.execute,

@@ -2,7 +2,6 @@ import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
-import { AdminBreadcrumbs } from "@/components/layout/admin_breadcrumbs";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
@@ -22,9 +21,6 @@ interface PageContainerProps {
 const pageContainerCompanyOnboardingQueryNode = graphql`
   query pageContainerCompanyOnboardingQuery {
     Me {
-      user {
-        isPlatformAdmin
-      }
       company {
         id
         onboarding {
@@ -58,13 +54,11 @@ export function PageContainer(props: PageContainerProps) {
     select: (state) => state.location.href,
   });
   const isOrganizationScopedPage = pathname.startsWith("/orgs/");
-  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
 
   if (!isOrganizationScopedPage) {
     // Routes outside the org slug prefix cannot rely on org-aware chrome like the sidebar/header.
     return (
       <div className="flex min-h-svh flex-col gap-4 px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
-        {isAdminPage ? <AdminBreadcrumbs pathname={pathname} /> : null}
         {props.children}
       </div>
     );
@@ -101,15 +95,13 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
     );
   const [onboardingErrorMessage, setOnboardingErrorMessage] = useState<string | null>(null);
   const onboarding = data.Me.company.onboarding;
-  const isPlatformAdmin = data.Me.user.isPlatformAdmin;
   if (!onboarding) {
     return <PageContainerOrganizationFallback />;
   }
 
   const isOnboardingFocused = onboarding.status === "not_started" || onboarding.status === "in_progress";
   const normalizedPathname = OrganizationPath.stripPrefix(props.pathname);
-  const isAdminPage = normalizedPathname === "/admin" || normalizedPathname.startsWith("/admin/");
-  const shouldFocusOnboarding = isOnboardingFocused && !isAdminPage;
+  const shouldFocusOnboarding = isOnboardingFocused;
   const isChatsPage = normalizedPathname.startsWith("/chats");
   const isOnboardingPage = normalizedPathname.startsWith("/onboarding");
   const isConversationsPage = normalizedPathname.startsWith("/conversations");
@@ -211,7 +203,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   return (
     <ApplicationBreadcrumbProvider>
       <SidebarProvider defaultOpen={false}>
-        <ApplicationSidebar isOnboardingFocused={shouldFocusOnboarding} isPlatformAdmin={isPlatformAdmin} />
+        <ApplicationSidebar isOnboardingFocused={shouldFocusOnboarding} />
         <SidebarInset
           className={cn(
             "min-h-svh",

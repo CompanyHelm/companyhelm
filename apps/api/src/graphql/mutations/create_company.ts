@@ -13,7 +13,7 @@ type CreateCompanyMutationArguments = {
 };
 
 /**
- * Creates a free company for the signed-in user through the DB-first company creation service so
+ * Creates a company for the signed-in user through the DB-first company creation service so
  * Clerk receives a mirrored organization only after CompanyHelm has allocated the canonical slug.
  */
 @injectable()
@@ -40,7 +40,6 @@ export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArgumen
       clerkUserId: context.authSession.user.provider === "clerk"
         ? context.authSession.user.providerSubject
         : null,
-      isPlatformAdmin: context.isPlatformAdmin === true,
       name: arguments_.input.name,
       userId: context.authSession.user.id,
     });

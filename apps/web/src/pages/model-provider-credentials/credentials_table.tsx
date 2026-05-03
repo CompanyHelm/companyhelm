@@ -28,7 +28,7 @@ import { formatProviderCredentialType, formatProviderLabel } from "./provider_la
 export type CredentialsTableRecord = {
   baseUrl: string | null;
   createdAt: string | null;
-  credentialKind: "managed" | "user_provided";
+  credentialKind: "user_provided";
   defaultModelId: string | null;
   errorMessage: string | null;
   id: string;
@@ -165,12 +165,10 @@ export function CredentialsTable(props: CredentialsTableProps) {
                 </Badge>
               </TableCell>
               <TableCell>
-                {credential.credentialKind === "managed" ? "Managed" : formatProviderCredentialType(credential.type)}
+                {formatProviderCredentialType(credential.type)}
               </TableCell>
               <TableCell>
-                {credential.credentialKind === "managed"
-                  ? "Managed by CompanyHelm"
-                  : credential.type === "oauth_token"
+                {credential.type === "oauth_token"
                   ? (credential.refreshedAt ? formatTimestamp(credential.refreshedAt) : "Never")
                   : "—"}
               </TableCell>
@@ -178,43 +176,23 @@ export function CredentialsTable(props: CredentialsTableProps) {
               <TableCell>{credential.updatedAt ? formatTimestamp(credential.updatedAt) : "—"}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  {credential.credentialKind === "managed" ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
-                        onClick={async (event) => {
-                          event.stopPropagation();
-                          await props.onSetDefault(credential.id);
-                        }}
-                      >
-                        <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
-                      </Button>
-                      <Badge variant="secondary">Read only</Badge>
-                    </>
-                  ) : null}
-                  {credential.credentialKind === "user_provided" ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
-                        onClick={async (event) => {
-                          event.stopPropagation();
-                          await props.onSetDefault(credential.id);
-                        }}
-                      >
-                        <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
-                      </Button>
-                      <DeleteCredentialDialog
-                        credential={credential}
-                        deletingCredentialId={props.deletingCredentialId}
-                        onDelete={props.onDelete}
-                        replacementOptions={props.replacementOptions}
-                      />
-                    </>
-                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
+                    onClick={async (event) => {
+                      event.stopPropagation();
+                      await props.onSetDefault(credential.id);
+                    }}
+                  >
+                    <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
+                  </Button>
+                  <DeleteCredentialDialog
+                    credential={credential}
+                    deletingCredentialId={props.deletingCredentialId}
+                    onDelete={props.onDelete}
+                    replacementOptions={props.replacementOptions}
+                  />
                 </div>
               </TableCell>
             </TableRow>

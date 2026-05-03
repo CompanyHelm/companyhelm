@@ -6,14 +6,12 @@ import { Mutation } from "./mutation.ts";
 type UpdateCompanySettingsMutationArguments = {
   input: {
     baseSystemPrompt?: string | null;
-    defaultManagedPlatformModelId?: string | null;
   };
 };
 
 type GraphqlCompanySettingsRecord = {
   companyId: string;
   baseSystemPrompt: string | null;
-  defaultManagedPlatformModelId: string | null;
 };
 
 /**
@@ -51,7 +49,6 @@ export class UpdateCompanySettingsMutation extends Mutation<
       {
         companyId: context.authSession.company.id,
         baseSystemPrompt: arguments_.input.baseSystemPrompt,
-        defaultManagedPlatformModelId: arguments_.input.defaultManagedPlatformModelId,
       },
     );
   };

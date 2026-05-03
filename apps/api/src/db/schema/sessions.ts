@@ -17,10 +17,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-import { modelCredentialSourceEnum } from "./ai_common.ts";
 import { agents, modelProviderCredentialModels, modelProviderCredentials } from "./agents.ts";
 import { companySecrets, companies, users } from "./company.ts";
-import { platformModelProviderCredentialModels, platformModelProviderCredentials, platformModels } from "./platform_ai.ts";
 
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
@@ -35,7 +33,6 @@ export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", [
   "company",
-  "managed_model_provider_credential",
   "model_provider_credential",
   "agent",
   "session",
@@ -54,11 +51,6 @@ export const agentSessions = pgTable("agent_sessions", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
-  currentModelCredentialSource: modelCredentialSourceEnum("current_model_credential_source").notNull().default("user_provided"),
-  currentPlatformModelId: uuid("current_platform_model_id")
-    .references(() => platformModels.id, { onDelete: "set null" }),
-  currentPlatformModelProviderCredentialModelId: uuid("current_platform_model_provider_credential_model_id")
-    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
   currentModelProviderCredentialModelId: uuid("current_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   // inferred from first message or based on LLM generated title
@@ -100,14 +92,6 @@ export const agentSessions = pgTable("agent_sessions", {
       sql`${table.id} DESC`,
     )
     .where(sql`${table.status} <> 'archived'`),
-  currentModelSelectionCheck: check(
-    "agent_sessions_current_model_selection_check",
-    sql`(
-      (${table.currentModelCredentialSource} = 'platform' AND ${table.currentPlatformModelId} IS NOT NULL AND ${table.currentModelProviderCredentialModelId} IS NULL)
-      OR
-      (${table.currentModelCredentialSource} = 'user_provided' AND ${table.currentPlatformModelId} IS NULL AND ${table.currentPlatformModelProviderCredentialModelId} IS NULL AND ${table.currentModelProviderCredentialModelId} IS NOT NULL)
-    )`,
-  ),
 }));
 
 export const sessionTurns = pgTable("session_turns", {
@@ -120,12 +104,6 @@ export const sessionTurns = pgTable("session_turns", {
   sessionId: uuid("session_id")
     .references((): AnyPgColumn => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
-  platformModelId: uuid("platform_model_id")
-    .references(() => platformModels.id, { onDelete: "set null" }),
-  platformModelProviderCredentialModelId: uuid("platform_model_provider_credential_model_id")
-    .references(() => platformModelProviderCredentialModels.id, { onDelete: "set null" }),
-  platformModelProviderCredentialId: uuid("platform_model_provider_credential_id")
-    .references(() => platformModelProviderCredentials.id, { onDelete: "set null" }),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   usageInputTokens: integer("usage_input_tokens").default(0).notNull(),
@@ -138,11 +116,6 @@ export const sessionTurns = pgTable("session_turns", {
   usageCacheReadCostNanoUsd: bigint("usage_cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   usageCacheWriteCostNanoUsd: bigint("usage_cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   usageTotalCostNanoUsd: bigint("usage_total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
-  usageInputCostNanoVirtualUsd: bigint("usage_input_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  usageOutputCostNanoVirtualUsd: bigint("usage_output_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  usageCacheReadCostNanoVirtualUsd: bigint("usage_cache_read_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  usageCacheWriteCostNanoVirtualUsd: bigint("usage_cache_write_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  usageTotalCostNanoVirtualUsd: bigint("usage_total_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
   usageRecordedAt: timestamp("usage_recorded_at", { withTimezone: true }),
 }, (table) => ({
   companyIdIndex: index("session_turns_company_id_idx").on(table.companyId),
@@ -158,11 +131,8 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   scopeType: llmUsageAggregateScopeEnum("scope_type").notNull(),
-  modelCredentialSource: modelCredentialSourceEnum("model_credential_source"),
   modelProviderCredentialId: uuid("model_provider_credential_id")
     .references(() => modelProviderCredentials.id, { onDelete: "cascade" }),
-  platformModelProviderCredentialId: uuid("platform_model_provider_credential_id")
-    .references(() => platformModelProviderCredentials.id, { onDelete: "cascade" }),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" }),
   sessionId: uuid("session_id")
@@ -180,11 +150,6 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
   cacheReadCostNanoUsd: bigint("cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   cacheWriteCostNanoUsd: bigint("cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   totalCostNanoUsd: bigint("total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
-  inputCostNanoVirtualUsd: bigint("input_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  outputCostNanoVirtualUsd: bigint("output_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  cacheReadCostNanoVirtualUsd: bigint("cache_read_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  cacheWriteCostNanoVirtualUsd: bigint("cache_write_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
-  totalCostNanoVirtualUsd: bigint("total_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -194,19 +159,14 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
     .on(table.companyId, table.scopeType),
   modelProviderCredentialScopeIndex: index("llm_usage_aggregates_model_provider_credential_scope_idx")
     .on(table.companyId, table.modelProviderCredentialId),
-  platformModelProviderCredentialScopeIndex: index("llm_usage_aggregates_platform_model_provider_credential_scope_idx")
-    .on(table.companyId, table.platformModelProviderCredentialId),
   sessionScopeIndex: index("llm_usage_aggregates_session_scope_idx")
     .on(table.companyId, table.sessionId),
   companyScopePeriodUnique: uniqueIndex("llm_usage_aggregates_company_scope_period_uidx")
     .on(table.companyId, table.scopeType, table.period, table.periodStart)
-    .where(sql`${table.scopeType} IN ('company', 'managed_model_provider_credential')`),
+    .where(sql`${table.scopeType} = 'company'`),
   modelProviderCredentialScopePeriodUnique: uniqueIndex("llm_usage_aggregates_model_provider_credential_scope_period_uidx")
-    .on(table.companyId, table.modelCredentialSource, table.modelProviderCredentialId, table.period, table.periodStart)
-    .where(sql`${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'user_provided'`),
-  platformModelProviderCredentialScopePeriodUnique: uniqueIndex("llm_usage_aggregates_platform_model_provider_credential_scope_period_uidx")
-    .on(table.companyId, table.modelCredentialSource, table.platformModelProviderCredentialId, table.period, table.periodStart)
-    .where(sql`${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'platform'`),
+    .on(table.companyId, table.modelProviderCredentialId, table.period, table.periodStart)
+    .where(sql`${table.scopeType} = 'model_provider_credential'`),
   agentScopePeriodUnique: uniqueIndex("llm_usage_aggregates_agent_scope_period_uidx")
     .on(table.companyId, table.agentId, table.period, table.periodStart)
     .where(sql`${table.scopeType} = 'agent'`),
@@ -216,15 +176,13 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
   scopeReferenceCheck: check(
     "llm_usage_aggregates_scope_reference_check",
     sql`(
-      (${table.scopeType} IN ('company', 'managed_model_provider_credential') AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} = 'company' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'user_provided' AND ${table.modelProviderCredentialId} IS NOT NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} = 'model_provider_credential' AND ${table.modelProviderCredentialId} IS NOT NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'model_provider_credential' AND ${table.modelCredentialSource} = 'platform' AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NOT NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NULL)
+      (${table.scopeType} = 'agent' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NOT NULL AND ${table.sessionId} IS NULL)
       OR
-      (${table.scopeType} = 'agent' AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NOT NULL AND ${table.sessionId} IS NULL)
-      OR
-      (${table.scopeType} = 'session' AND ${table.modelCredentialSource} IS NULL AND ${table.modelProviderCredentialId} IS NULL AND ${table.platformModelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NOT NULL)
+      (${table.scopeType} = 'session' AND ${table.modelProviderCredentialId} IS NULL AND ${table.agentId} IS NULL AND ${table.sessionId} IS NOT NULL)
     )`,
   ),
 }));

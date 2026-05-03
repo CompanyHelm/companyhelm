@@ -185,7 +185,6 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
     await updatableDatabase
       .update(companyModelProviderDefaults)
       .set({
-        modelCredentialSource: "user_provided",
         modelProviderCredentialId: credentialId,
         updatedAt: now,
       })

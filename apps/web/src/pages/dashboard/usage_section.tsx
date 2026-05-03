@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardAction,
@@ -13,17 +12,7 @@ import { type UsageAggregateRecord, UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { UsageSectionPresenter } from "./usage_section_presenter";
 
-type CompanyWalletRecord = {
-  currentPlan: string;
-  nextRechargeAmountNanoUsd: number;
-  nextRechargeAt: string;
-  pendingPlan: string | null | undefined;
-  pendingPlanEffectiveAt: string | null | undefined;
-  totalBalanceNanoUsd: number;
-};
-
 type UsageSectionProps = {
-  budget: CompanyWalletRecord;
   currentDayUsage: UsageAggregateRecord;
   currentMonthUsage: UsageAggregateRecord;
   organizationName: string;
@@ -46,46 +35,25 @@ function UsageMetricTile(props: {
   );
 }
 
-function UsageSpendSplitTile(props: {
-  actualValue: string;
+function UsageSpendTile(props: {
   description: string;
   title: string;
-  virtualValue: string;
+  value: string;
 }) {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
       <p className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {props.title}
       </p>
-      <div className="mt-3 grid gap-2">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Spend</span>
-          <span className="font-semibold text-foreground">{props.actualValue}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Virtual spend</span>
-          <span className="font-semibold text-foreground">{props.virtualValue}</span>
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">{props.description}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{props.value}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{props.description}</p>
     </div>
   );
 }
 
-function formatPlanLabel(plan: string): string {
-  if (plan === "free") {
-    return "Free";
-  }
-  if (plan === "pro") {
-    return "Pro";
-  }
-
-  return plan;
-}
-
 /**
  * Condenses the richer usage page into one dashboard card so operators can see spend, request
- * volume, and remaining managed budget without leaving the operations overview.
+ * volume, and token counts without leaving the operations overview.
  */
 export function UsageSection(props: UsageSectionProps) {
   const organizationSlug = useCurrentOrganizationSlug();
@@ -108,36 +76,26 @@ export function UsageSection(props: UsageSectionProps) {
         <div className="space-y-1">
           <CardTitle>Usage</CardTitle>
           <CardDescription>
-            LLM spend and CompanyHelm wallet balance for {props.organizationName}.
+            LLM spend and token volume for {props.organizationName}.
           </CardDescription>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{formatPlanLabel(props.budget.currentPlan)} plan</Badge>
-          <Badge variant="outline">Managed provider</Badge>
-          <Badge variant={props.budget.totalBalanceNanoUsd <= 0 ? "destructive" : "outline"}>
-            Wallet: {UsageMetrics.formatUsdFromNano(props.budget.totalBalanceNanoUsd)}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 lg:grid-cols-4">
-          <UsageSpendSplitTile
-            actualValue={currentDaySummary.actualValue}
+          <UsageSpendTile
             description={currentDaySummary.supportingText}
             title="UTC day"
-            virtualValue={currentDaySummary.virtualValue}
+            value={currentDaySummary.spendValue}
           />
-          <UsageSpendSplitTile
-            actualValue={currentMonthSummary.actualValue}
+          <UsageSpendTile
             description={currentMonthSummary.supportingText}
             title="UTC month"
-            virtualValue={currentMonthSummary.virtualValue}
+            value={currentMonthSummary.spendValue}
           />
-          <UsageSpendSplitTile
-            actualValue={totalSummary.actualValue}
+          <UsageSpendTile
             description={totalSummary.supportingText}
             title="All-time"
-            virtualValue={totalSummary.virtualValue}
+            value={totalSummary.spendValue}
           />
           <UsageMetricTile
             description={`${UsageMetrics.formatTokenCount(props.totalUsage.totalTokens)} tokens processed`}

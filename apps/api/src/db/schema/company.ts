@@ -15,12 +15,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
-  "free",
-  "plus",
-  "pro",
-]);
-
 export const companyDeletionRequestStatusEnum = pgEnum("company_deletion_request_status", [
   "requested",
   "processing",
@@ -45,9 +39,6 @@ export const companies = pgTable("companies", {
   clerkOrganizationId: text("clerk_organization_id"),
   slug: text("slug"),
   name: text("name").notNull(),
-  plan: companySubscriptionPlanEnum("plan").notNull(),
-  pendingPlan: companySubscriptionPlanEnum("pending_plan"),
-  pendingPlanEffectiveAt: timestamp("pending_plan_effective_at", { withTimezone: true }),
 }, (table) => ({
   clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
   slugUnique: uniqueIndex("companies_slug_uidx").on(table.slug),
@@ -80,16 +71,6 @@ export const users = pgTable("users", {
     sql`${table.last_name} IS NULL OR length(${table.last_name}) <= 255`,
   ),
 }));
-
-export const platformAdmins = pgTable("platform_admins", {
-  userId: uuid("user_id")
-    .primaryKey()
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  grantedByUserId: uuid("granted_by_user_id")
-    .references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
 
 export const companyMembers = pgTable("company_members", {
   companyId: uuid("company_id")

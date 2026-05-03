@@ -80,7 +80,6 @@ export class RefreshCodexRateLimitsMutation extends Mutation<
         baseUrl: credential.baseUrl,
         companyId,
         credentialId: credential.id,
-        credentialSource: "user_provided",
         modelProvider: credential.modelProvider,
       },
       new Date(),

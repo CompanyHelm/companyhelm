@@ -31,7 +31,6 @@ export const chatsPageDataChatListPanelAgentFragmentNode = graphql`
   fragment chatsPageDataChatListPanelAgentFragment on Agent {
     id
     name
-    platformModelId
     modelProviderCredentialModelId
     modelProvider
     modelName
@@ -182,7 +181,6 @@ export const chatsPageQueryNode = graphql`
       forkedFromSessionId
       forkedFromSessionTitle
       forkedFromTurnId
-      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -195,15 +193,12 @@ export const chatsPageComposerSetupQueryNode = graphql`
   query chatsPageDataComposerSetupQuery {
     AgentCreateOptions {
       id
-      modelCredentialSource
       label
       modelProvider
       defaultModelId
       defaultReasoningLevel
       models {
         id
-        modelCredentialSource
-        platformModelId
         modelProviderCredentialModelId
         modelId
         name
@@ -211,17 +206,6 @@ export const chatsPageComposerSetupQueryNode = graphql`
         reasoningSupported
         reasoningLevels
       }
-    }
-    BillingPlans {
-      key
-      name
-    }
-    CompanyWallet {
-      currentPlan
-    }
-    ModelProviders {
-      id
-      name
     }
   }
 `;
@@ -378,7 +362,6 @@ export const chatsPageCreateSessionMutationNode = graphql`
       forkedFromTurnId
       isCompacting
       maxContextTokens
-      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -406,7 +389,6 @@ export const chatsPageForkSessionMutationNode = graphql`
       forkedFromTurnId
       isCompacting
       maxContextTokens
-      platformModelId
       modelProviderCredentialModelId
       modelId
       reasoningLevel

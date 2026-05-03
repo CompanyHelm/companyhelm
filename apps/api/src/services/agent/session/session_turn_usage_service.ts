@@ -22,17 +22,12 @@ export type SessionTurnUsagePayload = {
 export type SessionTurnUsageRecordInput = {
   agentId: string;
   companyId: string;
-  credentialSource: SessionTurnUsageCredentialSource;
-  costKind?: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   recordedAt: Date;
   sessionId: string;
   turnId: string;
   usage: SessionTurnUsagePayload;
 };
-
-export type SessionTurnUsageCredentialSource = "platform" | "user_provided";
-export type SessionTurnUsageCostKind = "actual" | "virtual";
 
 /**
  * Accepts finalized assistant usage from the PI Mono event handler. Its scope is deciding whether

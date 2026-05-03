@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Config } from "../src/config";
 
-test("falls back to the local HTTP GraphQL endpoint by default", () => {
+test("falls back to local auth and the local HTTP GraphQL endpoint by default", () => {
   const originalWindow = globalThis.window;
 
   try {
@@ -11,7 +11,7 @@ test("falls back to the local HTTP GraphQL endpoint by default", () => {
 
     const document = Config.getDocument();
 
-    assert.equal(document.authProvider, "clerk");
+    assert.equal(document.authProvider, "local");
     assert.equal(document.graphqlUrl, "http://localhost:4000/graphql");
     assert.equal(document.privacyPolicyUrl, "");
     assert.equal(document.termsOfServiceUrl, "");
