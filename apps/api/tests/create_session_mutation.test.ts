@@ -30,7 +30,7 @@ class CreateSessionMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -65,8 +65,8 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

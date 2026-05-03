@@ -6,7 +6,7 @@ export type AuthRuntimeDatabase = {
   withCompanyContext?<T>(companyId: string, callback: (database: unknown) => Promise<T>): Promise<T>;
 };
 
-export type AuthProviderName = "clerk" | "dev" | "local";
+export type AuthProviderName = "dev" | "local";
 
 export type AuthenticatedUser = {
   id: string;

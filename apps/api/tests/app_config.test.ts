@@ -14,9 +14,9 @@ class AppConfigTestHarness {
   static createFixtureConfigPath(): {
     companyHelmE2bApiKeyVariableName: string;
     configPath: string;
-    clerkSecretKeyVariableName: string;
-    clerkPublishableKeyVariableName: string;
-    clerkJwksUrlVariableName: string;
+    localAuthSessionSecretVariableName: string;
+    localAuthPasswordPepperVariableName: string;
+    localAuthSessionIssuerVariableName: string;
     exaApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyIdVariableName: string;
@@ -27,9 +27,9 @@ class AppConfigTestHarness {
     const fixturePath = mkdtempSync(join(tmpdir(), "companyhelm-config-"));
     const configDirectoryPath = join(fixturePath, "config");
     const configPath = join(configDirectoryPath, "local.yaml");
-    const clerkSecretKeyVariableName = "COMPANYHELM_TEST_CLERK_SECRET_KEY";
-    const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
-    const clerkJwksUrlVariableName = "COMPANYHELM_TEST_CLERK_JWKS_URL";
+    const localAuthSessionSecretVariableName = "COMPANYHELM_TEST_LOCAL_AUTH_SESSION_SECRET";
+    const localAuthPasswordPepperVariableName = "COMPANYHELM_TEST_LOCAL_AUTH_PASSWORD_PEPPER";
+    const localAuthSessionIssuerVariableName = "COMPANYHELM_TEST_LOCAL_AUTH_SESSION_ISSUER";
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
     const githubKeyIdVariableName = "COMPANYHELM_TEST_GITHUB_KEY_ID";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
@@ -38,9 +38,9 @@ class AppConfigTestHarness {
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
     const companyHelmE2bApiKeyVariableName = "COMPANYHELM_TEST_E2B_API_KEY";
 
-    process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
-    process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
-    process.env[clerkJwksUrlVariableName] = "https://clerk.example/.well-known/jwks.json";
+    process.env[localAuthSessionSecretVariableName] = "local-auth-session-secret";
+    process.env[localAuthPasswordPepperVariableName] = "local-auth-password-pepper";
+    process.env[localAuthSessionIssuerVariableName] = "companyhelm.local";
     process.env[githubClientVariableName] = "client-id";
     process.env[githubKeyIdVariableName] = "github-state-key";
     process.env[githubKeyVariableName] = "private-key-pem";
@@ -60,9 +60,9 @@ class AppConfigTestHarness {
         githubUrlVariableName,
         githubWebhookSecretVariableName,
         exaApiKeyVariableName,
-        clerkSecretKeyVariableName,
-        clerkPublishableKeyVariableName,
-        clerkJwksUrlVariableName,
+        localAuthSessionSecretVariableName,
+        localAuthPasswordPepperVariableName,
+        localAuthSessionIssuerVariableName,
       }),
       "utf8",
     );
@@ -70,9 +70,9 @@ class AppConfigTestHarness {
     return {
       companyHelmE2bApiKeyVariableName,
       configPath,
-      clerkSecretKeyVariableName,
-      clerkPublishableKeyVariableName,
-      clerkJwksUrlVariableName,
+      localAuthSessionSecretVariableName,
+      localAuthPasswordPepperVariableName,
+      localAuthSessionIssuerVariableName,
       githubClientVariableName,
       githubKeyIdVariableName,
       githubKeyVariableName,
@@ -117,9 +117,9 @@ log:
     const baseConfigPath = join(configDirectoryPath, "local.yaml");
     const baseDotEnvPath = join(fixturePath, ".env.local");
     const overrideDotEnvPath = join(fixturePath, ".env.local-dev");
-    const clerkSecretKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_SECRET_KEY`;
-    const clerkPublishableKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_PUBLISHABLE_KEY`;
-    const clerkJwksUrlVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_JWKS_URL`;
+    const localAuthSessionSecretVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_LOCAL_AUTH_SESSION_SECRET`;
+    const localAuthPasswordPepperVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_LOCAL_AUTH_PASSWORD_PEPPER`;
+    const localAuthSessionIssuerVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_LOCAL_AUTH_SESSION_ISSUER`;
     const githubClientVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_CLIENT`;
     const githubKeyIdVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_KEY_ID`;
     const githubKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_KEY`;
@@ -139,9 +139,9 @@ log:
         githubUrlVariableName,
         githubWebhookSecretVariableName,
         exaApiKeyVariableName,
-        clerkSecretKeyVariableName,
-        clerkPublishableKeyVariableName,
-        clerkJwksUrlVariableName,
+        localAuthSessionSecretVariableName,
+        localAuthPasswordPepperVariableName,
+        localAuthSessionIssuerVariableName,
       }),
       "utf8",
     );
@@ -158,9 +158,9 @@ log:
     writeFileSync(
       baseDotEnvPath,
       `
-${clerkSecretKeyVariableName}=dotenv-base-clerk-secret-key
-${clerkPublishableKeyVariableName}=dotenv-base-clerk-publishable-key
-${clerkJwksUrlVariableName}=https://dotenv-base-clerk.example/.well-known/jwks.json
+${localAuthSessionSecretVariableName}=dotenv-base-local-auth-session-secret
+${localAuthPasswordPepperVariableName}=dotenv-base-local-auth-password-pepper
+${localAuthSessionIssuerVariableName}=dotenv-base-companyhelm.local
 ${githubClientVariableName}=dotenv-base-client-id
 ${githubKeyIdVariableName}=dotenv-base-github-state-key
 ${githubKeyVariableName}=dotenv-base-private-key-pem
@@ -192,19 +192,18 @@ ${githubClientVariableName}=dotenv-override-client-id
     githubUrlVariableName: string;
     githubWebhookSecretVariableName: string;
     exaApiKeyVariableName: string;
-    clerkSecretKeyVariableName: string;
-    clerkPublishableKeyVariableName: string;
-    clerkJwksUrlVariableName: string;
+    localAuthSessionSecretVariableName: string;
+    localAuthPasswordPepperVariableName: string;
+    localAuthSessionIssuerVariableName: string;
   }): string {
-    const authDocument = `
+const authDocument = `
 auth:
-  provider: "clerk"
-  clerk:
-    secret_key: "\${${params.clerkSecretKeyVariableName}}"
-    publishable_key: "\${${params.clerkPublishableKeyVariableName}}"
-    jwks_url: "\${${params.clerkJwksUrlVariableName}}"
-    authorized_parties:
-      - "http://localhost:5173"
+  provider: "local"
+  local:
+    password_pepper: "\${${params.localAuthPasswordPepperVariableName}}"
+    session_duration_hours: 168
+    session_issuer: "\${${params.localAuthSessionIssuerVariableName}}"
+    session_secret: "\${${params.localAuthSessionSecretVariableName}}"
 `.trim();
 
     return `
@@ -371,8 +370,8 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.equal(document.github.key_id, "github-state-key");
   assert.equal(document.github.webhook_secret, "github-webhook-secret");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
-  assert.equal(document.auth.provider, "clerk");
-  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
+  assert.equal(document.auth.provider, "local");
+  assert.equal(document.auth.local.session_secret, "local-auth-session-secret");
 });
 
 test("AppConfig allows local override files to include local.yaml", () => {
@@ -402,7 +401,7 @@ test("AppConfig allows local override files to include local.yaml", () => {
     },
   });
   assert.equal(document.github.app_client_id, "client-id");
-  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
+  assert.equal(document.auth.local.session_secret, "local-auth-session-secret");
 });
 
 test("AppConfig loads both shared and override dotenv files for local override config files", () => {
@@ -413,7 +412,7 @@ test("AppConfig loads both shared and override dotenv files for local override c
   assert.equal(document.log.level, "warn");
   assert.equal(document.github.app_client_id, "dotenv-override-client-id");
   assert.equal(document.companyhelm.e2b.api_key, "dotenv-base-e2b-local-api-key");
-  assert.equal(document.auth.clerk?.secret_key, "dotenv-base-clerk-secret-key");
+  assert.equal(document.auth.local.session_secret, "dotenv-base-local-auth-session-secret");
 });
 
 test("AppConfig allows GitHub webhook secret to be omitted", () => {
@@ -465,15 +464,14 @@ test("AppConfig defaults newer worker queue concurrency when deployment config l
   });
 });
 
-test("AppConfig loads Clerk auth settings from local.yaml", () => {
+test("AppConfig loads local auth settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
 
-  assert.equal(document.auth.provider, "clerk");
-  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
-  assert.equal(document.auth.clerk?.publishable_key, "clerk-publishable-key");
-  assert.equal(document.auth.clerk?.jwks_url, "https://clerk.example/.well-known/jwks.json");
-  assert.deepEqual(document.auth.clerk?.authorized_parties, ["http://localhost:5173"]);
+  assert.equal(document.auth.provider, "local");
+  assert.equal(document.auth.local.session_secret, "local-auth-session-secret");
+  assert.equal(document.auth.local.password_pepper, "local-auth-password-pepper");
+  assert.equal(document.auth.local.session_issuer, "companyhelm.local");
   assert.equal(document.log.json, false);
 });
 
@@ -557,13 +555,13 @@ include: "./local.yaml"
   );
 });
 
-test("AppConfig local dev overrides Clerk auth without requiring Clerk variables", () => {
+test("AppConfig local dev overrides local auth without requiring local auth variables", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const configDirectoryPath = dirname(fixture.configPath);
   const overrideConfigPath = join(configDirectoryPath, "local-dev.yaml");
-  const originalClerkSecret = process.env[fixture.clerkSecretKeyVariableName];
-  const originalClerkPublishable = process.env[fixture.clerkPublishableKeyVariableName];
-  const originalClerkJwks = process.env[fixture.clerkJwksUrlVariableName];
+  const originalLocalSessionSecret = process.env[fixture.localAuthSessionSecretVariableName];
+  const originalLocalPasswordPepper = process.env[fixture.localAuthPasswordPepperVariableName];
+  const originalLocalSessionIssuer = process.env[fixture.localAuthSessionIssuerVariableName];
 
   writeFileSync(
     overrideConfigPath,
@@ -573,14 +571,14 @@ publicUrl: "http://localhost:4000"
 webPublicUrl: "http://localhost:5173"
 auth:
   provider: "dev"
-  clerk: null
+  local: null
   dev: {}
 `.trimStart(),
     "utf8",
   );
-  delete process.env[fixture.clerkSecretKeyVariableName];
-  delete process.env[fixture.clerkPublishableKeyVariableName];
-  delete process.env[fixture.clerkJwksUrlVariableName];
+  delete process.env[fixture.localAuthSessionSecretVariableName];
+  delete process.env[fixture.localAuthPasswordPepperVariableName];
+  delete process.env[fixture.localAuthSessionIssuerVariableName];
 
   try {
     const document = ConfigLoader.load(overrideConfigPath, ConfigDocument);
@@ -589,14 +587,14 @@ auth:
     assert.equal(document.publicUrl, "http://localhost:4000");
     assert.equal(document.webPublicUrl, "http://localhost:5173");
   } finally {
-    if (originalClerkSecret) {
-      process.env[fixture.clerkSecretKeyVariableName] = originalClerkSecret;
+    if (originalLocalSessionSecret) {
+      process.env[fixture.localAuthSessionSecretVariableName] = originalLocalSessionSecret;
     }
-    if (originalClerkPublishable) {
-      process.env[fixture.clerkPublishableKeyVariableName] = originalClerkPublishable;
+    if (originalLocalPasswordPepper) {
+      process.env[fixture.localAuthPasswordPepperVariableName] = originalLocalPasswordPepper;
     }
-    if (originalClerkJwks) {
-      process.env[fixture.clerkJwksUrlVariableName] = originalClerkJwks;
+    if (originalLocalSessionIssuer) {
+      process.env[fixture.localAuthSessionIssuerVariableName] = originalLocalSessionIssuer;
     }
   }
 });
@@ -619,7 +617,7 @@ publicUrl: "http://localhost:4000"
 webPublicUrl: "http://localhost:5173"
 auth:
   provider: "dev"
-  clerk: null
+  local: null
   dev: {}
 `.trimStart(),
     "utf8",

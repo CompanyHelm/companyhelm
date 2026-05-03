@@ -15,7 +15,7 @@ type DeletePlatformAdminUserMutationArguments = {
 
 /**
  * Exposes platform-admin-only account deletion after an exact-email confirmation, keeping the
- * external Clerk deletion and local membership cleanup behind one auditable GraphQL mutation.
+ * local membership cleanup behind one auditable GraphQL mutation.
  */
 @injectable()
 export class DeletePlatformAdminUserMutation extends Mutation<

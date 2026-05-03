@@ -15,16 +15,6 @@ const DatabaseRoleSchema = z.object({
   password: NonEmptyStringSchema,
 });
 
-const ClerkAuthSchema = z.object({
-  provider: z.literal("clerk"),
-  clerk: z.object({
-    secret_key: NonEmptyStringSchema,
-    publishable_key: NonEmptyStringSchema,
-    jwks_url: NonEmptyStringSchema,
-    authorized_parties: z.array(NonEmptyStringSchema).min(1),
-  }),
-});
-
 const LocalAuthSchema = z.object({
   provider: z.literal("local"),
   local: z.object({
@@ -116,7 +106,6 @@ export const ConfigDocument = z.object({
     key_id: NonEmptyStringSchema.optional(),
   }),
   auth: z.discriminatedUnion("provider", [
-    ClerkAuthSchema,
     DevAuthSchema,
     LocalAuthSchema,
   ]),

@@ -22,7 +22,7 @@ class DeleteTaskStageMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -128,8 +128,8 @@ test("GraphQL DeleteTaskStage mutation moves tasks to Backlog before deleting on
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -211,8 +211,8 @@ test("GraphQL DeleteTaskStage mutation rejects deleting Backlog", async () => {
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

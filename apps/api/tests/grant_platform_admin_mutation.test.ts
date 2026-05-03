@@ -19,8 +19,8 @@ class GrantPlatformAdminMutationTestHarness {
           firstName: "Admin",
           id: "admin-user",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "clerk-admin-user",
+          provider: "local",
+          providerSubject: "local-admin-user",
         },
         company: {
           id: "company-1",
@@ -38,7 +38,6 @@ class GrantPlatformAdminMutationTestHarness {
                       return {
                         async limit() {
                           return [{
-                            clerkUserId: "user_clerk_target",
                             createdAt: new Date("2026-04-01T10:00:00.000Z"),
                             email: "user@example.com",
                             firstName: "Target",
@@ -85,7 +84,6 @@ test("GrantPlatformAdmin grants platform admin access from a dedicated table", a
   );
 
   assert.deepEqual(result, {
-    clerkUserId: "user_clerk_target",
     createdAt: "2026-04-01T10:00:00.000Z",
     email: "user@example.com",
     firstName: "Target",

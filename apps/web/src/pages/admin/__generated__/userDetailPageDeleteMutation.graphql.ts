@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a5d76bcdc19b31553f4fbb5a46b1c175>>
+ * @generated SignedSource<<fa004c69e0f4c09050b2e2cd1a1f80de>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,6 @@ export type userDetailPageDeleteMutation$variables = {
 };
 export type userDetailPageDeleteMutation$data = {
   readonly DeletePlatformAdminUser: {
-    readonly clerkUserId: string | null | undefined;
     readonly email: string;
     readonly id: string;
     readonly membershipCount: number;
@@ -70,13 +69,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "clerkUserId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "membershipCount",
         "storageKey": null
       }
@@ -102,16 +94,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "9c5400a1ec82cb4b6607636249de2a52",
+    "cacheID": "5510cde66fa96d625b1756c2dac3f8fb",
     "id": null,
     "metadata": {},
     "name": "userDetailPageDeleteMutation",
     "operationKind": "mutation",
-    "text": "mutation userDetailPageDeleteMutation(\n  $input: DeletePlatformAdminUserInput!\n) {\n  DeletePlatformAdminUser(input: $input) {\n    id\n    email\n    clerkUserId\n    membershipCount\n  }\n}\n"
+    "text": "mutation userDetailPageDeleteMutation(\n  $input: DeletePlatformAdminUserInput!\n) {\n  DeletePlatformAdminUser(input: $input) {\n    id\n    email\n    membershipCount\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "15e66ad806a84dd550f0e69a9b0bb947";
+(node as any).hash = "48dbfd409710a7abfdf574a10b7f41eb";
 
 export default node;

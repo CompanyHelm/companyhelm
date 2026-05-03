@@ -22,7 +22,7 @@ type GraphqlEnvironmentTerminalConnectionRecord = {
 
 /**
  * Creates a short-lived browser websocket grant for a single environment terminal. The websocket
- * URL is intentionally minted only after normal GraphQL auth so browsers never place Clerk bearer
+ * URL is intentionally minted only after normal GraphQL auth so browsers never place bearer
  * tokens in query strings.
  */
 @injectable()

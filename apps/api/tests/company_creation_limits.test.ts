@@ -22,8 +22,8 @@ class CompanyCreationLimitsTestHarness {
           email: "admin@example.com",
           firstName: "Admin",
           lastName: null,
-          provider: "clerk",
-          providerSubject: "user_clerk_1",
+          provider: "local",
+          providerSubject: "user_local_1",
         },
       },
       resolveSubscriptionContext: null,
@@ -36,7 +36,7 @@ class CompanyCreationLimitsTestHarness {
       ...values: unknown[]
     ) => Promise<T>;
 
-    return new CompanyCreationService({} as never, {
+    return new CompanyCreationService({
       getSqlClient() {
         return sql;
       },
@@ -69,10 +69,6 @@ class CompanyCreationLimitsTestHarness {
         if (query.includes("insert into company_members")) {
           return [];
         }
-        if (query.includes("update companies")) {
-          return [{ clerk_organization_id: null }];
-        }
-
         return [];
       }),
     };
@@ -80,10 +76,6 @@ class CompanyCreationLimitsTestHarness {
       begin: vi.fn(async (callback: (transaction: typeof transaction) => Promise<unknown>) => callback(transaction)),
     };
     const service = new CompanyCreationService({
-      auth: {
-        provider: "local",
-      },
-    } as never, {
       getSqlClient() {
         return sql;
       },
@@ -145,7 +137,6 @@ test("FreeCompanyCreationEligibilityQueryResolver forwards platform admin status
 
 test("CreateCompanyMutation forwards platform admin status to company creation", async () => {
   const createCompany = vi.fn(async () => ({
-    clerkOrganizationId: "org_clerk_1",
     id: "company-1",
     name: "Acme",
     slug: "acme",
@@ -161,7 +152,6 @@ test("CreateCompanyMutation forwards platform admin status to company creation",
   }, CompanyCreationLimitsTestHarness.createContext(true));
 
   assert.deepEqual(createCompany.mock.calls[0], [{
-    clerkUserId: "user_clerk_1",
     isPlatformAdmin: true,
     name: "Acme",
     userId: "user-1",
@@ -172,7 +162,6 @@ test("CompanyCreationService supplies an id when creating companies through raw 
   const harness = CompanyCreationLimitsTestHarness.createServiceForCompanyCreation();
 
   const company = await harness.service.createCompany({
-    clerkUserId: null,
     isPlatformAdmin: false,
     name: "Acme",
     userId: "user-1",

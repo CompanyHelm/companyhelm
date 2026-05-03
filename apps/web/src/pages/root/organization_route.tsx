@@ -5,8 +5,8 @@ import { Loader2Icon } from "lucide-react";
 import { SelectedOrganizationStorage } from "./selected_organization_storage";
 
 /**
- * Keeps Clerk's active organization aligned with the slug embedded in the current URL so separate
- * tabs can point at different companies without relying on one shared browser-wide org selection.
+ * Keeps the active organization aligned with the slug embedded in the current URL so separate tabs
+ * can point at different companies without relying on one shared browser-wide selection.
  */
 export function OrganizationRoute() {
   const routeParams = useParams({ strict: false }) as {
@@ -97,7 +97,7 @@ export function OrganizationRoute() {
 
   const unavailableMessage = activationErrorMessage
     ?? (matchingMembership
-      ? "Your Clerk session found this company, but could not activate it."
+      ? "Your session found this company, but could not activate it."
       : null);
 
   return (
@@ -107,7 +107,7 @@ export function OrganizationRoute() {
           <h1 className="text-lg font-semibold tracking-tight text-foreground">Company not available</h1>
           <p className="text-sm text-muted-foreground">
             The URL points to <span className="font-medium text-foreground">{organizationSlug}</span>, but your current
-            Clerk session cannot activate that company.
+            session cannot activate that company.
           </p>
           {unavailableMessage ? (
             <p className="text-sm text-destructive">{unavailableMessage}</p>

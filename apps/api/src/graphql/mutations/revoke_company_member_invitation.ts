@@ -14,8 +14,8 @@ type RevokeCompanyMemberInvitationMutationArguments = {
 };
 
 /**
- * Revokes pending Clerk organization invitations through the same API-owned member management
- * boundary used for listing and creating invitations.
+ * Revokes pending CompanyHelm member invitations through the same member management boundary used
+ * for listing and creating invitations.
  */
 @injectable()
 export class RevokeCompanyMemberInvitationMutation extends Mutation<
@@ -55,9 +55,6 @@ export class RevokeCompanyMemberInvitationMutation extends Mutation<
 
     return this.invitationService.revokeInvitation({
       companyId: context.authSession.company.id,
-      requestingUserId: context.authSession.user.provider === "clerk"
-        ? context.authSession.user.providerSubject
-        : null,
       transactionProvider: context.app_runtime_transaction_provider,
       userId: arguments_.input.userId,
     });

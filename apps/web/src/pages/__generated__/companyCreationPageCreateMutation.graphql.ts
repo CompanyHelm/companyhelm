@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ae339aa18d8d37d3d858179f7872ac68>>
+ * @generated SignedSource<<b8332594a346b8c3f42a2f9351899c73>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,6 @@ export type companyCreationPageCreateMutation$variables = {
 };
 export type companyCreationPageCreateMutation$data = {
   readonly CreateCompany: {
-    readonly clerkOrganizationId: string | null | undefined;
     readonly id: string;
     readonly name: string;
     readonly slug: string;
@@ -71,13 +70,6 @@ v1 = [
         "kind": "ScalarField",
         "name": "slug",
         "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "clerkOrganizationId",
-        "storageKey": null
       }
     ],
     "storageKey": null
@@ -101,16 +93,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "6859b52fc2f7c680231a930b4c3b04f8",
+    "cacheID": "fc365ef0cb17460ea7a983dfdb86989f",
     "id": null,
     "metadata": {},
     "name": "companyCreationPageCreateMutation",
     "operationKind": "mutation",
-    "text": "mutation companyCreationPageCreateMutation(\n  $input: CreateCompanyInput!\n) {\n  CreateCompany(input: $input) {\n    id\n    name\n    slug\n    clerkOrganizationId\n  }\n}\n"
+    "text": "mutation companyCreationPageCreateMutation(\n  $input: CreateCompanyInput!\n) {\n  CreateCompany(input: $input) {\n    id\n    name\n    slug\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7708005eea09479c6588d4965357de7a";
+(node as any).hash = "6ad2ce005639ddacc7ac7b2f14b900fe";
 
 export default node;

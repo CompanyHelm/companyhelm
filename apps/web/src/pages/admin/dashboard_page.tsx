@@ -66,7 +66,7 @@ function AdminDashboardPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            This view shows plan, membership, Clerk organization, and deletion status metadata.
+            This view shows plan, membership, and deletion status metadata.
           </CardContent>
           <CardFooter>
             <Button asChild size="sm">

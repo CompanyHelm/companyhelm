@@ -25,7 +25,7 @@ This file explains how to run CompanyHelm locally without CORS issues, and how t
 - `apps/api/config/local.yaml`
   - API host/port
   - API CORS allowlist
-  - Clerk authorized parties for local browser origins
+  - local auth provider settings
 - `apps/api/.env.local`
   - API secrets and keys
 - `apps/web/.env.local`
@@ -173,18 +173,6 @@ cors:
     - "http://127.0.0.1:5173"
     - "http://localhost:5173"
     - "https://5173-<sandbox>.e2b.app"
-```
-
-If you are testing authenticated flows, also add that same forwarded web origin to Clerk authorized parties in the same file:
-
-```yaml
-auth:
-  provider: "clerk"
-  clerk:
-    authorized_parties:
-      - "http://localhost:5173"
-      - "http://localhost:4000"
-      - "https://5173-<sandbox>.e2b.app"
 ```
 
 After changing `local.yaml`, restart the API.
@@ -343,10 +331,7 @@ If the browser shows a CORS error, check these in order:
 4. **Did you restart the web app after changing `VITE_GRAPHQL_URL`?**
    - Vite reads the env at startup
 
-5. **Are you testing Clerk auth through a forwarded origin?**
-   - add that origin to `auth.clerk.authorized_parties`
-
-6. **Are both API and web ports actually running?**
+5. **Are both API and web ports actually running?**
    - web alone is not enough if the browser needs to call the API remotely
 
 7. **Did an agent run fail with local model access not configured?**

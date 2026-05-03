@@ -16,7 +16,6 @@ type PlatformAdminCompaniesArguments = {
 };
 
 type PlatformAdminCompanyRow = {
-  clerkOrganizationId: string | null;
   id: string;
   memberCount: number;
   name: string;
@@ -29,7 +28,6 @@ type PlatformAdminCompanyCountRow = {
 };
 
 type GraphqlPlatformAdminCompany = {
-  clerkOrganizationId: string | null;
   enhancedLogging: EnhancedLoggingAdminCompanyState;
   id: string;
   memberCount: number;
@@ -101,7 +99,6 @@ export class PlatformAdminCompaniesQueryResolver {
       const companyRows = filterCondition
         ? await tx
           .select({
-            clerkOrganizationId: companies.clerkOrganizationId,
             id: companies.id,
             memberCount: sql<number>`count(${companyMembers.userId})::int`.as("member_count"),
             name: companies.name,
@@ -112,7 +109,6 @@ export class PlatformAdminCompaniesQueryResolver {
           .leftJoin(companyMembers, eq(companyMembers.companyId, companies.id))
           .where(filterCondition)
           .groupBy(
-            companies.clerkOrganizationId,
             companies.id,
             companies.name,
             companies.plan,
@@ -123,7 +119,6 @@ export class PlatformAdminCompaniesQueryResolver {
           .offset(offset) as PlatformAdminCompanyRow[]
         : await tx
           .select({
-            clerkOrganizationId: companies.clerkOrganizationId,
             id: companies.id,
             memberCount: sql<number>`count(${companyMembers.userId})::int`.as("member_count"),
             name: companies.name,
@@ -133,7 +128,6 @@ export class PlatformAdminCompaniesQueryResolver {
           .from(companies)
           .leftJoin(companyMembers, eq(companyMembers.companyId, companies.id))
           .groupBy(
-            companies.clerkOrganizationId,
             companies.id,
             companies.name,
             companies.plan,
@@ -155,7 +149,6 @@ export class PlatformAdminCompaniesQueryResolver {
     return {
       ...companyPage,
       nodes: await Promise.all(companyPage.nodes.map(async (companyRow) => ({
-        clerkOrganizationId: companyRow.clerkOrganizationId,
         enhancedLogging: await this.enhancedLoggingAdminService.getCompanyState(companyRow.id),
         id: companyRow.id,
         memberCount: companyRow.memberCount,
@@ -190,7 +183,6 @@ export class PlatformAdminCompaniesQueryResolver {
       ${companies.name} ilike ${searchPattern}
       or coalesce(${companies.slug}, '') ilike ${searchPattern}
       or ${companies.id}::text ilike ${searchPattern}
-      or coalesce(${companies.clerkOrganizationId}, '') ilike ${searchPattern}
     `;
   }
 

@@ -8,7 +8,6 @@ import { BillingPanel } from "@/components/settings/billing_panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
-import { ClerkChooseOrganizationTaskUrl } from "@/lib/clerk_choose_organization_task_url";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { SelectedOrganizationStorage } from "@/pages/root/selected_organization_storage";
@@ -442,7 +441,7 @@ function SettingsPageContent() {
           <CardHeader>
             <div className="min-w-0">
               <CardDescription>
-                Manage the current Clerk organization and CompanyHelm workspace.
+                Manage the current CompanyHelm workspace.
               </CardDescription>
             </div>
           </CardHeader>
@@ -475,7 +474,7 @@ function SettingsPageContent() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Delete company</p>
                 <p className="mt-1 text-xs/relaxed text-muted-foreground">
-                  Remove the Clerk organization and schedule all CompanyHelm company data for cleanup.
+                  Schedule all CompanyHelm company data for cleanup.
                 </p>
               </div>
               <Button
@@ -579,7 +578,7 @@ function SettingsPageContent() {
           }).then(() => {
             setDeleteCompanyDialogOpen(false);
             SelectedOrganizationStorage.clearOrganizationId();
-            ClerkChooseOrganizationTaskUrl.redirectCurrentWindow();
+            void navigate({ to: "/", replace: true });
           }).catch((error: unknown) => {
             setCompanyErrorMessage(error instanceof Error ? error.message : "Failed to delete company.");
           });

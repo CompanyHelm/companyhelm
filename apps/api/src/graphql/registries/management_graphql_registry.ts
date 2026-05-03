@@ -395,19 +395,19 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new UpdatePlatformAdminCompanyEnhancedLoggingMutation(),
     @inject(InviteCompanyMemberMutation)
     inviteCompanyMemberMutation: InviteCompanyMemberMutation =
-      new InviteCompanyMemberMutation(new CompanyMemberInvitationService(config)),
+      new InviteCompanyMemberMutation(new CompanyMemberInvitationService()),
     @inject(CompanyMembersQueryResolver)
     companyMembersQueryResolver: CompanyMembersQueryResolver =
-      new CompanyMembersQueryResolver(new CompanyMemberInvitationService(config)),
+      new CompanyMembersQueryResolver(new CompanyMemberInvitationService()),
     @inject(RevokeCompanyMemberInvitationMutation)
     revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation =
-      new RevokeCompanyMemberInvitationMutation(new CompanyMemberInvitationService(config)),
+      new RevokeCompanyMemberInvitationMutation(new CompanyMemberInvitationService()),
     @inject(RemoveCompanyMemberMutation)
     removeCompanyMemberMutation: RemoveCompanyMemberMutation =
-      new RemoveCompanyMemberMutation(new CompanyMemberInvitationService(config)),
+      new RemoveCompanyMemberMutation(new CompanyMemberInvitationService()),
     @inject(UpdateCompanyMemberRoleMutation)
     updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
-      new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService(config)),
+      new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService()),
     @inject(CompanyWalletQueryResolver)
     companyWalletQueryResolver: CompanyWalletQueryResolver = new CompanyWalletQueryResolver(),
     @inject(AddPlatformAdminWalletAdjustmentMutation)

@@ -57,7 +57,7 @@ function LocalSignInCard() {
 
   return (
     <LocalAuthShell
-      description="Use your CompanyHelm email and password to open the workspace without Clerk."
+      description="Use your CompanyHelm email and password to open the workspace."
       footer={(
         <span>
           Need an account? <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Create one</Link>

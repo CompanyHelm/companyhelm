@@ -39,7 +39,7 @@ class UpdateSessionTitleMutationTestHarness {
         },
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -74,8 +74,8 @@ test("GraphQL UpdateSessionTitle mutation updates the custom session title", asy
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

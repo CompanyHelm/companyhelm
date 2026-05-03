@@ -22,7 +22,6 @@ const usersPageQueryNode = graphql`
       totalPages
       nodes {
         id
-        clerkUserId
         email
         firstName
         lastName
@@ -38,7 +37,6 @@ const usersPageGrantPlatformAdminMutationNode = graphql`
   mutation usersPageGrantPlatformAdminMutation($input: GrantPlatformAdminInput!) {
     GrantPlatformAdmin(input: $input) {
       id
-      clerkUserId
       email
       firstName
       lastName
@@ -66,10 +64,6 @@ function formatTimestamp(value: string): string {
 
 function formatDisplayName(user: usersPageQuery["response"]["PlatformAdminUsers"]["nodes"][number]): string {
   return user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName;
-}
-
-function formatOptionalValue(value: string | null | undefined): string {
-  return value && value.length > 0 ? value : "—";
 }
 
 function formatUserCount(count: number): string {
@@ -158,7 +152,7 @@ function AdminUsersPageContent() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-1">
             <CardTitle>User directory</CardTitle>
-            <CardDescription>Search by CompanyHelm user ID, Clerk user ID, email, or name.</CardDescription>
+            <CardDescription>Search by CompanyHelm user ID, email, or name.</CardDescription>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto">
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
@@ -222,7 +216,6 @@ function AdminUsersPageContent() {
                     <TableCell>
                       <div className="font-medium text-foreground">{formatDisplayName(user)}</div>
                       <div className="text-xs text-muted-foreground">CompanyHelm: {user.id}</div>
-                      <div className="text-xs text-muted-foreground">Clerk: {formatOptionalValue(user.clerkUserId)}</div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>

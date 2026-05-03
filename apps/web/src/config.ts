@@ -16,9 +16,8 @@ type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "paddle">> & {
  * back to Vite environment variables for local development.
  */
 export type ConfigDocument = {
-  authProvider: "clerk" | "dev" | "local";
+  authProvider: "dev" | "local";
   appVersion: string;
-  clerkPublishableKey: string;
   graphqlUrl: string;
   paddle: PaddleConfigDocument;
   privacyPolicyUrl: string;
@@ -42,11 +41,6 @@ export class Config {
         importMetaEnv?.VITE_AUTH_PROVIDER,
       ),
       appVersion: Config.resolveAppVersion(),
-      clerkPublishableKey: Config.resolveRuntimeRequiredStringValue(
-        runtimeDocument.clerkPublishableKey,
-        importMetaEnv?.VITE_CLERK_PUBLISHABLE_KEY,
-        "",
-      ),
       graphqlUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.graphqlUrl,
         importMetaEnv?.VITE_GRAPHQL_URL,
@@ -65,12 +59,12 @@ export class Config {
       },
       privacyPolicyUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.privacyPolicyUrl,
-        importMetaEnv?.VITE_CLERK_PRIVACY_POLICY_URL,
+        importMetaEnv?.VITE_PRIVACY_POLICY_URL,
         "",
       ),
       termsOfServiceUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.termsOfServiceUrl,
-        importMetaEnv?.VITE_CLERK_TERMS_OF_SERVICE_URL,
+        importMetaEnv?.VITE_TERMS_OF_SERVICE_URL,
         "",
       ),
     };
@@ -100,8 +94,8 @@ export class Config {
   private static resolveAuthProvider(
     runtimeValue: unknown,
     fallbackSourceValue: unknown,
-  ): "clerk" | "dev" | "local" {
-    const resolvedValue = Config.resolveRequiredStringValue(fallbackSourceValue, "clerk");
+  ): "dev" | "local" {
+    const resolvedValue = Config.resolveRequiredStringValue(fallbackSourceValue, "local");
     const provider = typeof runtimeValue === "string" && runtimeValue.trim().length > 0
       ? runtimeValue.trim()
       : resolvedValue;
@@ -109,7 +103,7 @@ export class Config {
       return "dev";
     }
 
-    return provider === "local" ? "local" : "clerk";
+    return "local";
   }
 
   private static resolvePaddleEnvironment(

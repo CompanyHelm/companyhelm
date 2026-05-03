@@ -3,14 +3,6 @@ import { useContext } from "react";
 import { CompanyHelmAuthContext } from "@/auth/companyhelm_auth";
 import { config } from "@/config";
 import {
-  CompanyHelmClerkProvider,
-  ClerkOrganizationList,
-  ClerkOrganizationSwitcher,
-  ClerkSignIn,
-  ClerkSignUp,
-  ClerkUserButton,
-} from "./clerk_provider";
-import {
   CompanyHelmDevProvider,
   DevCompanies,
   DevOrganizationList,
@@ -43,7 +35,7 @@ export function CompanyHelmAuthProvider(props: {
     return <CompanyHelmDevProvider>{props.children}</CompanyHelmDevProvider>;
   }
 
-  return <CompanyHelmClerkProvider>{props.children}</CompanyHelmClerkProvider>;
+  return <CompanyHelmLocalProvider>{props.children}</CompanyHelmLocalProvider>;
 }
 
 export function useAuth() {
@@ -79,9 +71,7 @@ export function OrganizationSwitcher(props: {
   void props.organizationProfileUrl;
   return config.authProvider === "local"
     ? <LocalOrganizationSwitcher />
-    : config.authProvider === "dev"
-      ? <DevOrganizationSwitcher />
-    : <ClerkOrganizationSwitcher {...(props as never as Record<string, unknown>)} />;
+    : <DevOrganizationSwitcher />;
 }
 
 export function OrganizationList(props: {
@@ -98,9 +88,7 @@ export function OrganizationList(props: {
   void props.hidePersonal;
   return config.authProvider === "local"
     ? <LocalOrganizationList />
-    : config.authProvider === "dev"
-      ? <DevOrganizationList />
-    : <ClerkOrganizationList {...props} />;
+    : <DevOrganizationList />;
 }
 
 export function SignIn(props: {
@@ -108,11 +96,12 @@ export function SignIn(props: {
   forceRedirectUrl?: string;
   signUpUrl?: string;
 }) {
+  void props.appearance;
+  void props.forceRedirectUrl;
+  void props.signUpUrl;
   return config.authProvider === "local"
     ? <LocalSignIn />
-    : config.authProvider === "dev"
-      ? <DevSignIn />
-    : <ClerkSignIn {...props} />;
+    : <DevSignIn />;
 }
 
 export function SignUp(props: {
@@ -120,11 +109,12 @@ export function SignUp(props: {
   forceRedirectUrl?: string;
   signInUrl?: string;
 }) {
+  void props.appearance;
+  void props.forceRedirectUrl;
+  void props.signInUrl;
   return config.authProvider === "local"
     ? <LocalSignUp />
-    : config.authProvider === "dev"
-      ? <DevSignUp />
-    : <ClerkSignUp {...props} />;
+    : <DevSignUp />;
 }
 
 export function Companies() {
@@ -136,9 +126,7 @@ export function Companies() {
 export function UserButton() {
   return config.authProvider === "local"
     ? <LocalUserButton />
-    : config.authProvider === "dev"
-      ? <DevUserButton />
-    : <ClerkUserButton />;
+    : <DevUserButton />;
 }
 
 function useCompanyHelmAuthContext() {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a38d013886f0ce1e323fd2b26076e05e>>
+ * @generated SignedSource<<0750bb4d2a43fdfc78daae3e6ebff878>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,7 +19,6 @@ export type companiesPageQuery$variables = {
 export type companiesPageQuery$data = {
   readonly PlatformAdminCompanies: {
     readonly nodes: ReadonlyArray<{
-      readonly clerkOrganizationId: string | null | undefined;
       readonly enhancedLogging: {
         readonly components: ReadonlyArray<string>;
         readonly enabled: boolean;
@@ -165,13 +164,6 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "clerkOrganizationId",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "memberCount",
             "storageKey": null
           },
@@ -246,16 +238,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "2eba46e3ddb36eada170aad5151ef6dd",
+    "cacheID": "387689d8688fa73ea37c23a4e906f2d9",
     "id": null,
     "metadata": {},
     "name": "companiesPageQuery",
     "operationKind": "query",
-    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n  $userId: ID\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search, userId: $userId) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      clerkOrganizationId\n      memberCount\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
+    "text": "query companiesPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n  $userId: ID\n) {\n  PlatformAdminCompanies(page: $page, pageSize: $pageSize, search: $search, userId: $userId) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      name\n      slug\n      plan\n      memberCount\n      enhancedLogging {\n        enabled\n        expiresAt\n        ttlSeconds\n        components\n        sessionIds\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "680c37b002295ab9317a6e6c50220d82";
+(node as any).hash = "077f0e024b540cc35422d72753b4b421";
 
 export default node;

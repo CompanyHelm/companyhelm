@@ -14,7 +14,7 @@ type CreateCompanyMutationArguments = {
 
 /**
  * Creates a free company for the signed-in user through the DB-first company creation service so
- * Clerk receives a mirrored organization only after CompanyHelm has allocated the canonical slug.
+ * CompanyHelm owns workspace identity, slug allocation, and membership limits in one database path.
  */
 @injectable()
 export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArguments, CreatedCompanyRecord> {
@@ -37,9 +37,6 @@ export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArgumen
     }
 
     return this.companyCreationService.createCompany({
-      clerkUserId: context.authSession.user.provider === "clerk"
-        ? context.authSession.user.providerSubject
-        : null,
       isPlatformAdmin: context.isPlatformAdmin === true,
       name: arguments_.input.name,
       userId: context.authSession.user.id,

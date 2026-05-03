@@ -8,7 +8,6 @@ export type CompanyDeletionRequestStatus = "requested" | "processing" | "complet
 
 export type CompanyDeletionRequestRecord = {
   attempts: number;
-  clerkOrganizationId: string | null;
   companyId: string;
   companyName: string;
   completedAt: Date | null;
@@ -25,7 +24,6 @@ export type CompanyDeletionRequestRecord = {
 };
 
 type CompanyDeletionCompanyRecord = {
-  clerkOrganizationId: string | null;
   id: string;
   name: string;
 };
@@ -45,7 +43,6 @@ export class CompanyDeletionRequestService {
 
   private static readonly requestSelection = {
     attempts: companyDeletionRequests.attempts,
-    clerkOrganizationId: companyDeletionRequests.clerkOrganizationId,
     companyId: companyDeletionRequests.companyId,
     companyName: companyDeletionRequests.companyName,
     completedAt: companyDeletionRequests.completedAt,
@@ -71,7 +68,6 @@ export class CompanyDeletionRequestService {
     return transactionProvider.transaction(async (transaction) => {
       const [company] = await transaction
         .select({
-          clerkOrganizationId: companies.clerkOrganizationId,
           id: companies.id,
           name: companies.name,
         })
@@ -91,7 +87,6 @@ export class CompanyDeletionRequestService {
       const createdRows = await transaction
         .insert(companyDeletionRequests)
         .values({
-          clerkOrganizationId: company.clerkOrganizationId,
           companyId: company.id,
           companyName: company.name,
           requestedAt: now,
@@ -123,7 +118,6 @@ export class CompanyDeletionRequestService {
       SELECT
         id,
         company_id AS "companyId",
-        clerk_organization_id AS "clerkOrganizationId",
         company_name AS "companyName",
         requested_by_user_id AS "requestedByUserId",
         status,
@@ -153,7 +147,6 @@ export class CompanyDeletionRequestService {
       SELECT
         id,
         company_id AS "companyId",
-        clerk_organization_id AS "clerkOrganizationId",
         company_name AS "companyName",
         requested_by_user_id AS "requestedByUserId",
         status,
@@ -203,7 +196,6 @@ export class CompanyDeletionRequestService {
       RETURNING
         id,
         company_id AS "companyId",
-        clerk_organization_id AS "clerkOrganizationId",
         company_name AS "companyName",
         requested_by_user_id AS "requestedByUserId",
         status,

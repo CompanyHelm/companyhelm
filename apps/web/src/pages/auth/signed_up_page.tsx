@@ -5,7 +5,7 @@ import { useAuth } from "@/components/auth/auth_provider";
 
 /**
  * Keeps the hosted sign-up callback route focused on returning authenticated users into the app
- * after Clerk has finished loading the current session.
+ * after the current session has loaded.
  */
 export function SignedUpPage() {
   const auth = useAuth();

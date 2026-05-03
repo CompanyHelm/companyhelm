@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/react-router";
 
 /**
  * Resolves the current organization slug from the org-scoped route when present and falls back to
- * Clerk's active organization for pages that intentionally sit outside the org URL prefix.
+ * the active organization for pages that intentionally sit outside the org URL prefix.
  */
 export function useCurrentOrganizationSlug(): string {
   const routeParams = useParams({ strict: false }) as {

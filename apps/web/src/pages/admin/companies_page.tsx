@@ -44,7 +44,6 @@ const companiesPageQueryNode = graphql`
         name
         slug
         plan
-        clerkOrganizationId
         memberCount
         enhancedLogging {
           enabled
@@ -370,7 +369,6 @@ function AdminCompaniesPageContent() {
                   <TableHead>Plan</TableHead>
                   <TableHead>Members</TableHead>
                   <TableHead>Enhanced logging</TableHead>
-                  <TableHead>Clerk org</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -425,7 +423,6 @@ function AdminCompaniesPageContent() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{formatOptionalValue(company.clerkOrganizationId)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button asChild size="sm" variant="outline">

@@ -340,7 +340,6 @@ type CreatedCompany {
   id: ID!
   name: String!
   slug: String!
-  clerkOrganizationId: String
 }
 
 type CompanyMemberInvitation {
@@ -593,7 +592,6 @@ type Me {
 
 type PlatformAdminUser {
   id: ID!
-  clerkUserId: String
   email: String!
   firstName: String!
   lastName: String
@@ -604,7 +602,6 @@ type PlatformAdminUser {
 
 type PlatformAdminUserDetail {
   id: ID!
-  clerkUserId: String
   email: String!
   firstName: String!
   lastName: String
@@ -627,7 +624,6 @@ type PlatformAdminUserCompanyMembership {
 
 type PlatformAdminUserDeletionPayload {
   id: ID!
-  clerkUserId: String
   email: String!
   membershipCount: Int!
 }
@@ -645,7 +641,6 @@ type PlatformAdminCompany {
   name: String!
   slug: String
   plan: CompanySubscriptionPlan!
-  clerkOrganizationId: String
   memberCount: Int!
   enhancedLogging: PlatformAdminCompanyEnhancedLogging!
 }
@@ -671,7 +666,6 @@ type PlatformAdminCompanyDetail {
   name: String!
   slug: String
   plan: CompanySubscriptionPlan!
-  clerkOrganizationId: String
   memberCount: Int!
   usage: PlatformAdminCompanyUsage!
   wallets: [PlatformAdminCompanyWallet!]!
@@ -717,7 +711,6 @@ type PlatformAdminCompanyWalletCompany {
   name: String!
   slug: String
   plan: CompanySubscriptionPlan!
-  clerkOrganizationId: String
   memberCount: Int!
 }
 

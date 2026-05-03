@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-export type CompanyHelmAuthProviderName = "clerk" | "dev" | "local";
+export type CompanyHelmAuthProviderName = "dev" | "local";
 
 export type CompanyHelmOrganization = {
   id: string;

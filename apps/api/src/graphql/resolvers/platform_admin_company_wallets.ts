@@ -19,7 +19,6 @@ type PlatformAdminCompanyWalletArguments = {
 };
 
 type CompanyRow = {
-  clerkOrganizationId: string | null;
   id: string;
   memberCount: number;
   name: string;
@@ -213,7 +212,6 @@ export class PlatformAdminCompanyWalletsQueryResolver {
   private async loadCompany(tx: AppRuntimeTransaction, companyId: string): Promise<CompanyRow> {
     const companyRows = await tx
       .select({
-        clerkOrganizationId: companies.clerkOrganizationId,
         id: companies.id,
         memberCount: sql<number>`count(${companyMembers.userId})::int`.as("member_count"),
         name: companies.name,
@@ -224,7 +222,6 @@ export class PlatformAdminCompanyWalletsQueryResolver {
       .leftJoin(companyMembers, eq(companyMembers.companyId, companies.id))
       .where(eq(companies.id, companyId))
       .groupBy(
-        companies.clerkOrganizationId,
         companies.id,
         companies.name,
         companies.plan,

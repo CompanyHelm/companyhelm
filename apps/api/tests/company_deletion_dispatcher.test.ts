@@ -14,7 +14,6 @@ class CompanyDeletionDispatcherTestHarness {
     const now = new Date("2026-04-22T12:00:00.000Z");
     return {
       attempts: 0,
-      clerkOrganizationId: "org_1",
       companyId: "company-1",
       companyName: "Acme",
       completedAt: status === "completed" ? now : null,

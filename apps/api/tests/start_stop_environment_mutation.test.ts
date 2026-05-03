@@ -25,7 +25,7 @@ class StartStopEnvironmentMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       log: {
         json: false,
@@ -49,8 +49,8 @@ class StartStopEnvironmentMutationTestHarness {
             email: "user@example.com",
             firstName: "User",
             lastName: "Example",
-            provider: "clerk" as const,
-            providerSubject: "user_clerk_123",
+            provider: "local" as const,
+            providerSubject: "user_local_123",
           },
           company: {
             id: "company-123",

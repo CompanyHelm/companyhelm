@@ -82,21 +82,13 @@ github:
   # the raw encryption key so rotated state payloads can be rejected or migrated intentionally.
   key_id: "companyhelm-local-github-state-key"
 auth:
-  provider: "clerk"
-  clerk:
-    secret_key: "${CLERK_SECRET_KEY}"
-    publishable_key: "${CLERK_PUBLISHABLE_KEY}"
-    jwks_url: "${CLERK_JWKS_URL}"
-    authorized_parties:
-      - "http://localhost:5173"
-      - "http://localhost:4000"
-  # To enable local auth instead of Clerk, switch provider to "local" and use:
-  # local:
-  #   password_pepper: "${LOCAL_AUTH_PASSWORD_PEPPER}"
-  #   session_duration_hours: 168
-  #   session_issuer: "companyhelm.local"
-  #   session_secret: "${LOCAL_AUTH_SESSION_SECRET}"
-  # To enable passwordless dev auth instead of Clerk, switch provider to "dev" and use:
+  provider: "local"
+  local:
+    password_pepper: "${LOCAL_AUTH_PASSWORD_PEPPER}"
+    session_duration_hours: 168
+    session_issuer: "companyhelm.local"
+    session_secret: "${LOCAL_AUTH_SESSION_SECRET}"
+  # To enable passwordless dev auth, switch provider to "dev" and use:
   # dev: {}
 security:
   encryption:

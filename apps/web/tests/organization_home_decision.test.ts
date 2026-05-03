@@ -4,7 +4,7 @@ import { OrganizationHomeDecision } from "../src/pages/root/organization_home_de
 
 test("redirects `/` straight into the only company membership", () => {
   const decision = OrganizationHomeDecision.resolve({
-    authProvider: "clerk",
+    authProvider: "local",
     memberships: [
       {
         organization: {
@@ -24,7 +24,7 @@ test("redirects `/` straight into the only company membership", () => {
 
 test("keeps `/` on the company picker when multiple memberships exist", () => {
   const decision = OrganizationHomeDecision.resolve({
-    authProvider: "clerk",
+    authProvider: "local",
     memberships: [
       {
         organization: {
@@ -50,7 +50,7 @@ test("keeps `/` on the company picker when multiple memberships exist", () => {
 
 test("redirects `/` to the previously selected company when multiple memberships exist", () => {
   const decision = OrganizationHomeDecision.resolve({
-    authProvider: "clerk",
+    authProvider: "local",
     memberships: [
       {
         organization: {
@@ -78,7 +78,7 @@ test("redirects `/` to the previously selected company when multiple memberships
 
 test("ignores a previously selected company that is no longer available", () => {
   const decision = OrganizationHomeDecision.resolve({
-    authProvider: "clerk",
+    authProvider: "local",
     memberships: [
       {
         organization: {
@@ -116,7 +116,7 @@ test("sends dev users without memberships into company creation", () => {
 
 test("keeps non-dev users without memberships on the organization list flow", () => {
   const decision = OrganizationHomeDecision.resolve({
-    authProvider: "clerk",
+    authProvider: "local",
     memberships: [],
   });
 

@@ -61,7 +61,7 @@ npm install -g npm@11.6.2
 cp apps/web/.env.example apps/web/.env.local
 ```
 
-For local API development, export the required Clerk, GitHub, Exa, and E2B variables in your shell
+For local API development, export the required local auth, GitHub, Exa, and E2B variables in your shell
 before starting `npm run dev:api`. `apps/api/config/local.yaml` reads those values directly from the
 environment.
 
@@ -108,15 +108,15 @@ Local development defaults to HTTP for both the web app and API. Keep `VITE_GRAP
 A few notes:
 
 - Copy it to `apps/web/.env.local` so Vite picks it up automatically.
-- `apps/api/config/local.yaml` reads Clerk, GitHub, and CompanyHelm E2B values from environment variables.
+- `apps/api/config/local.yaml` reads local auth, GitHub, and CompanyHelm E2B values from environment variables.
 - The placeholder values in `apps/web/.env.example` are enough to boot the web shell locally.
 - Replace the placeholders with real secrets before using auth, GitHub install flows, or CompanyHelm-backed compute.
 
 ### Web runtime config
 
-Local Vite development uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
-local environment. To show Clerk's terms/privacy consent during sign-up, also set
-`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`.
+Local Vite development uses `VITE_AUTH_PROVIDER` and `VITE_GRAPHQL_URL` from your local environment.
+To show terms/privacy links during sign-up, also set `VITE_TERMS_OF_SERVICE_URL` and
+`VITE_PRIVACY_POLICY_URL`.
 
 ## Common commands
 

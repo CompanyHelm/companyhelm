@@ -23,7 +23,7 @@ class EnvironmentsQueryTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       log: {
         json: false,
@@ -118,8 +118,8 @@ test("GraphQL Environments query lists company-scoped agent environments", async
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -240,8 +240,8 @@ test("GraphQL Environments query reports unknown status with a status error mess
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

@@ -41,8 +41,8 @@ test("RefreshModelProviderCredentialModelsMutation refreshes models with the sto
         firstName: "User",
         id: "user-123",
         lastName: "Example",
-        provider: "clerk" as const,
-        providerSubject: "user_clerk_123",
+        provider: "local" as const,
+        providerSubject: "user_local_123",
       },
       company: {
         id: "company-123",

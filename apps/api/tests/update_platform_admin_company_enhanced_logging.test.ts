@@ -51,8 +51,8 @@ class UpdatePlatformAdminCompanyEnhancedLoggingTestHarness {
           email: "admin@example.com",
           firstName: "Admin",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "user_clerk_1",
+          provider: "local",
+          providerSubject: "user_local_1",
         },
         company: {
           id: "current-company",

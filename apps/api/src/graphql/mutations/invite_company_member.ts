@@ -16,8 +16,8 @@ type InviteCompanyMemberMutationArguments = {
 };
 
 /**
- * Sends organization invitations through the API-owned Clerk client so CompanyHelm can persist the
- * invited member row and remain the source of truth for product roles and access.
+ * Creates a pending CompanyHelm member row so local workspace roles remain the source of truth for
+ * product permissions.
  */
 @injectable()
 export class InviteCompanyMemberMutation extends Mutation<
@@ -58,9 +58,6 @@ export class InviteCompanyMemberMutation extends Mutation<
     return this.invitationService.inviteMember({
       companyId: context.authSession.company.id,
       emailAddress: arguments_.input.emailAddress,
-      inviterUserId: context.authSession.user.provider === "clerk"
-        ? context.authSession.user.providerSubject
-        : null,
       role: arguments_.input.role,
       transactionProvider: context.app_runtime_transaction_provider,
     });

@@ -7,7 +7,6 @@ This guide covers local API and web development, plus the optional GitHub webhoo
 - Node.js `20.20.0`
 - npm `11.6.2`
 - Docker with Docker Compose
-- A Clerk application for sign-in testing
 - GitHub App config values because the API local config expects them
 - An E2B API key because the API local config expects it
 - An Exa API key because the API local config expects it
@@ -40,9 +39,8 @@ Required by `apps/api/config/local.yaml`:
 - `GITHUB_APP_CLIENT_ID`
 - `GITHUB_APP_PRIVATE_KEY_PEM`
 - `GITHUB_APP_URL`
-- `CLERK_SECRET_KEY`
-- `CLERK_PUBLISHABLE_KEY`
-- `CLERK_JWKS_URL`
+- `LOCAL_AUTH_SESSION_SECRET`
+- `LOCAL_AUTH_PASSWORD_PEPPER`
 
 Use real `GITHUB_*` values when testing GitHub install flows, GitHub API calls, or webhooks. Placeholder values are enough only for local work that does not touch GitHub features.
 
@@ -50,13 +48,10 @@ Use real `GITHUB_*` values when testing GitHub install flows, GitHub API calls, 
 
 3. Fill in the web variables in `apps/web/.env.local`.
 
-Required for sign-in:
-
-- `VITE_CLERK_PUBLISHABLE_KEY`
-
 Useful defaults are already present:
 
 - `VITE_GRAPHQL_URL=http://localhost:4000/graphql`
+- `VITE_AUTH_PROVIDER=local`
 - `VITE_AMPLITUDE_ENABLED=false`
 
 4. Install dependencies.
@@ -102,9 +97,9 @@ Seeds the managed CompanyHelm OpenAI provider when present. If omitted, users ca
 
 Enables `POST /webhooks/github` and verifies GitHub webhook signatures. If omitted, the API does not register the webhook route and local requests to `/webhooks/github` return `404`. This is the normal local setup when localhost is not exposed to GitHub.
 
-`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`
+`VITE_TERMS_OF_SERVICE_URL` and `VITE_PRIVACY_POLICY_URL`
 
-Used by the web app for Clerk sign-up legal links. Keep placeholders locally unless you need to test the exact legal URLs.
+Used by the web app for sign-up legal links. Keep placeholders locally unless you need to test the exact legal URLs.
 
 `VITE_AMPLITUDE_ENABLED` and `VITE_AMPLITUDE_ID`
 
@@ -188,7 +183,7 @@ For day-to-day local development, prefer the dev-auth boot command:
 npm run local-dev
 ```
 
-This command starts Postgres, Redis, and pgAdmin when they are not already reachable, runs the local seed, then starts the API and web app. It uses `apps/api/config/local-dev.yaml` and `apps/web/.env.local-dev`, so Clerk is not required for this path. The local seed creates the deterministic dev user `andrea.local@companyhelm.dev`, the `CompanyHelm Local` company, and the `CEO` agent backed by the CompanyHelm-managed model provider.
+This command starts Postgres, Redis, and pgAdmin when they are not already reachable, runs the local seed, then starts the API and web app. It uses `apps/api/config/local-dev.yaml` and `apps/web/.env.local-dev`. The local seed creates the deterministic dev user `andrea.local@companyhelm.dev`, the `CompanyHelm Local` company, and the `CEO` agent backed by the CompanyHelm-managed model provider.
 
 The command still expects the product integrations that power normal agent work:
 

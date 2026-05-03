@@ -11,7 +11,6 @@ type GrantPlatformAdminMutationArguments = {
 };
 
 type PlatformAdminUserGrantRow = {
-  clerkUserId: string | null;
   createdAt: Date;
   email: string;
   firstName: string;
@@ -21,7 +20,6 @@ type PlatformAdminUserGrantRow = {
 };
 
 type GraphqlPlatformAdminUser = {
-  clerkUserId: string | null;
   createdAt: string;
   email: string;
   firstName: string;
@@ -59,7 +57,6 @@ export class GrantPlatformAdminMutation extends Mutation<
     return transactionProvider.transaction(async (tx) => {
       const [targetUser] = await tx
         .select({
-          clerkUserId: users.clerkUserId,
           createdAt: users.created_at,
           email: users.email,
           firstName: users.first_name,
@@ -84,7 +81,6 @@ export class GrantPlatformAdminMutation extends Mutation<
         .onConflictDoNothing();
 
       return {
-        clerkUserId: targetUser.clerkUserId,
         createdAt: targetUser.createdAt.toISOString(),
         email: targetUser.email,
         firstName: targetUser.firstName,

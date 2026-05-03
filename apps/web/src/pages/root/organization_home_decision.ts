@@ -3,7 +3,7 @@ import type { CompanyHelmAuthProviderName, CompanyHelmOrganizationMembership } f
 export class OrganizationHomeDecision {
   /**
    * Resolves the neutral `/` entry point into either a concrete org URL or an explicit chooser.
-   * This keeps company context owned by the URL instead of reusing Clerk's browser-wide active org.
+   * This keeps company context owned by the URL instead of reusing a browser-wide active org.
    */
   static resolve(input: {
     authProvider: CompanyHelmAuthProviderName;

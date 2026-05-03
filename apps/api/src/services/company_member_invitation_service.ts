@@ -1,8 +1,6 @@
-import { createClerkClient } from "@clerk/backend";
 import { and, asc, eq, ne } from "drizzle-orm";
-import { inject, injectable } from "inversify";
-import { Config } from "../config/schema.ts";
-import { companies, companyMembers, tasks, users } from "../db/schema.ts";
+import { injectable } from "inversify";
+import { companyMembers, tasks, users } from "../db/schema.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import type { CompanyMemberRole, CompanyMemberStatus } from "./company_member_permission_service.ts";
 
@@ -26,37 +24,7 @@ export type CompanyMemberAccessRecord = {
   userId: string;
 };
 
-type ClerkOrganizationInvitationRecord = {
-  createdAt: number;
-  emailAddress: string;
-  id: string;
-  status?: string;
-};
-
-type ClerkClientDependency = {
-  organizations: {
-    createOrganizationInvitation(params: {
-      emailAddress: string;
-      inviterUserId?: string;
-      organizationId: string;
-      redirectUrl: string;
-      role: "org:admin";
-    }): Promise<ClerkOrganizationInvitationRecord>;
-    revokeOrganizationInvitation(params: {
-      invitationId: string;
-      organizationId: string;
-      requestingUserId?: string;
-    }): Promise<ClerkOrganizationInvitationRecord>;
-    deleteOrganizationMembership(params: {
-      organizationId: string;
-      userId: string;
-    }): Promise<unknown>;
-  };
-};
-
 type CompanyMemberRow = {
-  clerkInvitationId: string | null;
-  clerkUserId: string | null;
   createdAt: Date;
   emailAddress: string;
   firstName: string;
@@ -72,33 +40,17 @@ type UserRow = {
 };
 
 /**
- * Manages CompanyHelm member rows and mirrors invitations to Clerk while keeping CompanyHelm roles
- * authoritative for product permissions.
+ * Manages CompanyHelm member rows and keeps local roles authoritative for product permissions.
  */
 @injectable()
 export class CompanyMemberInvitationService {
-  private readonly config: Config;
-  private clerkClient: ClerkClientDependency | null = null;
-
-  constructor(
-    @inject(Config) config: Config,
-  ) {
-    this.config = config;
-  }
-
-  static createForTest(
-    config: Config,
-    clerkClient: ClerkClientDependency,
-  ): CompanyMemberInvitationService {
-    const service = new CompanyMemberInvitationService(config);
-    service.clerkClient = clerkClient;
-    return service;
+  static createForTest(): CompanyMemberInvitationService {
+    return new CompanyMemberInvitationService();
   }
 
   async inviteMember(input: {
     companyId: string;
     emailAddress: string;
-    inviterUserId: string | null;
     role: CompanyMemberRole;
     transactionProvider: TransactionProviderInterface;
   }): Promise<CompanyMemberInvitationRecord> {
@@ -112,20 +64,11 @@ export class CompanyMemberInvitationService {
       userId: user.id,
     });
 
-    const clerkOrganizationId = await this.resolveClerkOrganizationId(input.transactionProvider, input.companyId);
-    const invitation = await this.getClerkClient().organizations.createOrganizationInvitation({
-      emailAddress: input.emailAddress,
-      inviterUserId: input.inviterUserId ?? undefined,
-      organizationId: clerkOrganizationId,
-      redirectUrl: this.config.webPublicUrl,
-      role: "org:admin",
-    });
     const now = new Date();
     await input.transactionProvider.transaction(async (transaction) => {
       await transaction
         .insert(companyMembers)
         .values({
-          clerkInvitationId: invitation.id,
           companyId: input.companyId,
           createdAt: now,
           role: input.role,
@@ -136,7 +79,6 @@ export class CompanyMemberInvitationService {
         .onConflictDoUpdate({
           target: [companyMembers.companyId, companyMembers.userId],
           set: {
-            clerkInvitationId: invitation.id,
             role: input.role,
             status: "invited",
             updatedAt: now,
@@ -145,8 +87,8 @@ export class CompanyMemberInvitationService {
     });
 
     return {
-      createdAt: this.formatClerkTimestamp(invitation.createdAt),
-      emailAddress: invitation.emailAddress,
+      createdAt: now.toISOString(),
+      emailAddress: input.emailAddress,
       id: this.createInvitationGraphqlId(input.companyId, user.id),
       role: input.role,
       status: "invited",
@@ -161,8 +103,6 @@ export class CompanyMemberInvitationService {
     const rows = await input.transactionProvider.transaction(async (transaction) => {
       return transaction
         .select({
-          clerkInvitationId: companyMembers.clerkInvitationId,
-          clerkUserId: users.clerkUserId,
           createdAt: companyMembers.createdAt,
           emailAddress: users.email,
           firstName: users.first_name,
@@ -192,7 +132,6 @@ export class CompanyMemberInvitationService {
 
   async revokeInvitation(input: {
     companyId: string;
-    requestingUserId: string | null;
     transactionProvider: TransactionProviderInterface;
     userId: string;
   }): Promise<CompanyMemberInvitationRecord> {
@@ -200,16 +139,9 @@ export class CompanyMemberInvitationService {
       companyId: input.companyId,
       userId: input.userId,
     });
-    if (!row || row.status !== "invited" || !row.clerkInvitationId) {
+    if (!row || row.status !== "invited") {
       throw new Error("Pending invitation not found.");
     }
-
-    const clerkOrganizationId = await this.resolveClerkOrganizationId(input.transactionProvider, input.companyId);
-    const invitation = await this.getClerkClient().organizations.revokeOrganizationInvitation({
-      invitationId: row.clerkInvitationId,
-      organizationId: clerkOrganizationId,
-      requestingUserId: input.requestingUserId ?? undefined,
-    });
 
     await input.transactionProvider.transaction(async (transaction) => {
       await transaction
@@ -222,7 +154,7 @@ export class CompanyMemberInvitationService {
 
     return {
       createdAt: row.createdAt.toISOString(),
-      emailAddress: invitation.emailAddress,
+      emailAddress: row.emailAddress,
       id: this.createInvitationGraphqlId(input.companyId, input.userId),
       role: row.role,
       status: "invited",
@@ -248,14 +180,6 @@ export class CompanyMemberInvitationService {
 
     if (row.role === "admin") {
       await this.assertAnotherActiveAdmin(input.transactionProvider, input);
-    }
-
-    const clerkOrganizationId = await this.resolveClerkOrganizationId(input.transactionProvider, input.companyId);
-    if (row.clerkUserId) {
-      await this.getClerkClient().organizations.deleteOrganizationMembership({
-        organizationId: clerkOrganizationId,
-        userId: row.clerkUserId,
-      });
     }
 
     const now = new Date();
@@ -389,8 +313,6 @@ export class CompanyMemberInvitationService {
     const [row] = await transactionProvider.transaction(async (transaction) => {
       return transaction
         .select({
-          clerkInvitationId: companyMembers.clerkInvitationId,
-          clerkUserId: users.clerkUserId,
           createdAt: companyMembers.createdAt,
           emailAddress: users.email,
           firstName: users.first_name,
@@ -432,7 +354,6 @@ export class CompanyMemberInvitationService {
       const [createdUser] = await transaction
         .insert(users)
         .values({
-          clerkUserId: null,
           created_at: now,
           email: emailAddress,
           first_name: emailAddress,
@@ -460,46 +381,6 @@ export class CompanyMemberInvitationService {
 
       return concurrentUser;
     });
-  }
-
-  private async resolveClerkOrganizationId(
-    transactionProvider: TransactionProviderInterface,
-    companyId: string,
-  ): Promise<string> {
-    const [company] = await transactionProvider.transaction(async (transaction) => {
-      return transaction
-        .select({
-          clerkOrganizationId: companies.clerkOrganizationId,
-        })
-        .from(companies)
-        .where(eq(companies.id, companyId))
-        .limit(1);
-    });
-
-    if (!company?.clerkOrganizationId) {
-      throw new Error("This company is not linked to a Clerk organization.");
-    }
-
-    return company.clerkOrganizationId;
-  }
-
-  private getClerkClient(): ClerkClientDependency {
-    if (!this.clerkClient) {
-      if (this.config.auth.provider !== "clerk") {
-        throw new Error("Clerk organization invitations require Clerk auth configuration.");
-      }
-
-      this.clerkClient = createClerkClient({
-        publishableKey: this.config.auth.clerk.publishable_key,
-        secretKey: this.config.auth.clerk.secret_key,
-      }) as unknown as ClerkClientDependency;
-    }
-
-    return this.clerkClient;
-  }
-
-  private formatClerkTimestamp(timestamp: number): string {
-    return new Date(timestamp).toISOString();
   }
 
   private formatMemberName(row: Pick<CompanyMemberRow, "emailAddress" | "firstName" | "lastName">): string {

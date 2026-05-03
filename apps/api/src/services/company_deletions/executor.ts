@@ -7,10 +7,8 @@ import { ApiLogger } from "../../log/api_logger.ts";
 import { AgentComputeProviderRegistry } from "../environments/providers/provider_registry.ts";
 import type { AgentEnvironmentRecord } from "../environments/providers/provider_interface.ts";
 import { WorkflowSchedulerSyncService } from "../workflows/scheduler_sync.ts";
-import { ClerkOrganizationDeletionService } from "./clerk_organization_deletion.ts";
 
 type CompanyDeletionExecutorCompanyRecord = {
-  clerkOrganizationId: string | null;
   id: string;
   name: string;
   slug: string | null;
@@ -28,7 +26,6 @@ type TriggerIdRow = {
 export class CompanyDeletionExecutor {
   private readonly adminDatabase: AdminDatabase;
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
-  private readonly clerkOrganizationDeletionService: ClerkOrganizationDeletionService;
   private readonly logger: PinoLogger;
   private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
@@ -36,15 +33,12 @@ export class CompanyDeletionExecutor {
   constructor(
     @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(AppRuntimeDatabase) appRuntimeDatabase: AppRuntimeDatabase,
-    @inject(ClerkOrganizationDeletionService)
-    clerkOrganizationDeletionService: ClerkOrganizationDeletionService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
     @inject(WorkflowSchedulerSyncService) workflowSchedulerSyncService: WorkflowSchedulerSyncService,
     @inject(ApiLogger) logger: ApiLogger,
   ) {
     this.adminDatabase = adminDatabase;
     this.appRuntimeDatabase = appRuntimeDatabase;
-    this.clerkOrganizationDeletionService = clerkOrganizationDeletionService;
     this.logger = logger.child({
       component: "company_deletion_executor",
     });
@@ -53,15 +47,12 @@ export class CompanyDeletionExecutor {
   }
 
   async deleteCompany(input: {
-    clerkOrganizationId?: string | null;
     companyId: string;
   }): Promise<CompanyDeletionExecutorCompanyRecord> {
     const company = await this.loadCompany(input.companyId);
-    const clerkOrganizationId = input.clerkOrganizationId ?? company.clerkOrganizationId;
 
     await this.removeWorkflowSchedules(company.id);
     await this.deleteProviderEnvironments(company.id);
-    await this.clerkOrganizationDeletionService.deleteOrganization(clerkOrganizationId);
     await this.deleteCompanyRow(company.id);
     await this.completeOpenDeletionRequests(company.id);
     this.logger.info({
@@ -77,8 +68,7 @@ export class CompanyDeletionExecutor {
       SELECT
         id,
         name,
-        slug,
-        clerk_organization_id AS "clerkOrganizationId"
+        slug
       FROM companies
       WHERE id = ${companyId}
       LIMIT 1

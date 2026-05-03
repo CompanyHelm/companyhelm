@@ -1,5 +1,4 @@
 import { Config } from "../config/schema.ts";
-import { ClerkOrganizationSlugResolver } from "./clerk/organization_slug_resolver.ts";
 import { LocalOrganizationSlugResolver } from "./local/local_organization_slug_resolver.ts";
 import { OrganizationSlugResolver } from "./organization_slug_resolver.ts";
 
@@ -9,14 +8,12 @@ import { OrganizationSlugResolver } from "./organization_slug_resolver.ts";
  */
 export class OrganizationSlugResolverFactory {
   static create(config: Config): OrganizationSlugResolver {
-    return config.auth?.provider === "clerk"
-      ? new ClerkOrganizationSlugResolver(config)
-      : new LocalOrganizationSlugResolver();
+    void config;
+    return new LocalOrganizationSlugResolver();
   }
 
-  static resolveClass(config: Config): typeof ClerkOrganizationSlugResolver | typeof LocalOrganizationSlugResolver {
-    return config.auth.provider === "clerk"
-      ? ClerkOrganizationSlugResolver
-      : LocalOrganizationSlugResolver;
+  static resolveClass(config: Config): typeof LocalOrganizationSlugResolver {
+    void config;
+    return LocalOrganizationSlugResolver;
   }
 }

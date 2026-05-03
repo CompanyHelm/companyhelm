@@ -34,14 +34,13 @@ const companyCreationPageCreateMutationNode = graphql`
       id
       name
       slug
-      clerkOrganizationId
     }
   }
 `;
 
 /**
- * Owns the CompanyHelm company creation flow that Clerk's organization switcher delegates to,
- * keeping the application database in charge of eligibility, slug allocation, and Clerk linking.
+ * Owns the CompanyHelm company creation flow, keeping the application database in charge of
+ * eligibility, slug allocation, and membership setup.
  */
 export function CompanyCreationPage() {
   return (
@@ -79,17 +78,13 @@ function CompanyCreationPageContent() {
     commitCreateCompany({
       onCompleted: (response) => {
         const company = response.CreateCompany;
-        if (!company.clerkOrganizationId) {
-          setErrorMessage("Company was created, but no Clerk organization was linked.");
-          return;
-        }
         if (!organizationListState.setActive) {
           setErrorMessage("Company was created, but the active organization could not be changed.");
           return;
         }
 
         void organizationListState.setActive({
-          organization: company.clerkOrganizationId,
+          organization: company.id,
         }).then(() => {
           void navigate({
             params: {
@@ -152,7 +147,7 @@ function CompanyCreationPageShell(props: {
           </div>
           <CardTitle>Create company</CardTitle>
           <CardDescription>
-            Add a CompanyHelm workspace with a matching Clerk organization.
+            Add a CompanyHelm workspace.
           </CardDescription>
         </CardHeader>
         <CardContent>

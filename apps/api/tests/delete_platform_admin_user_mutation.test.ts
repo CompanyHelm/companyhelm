@@ -22,13 +22,13 @@ class DeletePlatformAdminUserMutationTestHarness {
   static createConfig(): Config {
     return {
       auth: {
-        clerk: {
-          authorized_parties: ["http://localhost"],
-          jwks_url: "http://localhost/.well-known/jwks.json",
-          publishable_key: "pk_test_local",
-          secret_key: "sk_test_local",
+        local: {
+          password_pepper: "",
+          session_duration_hours: 168,
+          session_issuer: "companyhelm.local",
+          session_secret: "local-session-secret",
         },
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -43,8 +43,8 @@ class DeletePlatformAdminUserMutationTestHarness {
           firstName: "Admin",
           id: "admin-user",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "user_clerk_admin",
+          provider: "local",
+          providerSubject: "user_local_admin",
         },
       },
       isPlatformAdmin,
@@ -60,7 +60,6 @@ class DeletePlatformAdminUserMutationTestHarness {
       calls.push(query);
       if (query.includes("FROM users")) {
         return [{
-          clerkUserId: "user_clerk_target",
           email: "target@example.com",
           id: "target-user",
         }] as T;
@@ -101,31 +100,20 @@ class DeletePlatformAdminUserMutationTestHarness {
     };
   }
 
-  static createService(input: {
-    clerkDeleteUser: (userId: string) => Promise<unknown>;
-    sqlMock: SqlMock;
-  }): PlatformAdminUserDeletionService {
+  static createService(input: { sqlMock: SqlMock }): PlatformAdminUserDeletionService {
     return PlatformAdminUserDeletionService.createForTest(
-      DeletePlatformAdminUserMutationTestHarness.createConfig(),
       {
         getSqlClient() {
           return input.sqlMock.sql;
         },
       } as never,
-      {
-        users: {
-          deleteUser: input.clerkDeleteUser,
-        },
-      },
     );
   }
 }
 
-test("PlatformAdminUserDeletionService deletes Clerk and local user records", async () => {
+test("PlatformAdminUserDeletionService deletes local user records", async () => {
   const sqlMock = DeletePlatformAdminUserMutationTestHarness.createSqlMock();
-  const clerkDeleteUser = vi.fn(async () => ({}));
   const service = DeletePlatformAdminUserMutationTestHarness.createService({
-    clerkDeleteUser,
     sqlMock,
   });
 
@@ -136,28 +124,24 @@ test("PlatformAdminUserDeletionService deletes Clerk and local user records", as
   });
 
   assert.deepEqual(result, {
-    clerkUserId: "user_clerk_target",
     email: "target@example.com",
     id: "target-user",
     membershipCount: 2,
   });
-  assert.deepEqual(clerkDeleteUser.mock.calls, [["user_clerk_target"]]);
   assert.equal(sqlMock.transactionCalls.some((query) => query.startsWith("UPDATE tasks")), true);
   assert.equal(sqlMock.transactionCalls.some((query) => query.startsWith("DELETE FROM company_members")), true);
   assert.equal(sqlMock.transactionCalls.some((query) => query.startsWith("DELETE FROM platform_admins")), true);
   assert.equal(sqlMock.transactionCalls.some((query) => query.startsWith("DELETE FROM users")), true);
 });
 
-test("PlatformAdminUserDeletionService rejects users with restricted references before Clerk deletion", async () => {
+test("PlatformAdminUserDeletionService rejects users with restricted references before deletion", async () => {
   const sqlMock = DeletePlatformAdminUserMutationTestHarness.createSqlMock({
     blockerRows: [{
       label: "company secrets",
       totalCount: 1,
     }],
   });
-  const clerkDeleteUser = vi.fn(async () => ({}));
   const service = DeletePlatformAdminUserMutationTestHarness.createService({
-    clerkDeleteUser,
     sqlMock,
   });
 
@@ -169,13 +153,11 @@ test("PlatformAdminUserDeletionService rejects users with restricted references 
     }),
     /User cannot be deleted while referenced by company secrets\./,
   );
-  assert.equal(clerkDeleteUser.mock.calls.length, 0);
   assert.equal(sqlMock.transactionCalls.length, 0);
 });
 
 test("DeletePlatformAdminUserMutation requires platform admin access", async () => {
   const deleteUser = vi.fn(async () => ({
-    clerkUserId: "user_clerk_target",
     email: "target@example.com",
     id: "target-user",
     membershipCount: 0,

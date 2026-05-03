@@ -8,8 +8,8 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
 /**
- * Returns Clerk organization access through the API so the settings page can load members and
- * pending invitations with one GraphQL request instead of running Clerk frontend list calls.
+ * Returns organization access through the API so the settings page can load members and pending
+ * invitations with one GraphQL request.
  */
 @injectable()
 export class CompanyMembersQueryResolver extends Resolver<CompanyMemberAccessRecord[]> {

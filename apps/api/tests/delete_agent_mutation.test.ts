@@ -22,7 +22,7 @@ class DeleteAgentMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -81,8 +81,8 @@ test("GraphQL DeleteAgent mutation deletes an agent", async () => {
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

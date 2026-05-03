@@ -23,7 +23,7 @@ class DeleteWorkflowMutationTestHarness {
           firstName: "User",
           id: "user-1",
           lastName: null,
-          provider: "clerk",
+          provider: "local",
           providerSubject: "subject-1",
         },
       },

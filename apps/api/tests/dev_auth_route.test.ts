@@ -6,7 +6,7 @@ import type { Config } from "../src/config/schema.ts";
 import { DevAuthRoute } from "../src/server/dev_auth_route.ts";
 
 class DevAuthRouteTestHarness {
-  static createConfig(provider: "clerk" | "dev"): Config {
+  static createConfig(provider: "local" | "dev"): Config {
     return {
       auth: provider === "dev"
         ? {
@@ -14,13 +14,13 @@ class DevAuthRouteTestHarness {
           provider: "dev",
         }
         : {
-          clerk: {
-            authorized_parties: ["http://localhost:5173"],
-            jwks_url: "https://clerk.example/.well-known/jwks.json",
-            publishable_key: "pk_test_local",
-            secret_key: "sk_test_local",
+          local: {
+            password_pepper: "",
+            session_duration_hours: 168,
+            session_issuer: "companyhelm.local",
+            session_secret: "local-session-secret",
           },
-          provider: "clerk",
+          provider: "local",
         },
     } as Config;
   }
@@ -218,7 +218,7 @@ test("DevAuthRoute exposes the user creation and company creation endpoints", as
 test("DevAuthRoute skips registration when dev auth is disabled", async () => {
   const app = Fastify();
   const route = new DevAuthRoute(
-    DevAuthRouteTestHarness.createConfig("clerk"),
+    DevAuthRouteTestHarness.createConfig("local"),
     {
       async listUsers() {
         throw new Error("listUsers should not be called.");

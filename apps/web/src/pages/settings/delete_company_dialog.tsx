@@ -43,7 +43,7 @@ export function DeleteCompanyDialog(props: DeleteCompanyDialogProps) {
           </div>
           <DialogTitle>Delete company</DialogTitle>
           <DialogDescription>
-            This removes the Clerk organization and schedules CompanyHelm data cleanup for {props.companyName}.
+            This schedules CompanyHelm data cleanup for {props.companyName}.
           </DialogDescription>
         </DialogHeader>
 

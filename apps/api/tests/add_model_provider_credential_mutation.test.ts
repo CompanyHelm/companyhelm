@@ -29,12 +29,12 @@ class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
     return {
       auth: {
-        provider: "clerk",
-        clerk: {
-          secret_key: "clerk-secret",
-          publishable_key: "clerk-publishable",
-          jwks_url: "https://example.com/.well-known/jwks.json",
-          authorized_parties: ["http://localhost:3000"],
+        provider: "local",
+        local: {
+          password_pepper: "",
+          session_duration_hours: 168,
+          session_issuer: "companyhelm.local",
+          session_secret: "local-session-secret",
         },
       },
       companyhelm: {
@@ -245,8 +245,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -362,8 +362,8 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -436,8 +436,8 @@ test("GraphQL AddModelProviderCredential mutation rejects the CompanyHelm manage
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -514,8 +514,8 @@ test("GraphQL AddModelProviderCredential mutation supports anthropic credentials
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -625,8 +625,8 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -728,8 +728,8 @@ test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth cr
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

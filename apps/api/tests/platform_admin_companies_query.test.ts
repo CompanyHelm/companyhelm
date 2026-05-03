@@ -67,7 +67,6 @@ class PlatformAdminCompaniesQueryTestHarness {
                       return {
                         async offset() {
                           return [{
-                            clerkOrganizationId: "org_clerk_123",
                             id: "company-1",
                             memberCount: 3,
                             name: "Acme Workspace",
@@ -103,8 +102,8 @@ class PlatformAdminCompaniesQueryTestHarness {
             email: "admin@example.com",
             firstName: "Admin",
             lastName: "User",
-            provider: "clerk",
-            providerSubject: "user_clerk_1",
+            provider: "local",
+            providerSubject: "user_local_1",
           },
           company: {
             id: "company-auth",
@@ -143,7 +142,6 @@ test("PlatformAdminCompanies query lists searchable paginated companies for plat
       name: "Acme Workspace",
       slug: "acme",
       plan: "pro",
-      clerkOrganizationId: "org_clerk_123",
       memberCount: 3,
       enhancedLogging: {
         components: ["session_process_cleanup"],

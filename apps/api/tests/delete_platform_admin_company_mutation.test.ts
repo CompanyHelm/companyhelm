@@ -19,8 +19,8 @@ class DeletePlatformAdminCompanyMutationTestHarness {
           email: "admin@example.com",
           firstName: "Admin",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "user_clerk_1",
+          provider: "local",
+          providerSubject: "user_local_1",
         },
       },
       resolveSubscriptionContext: null,
@@ -29,7 +29,6 @@ class DeletePlatformAdminCompanyMutationTestHarness {
 
   static createCompany() {
     return {
-      clerkOrganizationId: "org_clerk_123",
       id: "company-1",
       name: "Acme Operations",
       slug: "acme-operations",

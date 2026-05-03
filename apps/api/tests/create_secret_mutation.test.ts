@@ -19,7 +19,7 @@ class CreateSecretMutationTestHarness {
   static createConfigMock(): Config {
     return {
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       graphql: {
         endpoint: "/graphql",
@@ -113,8 +113,8 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },

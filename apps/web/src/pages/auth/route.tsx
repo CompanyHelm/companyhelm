@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { useAuth } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
-import { ClerkPage } from "./page";
-import type { ClerkPageMode } from "./page";
+import { AuthenticationPage } from "./page";
+import type { AuthenticationPageMode } from "./page";
 
 interface AuthenticationRouteProps {
-  mode: ClerkPageMode;
+  mode: AuthenticationPageMode;
 }
 
 export function AuthenticationRoute(props: AuthenticationRouteProps) {
@@ -22,5 +22,5 @@ export function AuthenticationRoute(props: AuthenticationRouteProps) {
     return null;
   }
 
-  return <ClerkPage mode={props.mode} />;
+  return <AuthenticationPage mode={props.mode} />;
 }

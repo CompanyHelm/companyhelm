@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9dddb58cf06c8041487334b1f5c15160>>
+ * @generated SignedSource<<c91d6b336ee8734a43fe28bdc8905e73>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,6 @@ export type companyDetailPageQuery$variables = {
 };
 export type companyDetailPageQuery$data = {
   readonly PlatformAdminCompany: {
-    readonly clerkOrganizationId: string | null | undefined;
     readonly id: string;
     readonly memberCount: number;
     readonly name: string;
@@ -96,13 +95,6 @@ v2 = [
         "args": null,
         "kind": "ScalarField",
         "name": "plan",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "clerkOrganizationId",
         "storageKey": null
       },
       {
@@ -248,16 +240,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "ae9d22596f579088e2c6edb1d16c8e0d",
+    "cacheID": "a63abeca226a97483632af7bef78ccc2",
     "id": null,
     "metadata": {},
     "name": "companyDetailPageQuery",
     "operationKind": "query",
-    "text": "query companyDetailPageQuery(\n  $companyId: ID!\n) {\n  PlatformAdminCompany(id: $companyId) {\n    id\n    name\n    slug\n    plan\n    clerkOrganizationId\n    memberCount\n    usage {\n      requestCount\n      inputTokens\n      outputTokens\n      cacheReadTokens\n      cacheWriteTokens\n      totalTokens\n      totalCostNanoUsd\n      totalCostNanoVirtualUsd\n    }\n    wallets {\n      id\n      companyId\n      type\n      amountNanoUsd\n      transactionCount\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query companyDetailPageQuery(\n  $companyId: ID!\n) {\n  PlatformAdminCompany(id: $companyId) {\n    id\n    name\n    slug\n    plan\n    memberCount\n    usage {\n      requestCount\n      inputTokens\n      outputTokens\n      cacheReadTokens\n      cacheWriteTokens\n      totalTokens\n      totalCostNanoUsd\n      totalCostNanoVirtualUsd\n    }\n    wallets {\n      id\n      companyId\n      type\n      amountNanoUsd\n      transactionCount\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "dee18879b35f51800f3b36205618334d";
+(node as any).hash = "d61b53e4218679789fff8741216b9ce6";
 
 export default node;

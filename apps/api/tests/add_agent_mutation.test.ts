@@ -23,7 +23,7 @@ class AddAgentMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       log: {
         json: false,
@@ -248,8 +248,8 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -513,8 +513,8 @@ test("AddAgentMutation attaches each secret group once when secretGroupIds are p
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk",
-          providerSubject: "user_clerk_123",
+          provider: "local",
+          providerSubject: "user_local_123",
         },
       },
     } as never,

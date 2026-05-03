@@ -1,105 +1,64 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import type { Config } from "../src/config/schema.ts";
 import { InviteCompanyMemberMutation } from "../src/graphql/mutations/invite_company_member.ts";
 import { RemoveCompanyMemberMutation } from "../src/graphql/mutations/remove_company_member.ts";
 import { UpdateCompanyMemberRoleMutation } from "../src/graphql/mutations/update_company_member_role.ts";
 import type { GraphqlRequestContext } from "../src/graphql/graphql_request_context.ts";
 import { CompanyMemberInvitationService } from "../src/services/company_member_invitation_service.ts";
 
-/**
- * Builds focused doubles for the Clerk invitation path so the tests can assert our redirect
- * contract without contacting Clerk or depending on a live database.
- */
 class CompanyMemberInvitationServiceTestHarness {
-  static createConfig(): Config {
+  static createInviteTransactionProvider() {
     return {
-      auth: {
-        clerk: {
-          authorized_parties: ["http://localhost:5173"],
-          jwks_url: "https://example.com/jwks",
-          publishable_key: "pk_test",
-          secret_key: "sk_test",
+      transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback({
+        insert() {
+          return {
+            values() {
+              return {
+                onConflictDoNothing() {
+                  return {
+                    async returning() {
+                      return [{ id: "user-invited-1" }];
+                    },
+                  };
+                },
+                async onConflictDoUpdate() {},
+              };
+            },
+          };
         },
-        provider: "clerk",
-      },
-      webPublicUrl: "https://app.companyhelm.test",
-    } as Config;
-  }
-
-  static createTransactionProvider(clerkOrganizationId: string | null) {
-    return {
-      transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => {
-        return callback({
-          insert() {
-            return {
-              values() {
-                return {
-                  onConflictDoNothing() {
-                    return {
-                      async returning() {
-                        return [{ id: "user-invited-1" }];
-                      },
-                    };
-                  },
-                  async onConflictDoUpdate() {},
-                };
-              },
-            };
-          },
-          select(selection: Record<string, unknown>) {
-            return {
-              from() {
-                if ("clerkOrganizationId" in selection) {
+        select() {
+          return {
+            from() {
+              return {
+                innerJoin() {
                   return {
                     where() {
                       return {
                         async limit() {
-                          return [{ clerkOrganizationId }];
+                          return [];
                         },
                       };
                     },
                   };
-                }
-                if ("clerkInvitationId" in selection) {
+                },
+                where() {
                   return {
-                    innerJoin() {
-                      return {
-                        where() {
-                          return {
-                            async limit() {
-                              return [];
-                            },
-                          };
-                        },
-                      };
+                    async limit() {
+                      return [];
                     },
                   };
-                }
-
-                return {
-                  where() {
-                    return {
-                      async limit() {
-                        return [];
-                      },
-                    };
-                  },
-                };
-              },
-            };
-          },
-        });
-      }),
+                },
+              };
+            },
+          };
+        },
+      })),
     };
   }
 
   static createMemberRemovalTransactionProvider(input: {
     anotherAdminUserId: string | null;
-    clerkOrganizationId: string | null;
     member: {
-      clerkInvitationId: string | null;
-      clerkUserId: string | null;
       createdAt: Date;
       emailAddress: string;
       firstName: string;
@@ -113,70 +72,52 @@ class CompanyMemberInvitationServiceTestHarness {
     const deleteCalls: Array<{ table: unknown }> = [];
     const updateCalls: Array<{ table: unknown; values: Record<string, unknown> }> = [];
     const provider = {
-      transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => {
-        return callback({
-          delete(table: unknown) {
-            return {
-              async where() {
-                deleteCalls.push({ table });
-              },
-            };
-          },
-          select(selection: Record<string, unknown>) {
-            return {
-              from() {
-                if ("clerkOrganizationId" in selection) {
+      transaction: vi.fn(async (callback: (transaction: unknown) => Promise<unknown>) => callback({
+        delete(table: unknown) {
+          return {
+            async where() {
+              deleteCalls.push({ table });
+            },
+          };
+        },
+        select() {
+          return {
+            from() {
+              return {
+                innerJoin() {
                   return {
                     where() {
                       return {
                         async limit() {
-                          return [{ clerkOrganizationId: input.clerkOrganizationId }];
+                          return input.member ? [input.member] : [];
                         },
                       };
                     },
                   };
-                }
-                if ("clerkInvitationId" in selection) {
+                },
+                where() {
                   return {
-                    innerJoin() {
-                      return {
-                        where() {
-                          return {
-                            async limit() {
-                              return input.member ? [input.member] : [];
-                            },
-                          };
-                        },
-                      };
+                    async limit() {
+                      return input.anotherAdminUserId ? [{ userId: input.anotherAdminUserId }] : [];
                     },
                   };
-                }
-
-                return {
-                  where() {
-                    return {
-                      async limit() {
-                        return input.anotherAdminUserId ? [{ userId: input.anotherAdminUserId }] : [];
-                      },
-                    };
-                  },
-                };
-              },
-            };
-          },
-          update(table: unknown) {
-            return {
-              set(values: Record<string, unknown>) {
-                return {
-                  async where() {
-                    updateCalls.push({ table, values });
-                  },
-                };
-              },
-            };
-          },
-        });
-      }),
+                },
+              };
+            },
+          };
+        },
+        update(table: unknown) {
+          return {
+            set(values: Record<string, unknown>) {
+              return {
+                async where() {
+                  updateCalls.push({ table, values });
+                },
+              };
+            },
+          };
+        },
+      })),
     };
 
     return {
@@ -200,8 +141,8 @@ class CompanyMemberInvitationServiceTestHarness {
           firstName: "Ada",
           id: "user-1",
           lastName: null,
-          provider: "clerk",
-          providerSubject: "user_clerk_1",
+          provider: "local",
+          providerSubject: "user-local-1",
         },
       },
       resolveSubscriptionContext: null,
@@ -209,46 +150,18 @@ class CompanyMemberInvitationServiceTestHarness {
   }
 }
 
-test("CompanyMemberInvitationService creates Clerk invitations with the configured web redirect", async () => {
-  const createOrganizationInvitation = vi.fn(async () => ({
-    createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-    emailAddress: "teammate@example.com",
-    id: "invitation-1",
-    status: "pending",
-  }));
-  const service = CompanyMemberInvitationService.createForTest(
-    CompanyMemberInvitationServiceTestHarness.createConfig(),
-    {
-      organizations: {
-        createOrganizationInvitation,
-        deleteOrganizationMembership: vi.fn(async () => ({})),
-        revokeOrganizationInvitation: vi.fn(async () => ({
-          createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-          emailAddress: "teammate@example.com",
-          id: "invitation-1",
-          status: "revoked",
-        })),
-      },
-    },
-  );
+test("CompanyMemberInvitationService creates local pending member invitations", async () => {
+  const service = CompanyMemberInvitationService.createForTest();
 
   const result = await service.inviteMember({
     companyId: "company-1",
     emailAddress: "teammate@example.com",
-    inviterUserId: "user_clerk_1",
     role: "member",
-    transactionProvider: CompanyMemberInvitationServiceTestHarness.createTransactionProvider("org_clerk_1"),
+    transactionProvider: CompanyMemberInvitationServiceTestHarness.createInviteTransactionProvider() as never,
   });
 
-  assert.deepEqual(createOrganizationInvitation.mock.calls[0]?.[0], {
-    emailAddress: "teammate@example.com",
-    inviterUserId: "user_clerk_1",
-    organizationId: "org_clerk_1",
-    redirectUrl: "https://app.companyhelm.test",
-    role: "org:admin",
-  });
   assert.deepEqual(result, {
-    createdAt: "2026-04-29T12:00:00.000Z",
+    createdAt: result.createdAt,
     emailAddress: "teammate@example.com",
     id: "CompanyMemberInvitation:company-1:user-invited-1",
     role: "member",
@@ -257,34 +170,11 @@ test("CompanyMemberInvitationService creates Clerk invitations with the configur
   });
 });
 
-test("CompanyMemberInvitationService removes active members from Clerk and open task assignment", async () => {
-  const deleteOrganizationMembership = vi.fn(async () => ({}));
-  const service = CompanyMemberInvitationService.createForTest(
-    CompanyMemberInvitationServiceTestHarness.createConfig(),
-    {
-      organizations: {
-        createOrganizationInvitation: vi.fn(async () => ({
-          createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-          emailAddress: "teammate@example.com",
-          id: "invitation-1",
-          status: "pending",
-        })),
-        deleteOrganizationMembership,
-        revokeOrganizationInvitation: vi.fn(async () => ({
-          createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-          emailAddress: "teammate@example.com",
-          id: "invitation-1",
-          status: "revoked",
-        })),
-      },
-    },
-  );
+test("CompanyMemberInvitationService removes active members and open task assignment", async () => {
+  const service = CompanyMemberInvitationService.createForTest();
   const transactionHarness = CompanyMemberInvitationServiceTestHarness.createMemberRemovalTransactionProvider({
     anotherAdminUserId: "admin-1",
-    clerkOrganizationId: "org_clerk_1",
     member: {
-      clerkInvitationId: null,
-      clerkUserId: "user_clerk_2",
       createdAt: new Date("2026-04-29T12:00:00.000Z"),
       emailAddress: "teammate@example.com",
       firstName: "Grace",
@@ -302,10 +192,6 @@ test("CompanyMemberInvitationService removes active members from Clerk and open 
     userId: "user-2",
   });
 
-  assert.deepEqual(deleteOrganizationMembership.mock.calls[0]?.[0], {
-    organizationId: "org_clerk_1",
-    userId: "user_clerk_2",
-  });
   assert.equal(transactionHarness.updateCalls.length, 1);
   assert.equal(transactionHarness.updateCalls[0]?.values.assignedAt, null);
   assert.equal(transactionHarness.updateCalls[0]?.values.assignedUserId, null);
@@ -323,33 +209,10 @@ test("CompanyMemberInvitationService removes active members from Clerk and open 
 });
 
 test("CompanyMemberInvitationService rejects removing the last active admin", async () => {
-  const deleteOrganizationMembership = vi.fn(async () => ({}));
-  const service = CompanyMemberInvitationService.createForTest(
-    CompanyMemberInvitationServiceTestHarness.createConfig(),
-    {
-      organizations: {
-        createOrganizationInvitation: vi.fn(async () => ({
-          createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-          emailAddress: "founder@example.com",
-          id: "invitation-1",
-          status: "pending",
-        })),
-        deleteOrganizationMembership,
-        revokeOrganizationInvitation: vi.fn(async () => ({
-          createdAt: Date.parse("2026-04-29T12:00:00.000Z"),
-          emailAddress: "founder@example.com",
-          id: "invitation-1",
-          status: "revoked",
-        })),
-      },
-    },
-  );
+  const service = CompanyMemberInvitationService.createForTest();
   const transactionHarness = CompanyMemberInvitationServiceTestHarness.createMemberRemovalTransactionProvider({
     anotherAdminUserId: null,
-    clerkOrganizationId: "org_clerk_1",
     member: {
-      clerkInvitationId: null,
-      clerkUserId: "user_clerk_1",
       createdAt: new Date("2026-04-29T12:00:00.000Z"),
       emailAddress: "founder@example.com",
       firstName: "Ada",
@@ -369,7 +232,6 @@ test("CompanyMemberInvitationService rejects removing the last active admin", as
     }),
     /You cannot remove the last active company admin/u,
   );
-  assert.equal(deleteOrganizationMembership.mock.calls.length, 0);
   assert.equal(transactionHarness.deleteCalls.length, 0);
 });
 
@@ -399,7 +261,6 @@ test("InviteCompanyMemberMutation invites against the authenticated company cont
   assert.deepEqual(inviteMember.mock.calls[0], [{
     companyId: "company-1",
     emailAddress: "teammate@example.com",
-    inviterUserId: "user_clerk_1",
     role: "member",
     transactionProvider: context.app_runtime_transaction_provider,
   }]);

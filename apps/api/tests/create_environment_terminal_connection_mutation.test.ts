@@ -27,10 +27,10 @@ class CreateEnvironmentTerminalConnectionMutationTestHarness {
         user: {
           email: "user@example.com",
           firstName: "User",
-          id: "user-clerk:123",
+          id: "user-local:123",
           lastName: "Example",
-          provider: "clerk",
-          providerSubject: "user_clerk_123",
+          provider: "local",
+          providerSubject: "user_local_123",
         },
       },
       redisCompanyScopedService: null,
@@ -91,7 +91,7 @@ test("CreateEnvironmentTerminalConnection returns a one-time websocket grant for
   );
 
   assert.equal(result.environmentId, "env-1");
-  assert.equal(result.terminalSessionId, "companyhelm-web-userclerk123");
+  assert.equal(result.terminalSessionId, "companyhelm-web-userlocal123");
   assert.match(result.expiresAt, /^\d{4}-\d{2}-\d{2}T/u);
 
   const websocketUrl = new URL(result.websocketUrl);
@@ -108,8 +108,8 @@ test("CreateEnvironmentTerminalConnection returns a one-time websocket grant for
     environmentId: "env-1",
     expiresAt: new Date(result.expiresAt),
     rows: 8,
-    terminalSessionId: "companyhelm-web-userclerk123",
-    userId: "user-clerk:123",
+    terminalSessionId: "companyhelm-web-userlocal123",
+    userId: "user-local:123",
   });
   assert.equal(tokenService.consumeGrant(token), null);
 });

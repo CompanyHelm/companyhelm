@@ -24,7 +24,7 @@ class DeleteEnvironmentMutationTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       log: {
         json: false,
@@ -51,8 +51,8 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -199,8 +199,8 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

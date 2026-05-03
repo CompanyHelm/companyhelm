@@ -49,7 +49,7 @@ class PromptSessionMutationTestHarness {
         },
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -84,8 +84,8 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -247,8 +247,8 @@ test("GraphQL PromptSession mutation rejects archived sessions", async () => {
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

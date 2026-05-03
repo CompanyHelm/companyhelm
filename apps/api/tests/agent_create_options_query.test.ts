@@ -22,7 +22,7 @@ class AgentCreateOptionsQueryTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       log: {
         json: false,
@@ -118,8 +118,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -247,8 +247,8 @@ test("GraphQL AgentCreateOptions exposes only one default across managed and use
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

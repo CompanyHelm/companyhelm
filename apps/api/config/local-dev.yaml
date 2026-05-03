@@ -5,5 +5,5 @@ webPublicUrl: "http://localhost:5173"
 
 auth:
   provider: "dev"
-  clerk: null
+  local: null
   dev: {}

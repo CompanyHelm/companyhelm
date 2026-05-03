@@ -18,7 +18,6 @@ type PlatformAdminUserArguments = {
 type PlatformAdminTimestamp = Date | string;
 
 type PlatformAdminUserRow = {
-  clerkUserId: string | null;
   createdAt: PlatformAdminTimestamp;
   email: string;
   firstName: string;
@@ -44,7 +43,6 @@ type PlatformAdminUserCountRow = {
 };
 
 type GraphqlPlatformAdminUser = {
-  clerkUserId: string | null;
   createdAt: string;
   email: string;
   firstName: string;
@@ -131,7 +129,6 @@ export class PlatformAdminUsersQueryResolver {
       const userRows = searchCondition
         ? await tx
           .select({
-            clerkUserId: users.clerkUserId,
             createdAt: users.created_at,
             email: users.email,
             firstName: users.first_name,
@@ -151,7 +148,6 @@ export class PlatformAdminUsersQueryResolver {
           .offset(offset) as PlatformAdminUserRow[]
         : await tx
           .select({
-            clerkUserId: users.clerkUserId,
             createdAt: users.created_at,
             email: users.email,
             firstName: users.first_name,
@@ -171,7 +167,6 @@ export class PlatformAdminUsersQueryResolver {
 
       return {
         nodes: userRows.map((userRow) => ({
-          clerkUserId: userRow.clerkUserId,
           createdAt: this.formatTimestamp(userRow.createdAt),
           email: userRow.email,
           firstName: userRow.firstName,
@@ -211,7 +206,6 @@ export class PlatformAdminUsersQueryResolver {
       await PlatformAdminAccess.enable(tx);
       const [userRow] = await tx
         .select({
-          clerkUserId: users.clerkUserId,
           createdAt: users.created_at,
           email: users.email,
           firstName: users.first_name,
@@ -258,7 +252,6 @@ export class PlatformAdminUsersQueryResolver {
     const sqlClient = this.adminDatabase!.getSqlClient();
     const [userRow] = await sqlClient<PlatformAdminUserRow[]>`
       SELECT
-        u.clerk_user_id AS "clerkUserId",
         u.created_at AS "createdAt",
         u.email,
         u.first_name AS "firstName",
@@ -303,7 +296,6 @@ export class PlatformAdminUsersQueryResolver {
     membershipRows: PlatformAdminUserCompanyMembershipRow[],
   ): GraphqlPlatformAdminUserDetail {
     return {
-      clerkUserId: userRow.clerkUserId,
       companyMemberships: membershipRows.map((membershipRow) => ({
         companyId: membershipRow.companyId,
         companyName: membershipRow.companyName,
@@ -337,7 +329,6 @@ export class PlatformAdminUsersQueryResolver {
     const searchPattern = `%${trimmedSearch}%`;
     return sql<boolean>`
       ${users.id}::text ilike ${searchPattern}
-      or coalesce(${users.clerkUserId}, '') ilike ${searchPattern}
       or ${users.email} ilike ${searchPattern}
       or ${users.first_name} ilike ${searchPattern}
       or coalesce(${users.last_name}, '') ilike ${searchPattern}

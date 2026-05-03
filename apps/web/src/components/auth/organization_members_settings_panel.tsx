@@ -120,7 +120,7 @@ const organizationMembersSettingsPanelUpdateRoleMutationNode = graphql`
 
 /**
  * Hosts CompanyHelm's member management surface using the API-backed company_members table as the
- * source of truth while Clerk remains only the outbound invitation transport.
+ * source of truth for invitations and member access.
  */
 export function OrganizationMembersSettingsPanel() {
   const data = useLazyLoadQuery<organizationMembersSettingsPanelQuery>(

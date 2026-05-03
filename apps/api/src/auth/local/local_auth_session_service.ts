@@ -10,8 +10,7 @@ export type LocalAuthTokenClaims = {
 
 /**
  * Signs and verifies bearer tokens for the first-party CompanyHelm auth providers so the web app
- * can use the same Authorization header flow as Clerk-backed sessions while the database retains
- * revocation control.
+ * can use one Authorization header flow while the database retains revocation control.
  */
 @injectable()
 export class LocalAuthSessionService {

@@ -103,7 +103,6 @@ export class DevAuthService {
       const [createdUser] = await insertableDatabase
         .insert(users)
         .values({
-          clerkUserId: null,
           created_at: now,
           email,
           first_name: firstName,
@@ -147,7 +146,6 @@ export class DevAuthService {
       const [createdCompany] = await insertableDatabase
         .insert(companies)
         .values({
-          clerkOrganizationId: null,
           name: companyName,
           plan: "free",
           slug: companySlug,

@@ -24,7 +24,6 @@ const userDetailPageQueryNode = graphql`
   query userDetailPageQuery($userId: ID!) {
     PlatformAdminUser(id: $userId) {
       id
-      clerkUserId
       email
       firstName
       lastName
@@ -50,7 +49,6 @@ const userDetailPageDeleteMutationNode = graphql`
     DeletePlatformAdminUser(input: $input) {
       id
       email
-      clerkUserId
       membershipCount
     }
   }
@@ -196,7 +194,6 @@ function AdminUserDetailPageContent() {
         <CardContent className="grid gap-5">
           <div className="flex flex-wrap gap-2">
             {user.isPlatformAdmin ? <Badge>Platform admin</Badge> : <Badge variant="outline">User</Badge>}
-            <Badge variant="outline">Clerk: {formatOptionalValue(user.clerkUserId)}</Badge>
             <Badge variant="secondary">{formatMembershipCount(user.companyMemberships.length)}</Badge>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -238,7 +235,7 @@ function AdminUserDetailPageContent() {
           <DialogHeader>
             <DialogTitle>Delete user</DialogTitle>
             <DialogDescription>
-              This deletes the Clerk user, removes all company memberships, and deletes the local CompanyHelm user row.
+              This removes all company memberships and deletes the local CompanyHelm user row.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">

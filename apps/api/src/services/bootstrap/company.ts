@@ -5,7 +5,6 @@ import type { DatabaseTransactionInterface } from "../../db/database_interface.t
 import {
   agentSkills,
   agents,
-  companies,
   companyMembers,
   companyModelProviderDefaults,
   companyOnboardings,
@@ -25,14 +24,6 @@ import { CompanyHelmComputeProviderService } from "../compute_provider_definitio
 import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
 import { CompanyWalletService } from "../wallet/service.ts";
-
-type CompanyRecord = {
-  id: string;
-  clerk_organization_id: string | null;
-  name: string;
-  plan: "free" | "plus" | "pro";
-  wasCreated: boolean;
-};
 
 type ComputeProviderDefinitionRecord = {
   companyId: string;
@@ -184,57 +175,6 @@ export class CompanyBootstrapService {
     this.companyWalletService = companyWalletService;
   }
 
-  async findOrCreateCompany(
-    transaction: DatabaseTransactionInterface,
-    params: {
-      providerSubject: string;
-      name: string;
-    },
-  ): Promise<CompanyRecord> {
-    const existingCompany = await this.findCompanyByClerkOrganizationId(
-      transaction,
-      params.providerSubject,
-    );
-    if (existingCompany) {
-      return existingCompany;
-    }
-
-    const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    const insertOperation = insertableDatabase
-      .insert(companies)
-      .values({
-        clerkOrganizationId: params.providerSubject,
-        name: params.name,
-        plan: "free",
-      }) as BootstrapInsertOperation;
-    const insertResult = insertOperation
-      .onConflictDoNothing()
-      .returning?.({
-        id: companies.id,
-        clerk_organization_id: companies.clerkOrganizationId,
-        name: companies.name,
-        plan: companies.plan,
-      });
-    const createdRows = insertResult ? await insertResult as CompanyRecord[] : [];
-    const createdCompany = createdRows[0];
-    if (!createdCompany) {
-      const concurrentCompany = await this.findCompanyByClerkOrganizationId(
-        transaction,
-        params.providerSubject,
-      );
-      if (!concurrentCompany) {
-        throw new Error("Failed to provision Clerk company.");
-      }
-
-      return concurrentCompany;
-    }
-
-    return {
-      ...createdCompany,
-      wasCreated: true,
-    };
-  }
-
   async ensureMembership(
     transaction: DatabaseTransactionInterface,
     params: {
@@ -265,7 +205,6 @@ export class CompanyBootstrapService {
         await transaction
           .update(companyMembers)
           .set({
-            clerkInvitationId: null,
             status: "active",
             updatedAt: new Date(),
           })
@@ -343,29 +282,6 @@ export class CompanyBootstrapService {
     input: { companyId: string; plan: "free" | "plus" | "pro" },
   ): Promise<void> {
     await this.companyWalletService.ensureSubscriptionWalletForCompanyInTransaction(transaction as never, input);
-  }
-
-  private async findCompanyByClerkOrganizationId(
-    transaction: DatabaseTransactionInterface,
-    providerSubject: string,
-  ): Promise<CompanyRecord | null> {
-    const [existingCompany] = await transaction
-      .select({
-        id: companies.id,
-        clerk_organization_id: companies.clerkOrganizationId,
-        name: companies.name,
-        plan: companies.plan,
-      })
-      .from(companies)
-      .where(eq(companies.clerkOrganizationId, providerSubject))
-      .limit(1) as CompanyRecord[];
-
-    return existingCompany
-      ? {
-        ...existingCompany,
-        wasCreated: false,
-      }
-      : null;
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(

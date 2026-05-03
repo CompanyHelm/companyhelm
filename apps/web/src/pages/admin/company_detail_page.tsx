@@ -16,7 +16,6 @@ const companyDetailPageQueryNode = graphql`
       name
       slug
       plan
-      clerkOrganizationId
       memberCount
       usage {
         requestCount
@@ -44,10 +43,6 @@ type CompanyWallet = companyDetailPageQuery["response"]["PlatformAdminCompany"][
 
 function formatPlanLabel(plan: string): string {
   return plan === "pro" ? "Pro" : "Free";
-}
-
-function formatOptionalValue(value: string | null | undefined): string {
-  return value && value.length > 0 ? value : "-";
 }
 
 function formatTimestamp(value: string): string {
@@ -136,7 +131,6 @@ function AdminCompanyDetailPageContent() {
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{formatPlanLabel(company.plan)} plan</Badge>
             <Badge variant="outline">{company.memberCount} members</Badge>
-            <Badge variant="secondary">Clerk: {formatOptionalValue(company.clerkOrganizationId)}</Badge>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <UsageMetricTile

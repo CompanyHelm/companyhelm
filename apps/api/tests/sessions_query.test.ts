@@ -75,7 +75,7 @@ class SessionsQueryTestHarness {
         },
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -595,8 +595,8 @@ test("GraphQL Sessions query lists non-archived company sessions ordered by most
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

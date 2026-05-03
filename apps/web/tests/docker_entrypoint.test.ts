@@ -18,10 +18,9 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
         ...process.env,
         COMPANYHELM_WEB_RUNTIME_CONFIG_PATH: runtimeConfigPath,
         VITE_AUTH_PROVIDER: "local",
-        VITE_CLERK_PUBLISHABLE_KEY: "pk_live_runtime",
         VITE_GRAPHQL_URL: "https://api.companyhelm.com/graphql",
-        VITE_CLERK_PRIVACY_POLICY_URL: "https://companyhelm.com/privacy",
-        VITE_CLERK_TERMS_OF_SERVICE_URL: "https://companyhelm.com/terms",
+        VITE_PRIVACY_POLICY_URL: "https://companyhelm.com/privacy",
+        VITE_TERMS_OF_SERVICE_URL: "https://companyhelm.com/terms",
         VITE_PADDLE_CLIENT_TOKEN: "live_runtime_token",
         VITE_PADDLE_ENVIRONMENT: "production",
       },
@@ -31,7 +30,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
     const runtimeConfig = readFileSync(runtimeConfigPath, "utf8");
 
     assert.match(runtimeConfig, /authProvider: "local"/);
-    assert.match(runtimeConfig, /clerkPublishableKey: "pk_live_runtime"/);
     assert.match(runtimeConfig, /graphqlUrl: "https:\/\/api\.companyhelm\.com\/graphql"/);
     assert.match(runtimeConfig, /privacyPolicyUrl: "https:\/\/companyhelm\.com\/privacy"/);
     assert.match(runtimeConfig, /termsOfServiceUrl: "https:\/\/companyhelm\.com\/terms"/);

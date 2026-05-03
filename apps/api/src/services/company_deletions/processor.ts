@@ -7,8 +7,8 @@ import { CompanyDeletionRequestService } from "./request_service.ts";
 
 /**
  * Executes one company deletion request from its durable row through every side effect that cannot
- * be handled by database cascades: scheduled BullMQ wakeups, provider-backed environments, Clerk
- * organization removal, and finally the local company row.
+ * be handled by database cascades: scheduled BullMQ wakeups, provider-backed environments, and
+ * finally the local company row.
  */
 @injectable()
 export class CompanyDeletionProcessor {
@@ -42,7 +42,6 @@ export class CompanyDeletionProcessor {
 
     try {
       await this.deletionExecutor.deleteCompany({
-        clerkOrganizationId: request.clerkOrganizationId,
         companyId: request.companyId,
       });
       await this.requestService.markCompleted(this.adminDatabase, request.id);

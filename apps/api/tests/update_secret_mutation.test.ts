@@ -19,7 +19,7 @@ class UpdateSecretMutationTestHarness {
   static createConfigMock(): Config {
     return {
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       graphql: {
         endpoint: "/graphql",
@@ -133,8 +133,8 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },

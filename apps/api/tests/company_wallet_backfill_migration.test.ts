@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "vitest";
 
 /**
- * Guards the post-signup wallet repair migration so companies created while Clerk bootstrap ran
+ * Guards the post-signup wallet repair migration so companies created while auth bootstrap ran
  * before company RLS context was bound receive the same subscription wallet ledger as new signups.
  */
 class CompanyWalletBackfillMigrationTest {

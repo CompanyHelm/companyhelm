@@ -24,7 +24,7 @@ class PlatformAdminUsersQueryTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
     } as Config;
   }
@@ -86,7 +86,6 @@ class PlatformAdminUsersQueryTestHarness {
                                     email: "jane@example.com",
                                     firstName: "Jane",
                                     id: "user-1",
-                                    clerkUserId: "user_clerk_jane",
                                     isPlatformAdmin: true,
                                     lastName: "Doe",
                                     updatedAt: new Date("2026-04-15T09:30:00.000Z"),
@@ -95,7 +94,6 @@ class PlatformAdminUsersQueryTestHarness {
                                     email: "alex@example.com",
                                     firstName: "Alex",
                                     id: "user-2",
-                                    clerkUserId: "user_clerk_alex",
                                     isPlatformAdmin: false,
                                     lastName: null,
                                     updatedAt: new Date("2026-04-12T09:30:00.000Z"),
@@ -143,8 +141,8 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
           email: "admin@example.com",
           firstName: "Admin",
           lastName: "User",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -175,14 +173,13 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
     payload: {
       query: `
         query PlatformAdminUsers {
-          PlatformAdminUsers(page: 1, pageSize: 25, search: "user_clerk") {
+          PlatformAdminUsers(page: 1, pageSize: 25, search: "user_local") {
             page
             pageSize
             totalCount
             totalPages
             nodes {
               id
-              clerkUserId
               email
               firstName
               lastName
@@ -201,7 +198,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
   assert.deepEqual(document.data.PlatformAdminUsers, {
     nodes: [{
       id: "user-1",
-      clerkUserId: "user_clerk_jane",
       email: "jane@example.com",
       firstName: "Jane",
       lastName: "Doe",
@@ -210,7 +206,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
       updatedAt: "2026-04-15T09:30:00.000Z",
     }, {
       id: "user-2",
-      clerkUserId: "user_clerk_alex",
       email: "alex@example.com",
       firstName: "Alex",
       lastName: null,
@@ -263,7 +258,6 @@ test("GraphQL PlatformAdminUser query lists a user's company memberships for pla
                     return {
                       async limit() {
                         return [{
-                          clerkUserId: "user_clerk_jane",
                           createdAt: new Date("2026-04-01T10:00:00.000Z"),
                           email: "jane@example.com",
                           firstName: "Jane",
@@ -340,8 +334,8 @@ test("GraphQL PlatformAdminUser query lists a user's company memberships for pla
           email: "admin@example.com",
           firstName: "Admin",
           lastName: "User",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",
@@ -374,7 +368,6 @@ test("GraphQL PlatformAdminUser query lists a user's company memberships for pla
         query PlatformAdminUser {
           PlatformAdminUser(id: "user-1") {
             id
-            clerkUserId
             email
             firstName
             lastName
@@ -401,7 +394,6 @@ test("GraphQL PlatformAdminUser query lists a user's company memberships for pla
   const document = response.json();
   assert.deepEqual(document.data.PlatformAdminUser, {
     id: "user-1",
-    clerkUserId: "user_clerk_jane",
     email: "jane@example.com",
     firstName: "Jane",
     lastName: "Doe",
@@ -437,7 +429,6 @@ test("PlatformAdminUser query serializes string timestamps from the admin databa
     const query = strings.join("?").replace(/\s+/g, " ").trim();
     if (query.includes("FROM users")) {
       return [{
-        clerkUserId: "user_clerk_jane",
         createdAt: "2026-04-01T10:00:00.000Z",
         email: "jane@example.com",
         firstName: "Jane",
@@ -483,8 +474,8 @@ test("PlatformAdminUser query serializes string timestamps from the admin databa
           firstName: "Admin",
           id: "admin-user",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "user_clerk_admin",
+          provider: "local",
+          providerSubject: "user_local_admin",
         },
       },
       isPlatformAdmin: true,
@@ -524,8 +515,8 @@ test("GraphQL PlatformAdminUsers query rejects non-platform-admin users", async 
           email: "user@example.com",
           firstName: "User",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

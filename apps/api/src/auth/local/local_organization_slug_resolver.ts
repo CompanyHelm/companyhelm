@@ -9,8 +9,7 @@ type CompanySlugRecord = {
 };
 
 /**
- * Resolves the company slug from local database state for auth providers that do not delegate
- * organization identity to Clerk.
+ * Resolves the company slug from local database state for CompanyHelm-owned organization identity.
  */
 @injectable()
 export class LocalOrganizationSlugResolver extends OrganizationSlugResolver {

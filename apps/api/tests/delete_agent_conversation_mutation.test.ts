@@ -26,8 +26,8 @@ test("DeleteAgentConversationMutation returns the deleted conversation id", asyn
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk",
-          providerSubject: "user_clerk_123",
+          provider: "local",
+          providerSubject: "user_local_123",
         },
         company: {
           id: "company-123",

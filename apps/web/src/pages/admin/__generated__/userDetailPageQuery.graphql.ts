@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce4be18ba830fa1c6e1762b3ee50f459>>
+ * @generated SignedSource<<81f935f7dcf1e8d4d9ee3f275a1bd78b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,6 @@ export type userDetailPageQuery$variables = {
 };
 export type userDetailPageQuery$data = {
   readonly PlatformAdminUser: {
-    readonly clerkUserId: string | null | undefined;
     readonly companyMemberships: ReadonlyArray<{
       readonly companyId: string;
       readonly companyName: string;
@@ -84,13 +83,6 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "clerkUserId",
         "storageKey": null
       },
       {
@@ -200,16 +192,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "5d7a6499e1a4a9bb1c39bb0e2046f679",
+    "cacheID": "fb8c29f691e73d96770f856447a7b166",
     "id": null,
     "metadata": {},
     "name": "userDetailPageQuery",
     "operationKind": "query",
-    "text": "query userDetailPageQuery(\n  $userId: ID!\n) {\n  PlatformAdminUser(id: $userId) {\n    id\n    clerkUserId\n    email\n    firstName\n    lastName\n    isPlatformAdmin\n    createdAt\n    updatedAt\n    companyMemberships {\n      companyId\n      companyName\n      companySlug\n      companyPlan\n      role\n      status\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query userDetailPageQuery(\n  $userId: ID!\n) {\n  PlatformAdminUser(id: $userId) {\n    id\n    email\n    firstName\n    lastName\n    isPlatformAdmin\n    createdAt\n    updatedAt\n    companyMemberships {\n      companyId\n      companyName\n      companySlug\n      companyPlan\n      role\n      status\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "34ee917233248b81ed85725ddc79eeda";
+(node as any).hash = "8b4868f2faa8c38e827209678ed0f2a1";
 
 export default node;

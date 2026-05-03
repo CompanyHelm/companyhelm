@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<deed1a6b26826231786b50aadeaf8038>>
+ * @generated SignedSource<<d1dedd5b1a3f069cc2bb26169ffc0a59>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,6 @@ export type usersPageQuery$variables = {
 export type usersPageQuery$data = {
   readonly PlatformAdminUsers: {
     readonly nodes: ReadonlyArray<{
-      readonly clerkUserId: string | null | undefined;
       readonly createdAt: string;
       readonly email: string;
       readonly firstName: string;
@@ -127,13 +126,6 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "clerkUserId",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "email",
             "storageKey": null
           },
@@ -197,16 +189,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "76e2f19d87e1988994e9975fc91b502f",
+    "cacheID": "461becee36b03420e16c189738abaf3c",
     "id": null,
     "metadata": {},
     "name": "usersPageQuery",
     "operationKind": "query",
-    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      clerkUserId\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a5462261e7e64788652da5061c7695d8";
+(node as any).hash = "4db8ccdabda0adb34d035b4f19d75395";
 
 export default node;

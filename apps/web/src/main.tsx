@@ -3,8 +3,6 @@ import { createRoot } from "react-dom/client";
 import App from "./app";
 import { CompanyHelmAuthProvider } from "./components/auth/auth_provider";
 import { AppRelayEnvironmentProvider } from "./components/relay_environment_provider";
-import { RuntimeConfigurationError } from "./components/runtime_configuration_error";
-import { config } from "./config";
 import "./index.css";
 
 const rootElement = document.getElementById("app");
@@ -15,14 +13,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    {(config.authProvider === "clerk" && config.clerkPublishableKey.length === 0) ? (
-      <RuntimeConfigurationError />
-    ) : (
-      <CompanyHelmAuthProvider>
-        <AppRelayEnvironmentProvider>
-          <App />
-        </AppRelayEnvironmentProvider>
-      </CompanyHelmAuthProvider>
-    )}
+    <CompanyHelmAuthProvider>
+      <AppRelayEnvironmentProvider>
+        <App />
+      </AppRelayEnvironmentProvider>
+    </CompanyHelmAuthProvider>
   </StrictMode>,
 );

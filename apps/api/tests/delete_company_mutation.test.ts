@@ -28,8 +28,8 @@ class DeleteCompanyMutationTestHarness {
           firstName: "Ada",
           id: "user-1",
           lastName: null,
-          provider: "clerk",
-          providerSubject: "user_clerk_1",
+          provider: "local",
+          providerSubject: "user_local_1",
         },
       },
       resolveSubscriptionContext: null,
@@ -40,7 +40,6 @@ class DeleteCompanyMutationTestHarness {
     const requestedAt = new Date("2026-04-22T12:00:00.000Z");
     return {
       attempts: 0,
-      clerkOrganizationId: "org_1",
       companyId: "company-1",
       companyName: "Acme",
       completedAt: null,

@@ -52,7 +52,7 @@ class SkillsGraphqlTestHarness {
   static createConfigMock(): Config {
     return {
       auth: {
-        provider: "clerk",
+        provider: "local",
       },
       database: {
         host: "127.0.0.1",
@@ -391,8 +391,8 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },
@@ -621,8 +621,8 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },
@@ -818,8 +818,8 @@ test("GraphQL GitHub branch discovery returns Git errors instead of hanging", as
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },
@@ -916,8 +916,8 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },
@@ -1129,8 +1129,8 @@ test("GraphQL skill deletion removes the catalog entry", async () => {
           firstName: "User",
           id: "user-123",
           lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
+          provider: "local" as const,
+          providerSubject: "user_local_123",
         },
       };
     },

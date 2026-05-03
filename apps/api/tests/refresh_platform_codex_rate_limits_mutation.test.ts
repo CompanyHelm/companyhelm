@@ -87,8 +87,8 @@ class RefreshPlatformCodexRateLimitsMutationTestHarness {
           firstName: "Admin",
           id: "admin-user",
           lastName: "User",
-          provider: "clerk",
-          providerSubject: "clerk-admin-user",
+          provider: "local",
+          providerSubject: "local-admin-user",
         },
         company: {
           id: "company-1",

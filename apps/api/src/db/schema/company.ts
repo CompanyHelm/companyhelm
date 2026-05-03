@@ -42,14 +42,12 @@ export const companies = pgTable("companies", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
-  clerkOrganizationId: text("clerk_organization_id"),
   slug: text("slug"),
   name: text("name").notNull(),
   plan: companySubscriptionPlanEnum("plan").notNull(),
   pendingPlan: companySubscriptionPlanEnum("pending_plan"),
   pendingPlanEffectiveAt: timestamp("pending_plan_effective_at", { withTimezone: true }),
 }, (table) => ({
-  clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
   slugUnique: uniqueIndex("companies_slug_uidx").on(table.slug),
 }));
 
@@ -65,14 +63,12 @@ export const users = pgTable("users", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
-  clerkUserId: text("clerk_user_id"),
   first_name: text("first_name").notNull(),
   last_name: text("last_name"),
   email: text("email").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  clerkUserIdUnique: uniqueIndex("users_clerk_user_id_uidx").on(table.clerkUserId),
   emailUnique: uniqueIndex("users_email_uidx").on(table.email),
   firstNameLengthCheck: check("users_first_name_length_check", sql`length(${table.first_name}) <= 255`),
   lastNameLengthCheck: check(
@@ -100,13 +96,11 @@ export const companyMembers = pgTable("company_members", {
     .notNull(),
   role: companyMemberRoleEnum("role").default("member").notNull(),
   status: companyMemberStatusEnum("status").default("active").notNull(),
-  clerkInvitationId: text("clerk_invitation_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.companyId, table.userId] }),
   companyIdIndex: index("company_members_company_id_idx").on(table.companyId),
-  clerkInvitationIdUnique: uniqueIndex("company_members_clerk_invitation_id_uidx").on(table.clerkInvitationId),
   userIdIndex: index("company_members_user_id_idx").on(table.userId),
 }));
 
@@ -115,7 +109,6 @@ export const companyDeletionRequests = pgTable("company_deletion_requests", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   companyId: uuid("company_id").notNull(),
-  clerkOrganizationId: text("clerk_organization_id"),
   companyName: text("company_name").notNull(),
   requestedByUserId: uuid("requested_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),

@@ -134,7 +134,6 @@ export class LocalAuthService {
       const [createdUser] = await insertableDatabase
         .insert(users)
         .values({
-          clerkUserId: null,
           created_at: now,
           email,
           first_name: firstName,
@@ -150,7 +149,6 @@ export class LocalAuthService {
       const [createdCompany] = await insertableDatabase
         .insert(companies)
         .values({
-          clerkOrganizationId: null,
           name: companyName,
           plan: "free",
           slug: companySlug,

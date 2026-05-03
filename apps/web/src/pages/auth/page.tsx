@@ -1,12 +1,12 @@
 import { SignIn, SignUp } from "@/components/auth/auth_provider";
 
-export type ClerkPageMode = "signIn" | "signUp";
+export type AuthenticationPageMode = "signIn" | "signUp";
 
-interface ClerkPageProps {
-  mode: ClerkPageMode;
+interface AuthenticationPageProps {
+  mode: AuthenticationPageMode;
 }
 
-const clerkAppearance = {
+const authenticationAppearance = {
   elements: {
     rootBox: "flex w-full min-w-0 justify-center",
     cardBox: "w-full max-w-[30rem] min-w-0",
@@ -15,7 +15,7 @@ const clerkAppearance = {
   },
 } as const;
 
-export function ClerkPage(props: ClerkPageProps) {
+export function AuthenticationPage(props: AuthenticationPageProps) {
   return (
     <main className="auth-shell">
       <section className="auth-shell__hero">
@@ -32,9 +32,9 @@ export function ClerkPage(props: ClerkPageProps) {
 
       <section className="auth-shell__panel">
         {props.mode === "signIn" ? (
-          <SignIn appearance={clerkAppearance} signUpUrl="/sign-up" forceRedirectUrl="/" />
+          <SignIn appearance={authenticationAppearance} signUpUrl="/sign-up" forceRedirectUrl="/" />
         ) : (
-          <SignUp appearance={clerkAppearance} signInUrl="/sign-in" forceRedirectUrl="/signed-up" />
+          <SignUp appearance={authenticationAppearance} signInUrl="/sign-in" forceRedirectUrl="/signed-up" />
         )}
       </section>
     </main>
