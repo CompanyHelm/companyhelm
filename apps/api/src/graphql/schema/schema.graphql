@@ -38,6 +38,7 @@ type Query {
   PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
   PlatformCodexRateLimits(platformModelProviderCredentialId: ID!): CodexRateLimits!
   PlatformAdminUsers(page: Int!, pageSize: Int!, search: String): PlatformAdminUserPage!
+  PlatformAdminUser(id: ID!): PlatformAdminUserDetail!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -95,6 +96,7 @@ type Mutation {
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
+  DeletePlatformAdminUser(input: DeletePlatformAdminUserInput!): PlatformAdminUserDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   InviteCompanyMember(input: InviteCompanyMemberInput!): CompanyMemberInvitation!
   RemoveCompanyMember(input: RemoveCompanyMemberInput!): CompanyMemberAccess!
@@ -591,9 +593,38 @@ type PlatformAdminUser {
   firstName: String!
   lastName: String
   isPlatformAdmin: Boolean!
-  companyCount: Int!
   createdAt: String!
   updatedAt: String!
+}
+
+type PlatformAdminUserDetail {
+  id: ID!
+  clerkUserId: String
+  email: String!
+  firstName: String!
+  lastName: String
+  isPlatformAdmin: Boolean!
+  companyMemberships: [PlatformAdminUserCompanyMembership!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminUserCompanyMembership {
+  companyId: ID!
+  companyName: String!
+  companySlug: String
+  companyPlan: CompanySubscriptionPlan!
+  role: CompanyMemberRole!
+  status: CompanyMemberStatus!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminUserDeletionPayload {
+  id: ID!
+  clerkUserId: String
+  email: String!
+  membershipCount: Int!
 }
 
 type PlatformAdminUserPage {
@@ -1590,6 +1621,11 @@ input DeleteCompanyInput {
 input DeletePlatformAdminCompanyInput {
   companyId: ID!
   confirmationName: String!
+}
+
+input DeletePlatformAdminUserInput {
+  userId: ID!
+  confirmationEmail: String!
 }
 
 type PlatformAdminCompanyDeletionPayload {

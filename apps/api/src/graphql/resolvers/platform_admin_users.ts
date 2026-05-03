@@ -1,12 +1,18 @@
-import { desc, eq, sql } from "drizzle-orm";
-import { injectable } from "inversify";
-import { companyMembers, platformAdmins, users } from "../../db/schema.ts";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import { inject, injectable } from "inversify";
+import { AdminDatabase } from "../../db/admin_database.ts";
+import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
+import { companies, companyMembers, platformAdmins, users } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type PlatformAdminUsersArguments = {
   page: number;
   pageSize: number;
   search?: string | null;
+};
+
+type PlatformAdminUserArguments = {
+  id: string;
 };
 
 type PlatformAdminUserRow = {
@@ -20,13 +26,23 @@ type PlatformAdminUserRow = {
   updatedAt: Date;
 };
 
+type PlatformAdminUserCompanyMembershipRow = {
+  companyId: string;
+  companyName: string;
+  companyPlan: "free" | "plus" | "pro";
+  companySlug: string | null;
+  createdAt: Date;
+  role: "admin" | "member";
+  status: "active" | "invited";
+  updatedAt: Date;
+};
+
 type PlatformAdminUserCountRow = {
   totalCount: number;
 };
 
 type GraphqlPlatformAdminUser = {
   clerkUserId: string | null;
-  companyCount: number;
   createdAt: string;
   email: string;
   firstName: string;
@@ -34,6 +50,21 @@ type GraphqlPlatformAdminUser = {
   isPlatformAdmin: boolean;
   lastName: string | null;
   updatedAt: string;
+};
+
+type GraphqlPlatformAdminUserCompanyMembership = {
+  companyId: string;
+  companyName: string;
+  companyPlan: "free" | "plus" | "pro";
+  companySlug: string | null;
+  createdAt: string;
+  role: "admin" | "member";
+  status: "active" | "invited";
+  updatedAt: string;
+};
+
+type GraphqlPlatformAdminUserDetail = GraphqlPlatformAdminUser & {
+  companyMemberships: GraphqlPlatformAdminUserCompanyMembership[];
 };
 
 type GraphqlPlatformAdminUserPage = {
@@ -51,6 +82,13 @@ type GraphqlPlatformAdminUserPage = {
 @injectable()
 export class PlatformAdminUsersQueryResolver {
   private static readonly MAX_PAGE_SIZE = 100;
+  private readonly adminDatabase: AdminDatabase | null;
+
+  constructor(
+    @inject(AdminDatabase) adminDatabase: AdminDatabase | null = null,
+  ) {
+    this.adminDatabase = adminDatabase;
+  }
 
   execute = async (
     _root: unknown,
@@ -73,6 +111,7 @@ export class PlatformAdminUsersQueryResolver {
     const searchCondition = this.buildSearchCondition(arguments_.search);
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
       const countRows = searchCondition
         ? await tx
           .select({
@@ -87,19 +126,10 @@ export class PlatformAdminUsersQueryResolver {
           .from(users) as PlatformAdminUserCountRow[];
       const [countRow] = countRows;
       const totalCount = countRow?.totalCount ?? 0;
-      const membershipCounts = tx
-        .select({
-          companyCount: sql<number>`count(*)::int`.as("company_count"),
-          userId: companyMembers.userId,
-        })
-        .from(companyMembers)
-        .groupBy(companyMembers.userId)
-        .as("membership_counts");
       const userRows = searchCondition
         ? await tx
           .select({
             clerkUserId: users.clerkUserId,
-            companyCount: sql<number>`coalesce(${membershipCounts.companyCount}, 0)::int`,
             createdAt: users.created_at,
             email: users.email,
             firstName: users.first_name,
@@ -113,15 +143,13 @@ export class PlatformAdminUsersQueryResolver {
             updatedAt: users.updated_at,
           })
           .from(users)
-          .leftJoin(membershipCounts, eq(membershipCounts.userId, users.id))
           .where(searchCondition)
           .orderBy(desc(users.created_at), desc(users.id))
           .limit(pageSize)
-          .offset(offset) as Array<PlatformAdminUserRow & { companyCount: number }>
+          .offset(offset) as PlatformAdminUserRow[]
         : await tx
           .select({
             clerkUserId: users.clerkUserId,
-            companyCount: sql<number>`coalesce(${membershipCounts.companyCount}, 0)::int`,
             createdAt: users.created_at,
             email: users.email,
             firstName: users.first_name,
@@ -135,15 +163,13 @@ export class PlatformAdminUsersQueryResolver {
             updatedAt: users.updated_at,
           })
           .from(users)
-          .leftJoin(membershipCounts, eq(membershipCounts.userId, users.id))
           .orderBy(desc(users.created_at), desc(users.id))
           .limit(pageSize)
-          .offset(offset) as Array<PlatformAdminUserRow & { companyCount: number }>;
+          .offset(offset) as PlatformAdminUserRow[];
 
       return {
         nodes: userRows.map((userRow) => ({
           clerkUserId: userRow.clerkUserId,
-          companyCount: userRow.companyCount,
           createdAt: userRow.createdAt.toISOString(),
           email: userRow.email,
           firstName: userRow.firstName,
@@ -159,6 +185,142 @@ export class PlatformAdminUsersQueryResolver {
       };
     });
   };
+
+  executeUser = async (
+    _root: unknown,
+    arguments_: PlatformAdminUserArguments,
+    context: GraphqlRequestContext,
+  ): Promise<GraphqlPlatformAdminUserDetail> => {
+    if (!context.authSession?.user) {
+      throw new Error("Authentication required.");
+    }
+    if (!context.app_runtime_transaction_provider) {
+      throw new Error("Authentication required.");
+    }
+    if (context.isPlatformAdmin !== true) {
+      throw new Error("Platform admin access required.");
+    }
+
+    if (this.adminDatabase) {
+      return this.executeUserWithAdminDatabase(arguments_);
+    }
+
+    return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      await PlatformAdminAccess.enable(tx);
+      const [userRow] = await tx
+        .select({
+          clerkUserId: users.clerkUserId,
+          createdAt: users.created_at,
+          email: users.email,
+          firstName: users.first_name,
+          id: users.id,
+          isPlatformAdmin: sql<boolean>`exists (
+            select 1
+            from ${platformAdmins}
+            where ${platformAdmins.userId} = ${users.id}
+          )`,
+          lastName: users.last_name,
+          updatedAt: users.updated_at,
+        })
+        .from(users)
+        .where(eq(users.id, arguments_.id))
+        .limit(1) as PlatformAdminUserRow[];
+
+      if (!userRow) {
+        throw new Error("User not found.");
+      }
+
+      const membershipRows = await tx
+        .select({
+          companyId: companies.id,
+          companyName: companies.name,
+          companyPlan: companies.plan,
+          companySlug: companies.slug,
+          createdAt: companyMembers.createdAt,
+          role: companyMembers.role,
+          status: companyMembers.status,
+          updatedAt: companyMembers.updatedAt,
+        })
+        .from(companyMembers)
+        .innerJoin(companies, eq(companies.id, companyMembers.companyId))
+        .where(eq(companyMembers.userId, userRow.id))
+        .orderBy(asc(companies.name), asc(companies.id)) as PlatformAdminUserCompanyMembershipRow[];
+
+      return this.serializeUserDetail(userRow, membershipRows);
+    });
+  };
+
+  private async executeUserWithAdminDatabase(
+    arguments_: PlatformAdminUserArguments,
+  ): Promise<GraphqlPlatformAdminUserDetail> {
+    const sqlClient = this.adminDatabase!.getSqlClient();
+    const [userRow] = await sqlClient<PlatformAdminUserRow[]>`
+      SELECT
+        u.clerk_user_id AS "clerkUserId",
+        u.created_at AS "createdAt",
+        u.email,
+        u.first_name AS "firstName",
+        u.id,
+        EXISTS (
+          SELECT 1
+          FROM platform_admins pa
+          WHERE pa.user_id = u.id
+        ) AS "isPlatformAdmin",
+        u.last_name AS "lastName",
+        u.updated_at AS "updatedAt"
+      FROM users u
+      WHERE u.id = ${arguments_.id}
+      LIMIT 1
+    `;
+
+    if (!userRow) {
+      throw new Error("User not found.");
+    }
+
+    const membershipRows = await sqlClient<PlatformAdminUserCompanyMembershipRow[]>`
+      SELECT
+        c.id AS "companyId",
+        c.name AS "companyName",
+        c.plan AS "companyPlan",
+        c.slug AS "companySlug",
+        cm.created_at AS "createdAt",
+        cm.role,
+        cm.status,
+        cm.updated_at AS "updatedAt"
+      FROM company_members cm
+      INNER JOIN companies c ON c.id = cm.company_id
+      WHERE cm.user_id = ${userRow.id}
+      ORDER BY c.name ASC, c.id ASC
+    `;
+
+    return this.serializeUserDetail(userRow, membershipRows);
+  }
+
+  private serializeUserDetail(
+    userRow: PlatformAdminUserRow,
+    membershipRows: PlatformAdminUserCompanyMembershipRow[],
+  ): GraphqlPlatformAdminUserDetail {
+    return {
+      clerkUserId: userRow.clerkUserId,
+      companyMemberships: membershipRows.map((membershipRow) => ({
+        companyId: membershipRow.companyId,
+        companyName: membershipRow.companyName,
+        companyPlan: membershipRow.companyPlan,
+        companySlug: membershipRow.companySlug,
+        createdAt: membershipRow.createdAt.toISOString(),
+        role: membershipRow.role,
+        status: membershipRow.status,
+        updatedAt: membershipRow.updatedAt.toISOString(),
+      })),
+      createdAt: userRow.createdAt.toISOString(),
+      email: userRow.email,
+      firstName: userRow.firstName,
+      id: userRow.id,
+      isPlatformAdmin: userRow.isPlatformAdmin,
+      lastName: userRow.lastName,
+      updatedAt: userRow.updatedAt.toISOString(),
+    };
+  }
 
   private buildSearchCondition(search: string | null | undefined) {
     const trimmedSearch = search?.trim() ?? "";

@@ -72,57 +72,32 @@ class PlatformAdminUsersQueryTestHarness {
               return {
                 from() {
                   return {
-                    groupBy() {
+                    where() {
                       return {
-                        as() {
+                        orderBy() {
                           return {
-                            companyCount: "companyCount",
-                            userId: "userId",
-                          };
-                        },
-                      };
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 4) {
-              return {
-                from() {
-                  return {
-                    leftJoin() {
-                      return {
-                        where() {
-                          return {
-                            orderBy() {
+                            limit() {
                               return {
-                                limit() {
-                                  return {
-                                    async offset() {
-                                      return [{
-                                        companyCount: 2,
-                                        createdAt: new Date("2026-04-01T10:00:00.000Z"),
-                                        email: "jane@example.com",
-                                        firstName: "Jane",
-                                        id: "user-1",
-                                        clerkUserId: "user_clerk_jane",
-                                        isPlatformAdmin: true,
-                                        lastName: "Doe",
-                                        updatedAt: new Date("2026-04-15T09:30:00.000Z"),
-                                      }, {
-                                        companyCount: 1,
-                                        createdAt: new Date("2026-03-01T10:00:00.000Z"),
-                                        email: "alex@example.com",
-                                        firstName: "Alex",
-                                        id: "user-2",
-                                        clerkUserId: "user_clerk_alex",
-                                        isPlatformAdmin: false,
-                                        lastName: null,
-                                        updatedAt: new Date("2026-04-12T09:30:00.000Z"),
-                                      }];
-                                    },
-                                  };
+                                async offset() {
+                                  return [{
+                                    createdAt: new Date("2026-04-01T10:00:00.000Z"),
+                                    email: "jane@example.com",
+                                    firstName: "Jane",
+                                    id: "user-1",
+                                    clerkUserId: "user_clerk_jane",
+                                    isPlatformAdmin: true,
+                                    lastName: "Doe",
+                                    updatedAt: new Date("2026-04-15T09:30:00.000Z"),
+                                  }, {
+                                    createdAt: new Date("2026-03-01T10:00:00.000Z"),
+                                    email: "alex@example.com",
+                                    firstName: "Alex",
+                                    id: "user-2",
+                                    clerkUserId: "user_clerk_alex",
+                                    isPlatformAdmin: false,
+                                    lastName: null,
+                                    updatedAt: new Date("2026-04-12T09:30:00.000Z"),
+                                  }];
                                 },
                               };
                             },
@@ -208,7 +183,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
               firstName
               lastName
               isPlatformAdmin
-              companyCount
               createdAt
               updatedAt
             }
@@ -228,7 +202,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
       firstName: "Jane",
       lastName: "Doe",
       isPlatformAdmin: true,
-      companyCount: 2,
       createdAt: "2026-04-01T10:00:00.000Z",
       updatedAt: "2026-04-15T09:30:00.000Z",
     }, {
@@ -238,7 +211,6 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
       firstName: "Alex",
       lastName: null,
       isPlatformAdmin: false,
-      companyCount: 1,
       createdAt: "2026-03-01T10:00:00.000Z",
       updatedAt: "2026-04-12T09:30:00.000Z",
     }],
@@ -246,6 +218,211 @@ test("GraphQL PlatformAdminUsers query lists paginated users for platform admins
     pageSize: 25,
     totalCount: 2,
     totalPages: 1,
+  });
+
+  await app.close();
+});
+
+test("GraphQL PlatformAdminUser query lists a user's company memberships for platform admins", async () => {
+  const app = Fastify();
+  const config = PlatformAdminUsersQueryTestHarness.createConfigMock();
+  let selectCallCount = 0;
+  const database = {
+    getDatabase() {
+      return {
+        async execute() {
+          return [];
+        },
+        select() {
+          selectCallCount += 1;
+          if (selectCallCount === 1) {
+            return {
+              from() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return [{ userId: "user-123" }];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 2) {
+            return {
+              from() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return [{
+                          clerkUserId: "user_clerk_jane",
+                          createdAt: new Date("2026-04-01T10:00:00.000Z"),
+                          email: "jane@example.com",
+                          firstName: "Jane",
+                          id: "user-1",
+                          isPlatformAdmin: true,
+                          lastName: "Doe",
+                          updatedAt: new Date("2026-04-15T09:30:00.000Z"),
+                        }];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 3) {
+            return {
+              from() {
+                return {
+                  innerJoin() {
+                    return {
+                      where() {
+                        return {
+                          async orderBy() {
+                            return [{
+                              companyId: "company-1",
+                              companyName: "Acme",
+                              companyPlan: "pro",
+                              companySlug: "acme",
+                              createdAt: new Date("2026-04-03T10:00:00.000Z"),
+                              role: "admin",
+                              status: "active",
+                              updatedAt: new Date("2026-04-04T10:00:00.000Z"),
+                            }, {
+                              companyId: "company-2",
+                              companyName: "Beta",
+                              companyPlan: "free",
+                              companySlug: null,
+                              createdAt: new Date("2026-04-05T10:00:00.000Z"),
+                              role: "member",
+                              status: "invited",
+                              updatedAt: new Date("2026-04-06T10:00:00.000Z"),
+                            }];
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error("Unexpected select call.");
+        },
+      } as never;
+    },
+    async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+      return callback(this.getDatabase());
+    },
+  };
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "admin@example.com",
+          firstName: "Admin",
+          lastName: "User",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query PlatformAdminUser {
+          PlatformAdminUser(id: "user-1") {
+            id
+            clerkUserId
+            email
+            firstName
+            lastName
+            isPlatformAdmin
+            createdAt
+            updatedAt
+            companyMemberships {
+              companyId
+              companyName
+              companySlug
+              companyPlan
+              role
+              status
+              createdAt
+              updatedAt
+            }
+          }
+        }
+      `,
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.PlatformAdminUser, {
+    id: "user-1",
+    clerkUserId: "user_clerk_jane",
+    email: "jane@example.com",
+    firstName: "Jane",
+    lastName: "Doe",
+    isPlatformAdmin: true,
+    createdAt: "2026-04-01T10:00:00.000Z",
+    updatedAt: "2026-04-15T09:30:00.000Z",
+    companyMemberships: [{
+      companyId: "company-1",
+      companyName: "Acme",
+      companySlug: "acme",
+      companyPlan: "pro",
+      role: "admin",
+      status: "active",
+      createdAt: "2026-04-03T10:00:00.000Z",
+      updatedAt: "2026-04-04T10:00:00.000Z",
+    }, {
+      companyId: "company-2",
+      companyName: "Beta",
+      companySlug: null,
+      companyPlan: "free",
+      role: "member",
+      status: "invited",
+      createdAt: "2026-04-05T10:00:00.000Z",
+      updatedAt: "2026-04-06T10:00:00.000Z",
+    }],
   });
 
   await app.close();

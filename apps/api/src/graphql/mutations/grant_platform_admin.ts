@@ -1,6 +1,6 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { companyMembers, platformAdmins, users } from "../../db/schema.ts";
+import { platformAdmins, users } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -12,7 +12,6 @@ type GrantPlatformAdminMutationArguments = {
 
 type PlatformAdminUserGrantRow = {
   clerkUserId: string | null;
-  companyCount: number;
   createdAt: Date;
   email: string;
   firstName: string;
@@ -23,7 +22,6 @@ type PlatformAdminUserGrantRow = {
 
 type GraphqlPlatformAdminUser = {
   clerkUserId: string | null;
-  companyCount: number;
   createdAt: string;
   email: string;
   firstName: string;
@@ -61,11 +59,6 @@ export class GrantPlatformAdminMutation extends Mutation<
     return transactionProvider.transaction(async (tx) => {
       const [targetUser] = await tx
         .select({
-          companyCount: sql<number>`(
-            select count(*)::int
-            from ${companyMembers}
-            where ${companyMembers.userId} = ${users.id}
-          )`,
           clerkUserId: users.clerkUserId,
           createdAt: users.created_at,
           email: users.email,
@@ -92,7 +85,6 @@ export class GrantPlatformAdminMutation extends Mutation<
 
       return {
         clerkUserId: targetUser.clerkUserId,
-        companyCount: targetUser.companyCount,
         createdAt: targetUser.createdAt.toISOString(),
         email: targetUser.email,
         firstName: targetUser.firstName,

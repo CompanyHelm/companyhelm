@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a0d91bd184692a4968b0da6b47d96c17>>
+ * @generated SignedSource<<deed1a6b26826231786b50aadeaf8038>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,6 @@ export type usersPageQuery$data = {
   readonly PlatformAdminUsers: {
     readonly nodes: ReadonlyArray<{
       readonly clerkUserId: string | null | undefined;
-      readonly companyCount: number;
       readonly createdAt: string;
       readonly email: string;
       readonly firstName: string;
@@ -163,13 +162,6 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "companyCount",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "createdAt",
             "storageKey": null
           },
@@ -205,16 +197,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "16cf464fd405dbd2c6e1ea2c6da5a606",
+    "cacheID": "76e2f19d87e1988994e9975fc91b502f",
     "id": null,
     "metadata": {},
     "name": "usersPageQuery",
     "operationKind": "query",
-    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      clerkUserId\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      companyCount\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "query usersPageQuery(\n  $page: Int!\n  $pageSize: Int!\n  $search: String\n) {\n  PlatformAdminUsers(page: $page, pageSize: $pageSize, search: $search) {\n    page\n    pageSize\n    totalCount\n    totalPages\n    nodes {\n      id\n      clerkUserId\n      email\n      firstName\n      lastName\n      isPlatformAdmin\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a867c68d41d0a6f98c328755c6552b08";
+(node as any).hash = "a5462261e7e64788652da5061c7695d8";
 
 export default node;
