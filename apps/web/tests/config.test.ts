@@ -18,6 +18,7 @@ test("falls back to the local HTTP GraphQL endpoint by default", () => {
     assert.equal(document.analytics.amplitude.enabled, false);
     assert.equal(document.analytics.amplitude.id, undefined);
     assert.equal(document.analytics.googleAds.id, undefined);
+    assert.equal(document.analytics.googleAds.signUpConversionLabel, undefined);
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;
@@ -45,6 +46,7 @@ test("prefers injected runtime configuration over local defaults", () => {
           },
           googleAds: {
             id: "AW-18135921456",
+            signUpConversionLabel: "3UlcCOKBzqYcELDm8MdD",
           },
         },
       },
@@ -60,6 +62,7 @@ test("prefers injected runtime configuration over local defaults", () => {
     assert.equal(document.analytics.amplitude.enabled, true);
     assert.equal(document.analytics.amplitude.id, "amplitude-runtime-id");
     assert.equal(document.analytics.googleAds.id, "AW-18135921456");
+    assert.equal(document.analytics.googleAds.signUpConversionLabel, "3UlcCOKBzqYcELDm8MdD");
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;

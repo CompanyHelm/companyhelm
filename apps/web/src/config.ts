@@ -12,6 +12,7 @@ export type AnalyticsConfigDocument = {
 
 export type GoogleAdsConfigDocument = {
   id?: string;
+  signUpConversionLabel?: string;
 };
 
 export type PaddleConfigDocument = {
@@ -111,6 +112,10 @@ export class Config {
           id: Config.resolveRuntimeOptionalStringValue(
             runtimeDocument.analytics?.googleAds?.id,
             importMetaEnv?.VITE_GOOGLE_ADS_ID,
+          ),
+          signUpConversionLabel: Config.resolveRuntimeOptionalStringValue(
+            runtimeDocument.analytics?.googleAds?.signUpConversionLabel,
+            importMetaEnv?.VITE_GOOGLE_ADS_SIGN_UP_CONVERSION_LABEL,
           ),
         },
       },

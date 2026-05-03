@@ -67,12 +67,13 @@ test("resolves the sign-up conversion promise when gtag invokes the event callba
 
     await GoogleAdsAnalytics.trackSignUpConversion({
       id: "AW-18135921456",
+      signUpConversionLabel: "3UlcCOKBzqYcELDm8MdD",
     }, {
       timeoutMs: 5,
     });
 
     assert.equal(sentEvent, "conversion");
-    assert.equal(sentPayload?.send_to, "AW-18135921456/signup_complete");
+    assert.equal(sentPayload?.send_to, "AW-18135921456/3UlcCOKBzqYcELDm8MdD");
     assert.equal(sentPayload?.event_timeout, 5);
   } finally {
     if (originalWindow) {
@@ -100,6 +101,7 @@ test("resolves the sign-up conversion promise after the timeout when Google neve
 
     await GoogleAdsAnalytics.trackSignUpConversion({
       id: "AW-18135921456",
+      signUpConversionLabel: "3UlcCOKBzqYcELDm8MdD",
     }, {
       timeoutMs: 10,
     });
@@ -129,6 +131,7 @@ test("resolves the sign-up conversion promise when gtag throws so the redirect p
     await assert.doesNotReject(async () => {
       await GoogleAdsAnalytics.trackSignUpConversion({
         id: "AW-18135921456",
+        signUpConversionLabel: "3UlcCOKBzqYcELDm8MdD",
       }, {
         timeoutMs: 10,
       });
