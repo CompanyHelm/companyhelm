@@ -77,6 +77,7 @@ interface ChartTooltipPayloadItem {
 
 interface ChartTooltipContentProps {
   active?: boolean;
+  formatValue?: (dataKey: string, value: number | string | undefined) => React.ReactNode;
   hideLabel?: boolean;
   indicator?: "line" | "dot";
   label?: React.ReactNode;
@@ -85,7 +86,7 @@ interface ChartTooltipContentProps {
 
 export function ChartTooltipContent(props: ChartTooltipContentProps) {
   const { config } = useChart();
-  const { active, hideLabel = false, indicator = "dot", label, payload } = props;
+  const { active, formatValue, hideLabel = false, indicator = "dot", label, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -108,7 +109,9 @@ export function ChartTooltipContent(props: ChartTooltipContentProps) {
                 )}
                 <span>{itemConfig?.label ?? dataKey}</span>
               </div>
-              <span className="font-medium text-foreground">{item.value?.toLocaleString?.() ?? item.value}</span>
+              <span className="font-medium text-foreground">
+                {formatValue ? formatValue(dataKey, item.value) : item.value?.toLocaleString?.() ?? item.value}
+              </span>
             </div>
           );
         })}

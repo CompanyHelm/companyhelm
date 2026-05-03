@@ -121,6 +121,18 @@ function formatAxisTick(metricKey: MetricsTabKey, value: number): string {
   return formatBytes(value);
 }
 
+function formatTooltipValue(dataKey: string, value: number | string | undefined): string {
+  if (typeof value !== "number") {
+    return String(value ?? "—");
+  }
+
+  if (dataKey === "cpuUsedPct" || dataKey === "memUsedBytes" || dataKey === "diskUsedBytes") {
+    return formatMetricValue(dataKey, value);
+  }
+
+  return value.toLocaleString();
+}
+
 function gigabytesToBytes(value: number): number {
   return value * 1024 * 1024 * 1024;
 }
@@ -219,7 +231,10 @@ function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
                       tickMargin={8}
                       width={72}
                     />
-                    <ChartTooltip content={<ChartTooltipContent hideLabel indicator="line" />} cursor={false} />
+                    <ChartTooltip
+                      content={<ChartTooltipContent formatValue={formatTooltipValue} hideLabel indicator="line" />}
+                      cursor={false}
+                    />
                     <Area
                       dataKey={definition.key}
                       fill={`url(#${definition.gradientId})`}
