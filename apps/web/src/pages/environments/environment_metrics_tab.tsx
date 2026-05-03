@@ -239,6 +239,7 @@ function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
                       dataKey={definition.key}
                       fill={`url(#${definition.gradientId})`}
                       fillOpacity={1}
+                      isAnimationActive={false}
                       stroke={`var(--color-${definition.key})`}
                       strokeWidth={2}
                       type="monotone"
