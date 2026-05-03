@@ -55,10 +55,10 @@ class DbBootstrapTestHarness {
 }
 
 /**
- * Verifies the bootstrap coordinator wraps migrations with runtime-role reconciliation so migrated
- * tables receive request-serving privileges before the API starts listening.
+ * Verifies the bootstrap coordinator emits module lifecycle logs around each startup-only step so
+ * local debugging makes progress and stalls obvious.
  */
-test("DbBootstrap reconciles runtime role grants after migrations", async () => {
+test("DbBootstrap logs start, run, and completion for each bootstrap module", async () => {
   const loggedEntries: LoggedEntry[] = [];
   const runOrder: string[] = [];
   const dbBootstrap = new DbBootstrap(
@@ -78,15 +78,61 @@ test("DbBootstrap reconciles runtime role grants after migrations", async () => 
 
   await dbBootstrap.run();
 
-  assert.deepEqual(runOrder, ["app_runtime_role", "migration", "app_runtime_role"]);
-  assert.deepEqual(
-    loggedEntries
-      .filter((entry) => entry.message === "running db bootstrap module")
-      .map((entry) => entry.payload.module),
-    ["app_runtime_role", "migration", "app_runtime_role_post_migration"],
-  );
-  assert.equal(
-    loggedEntries.every((entry) => entry.bindings.component === "db_bootstrap"),
-    true,
-  );
+  assert.deepEqual(runOrder, ["app_runtime_role", "migration"]);
+  assert.deepEqual(loggedEntries, [
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "app_runtime_role",
+      },
+      message: "starting db bootstrap module",
+    },
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "app_runtime_role",
+      },
+      message: "running db bootstrap module",
+    },
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "app_runtime_role",
+      },
+      message: "completed db bootstrap module",
+    },
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "migration",
+      },
+      message: "starting db bootstrap module",
+    },
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "migration",
+      },
+      message: "running db bootstrap module",
+    },
+    {
+      bindings: {
+        component: "db_bootstrap",
+      },
+      payload: {
+        module: "migration",
+      },
+      message: "completed db bootstrap module",
+    },
+  ]);
 });

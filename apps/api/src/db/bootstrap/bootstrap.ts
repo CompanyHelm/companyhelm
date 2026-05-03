@@ -34,8 +34,8 @@ export class DbBootstrap {
   }
 
   /**
-   * Creates the runtime role when missing, runs Drizzle migrations using the admin role, and then
-   * reconciles runtime grants again so newly migrated tables are usable before the API listens.
+   * Creates the runtime role when missing and then runs Drizzle migrations using the admin role on
+   * the same locked session.
    */
   async run(): Promise<void> {
     const sqlClient = this.adminDatabase.getSqlClient();
@@ -56,7 +56,6 @@ export class DbBootstrap {
 
       await this.runModule("app_runtime_role", this.appRuntimeRoleBootstrapModule);
       await this.runModule("migration", this.migrationBootstrapModule);
-      await this.runModule("app_runtime_role_post_migration", this.appRuntimeRoleBootstrapModule);
     } finally {
       if (lockHeld) {
         await sqlClient`
