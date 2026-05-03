@@ -1,26 +1,13 @@
 import packageDocument from "../../../package.json";
 
-export type AmplitudeConfigDocument = {
-  enabled: boolean;
-  id?: string;
-};
-
-export type AnalyticsConfigDocument = {
-  amplitude: AmplitudeConfigDocument;
-};
-
 export type PaddleConfigDocument = {
   clientToken: string;
   environment: "sandbox" | "production";
 };
 
-type RuntimeAmplitudeConfigDocument = Partial<AmplitudeConfigDocument>;
 type RuntimePaddleConfigDocument = Partial<PaddleConfigDocument>;
 
-type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "analytics" | "paddle">> & {
-  analytics?: {
-    amplitude?: RuntimeAmplitudeConfigDocument;
-  };
+type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "paddle">> & {
   paddle?: RuntimePaddleConfigDocument;
 };
 
@@ -36,7 +23,6 @@ export type ConfigDocument = {
   paddle: PaddleConfigDocument;
   privacyPolicyUrl: string;
   termsOfServiceUrl: string;
-  analytics: AnalyticsConfigDocument;
 };
 
 declare global {
@@ -87,19 +73,6 @@ export class Config {
         importMetaEnv?.VITE_CLERK_TERMS_OF_SERVICE_URL,
         "",
       ),
-      analytics: {
-        amplitude: {
-          enabled: Config.resolveRuntimeBooleanValue(
-            runtimeDocument.analytics?.amplitude?.enabled,
-            importMetaEnv?.VITE_AMPLITUDE_ENABLED,
-            false,
-          ),
-          id: Config.resolveRuntimeOptionalStringValue(
-            runtimeDocument.analytics?.amplitude?.id,
-            importMetaEnv?.VITE_AMPLITUDE_ID,
-          ),
-        },
-      },
     };
   }
 
@@ -122,29 +95,6 @@ export class Config {
     }
 
     return Config.resolveRequiredStringValue(fallbackSourceValue, fallbackValue);
-  }
-
-  private static resolveRuntimeOptionalStringValue(
-    runtimeValue: unknown,
-    fallbackSourceValue: unknown,
-  ): string | undefined {
-    if (typeof runtimeValue === "string" && runtimeValue.trim().length > 0) {
-      return runtimeValue.trim();
-    }
-
-    return Config.resolveOptionalStringValue(fallbackSourceValue);
-  }
-
-  private static resolveRuntimeBooleanValue(
-    runtimeValue: unknown,
-    fallbackSourceValue: unknown,
-    fallbackValue: boolean,
-  ): boolean {
-    if (typeof runtimeValue === "boolean") {
-      return runtimeValue;
-    }
-
-    return Config.resolveBooleanValue(fallbackSourceValue, fallbackValue);
   }
 
   private static resolveAuthProvider(
@@ -185,26 +135,6 @@ export class Config {
     return normalizedValue || fallbackValue;
   }
 
-  private static resolveOptionalStringValue(value: unknown): string | undefined {
-    const normalizedValue = String(value || "").trim();
-    return normalizedValue || undefined;
-  }
-
-  private static resolveBooleanValue(value: unknown, fallbackValue: boolean): boolean {
-    if (typeof value === "boolean") {
-      return value;
-    }
-
-    if (value === "true") {
-      return true;
-    }
-
-    if (value === "false") {
-      return false;
-    }
-
-    return fallbackValue;
-  }
 }
 
 export const config: ConfigDocument = Config.getDocument();

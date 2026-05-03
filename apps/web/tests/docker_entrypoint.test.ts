@@ -22,8 +22,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
         VITE_GRAPHQL_URL: "https://api.companyhelm.com/graphql",
         VITE_CLERK_PRIVACY_POLICY_URL: "https://companyhelm.com/privacy",
         VITE_CLERK_TERMS_OF_SERVICE_URL: "https://companyhelm.com/terms",
-        VITE_AMPLITUDE_ENABLED: "true",
-        VITE_AMPLITUDE_ID: "amplitude-runtime-id",
         VITE_PADDLE_CLIENT_TOKEN: "live_runtime_token",
         VITE_PADDLE_ENVIRONMENT: "production",
       },
@@ -37,8 +35,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
     assert.match(runtimeConfig, /graphqlUrl: "https:\/\/api\.companyhelm\.com\/graphql"/);
     assert.match(runtimeConfig, /privacyPolicyUrl: "https:\/\/companyhelm\.com\/privacy"/);
     assert.match(runtimeConfig, /termsOfServiceUrl: "https:\/\/companyhelm\.com\/terms"/);
-    assert.match(runtimeConfig, /enabled: true/);
-    assert.match(runtimeConfig, /id: "amplitude-runtime-id"/);
     assert.match(runtimeConfig, /paddle: \{/);
     assert.match(runtimeConfig, /clientToken: "live_runtime_token"/);
     assert.match(runtimeConfig, /environment: "production"/);

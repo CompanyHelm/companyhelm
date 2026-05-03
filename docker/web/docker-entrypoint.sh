@@ -7,8 +7,6 @@ CLERK_PUBLISHABLE_KEY="${VITE_CLERK_PUBLISHABLE_KEY:-}"
 GRAPHQL_URL="${VITE_GRAPHQL_URL:-http://localhost:4000/graphql}"
 PRIVACY_POLICY_URL="${VITE_CLERK_PRIVACY_POLICY_URL:-}"
 TERMS_OF_SERVICE_URL="${VITE_CLERK_TERMS_OF_SERVICE_URL:-}"
-AMPLITUDE_ENABLED="${VITE_AMPLITUDE_ENABLED:-false}"
-AMPLITUDE_ID="${VITE_AMPLITUDE_ID:-}"
 PADDLE_CLIENT_TOKEN="${VITE_PADDLE_CLIENT_TOKEN:-}"
 PADDLE_ENVIRONMENT="${VITE_PADDLE_ENVIRONMENT:-sandbox}"
 
@@ -29,26 +27,9 @@ escape_javascript_string() {
   '
 }
 
-resolve_javascript_boolean() {
-  case "$1" in
-    true)
-      printf 'true'
-      ;;
-    *)
-      printf 'false'
-      ;;
-  esac
-}
-
-build_optional_amplitude_id_property() {
-  if [ -n "$AMPLITUDE_ID" ]; then
-    printf ',\n      id: "%s"' "$(escape_javascript_string "$AMPLITUDE_ID")"
-  fi
-}
-
 build_optional_paddle_property() {
   if [ -n "$PADDLE_CLIENT_TOKEN" ]; then
-    printf '  paddle: {\n    clientToken: "%s",\n    environment: "%s"\n  },\n' \
+    printf ',\n  paddle: {\n    clientToken: "%s",\n    environment: "%s"\n  }' \
       "$(escape_javascript_string "$PADDLE_CLIENT_TOKEN")" \
       "$(escape_javascript_string "$PADDLE_ENVIRONMENT")"
   fi
@@ -63,12 +44,7 @@ window.__COMPANYHELM_CONFIG__ = Object.freeze({
   clerkPublishableKey: "$(escape_javascript_string "$CLERK_PUBLISHABLE_KEY")",
   graphqlUrl: "$(escape_javascript_string "$GRAPHQL_URL")",
   privacyPolicyUrl: "$(escape_javascript_string "$PRIVACY_POLICY_URL")",
-  termsOfServiceUrl: "$(escape_javascript_string "$TERMS_OF_SERVICE_URL")",
-$(build_optional_paddle_property)  analytics: {
-    amplitude: {
-      enabled: $(resolve_javascript_boolean "$AMPLITUDE_ENABLED")$(build_optional_amplitude_id_property)
-    }
-  }
+  termsOfServiceUrl: "$(escape_javascript_string "$TERMS_OF_SERVICE_URL")"$(build_optional_paddle_property)
 });
 EOF
 }
