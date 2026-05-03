@@ -1,9 +1,8 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EnvironmentMetricWindow, type EnvironmentMetricWindowRange } from "./environment_metric_window";
 import type { environmentMetricsTabQuery } from "./__generated__/environmentMetricsTabQuery.graphql";
 
@@ -27,6 +26,12 @@ interface EnvironmentMetricsChartProps {
   }>;
 }
 
+type MetricChartDefinition = {
+  gradientId: string;
+  key: MetricsTabKey;
+  label: string;
+};
+
 const environmentMetricsTabQueryNode = graphql`
   query environmentMetricsTabQuery($environmentId: ID!, $startTime: String!, $endTime: String!) {
     EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {
@@ -40,24 +45,24 @@ const environmentMetricsTabQueryNode = graphql`
 
 const chartConfig: ChartConfig = {
   cpuUsedPct: {
-    color: "hsl(var(--chart-1))",
+    color: "hsl(213 92% 48%)",
     label: "CPU used %",
   },
   diskUsedBytes: {
-    color: "hsl(var(--chart-3))",
+    color: "hsl(222 76% 54%)",
     label: "Disk used",
   },
   memUsedBytes: {
-    color: "hsl(var(--chart-2))",
+    color: "hsl(199 89% 46%)",
     label: "Memory used",
   },
 };
 
-const metricsTabLabels: Record<MetricsTabKey, string> = {
-  cpuUsedPct: "CPU used %",
-  diskUsedBytes: "Disk used",
-  memUsedBytes: "Memory used",
-};
+const metricChartDefinitions: ReadonlyArray<MetricChartDefinition> = [
+  { gradientId: "environmentMetricCpuFill", key: "cpuUsedPct", label: "CPU used %" },
+  { gradientId: "environmentMetricMemoryFill", key: "memUsedBytes", label: "Memory used" },
+  { gradientId: "environmentMetricDiskFill", key: "diskUsedBytes", label: "Disk used" },
+];
 
 function formatTimestampLabel(value: string): string {
   const timestamp = new Date(value);
@@ -108,11 +113,10 @@ function hasMetricValue(value: number | null | undefined): value is number {
 }
 
 /**
- * Renders the last hour of environment usage in a shadcn area chart with a selectable metric so
- * operators can inspect CPU, memory, and disk independently without mixing incompatible units.
+ * Renders the last hour of environment usage as stacked charts so operators can compare CPU,
+ * memory, and disk without switching context between incompatible units.
  */
 function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
-  const [selectedMetric, setSelectedMetric] = useState<MetricsTabKey>("cpuUsedPct");
   const chartData = useMemo(() => {
     return props.samples.map((sample) => ({
       cpuUsedPct: sample.cpuUsedPct,
@@ -135,67 +139,66 @@ function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
   }
 
   const latestSample = props.samples[props.samples.length - 1] ?? null;
-  const latestMetricValue = latestSample && hasMetricValue(latestSample[selectedMetric])
-    ? latestSample[selectedMetric]
-    : null;
 
   return (
     <div className="grid gap-6 px-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="grid gap-1">
-          <h2 className="text-base font-semibold tracking-tight text-foreground">Last 60 minutes</h2>
-          <p className="text-sm text-muted-foreground">Minute-bucketed environment usage captured by the metrics worker.</p>
-        </div>
-        <div className="w-full max-w-56">
-          <Select onValueChange={(value) => setSelectedMetric(value as MetricsTabKey)} value={selectedMetric}>
-            <SelectTrigger>
-              <SelectValue>{metricsTabLabels[selectedMetric]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cpuUsedPct">{metricsTabLabels.cpuUsedPct}</SelectItem>
-              <SelectItem value="memUsedBytes">{metricsTabLabels.memUsedBytes}</SelectItem>
-              <SelectItem value="diskUsedBytes">{metricsTabLabels.diskUsedBytes}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-1">
+        <h2 className="text-base font-semibold tracking-tight text-foreground">Last 60 minutes</h2>
+        <p className="text-sm text-muted-foreground">Minute-bucketed environment usage captured by the metrics worker.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardDescription>Latest sample</CardDescription>
-          <CardTitle>{formatMetricValue(selectedMetric, latestMetricValue)}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer className="h-80 w-full" config={chartConfig}>
-            <AreaChart accessibilityLayer data={chartData} margin={{ left: 12, right: 12 }}>
-              <defs>
-                <linearGradient id="fillMetric" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="5%" stopColor={`var(--color-${selectedMetric})`} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={`var(--color-${selectedMetric})`} stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis axisLine={false} dataKey="label" minTickGap={24} tickLine={false} tickMargin={8} />
-              <YAxis
-                axisLine={false}
-                tickFormatter={(value: number) => formatAxisTick(selectedMetric, value)}
-                tickLine={false}
-                tickMargin={8}
-                width={72}
-              />
-              <ChartTooltip content={<ChartTooltipContent hideLabel indicator="line" />} cursor={false} />
-              <Area
-                dataKey={selectedMetric}
-                fill="url(#fillMetric)"
-                fillOpacity={1}
-                stroke={`var(--color-${selectedMetric})`}
-                strokeWidth={2}
-                type="monotone"
-              />
-            </AreaChart>
-          </ChartContainer>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4">
+        {metricChartDefinitions.map((definition) => {
+          const latestMetricValue = latestSample && hasMetricValue(latestSample[definition.key])
+            ? latestSample[definition.key]
+            : null;
+
+          return (
+            <Card key={definition.key}>
+              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                <div className="grid gap-1">
+                  <CardDescription>{definition.label}</CardDescription>
+                  <CardTitle>{formatMetricValue(definition.key, latestMetricValue)}</CardTitle>
+                </div>
+                <span
+                  className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: chartConfig[definition.key]?.color }}
+                />
+              </CardHeader>
+              <CardContent>
+                <ChartContainer className="h-56 w-full" config={chartConfig}>
+                  <AreaChart accessibilityLayer data={chartData} margin={{ left: 12, right: 12 }}>
+                    <defs>
+                      <linearGradient id={definition.gradientId} x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="5%" stopColor={`var(--color-${definition.key})`} stopOpacity={0.34} />
+                        <stop offset="95%" stopColor={`var(--color-${definition.key})`} stopOpacity={0.06} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis axisLine={false} dataKey="label" minTickGap={24} tickLine={false} tickMargin={8} />
+                    <YAxis
+                      axisLine={false}
+                      tickFormatter={(value: number) => formatAxisTick(definition.key, value)}
+                      tickLine={false}
+                      tickMargin={8}
+                      width={72}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent hideLabel indicator="line" />} cursor={false} />
+                    <Area
+                      dataKey={definition.key}
+                      fill={`url(#${definition.gradientId})`}
+                      fillOpacity={1}
+                      stroke={`var(--color-${definition.key})`}
+                      strokeWidth={2}
+                      type="monotone"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
