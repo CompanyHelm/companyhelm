@@ -34,7 +34,7 @@ export function ClerkPage(props: ClerkPageProps) {
         {props.mode === "signIn" ? (
           <SignIn appearance={clerkAppearance} signUpUrl="/sign-up" forceRedirectUrl="/" />
         ) : (
-          <SignUp appearance={clerkAppearance} signInUrl="/sign-in" forceRedirectUrl="/" />
+          <SignUp appearance={clerkAppearance} signInUrl="/sign-in" forceRedirectUrl="/signed-up" />
         )}
       </section>
     </main>

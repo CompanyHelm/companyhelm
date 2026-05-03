@@ -7,6 +7,11 @@ export type AmplitudeConfigDocument = {
 
 export type AnalyticsConfigDocument = {
   amplitude: AmplitudeConfigDocument;
+  googleAds: GoogleAdsConfigDocument;
+};
+
+export type GoogleAdsConfigDocument = {
+  id?: string;
 };
 
 export type PaddleConfigDocument = {
@@ -20,9 +25,12 @@ type RuntimePaddleConfigDocument = Partial<PaddleConfigDocument>;
 type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "analytics" | "paddle">> & {
   analytics?: {
     amplitude?: RuntimeAmplitudeConfigDocument;
+    googleAds?: RuntimeGoogleAdsConfigDocument;
   };
   paddle?: RuntimePaddleConfigDocument;
 };
+
+type RuntimeGoogleAdsConfigDocument = Partial<GoogleAdsConfigDocument>;
 
 /**
  * Resolves the browser runtime configuration from an injected window document first and falls
@@ -97,6 +105,12 @@ export class Config {
           id: Config.resolveRuntimeOptionalStringValue(
             runtimeDocument.analytics?.amplitude?.id,
             importMetaEnv?.VITE_AMPLITUDE_ID,
+          ),
+        },
+        googleAds: {
+          id: Config.resolveRuntimeOptionalStringValue(
+            runtimeDocument.analytics?.googleAds?.id,
+            importMetaEnv?.VITE_GOOGLE_ADS_ID,
           ),
         },
       },

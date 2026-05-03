@@ -9,6 +9,7 @@ PRIVACY_POLICY_URL="${VITE_CLERK_PRIVACY_POLICY_URL:-}"
 TERMS_OF_SERVICE_URL="${VITE_CLERK_TERMS_OF_SERVICE_URL:-}"
 AMPLITUDE_ENABLED="${VITE_AMPLITUDE_ENABLED:-false}"
 AMPLITUDE_ID="${VITE_AMPLITUDE_ID:-}"
+GOOGLE_ADS_ID="${VITE_GOOGLE_ADS_ID:-}"
 PADDLE_CLIENT_TOKEN="${VITE_PADDLE_CLIENT_TOKEN:-}"
 PADDLE_ENVIRONMENT="${VITE_PADDLE_ENVIRONMENT:-sandbox}"
 
@@ -46,6 +47,12 @@ build_optional_amplitude_id_property() {
   fi
 }
 
+build_optional_google_ads_properties() {
+  if [ -n "$GOOGLE_ADS_ID" ]; then
+    printf '\n      id: "%s"' "$(escape_javascript_string "$GOOGLE_ADS_ID")"
+  fi
+}
+
 build_optional_paddle_property() {
   if [ -n "$PADDLE_CLIENT_TOKEN" ]; then
     printf '  paddle: {\n    clientToken: "%s",\n    environment: "%s"\n  },\n' \
@@ -67,6 +74,8 @@ window.__COMPANYHELM_CONFIG__ = Object.freeze({
 $(build_optional_paddle_property)  analytics: {
     amplitude: {
       enabled: $(resolve_javascript_boolean "$AMPLITUDE_ENABLED")$(build_optional_amplitude_id_property)
+    },
+    googleAds: {$(build_optional_google_ads_properties)
     }
   }
 });
