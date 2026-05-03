@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<118f6d4bc6acc882ae3f5fb01b0ef221>>
+ * @generated SignedSource<<c47444f4ddd7ef92ff6e4d460af099a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,8 +35,6 @@ export type chatsPageDataTranscriptQuery$data = {
         readonly errorMessage: string | null | undefined;
         readonly id: string;
         readonly isError: boolean;
-        readonly principalAgentId: string | null | undefined;
-        readonly principalSessionId: string | null | undefined;
         readonly principalType: string;
         readonly role: string;
         readonly sessionId: string;
@@ -48,7 +46,6 @@ export type chatsPageDataTranscriptQuery$data = {
         readonly turn: {
           readonly endedAt: string | null | undefined;
           readonly id: string;
-          readonly sessionId: string;
           readonly startedAt: string;
         };
         readonly turnId: string;
@@ -94,31 +91,24 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sessionId",
+  "name": "toolCallId",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "toolCallId",
+  "name": "toolName",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "toolName",
-  "storageKey": null
-},
-v7 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "text",
   "storageKey": null
 },
-v8 = [
+v7 = [
   {
     "alias": null,
     "args": [
@@ -167,7 +157,13 @@ v8 = [
             "plural": false,
             "selections": [
               (v3/*: any*/),
-              (v4/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "sessionId",
+                "storageKey": null
+              },
               {
                 "alias": null,
                 "args": null,
@@ -184,7 +180,6 @@ v8 = [
                 "plural": false,
                 "selections": [
                   (v3/*: any*/),
-                  (v4/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -216,27 +211,13 @@ v8 = [
                 "name": "status",
                 "storageKey": null
               },
+              (v4/*: any*/),
               (v5/*: any*/),
-              (v6/*: any*/),
               {
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
                 "name": "principalType",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "principalAgentId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "principalSessionId",
                 "storageKey": null
               },
               {
@@ -268,7 +249,7 @@ v8 = [
                     "name": "type",
                     "storageKey": null
                   },
-                  (v7/*: any*/),
+                  (v6/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -297,12 +278,12 @@ v8 = [
                     "name": "arguments",
                     "storageKey": null
                   },
-                  (v5/*: any*/),
-                  (v6/*: any*/)
+                  (v4/*: any*/),
+                  (v5/*: any*/)
                 ],
                 "storageKey": null
               },
-              (v7/*: any*/),
+              (v6/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -383,7 +364,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataTranscriptQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v7/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -396,19 +377,19 @@ return {
     ],
     "kind": "Operation",
     "name": "chatsPageDataTranscriptQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "649ea7755900c5ce4b0b8362c4b1c858",
+    "cacheID": "6971390cfa7f1ec60a54584d49950338",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        principalType\n        principalAgentId\n        principalSessionId\n        taskRunId\n        workflowRunId\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        errorKind\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageDataTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        principalType\n        taskRunId\n        workflowRunId\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        errorKind\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8d1d640cd4b3f6cf0d357414b53cab16";
+(node as any).hash = "d312849b9e7c9377061e76cb7ba40619";
 
 export default node;

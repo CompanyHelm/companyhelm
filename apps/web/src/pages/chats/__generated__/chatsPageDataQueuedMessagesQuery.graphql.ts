@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3fc588a77502f0f4339bbcfba3a8a512>>
+ * @generated SignedSource<<00ff680b9069359366177e9992bef65a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,8 +21,6 @@ export type chatsPageDataQueuedMessagesQuery$data = {
       readonly id: string;
       readonly mimeType: string;
     }>;
-    readonly principalAgentId: string | null | undefined;
-    readonly principalSessionId: string | null | undefined;
     readonly principalType: string;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
@@ -132,20 +130,6 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "principalAgentId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "principalSessionId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -178,16 +162,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "331d0047b45cfac81f6bcb8f83e9f551",
+    "cacheID": "f87325e07f28f5055e779901185fb316",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQueuedMessagesQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    principalType\n    principalAgentId\n    principalSessionId\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageDataQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    principalType\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1f8987a35546f135527c533ab3b3246c";
+(node as any).hash = "c04d68861ca34ffb3d652ff2a6d278bd";
 
 export default node;

@@ -27,6 +27,7 @@ import type { ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerPane } from "./chat_composer_pane";
 import {
   type ChatsPageArchiveSessionMutation,
+  type ChatsPageComposerSetupQuery,
   type ChatsPageCreateSessionMutation,
   type ChatsPageDeleteEnvironmentMutation,
   type ChatsPageDeleteSessionQueuedMessageMutation,
@@ -58,6 +59,7 @@ import {
   type SessionMessageRecord,
   type SessionRecord,
   chatsPageArchiveSessionMutationNode,
+  chatsPageComposerSetupQueryNode,
   chatsPageCreateSessionMutationNode,
   chatsPageDeleteEnvironmentMutationNode,
   chatsPageDeleteSessionQueuedMessageMutationNode,
@@ -201,8 +203,12 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const attachmentDragDepthRef = useRef(0);
   const composerSelectionTargetKeyRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
+  const composerSetupLoadedRef = useRef(false);
+  const composerSetupRequestIdRef = useRef(0);
   const queuedMessagesRequestIdRef = useRef(0);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
+  const [composerSetupData, setComposerSetupData] = useState<ChatsPageComposerSetupQuery["response"] | null>(null);
+  const [isComposerSetupLoading, setIsComposerSetupLoading] = useState(false);
   const data = useLazyLoadQuery<ChatsPageQuery>(
     chatsPageQueryNode,
     {},
@@ -266,8 +272,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     return [...data.Agents].sort((leftAgent, rightAgent) => leftAgent.name.localeCompare(rightAgent.name));
   }, [data.Agents]);
   const providerOptions = useMemo(() => {
-    return data.AgentCreateOptions.map((providerOption): ProviderOptionRecord => providerOption);
-  }, [data.AgentCreateOptions]);
+    return (composerSetupData?.AgentCreateOptions ?? []).map((providerOption): ProviderOptionRecord => providerOption);
+  }, [composerSetupData?.AgentCreateOptions]);
   const composerModelOptions = useMemo<ChatComposerModelOption[]>(() => {
     return providerOptions
       .flatMap((providerOption) => {
@@ -312,17 +318,21 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     }));
   }, [alternateComposerModelOptions]);
   const companyHelmPlanName = useMemo(() => {
-    const currentPlan = data.BillingPlans.find((plan) => plan.key === data.CompanyWallet.currentPlan);
-    return currentPlan?.name ?? data.CompanyWallet.currentPlan;
-  }, [data.BillingPlans, data.CompanyWallet.currentPlan]);
+    if (!composerSetupData) {
+      return "current plan";
+    }
+
+    const currentPlan = composerSetupData.BillingPlans.find((plan) => plan.key === composerSetupData.CompanyWallet.currentPlan);
+    return currentPlan?.name ?? composerSetupData.CompanyWallet.currentPlan;
+  }, [composerSetupData]);
   const companyHelmWalletProviderLogos = useMemo(() => {
-    return data.ModelProviders
+    return (composerSetupData?.ModelProviders ?? [])
       .filter((provider) => provider.id !== "companyhelm")
       .map((provider) => ({
         id: provider.id,
         label: provider.name,
       }));
-  }, [data.ModelProviders]);
+  }, [composerSetupData?.ModelProviders]);
   const activeSessions = useMemo(() => {
     return data.Sessions.filter((session) => !isArchivedSession(session));
   }, [data.Sessions]);
@@ -436,7 +446,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     selectedAgent
       && selectedComposerModelOption
       && hasDraftInput,
-  );
+  ) && !isComposerSetupLoading;
   const isSubmittingDraft =
     isCreateSessionInFlight
     || isPromptSessionInFlight
@@ -510,6 +520,45 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   useEffect(() => {
     setInboxHumanQuestions([...data.InboxHumanQuestions].sort(compareInboxHumanQuestionsByCreatedAt));
   }, [data.InboxHumanQuestions]);
+
+  useEffect(() => {
+    if (!selectedAgent || composerSetupLoadedRef.current || isComposerSetupLoading) {
+      return;
+    }
+
+    composerSetupLoadedRef.current = true;
+    const requestId = composerSetupRequestIdRef.current + 1;
+    composerSetupRequestIdRef.current = requestId;
+    setIsComposerSetupLoading(true);
+
+    void fetchQuery<ChatsPageComposerSetupQuery>(
+      environment,
+      chatsPageComposerSetupQueryNode,
+      {},
+      {
+        fetchPolicy: "store-or-network",
+      },
+    ).toPromise()
+      .then((response) => {
+        if (composerSetupRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setComposerSetupData(response ?? null);
+      })
+      .catch((error: unknown) => {
+        if (composerSetupRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setErrorMessage(error instanceof Error ? error.message : "Failed to load chat model options.");
+      })
+      .finally(() => {
+        if (composerSetupRequestIdRef.current === requestId) {
+          setIsComposerSetupLoading(false);
+        }
+      });
+  }, [environment, isComposerSetupLoading, selectedAgent]);
 
   useEffect(() => {
     if (subscriptionConnectionStatus === "reconnecting") {

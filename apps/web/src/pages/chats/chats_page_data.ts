@@ -1,6 +1,7 @@
 import { graphql } from "react-relay";
 import type { ChatComposerImageDraft } from "./chat_composer_image";
 import type { chatsPageDataArchiveSessionMutation } from "./__generated__/chatsPageDataArchiveSessionMutation.graphql";
+import type { chatsPageDataComposerSetupQuery } from "./__generated__/chatsPageDataComposerSetupQuery.graphql";
 import type { chatsPageDataCreateSessionMutation } from "./__generated__/chatsPageDataCreateSessionMutation.graphql";
 import type { chatsPageDataDeleteEnvironmentMutation } from "./__generated__/chatsPageDataDeleteEnvironmentMutation.graphql";
 import type { chatsPageDataDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDataDeleteSessionQueuedMessageMutation.graphql";
@@ -26,18 +27,172 @@ import type { chatsPageDataStopEnvironmentMutation } from "./__generated__/chats
 import type { chatsPageDataTranscriptQuery } from "./__generated__/chatsPageDataTranscriptQuery.graphql";
 import type { chatsPageDataUpdateSessionTitleMutation } from "./__generated__/chatsPageDataUpdateSessionTitleMutation.graphql";
 
+export const chatsPageDataChatListPanelAgentFragmentNode = graphql`
+  fragment chatsPageDataChatListPanelAgentFragment on Agent {
+    id
+    name
+    platformModelId
+    modelProviderCredentialModelId
+    modelProvider
+    modelName
+    reasoningLevel
+  }
+`;
+
+export const chatsPageDataChatListPanelSessionFragmentNode = graphql`
+  fragment chatsPageDataChatListPanelSessionFragment on Session {
+    id
+    agentId
+    associatedTask {
+      id
+      name
+      status
+    }
+    associatedWorkflowRun {
+      id
+      workflowDefinitionId
+      name
+      status
+      steps {
+        id
+        workflowRunId
+        name
+        ordinal
+        status
+      }
+    }
+    hasUnread
+    inferredTitle
+    status
+    createdAt
+    lastUserMessageAt
+    userSetTitle
+  }
+`;
+
+export const chatsPageDataChatComposerPaneSessionFragmentNode = graphql`
+  fragment chatsPageDataChatComposerPaneSessionFragment on Session {
+    id
+    currentContextTokens
+    isCompacting
+    isThinking
+    maxContextTokens
+    status
+  }
+`;
+
+export const chatsPageDataChatComposerPaneHumanQuestionFragmentNode = graphql`
+  fragment chatsPageDataChatComposerPaneHumanQuestionFragment on InboxHumanQuestion {
+    id
+    sessionId
+    title
+    questionText
+    allowCustomAnswer
+    createdAt
+    proposals {
+      id
+      answerText
+      rating
+    }
+  }
+`;
+
+export const chatsPageDataChatTranscriptPaneSessionFragmentNode = graphql`
+  fragment chatsPageDataChatTranscriptPaneSessionFragment on Session {
+    id
+    associatedTask {
+      id
+      name
+      status
+    }
+    associatedWorkflowRun {
+      id
+      workflowDefinitionId
+      name
+      status
+      steps {
+        id
+        workflowRunId
+        name
+        ordinal
+        status
+      }
+    }
+    forkedFromSessionAgentId
+    forkedFromSessionId
+    forkedFromSessionTitle
+    forkedFromTurnId
+    inferredTitle
+    isCompacting
+    status
+    userSetTitle
+  }
+`;
+
+export const chatsPageDataChatTranscriptPaneMessageFragmentNode = graphql`
+  fragment chatsPageDataChatTranscriptPaneMessageFragment on SessionMessage {
+    id
+    sessionId
+    turnId
+    turn {
+      id
+      startedAt
+      endedAt
+    }
+    role
+    status
+    toolCallId
+    toolName
+    principalType
+    taskRunId
+    workflowRunId
+    contents {
+      type
+      text
+      data
+      mimeType
+      structuredContent
+      arguments
+      toolCallId
+      toolName
+    }
+    text
+    isError
+    errorMessage
+    errorKind
+    createdAt
+    updatedAt
+  }
+`;
+
 export const chatsPageQueryNode = graphql`
   query chatsPageDataQuery {
     Agents {
-      id
-      name
-      platformModelId
-      modelProviderCredentialId
-      modelProviderCredentialModelId
-      modelProvider
-      modelName
-      reasoningLevel
+      ...chatsPageDataChatListPanelAgentFragment @relay(mask: false)
     }
+    InboxHumanQuestions {
+      ...chatsPageDataChatComposerPaneHumanQuestionFragment @relay(mask: false)
+    }
+    Sessions {
+      ...chatsPageDataChatListPanelSessionFragment @relay(mask: false)
+      ...chatsPageDataChatComposerPaneSessionFragment @relay(mask: false)
+      ...chatsPageDataChatTranscriptPaneSessionFragment @relay(mask: false)
+      canForkLatestSession
+      forkedFromSessionAgentId
+      forkedFromSessionId
+      forkedFromSessionTitle
+      forkedFromTurnId
+      platformModelId
+      modelProviderCredentialModelId
+      modelId
+      reasoningLevel
+      updatedAt
+    }
+  }
+`;
+
+export const chatsPageComposerSetupQueryNode = graphql`
+  query chatsPageDataComposerSetupQuery {
     AgentCreateOptions {
       id
       modelCredentialSource
@@ -68,62 +223,6 @@ export const chatsPageQueryNode = graphql`
       id
       name
     }
-    InboxHumanQuestions {
-      id
-      sessionId
-      title
-      questionText
-      allowCustomAnswer
-      createdAt
-      proposals {
-        id
-        answerText
-        rating
-      }
-    }
-    Sessions {
-      id
-      agentId
-      associatedTask {
-        id
-        name
-        status
-      }
-      associatedWorkflowRun {
-        id
-        workflowDefinitionId
-        name
-        status
-        steps {
-          id
-          workflowRunId
-          name
-          ordinal
-          status
-        }
-      }
-      hasUnread
-      canForkLatestSession
-      currentContextTokens
-      forkedFromSessionAgentId
-      forkedFromSessionId
-      forkedFromSessionTitle
-      forkedFromTurnId
-      isCompacting
-      maxContextTokens
-      platformModelId
-      modelProviderCredentialModelId
-      modelId
-      reasoningLevel
-      inferredTitle
-      isThinking
-      status
-      thinkingText
-      createdAt
-      updatedAt
-      lastUserMessageAt
-      userSetTitle
-    }
   }
 `;
 
@@ -133,40 +232,7 @@ export const chatsPageTranscriptQueryNode = graphql`
       edges {
         cursor
         node {
-          id
-          sessionId
-          turnId
-          turn {
-            id
-            sessionId
-            startedAt
-            endedAt
-          }
-          role
-          status
-          toolCallId
-          toolName
-          principalType
-          principalAgentId
-          principalSessionId
-          taskRunId
-          workflowRunId
-          contents {
-            type
-            text
-            data
-            mimeType
-            structuredContent
-            arguments
-            toolCallId
-            toolName
-          }
-          text
-          isError
-          errorMessage
-          errorKind
-          createdAt
-          updatedAt
+          ...chatsPageDataChatTranscriptPaneMessageFragment @relay(mask: false)
         }
       }
       pageInfo {
@@ -191,8 +257,6 @@ export const chatsPageQueuedMessagesQueryNode = graphql`
       shouldSteer
       status
       principalType
-      principalAgentId
-      principalSessionId
       createdAt
       updatedAt
     }
@@ -321,7 +385,6 @@ export const chatsPageCreateSessionMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -350,7 +413,6 @@ export const chatsPageForkSessionMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -378,7 +440,6 @@ export const chatsPageArchiveSessionMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -406,7 +467,6 @@ export const chatsPagePromptSessionMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -434,7 +494,6 @@ export const chatsPageInterruptSessionMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -478,7 +537,6 @@ export const chatsPageMarkSessionReadMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -506,7 +564,6 @@ export const chatsPageUpdateSessionTitleMutationNode = graphql`
       inferredTitle
       isThinking
       status
-      thinkingText
       createdAt
       updatedAt
       lastUserMessageAt
@@ -518,46 +575,18 @@ export const chatsPageUpdateSessionTitleMutationNode = graphql`
 export const chatsPageSessionUpdatedSubscriptionNode = graphql`
   subscription chatsPageDataSessionUpdatedSubscription {
     SessionUpdated {
-      id
-      agentId
-      associatedTask {
-        id
-        name
-        status
-      }
-      associatedWorkflowRun {
-        id
-        workflowDefinitionId
-        name
-        status
-        steps {
-          id
-          workflowRunId
-          name
-          ordinal
-          status
-        }
-      }
-      hasUnread
+      ...chatsPageDataChatListPanelSessionFragment @relay(mask: false)
+      ...chatsPageDataChatComposerPaneSessionFragment @relay(mask: false)
+      ...chatsPageDataChatTranscriptPaneSessionFragment @relay(mask: false)
       canForkLatestSession
-      currentContextTokens
       forkedFromSessionAgentId
       forkedFromSessionId
       forkedFromSessionTitle
       forkedFromTurnId
-      isCompacting
-      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
-      inferredTitle
-      isThinking
-      status
-      thinkingText
-      createdAt
       updatedAt
-      lastUserMessageAt
-      userSetTitle
     }
   }
 `;
@@ -565,17 +594,7 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
 export const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
   subscription chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription($sessionId: ID!) {
     SessionInboxHumanQuestionsUpdated(sessionId: $sessionId) {
-      id
-      sessionId
-      title
-      questionText
-      allowCustomAnswer
-      createdAt
-      proposals {
-        id
-        answerText
-        rating
-      }
+      ...chatsPageDataChatComposerPaneHumanQuestionFragment @relay(mask: false)
     }
   }
 `;
@@ -583,17 +602,7 @@ export const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphq
 export const chatsPageInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
   subscription chatsPageDataInboxHumanQuestionsUpdatedSubscription {
     InboxHumanQuestionsUpdated {
-      id
-      sessionId
-      title
-      questionText
-      allowCustomAnswer
-      createdAt
-      proposals {
-        id
-        answerText
-        rating
-      }
+      ...chatsPageDataChatComposerPaneHumanQuestionFragment @relay(mask: false)
     }
   }
 `;
@@ -612,8 +621,6 @@ export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
       shouldSteer
       status
       principalType
-      principalAgentId
-      principalSessionId
       createdAt
       updatedAt
     }
@@ -623,45 +630,13 @@ export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
 export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   subscription chatsPageDataSessionMessageUpdatedSubscription($sessionId: ID!) {
     SessionMessageUpdated(sessionId: $sessionId) {
-      id
-      sessionId
-      turnId
-      turn {
-        id
-        sessionId
-        startedAt
-        endedAt
-      }
-      role
-      status
-      toolCallId
-      toolName
-      principalType
-      principalAgentId
-      principalSessionId
-      taskRunId
-      workflowRunId
-      contents {
-        type
-        text
-        data
-        mimeType
-        structuredContent
-        arguments
-        toolCallId
-        toolName
-      }
-      text
-      isError
-      errorMessage
-      errorKind
-      createdAt
-      updatedAt
+      ...chatsPageDataChatTranscriptPaneMessageFragment @relay(mask: false)
     }
   }
 `;
 
 export type ChatsPageArchiveSessionMutation = chatsPageDataArchiveSessionMutation;
+export type ChatsPageComposerSetupQuery = chatsPageDataComposerSetupQuery;
 export type ChatsPageCreateSessionMutation = chatsPageDataCreateSessionMutation;
 export type ChatsPageDeleteEnvironmentMutation = chatsPageDataDeleteEnvironmentMutation;
 export type ChatsPageDeleteSessionQueuedMessageMutation = chatsPageDataDeleteSessionQueuedMessageMutation;
@@ -687,7 +662,7 @@ export type ChatsPageStopEnvironmentMutation = chatsPageDataStopEnvironmentMutat
 export type ChatsPageTranscriptQuery = chatsPageDataTranscriptQuery;
 export type ChatsPageUpdateSessionTitleMutation = chatsPageDataUpdateSessionTitleMutation;
 
-export type ProviderOptionRecord = chatsPageDataQuery["response"]["AgentCreateOptions"][number];
+export type ProviderOptionRecord = chatsPageDataComposerSetupQuery["response"]["AgentCreateOptions"][number];
 export type AgentRecord = chatsPageDataQuery["response"]["Agents"][number];
 export type InboxHumanQuestionRecord = chatsPageDataQuery["response"]["InboxHumanQuestions"][number];
 export type QueuedMessageRecord = chatsPageDataQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];

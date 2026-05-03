@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<514bb5e33455dca68c5b0fa9076f7fb4>>
+ * @generated SignedSource<<3a9d6debb64b2209dbd35bfb5a1b8345>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -30,8 +30,6 @@ export type chatsPageDataSessionMessageUpdatedSubscription$data = {
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isError: boolean;
-    readonly principalAgentId: string | null | undefined;
-    readonly principalSessionId: string | null | undefined;
     readonly principalType: string;
     readonly role: string;
     readonly sessionId: string;
@@ -43,7 +41,6 @@ export type chatsPageDataSessionMessageUpdatedSubscription$data = {
     readonly turn: {
       readonly endedAt: string | null | undefined;
       readonly id: string;
-      readonly sessionId: string;
       readonly startedAt: string;
     };
     readonly turnId: string;
@@ -75,31 +72,24 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "sessionId",
+  "name": "toolCallId",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "toolCallId",
+  "name": "toolName",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "toolName",
-  "storageKey": null
-},
-v5 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
   "name": "text",
   "storageKey": null
 },
-v6 = [
+v5 = [
   {
     "alias": null,
     "args": [
@@ -115,7 +105,13 @@ v6 = [
     "plural": false,
     "selections": [
       (v1/*: any*/),
-      (v2/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "sessionId",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -132,7 +128,6 @@ v6 = [
         "plural": false,
         "selections": [
           (v1/*: any*/),
-          (v2/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -164,27 +159,13 @@ v6 = [
         "name": "status",
         "storageKey": null
       },
+      (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "principalType",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "principalAgentId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "principalSessionId",
         "storageKey": null
       },
       {
@@ -216,7 +197,7 @@ v6 = [
             "name": "type",
             "storageKey": null
           },
-          (v5/*: any*/),
+          (v4/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -245,12 +226,12 @@ v6 = [
             "name": "arguments",
             "storageKey": null
           },
-          (v3/*: any*/),
-          (v4/*: any*/)
+          (v2/*: any*/),
+          (v3/*: any*/)
         ],
         "storageKey": null
       },
-      (v5/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -296,7 +277,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionMessageUpdatedSubscription",
-    "selections": (v6/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -305,19 +286,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageDataSessionMessageUpdatedSubscription",
-    "selections": (v6/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "a78c289503d7e4348c475b3ce6de0d68",
+    "cacheID": "824a2709910af95de5287c492c5ccec2",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    principalType\n    principalAgentId\n    principalSessionId\n    taskRunId\n    workflowRunId\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    errorKind\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    principalType\n    taskRunId\n    workflowRunId\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    errorKind\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "54175859f0bdce22cb10b6bdf7c28a38";
+(node as any).hash = "aad05f5b4906e402121955f6f2bcc35a";
 
 export default node;

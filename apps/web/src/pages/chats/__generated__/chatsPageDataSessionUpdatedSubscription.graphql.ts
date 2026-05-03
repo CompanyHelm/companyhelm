@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b3b3d0e4dfc7d9eab71163d2cdb23767>>
+ * @generated SignedSource<<3a0c76f1567b289a8782d7dab18e7977>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -49,7 +49,6 @@ export type chatsPageDataSessionUpdatedSubscription$data = {
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
-    readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
     readonly userSetTitle: string | null | undefined;
   };
@@ -172,7 +171,29 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "canForkLatestSession",
+        "name": "inferredTitle",
+        "storageKey": null
+      },
+      (v2/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "createdAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastUserMessageAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userSetTitle",
         "storageKey": null
       },
       {
@@ -180,6 +201,27 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isCompacting",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isThinking",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "maxContextTokens",
         "storageKey": null
       },
       {
@@ -214,14 +256,7 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "isCompacting",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "maxContextTokens",
+        "name": "canForkLatestSession",
         "storageKey": null
       },
       {
@@ -249,50 +284,7 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "inferredTitle",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isThinking",
-        "storageKey": null
-      },
-      (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "thinkingText",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "updatedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastUserMessageAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "userSetTitle",
         "storageKey": null
       }
     ],
@@ -317,16 +309,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "f26103f78f250036f81f5bd2a1abca1d",
+    "cacheID": "115c682ebf7de0323b6f266cfdd27a27",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    canForkLatestSession\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    inferredTitle\n    status\n    createdAt\n    lastUserMessageAt\n    userSetTitle\n    currentContextTokens\n    isCompacting\n    isThinking\n    maxContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    canForkLatestSession\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3ebd3a7892862c1c9dc4898c7c0c36ff";
+(node as any).hash = "af97df5093b1fe509df23774c5378a40";
 
 export default node;
