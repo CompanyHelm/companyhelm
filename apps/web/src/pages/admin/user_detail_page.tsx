@@ -1,11 +1,23 @@
-import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
-import { graphql, useLazyLoadQuery } from "react-relay";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { ArrowLeftIcon, Trash2Icon } from "lucide-react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { PlatformAdminGuard } from "./platform_admin_guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/components/toast_provider";
+import type { userDetailPageDeleteMutation } from "./__generated__/userDetailPageDeleteMutation.graphql";
 import type { userDetailPageQuery } from "./__generated__/userDetailPageQuery.graphql";
 
 const userDetailPageQueryNode = graphql`
@@ -29,6 +41,17 @@ const userDetailPageQueryNode = graphql`
         createdAt
         updatedAt
       }
+    }
+  }
+`;
+
+const userDetailPageDeleteMutationNode = graphql`
+  mutation userDetailPageDeleteMutation($input: DeletePlatformAdminUserInput!) {
+    DeletePlatformAdminUser(input: $input) {
+      id
+      email
+      clerkUserId
+      membershipCount
     }
   }
 `;
@@ -95,14 +118,50 @@ export function AdminUserDetailPage() {
 }
 
 function AdminUserDetailPageContent() {
+  const navigate = useNavigate();
   const params = useParams({ strict: false }) as { userId?: string };
   const userId = params.userId ?? "";
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmationEmail, setDeleteConfirmationEmail] = useState("");
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const toast = useToast();
+  const [commitDeleteUser, isDeleteUserInFlight] =
+    useMutation<userDetailPageDeleteMutation>(userDetailPageDeleteMutationNode);
   const data = useLazyLoadQuery<userDetailPageQuery>(
     userDetailPageQueryNode,
     { userId },
     { fetchPolicy: "store-and-network" },
   );
   const user = data.PlatformAdminUser;
+  const canDeleteUser = deleteConfirmationEmail === user.email && !isDeleteUserInFlight;
+
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmationEmail("");
+    setDeleteErrorMessage(null);
+  };
+
+  const deleteUser = () => {
+    setDeleteErrorMessage(null);
+    commitDeleteUser({
+      variables: {
+        input: {
+          confirmationEmail: deleteConfirmationEmail,
+          userId: user.id,
+        },
+      },
+      onCompleted() {
+        toast.showSavedToast("User deleted");
+        closeDeleteDialog();
+        void navigate({
+          to: "/admin/users",
+        });
+      },
+      onError(error) {
+        setDeleteErrorMessage(error.message);
+      },
+    });
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -122,6 +181,17 @@ function AdminUserDetailPageContent() {
               </CardDescription>
             </div>
           </div>
+          <CardAction>
+            <Button
+              size="sm"
+              type="button"
+              variant="destructive"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2Icon data-icon="inline-start" />
+              Delete user
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent className="grid gap-5">
           <div className="flex flex-wrap gap-2">
@@ -157,6 +227,49 @@ function AdminUserDetailPageContent() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        if (open) {
+          setIsDeleteDialogOpen(true);
+          return;
+        }
+        closeDeleteDialog();
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete user</DialogTitle>
+            <DialogDescription>
+              This deletes the Clerk user, removes all company memberships, and deletes the local CompanyHelm user row.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Type {user.email} to confirm.
+            </p>
+            <Input
+              autoComplete="off"
+              value={deleteConfirmationEmail}
+              onChange={(event) => setDeleteConfirmationEmail(event.target.value)}
+            />
+            {deleteErrorMessage ? (
+              <p className="text-sm text-destructive">{deleteErrorMessage}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeDeleteDialog}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!canDeleteUser}
+              onClick={deleteUser}
+            >
+              <Trash2Icon data-icon="inline-start" />
+              {isDeleteUserInFlight ? "Deleting" : "Delete user"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

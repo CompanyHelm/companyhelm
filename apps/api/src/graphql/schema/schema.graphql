@@ -96,6 +96,7 @@ type Mutation {
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
+  DeletePlatformAdminUser(input: DeletePlatformAdminUserInput!): PlatformAdminUserDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   InviteCompanyMember(input: InviteCompanyMemberInput!): CompanyMemberInvitation!
   RemoveCompanyMember(input: RemoveCompanyMemberInput!): CompanyMemberAccess!
@@ -617,6 +618,13 @@ type PlatformAdminUserCompanyMembership {
   status: CompanyMemberStatus!
   createdAt: String!
   updatedAt: String!
+}
+
+type PlatformAdminUserDeletionPayload {
+  id: ID!
+  clerkUserId: String
+  email: String!
+  membershipCount: Int!
 }
 
 type PlatformAdminUserPage {
@@ -1613,6 +1621,11 @@ input DeleteCompanyInput {
 input DeletePlatformAdminCompanyInput {
   companyId: ID!
   confirmationName: String!
+}
+
+input DeletePlatformAdminUserInput {
+  userId: ID!
+  confirmationEmail: String!
 }
 
 type PlatformAdminCompanyDeletionPayload {
