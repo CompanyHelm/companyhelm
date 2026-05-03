@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { AgentArchivedChatsTabStore } from "./agent_archived_chats_tab_store";
 import type { agentArchivedChatsTabDeleteSessionMutation } from "./__generated__/agentArchivedChatsTabDeleteSessionMutation.graphql";
 import type { agentArchivedChatsTabUnarchiveSessionMutation } from "./__generated__/agentArchivedChatsTabUnarchiveSessionMutation.graphql";
 
@@ -176,7 +177,7 @@ export function AgentArchivedChatsTab(props: AgentArchivedChatsTabProps) {
           },
         },
         updater: (store) => {
-          store.delete?.(sessionId);
+          AgentArchivedChatsTabStore.removeDeletedSession(store, sessionId);
         },
         onCompleted: (_response, errors) => {
           const nextErrorMessage = String(errors?.[0]?.message || "").trim();
