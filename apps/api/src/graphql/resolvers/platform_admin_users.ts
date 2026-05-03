@@ -15,15 +15,17 @@ type PlatformAdminUserArguments = {
   id: string;
 };
 
+type PlatformAdminTimestamp = Date | string;
+
 type PlatformAdminUserRow = {
   clerkUserId: string | null;
-  createdAt: Date;
+  createdAt: PlatformAdminTimestamp;
   email: string;
   firstName: string;
   id: string;
   isPlatformAdmin: boolean;
   lastName: string | null;
-  updatedAt: Date;
+  updatedAt: PlatformAdminTimestamp;
 };
 
 type PlatformAdminUserCompanyMembershipRow = {
@@ -31,10 +33,10 @@ type PlatformAdminUserCompanyMembershipRow = {
   companyName: string;
   companyPlan: "free" | "plus" | "pro";
   companySlug: string | null;
-  createdAt: Date;
+  createdAt: PlatformAdminTimestamp;
   role: "admin" | "member";
   status: "active" | "invited";
-  updatedAt: Date;
+  updatedAt: PlatformAdminTimestamp;
 };
 
 type PlatformAdminUserCountRow = {
@@ -170,13 +172,13 @@ export class PlatformAdminUsersQueryResolver {
       return {
         nodes: userRows.map((userRow) => ({
           clerkUserId: userRow.clerkUserId,
-          createdAt: userRow.createdAt.toISOString(),
+          createdAt: this.formatTimestamp(userRow.createdAt),
           email: userRow.email,
           firstName: userRow.firstName,
           id: userRow.id,
           isPlatformAdmin: userRow.isPlatformAdmin,
           lastName: userRow.lastName,
-          updatedAt: userRow.updatedAt.toISOString(),
+          updatedAt: this.formatTimestamp(userRow.updatedAt),
         })),
         page,
         pageSize,
@@ -307,19 +309,23 @@ export class PlatformAdminUsersQueryResolver {
         companyName: membershipRow.companyName,
         companyPlan: membershipRow.companyPlan,
         companySlug: membershipRow.companySlug,
-        createdAt: membershipRow.createdAt.toISOString(),
+        createdAt: this.formatTimestamp(membershipRow.createdAt),
         role: membershipRow.role,
         status: membershipRow.status,
-        updatedAt: membershipRow.updatedAt.toISOString(),
+        updatedAt: this.formatTimestamp(membershipRow.updatedAt),
       })),
-      createdAt: userRow.createdAt.toISOString(),
+      createdAt: this.formatTimestamp(userRow.createdAt),
       email: userRow.email,
       firstName: userRow.firstName,
       id: userRow.id,
       isPlatformAdmin: userRow.isPlatformAdmin,
       lastName: userRow.lastName,
-      updatedAt: userRow.updatedAt.toISOString(),
+      updatedAt: this.formatTimestamp(userRow.updatedAt),
     };
+  }
+
+  private formatTimestamp(value: PlatformAdminTimestamp): string {
+    return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
   }
 
   private buildSearchCondition(search: string | null | undefined) {

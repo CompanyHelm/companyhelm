@@ -12,7 +12,9 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import { PlatformAdminUsersQueryResolver } from "../src/graphql/resolvers/platform_admin_users.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
+import type { GraphqlRequestContext } from "../src/graphql/graphql_request_context.ts";
 
 class PlatformAdminUsersQueryTestHarness {
   static createConfigMock(): Config {
@@ -120,6 +122,8 @@ class PlatformAdminUsersQueryTestHarness {
     };
   }
 }
+
+type AdminSqlMock = <T>(strings: TemplateStringsArray, ...values: unknown[]) => Promise<T>;
 
 test("GraphQL PlatformAdminUsers query lists paginated users for platform admins", async () => {
   const app = Fastify();
@@ -426,6 +430,80 @@ test("GraphQL PlatformAdminUser query lists a user's company memberships for pla
   });
 
   await app.close();
+});
+
+test("PlatformAdminUser query serializes string timestamps from the admin database", async () => {
+  const sqlMock = (async <T>(strings: TemplateStringsArray): Promise<T> => {
+    const query = strings.join("?").replace(/\s+/g, " ").trim();
+    if (query.includes("FROM users")) {
+      return [{
+        clerkUserId: "user_clerk_jane",
+        createdAt: "2026-04-01T10:00:00.000Z",
+        email: "jane@example.com",
+        firstName: "Jane",
+        id: "user-1",
+        isPlatformAdmin: true,
+        lastName: "Doe",
+        updatedAt: "2026-04-15T09:30:00.000Z",
+      }] as T;
+    }
+
+    return [{
+      companyId: "company-1",
+      companyName: "Acme",
+      companyPlan: "pro",
+      companySlug: "acme",
+      createdAt: "2026-04-03T10:00:00.000Z",
+      role: "admin",
+      status: "active",
+      updatedAt: "2026-04-04T10:00:00.000Z",
+    }] as T;
+  }) as AdminSqlMock;
+  const resolver = new PlatformAdminUsersQueryResolver({
+    getSqlClient() {
+      return sqlMock;
+    },
+  } as never);
+
+  const result = await resolver.executeUser(
+    null,
+    {
+      id: "user-1",
+    },
+    {
+      app_runtime_transaction_provider: {
+        async transaction() {
+          throw new Error("Admin database path should not use app runtime transactions.");
+        },
+      },
+      authSession: {
+        token: "jwt-token",
+        user: {
+          email: "admin@example.com",
+          firstName: "Admin",
+          id: "admin-user",
+          lastName: "User",
+          provider: "clerk",
+          providerSubject: "user_clerk_admin",
+        },
+      },
+      isPlatformAdmin: true,
+      resolveSubscriptionContext: null,
+    } as GraphqlRequestContext,
+  );
+
+  assert.equal(result.createdAt, "2026-04-01T10:00:00.000Z");
+  assert.equal(result.updatedAt, "2026-04-15T09:30:00.000Z");
+  assert.deepEqual(result.companyMemberships, [{
+    companyId: "company-1",
+    companyName: "Acme",
+    companyPlan: "pro",
+    companySlug: "acme",
+    createdAt: "2026-04-03T10:00:00.000Z",
+    role: "admin",
+    status: "active",
+    updatedAt: "2026-04-04T10:00:00.000Z",
+  }]);
 });
 
 test("GraphQL PlatformAdminUsers query rejects non-platform-admin users", async () => {
