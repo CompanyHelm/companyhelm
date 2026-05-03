@@ -25,6 +25,7 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  statusErrorMessage: string | null;
   status: string;
   templateId: string;
   updatedAt: string;
@@ -75,6 +76,7 @@ export class EnvironmentQueryResolver {
       providerDefinitionId: environment.providerDefinitionId,
       providerDefinitionName: environment.providerDefinitionName,
       providerEnvironmentId: environment.providerEnvironmentId,
+      statusErrorMessage: environment.statusErrorMessage,
       status: environment.status,
       templateId: environment.templateId,
       updatedAt: environment.updatedAt.toISOString(),

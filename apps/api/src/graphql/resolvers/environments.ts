@@ -49,9 +49,15 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  statusErrorMessage: string | null;
   templateId: string;
   status: AgentEnvironmentStatus;
   updatedAt: string;
+};
+
+type EnvironmentStatusResolution = {
+  status: AgentEnvironmentStatus;
+  statusErrorMessage: string | null;
 };
 
 type SelectableDatabase = {
@@ -164,18 +170,28 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
 
       const sortedEnvironmentRecords = [...environmentRecords]
         .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
-      const statusesByEnvironmentId = new Map(
+      const statusesByEnvironmentId = new Map<string, EnvironmentStatusResolution>(
         await Promise.all(
           sortedEnvironmentRecords.map(async (environmentRecord) => {
             try {
+              const status = await this.providerRegistry
+                .get(environmentRecord.provider)
+                .getEnvironmentStatus(transactionProvider, environmentRecord as AgentEnvironmentRecord);
               return [
                 environmentRecord.id,
-                await this.providerRegistry
-                  .get(environmentRecord.provider)
-                  .getEnvironmentStatus(transactionProvider, environmentRecord as AgentEnvironmentRecord),
+                {
+                  status,
+                  statusErrorMessage: null,
+                } satisfies EnvironmentStatusResolution,
               ] as const;
-            } catch {
-              return [environmentRecord.id, "unhealthy"] as const;
+            } catch (error) {
+              return [
+                environmentRecord.id,
+                {
+                  status: "unknown",
+                  statusErrorMessage: EnvironmentsQueryResolver.resolveStatusErrorMessage(error),
+                } satisfies EnvironmentStatusResolution,
+              ] as const;
             }
           }),
         ),
@@ -200,11 +216,23 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
             : null,
           providerEnvironmentId: environmentRecord.providerEnvironmentId,
           templateId: environmentRecord.templateId,
-          status: statusesByEnvironmentId.get(environmentRecord.id) ?? "unhealthy",
+          status: statusesByEnvironmentId.get(environmentRecord.id)?.status ?? "unknown",
+          statusErrorMessage: statusesByEnvironmentId.get(environmentRecord.id)?.statusErrorMessage ?? null,
           updatedAt: environmentRecord.updatedAt.toISOString(),
         }));
     });
   };
+
+  private static resolveStatusErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      const errorMessage = error.message.trim();
+      if (errorMessage.length > 0) {
+        return errorMessage;
+      }
+    }
+
+    return "Live environment status could not be loaded.";
+  }
 
   private static isProvider(value: unknown): value is AgentComputeProviderInterface {
     return typeof value === "object"

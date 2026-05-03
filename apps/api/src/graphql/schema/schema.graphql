@@ -747,6 +747,7 @@ type Environment {
   displayName: String
   platform: String!
   status: String!
+  statusErrorMessage: String
   cpuCount: Int!
   memoryGb: Int!
   diskSpaceGb: Int!

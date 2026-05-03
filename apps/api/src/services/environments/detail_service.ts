@@ -4,6 +4,7 @@ import { agentEnvironmentMetricSamples, agents } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { ComputeProviderDefinitionService } from "../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
+import type { AgentEnvironmentRecord } from "./providers/provider_interface.ts";
 import { AgentComputeProviderRegistry } from "./providers/provider_registry.ts";
 
 type SelectableDatabase = {
@@ -36,6 +37,7 @@ export type EnvironmentDetailRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  statusErrorMessage: string | null;
   status: string;
   templateId: string;
   updatedAt: Date;
@@ -79,8 +81,8 @@ export class AgentEnvironmentDetailService {
       throw new Error("Environment not found.");
     }
 
-    const [status, providerDefinition, agentName] = await Promise.all([
-      this.providerRegistry.get(environment.provider).getEnvironmentStatus(transactionProvider, environment),
+    const [statusResolution, providerDefinition, agentName] = await Promise.all([
+      this.resolveEnvironmentStatus(transactionProvider, environment),
       environment.providerDefinitionId
         ? this.computeProviderDefinitionService.loadDefinitionById(
           transactionProvider,
@@ -109,8 +111,44 @@ export class AgentEnvironmentDetailService {
       memUsedBytes: environment.memUsedBytes ?? null,
       metricsSampledAt: environment.metricsSampledAt ?? null,
       providerDefinitionName: providerDefinition?.name ?? null,
-      status,
+      status: statusResolution.status,
+      statusErrorMessage: statusResolution.statusErrorMessage,
     };
+  }
+
+  /**
+   * Converts provider status lookup failures into a recoverable payload so detail pages can still
+   * render the environment record while surfacing the provider error inline to operators.
+   */
+  private async resolveEnvironmentStatus(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<{
+    status: string;
+    statusErrorMessage: string | null;
+  }> {
+    try {
+      return {
+        status: await this.providerRegistry.get(environment.provider).getEnvironmentStatus(transactionProvider, environment),
+        statusErrorMessage: null,
+      };
+    } catch (error) {
+      return {
+        status: "unknown",
+        statusErrorMessage: this.resolveStatusErrorMessage(error),
+      };
+    }
+  }
+
+  private resolveStatusErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      const errorMessage = error.message.trim();
+      if (errorMessage.length > 0) {
+        return errorMessage;
+      }
+    }
+
+    return "Live environment status could not be loaded.";
   }
 
   async listMetricSamples(

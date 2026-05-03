@@ -222,3 +222,104 @@ test("GraphQL Environments query lists company-scoped agent environments", async
 
   await app.close();
 });
+
+test("GraphQL Environments query reports unknown status with a status error message when live lookup fails", async () => {
+  const app = Fastify();
+  const database = EnvironmentsQueryTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  const graphqlApplication = GraphqlApplication.fromResolvers(
+    EnvironmentsQueryTestHarness.createConfigMock(),
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  );
+  (
+    graphqlApplication as unknown as {
+      environmentsQueryResolver: EnvironmentsQueryResolver;
+    }
+  ).environmentsQueryResolver = new EnvironmentsQueryResolver({
+    async createShell() {
+      throw new Error("createShell should not run for the environments query");
+    },
+    async deleteEnvironment() {
+      throw new Error("deleteEnvironment should not run for the environments query");
+    },
+    async getEnvironmentStatus() {
+      throw new Error("E2B request timed out.");
+    },
+    getProvider() {
+      return "e2b";
+    },
+    async provisionEnvironment() {
+      throw new Error("provisionEnvironment should not run for the environments query");
+    },
+    async startEnvironment() {
+      throw new Error("startEnvironment should not run for the environments query");
+    },
+    async stopEnvironment() {
+      throw new Error("stopEnvironment should not run for the environments query");
+    },
+    supportsOnDemandProvisioning() {
+      return true;
+    },
+  } as never);
+  await graphqlApplication.register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query Environments {
+          Environments {
+            id
+            status
+            statusErrorMessage
+          }
+        }
+      `,
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.Environments, [{
+    id: "env-1",
+    status: "unknown",
+    statusErrorMessage: "E2B request timed out.",
+  }]);
+
+  await app.close();
+});

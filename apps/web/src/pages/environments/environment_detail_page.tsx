@@ -44,6 +44,7 @@ const environmentDetailPageQueryNode = graphql`
       displayName
       platform
       status
+      statusErrorMessage
       cpuCount
       memoryGb
       diskSpaceGb
@@ -159,6 +160,7 @@ function EnvironmentDetailPageContent() {
     templateId: environment.templateId,
     updatedAt: environment.updatedAt,
   };
+  const environmentStatusErrorMessage = String(environment.statusErrorMessage || "").trim();
   useEffect(() => {
     setDetailLabel(environment.displayName ?? environment.providerEnvironmentId);
 
@@ -208,6 +210,11 @@ function EnvironmentDetailPageContent() {
           {errorMessage ? (
             <div className="mx-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
+            </div>
+          ) : null}
+          {environmentStatusErrorMessage ? (
+            <div className="mx-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              Live environment status is temporarily unavailable. {environmentStatusErrorMessage}
             </div>
           ) : null}
 

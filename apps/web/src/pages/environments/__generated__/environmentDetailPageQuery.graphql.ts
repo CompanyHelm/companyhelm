@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1ec4b5dc864c0c0bb3b68bac9f2ee697>>
+ * @generated SignedSource<<7712e1cf177dd91adc9731a06487e152>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,6 +35,7 @@ export type environmentDetailPageQuery$data = {
     readonly providerDefinitionName: string | null | undefined;
     readonly providerEnvironmentId: string;
     readonly status: string;
+    readonly statusErrorMessage: string | null | undefined;
     readonly templateId: string;
     readonly updatedAt: string;
   };
@@ -183,6 +184,13 @@ v6 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "statusErrorMessage",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "cpuCount",
         "storageKey": null
       },
@@ -298,16 +306,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "40cf800351bc2e364dedec359d0fa510",
+    "cacheID": "2d36f5dbc562f9296a6a2f3ba660bddf",
     "id": null,
     "metadata": {},
     "name": "environmentDetailPageQuery",
     "operationKind": "query",
-    "text": "query environmentDetailPageQuery(\n  $environmentId: ID!\n  $startTime: String!\n  $endTime: String!\n) {\n  Environment(id: $environmentId) {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    templateId\n    displayName\n    platform\n    status\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    metricsSampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n    lastSeenAt\n    createdAt\n    updatedAt\n  }\n  EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {\n    sampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n  }\n}\n"
+    "text": "query environmentDetailPageQuery(\n  $environmentId: ID!\n  $startTime: String!\n  $endTime: String!\n) {\n  Environment(id: $environmentId) {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    templateId\n    displayName\n    platform\n    status\n    statusErrorMessage\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    metricsSampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n    lastSeenAt\n    createdAt\n    updatedAt\n  }\n  EnvironmentMetricSamples(environmentId: $environmentId, startTime: $startTime, endTime: $endTime) {\n    sampledAt\n    cpuUsedPct\n    memUsedBytes\n    diskUsedBytes\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "46d305ef50b94ab53426f8a448e8bf98";
+(node as any).hash = "9dd48a101b7ff8a2b2acc61e69048946";
 
 export default node;
