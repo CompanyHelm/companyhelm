@@ -2,12 +2,10 @@ import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { useAuth } from "@/components/auth/auth_provider";
-import { config } from "@/config";
-import { GoogleAdsAnalytics } from "@/lib/google_ads_analytics";
 
 /**
- * Waits for the Google Ads sign-up conversion callback, but always releases the user back into
- * the normal app flow once the one-second timeout expires.
+ * Keeps the hosted sign-up callback route focused on returning authenticated users into the app
+ * after Clerk has finished loading the current session.
  */
 export function SignedUpPage() {
   const auth = useAuth();
@@ -26,11 +24,9 @@ export function SignedUpPage() {
       return;
     }
 
-    void GoogleAdsAnalytics.trackSignUpConversion(config.analytics.googleAds).finally(() => {
-      void navigate({
-        replace: true,
-        to: "/",
-      });
+    void navigate({
+      replace: true,
+      to: "/",
     });
   }, [auth.isLoaded, auth.isSignedIn, navigate]);
 

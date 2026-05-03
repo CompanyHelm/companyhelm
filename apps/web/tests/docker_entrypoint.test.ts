@@ -24,8 +24,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
         VITE_CLERK_TERMS_OF_SERVICE_URL: "https://companyhelm.com/terms",
         VITE_AMPLITUDE_ENABLED: "true",
         VITE_AMPLITUDE_ID: "amplitude-runtime-id",
-        VITE_GOOGLE_ADS_ID: "AW-18135921456",
-        VITE_GOOGLE_ADS_SIGN_UP_CONVERSION_LABEL: "3UlcCOKBzqYcELDm8MdD",
         VITE_PADDLE_CLIENT_TOKEN: "live_runtime_token",
         VITE_PADDLE_ENVIRONMENT: "production",
       },
@@ -41,9 +39,6 @@ test("web docker entrypoint builds runtime-config.js from VITE runtime env", () 
     assert.match(runtimeConfig, /termsOfServiceUrl: "https:\/\/companyhelm\.com\/terms"/);
     assert.match(runtimeConfig, /enabled: true/);
     assert.match(runtimeConfig, /id: "amplitude-runtime-id"/);
-    assert.match(runtimeConfig, /googleAds: \{/);
-    assert.match(runtimeConfig, /id: "AW-18135921456"/);
-    assert.match(runtimeConfig, /signUpConversionLabel: "3UlcCOKBzqYcELDm8MdD"/);
     assert.match(runtimeConfig, /paddle: \{/);
     assert.match(runtimeConfig, /clientToken: "live_runtime_token"/);
     assert.match(runtimeConfig, /environment: "production"/);

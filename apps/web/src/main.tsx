@@ -6,7 +6,6 @@ import { AppRelayEnvironmentProvider } from "./components/relay_environment_prov
 import { RuntimeConfigurationError } from "./components/runtime_configuration_error";
 import { config } from "./config";
 import { AmplitudeAnalytics } from "./lib/amplitude_analytics";
-import { GoogleAdsAnalytics } from "./lib/google_ads_analytics";
 import { applicationRouter } from "./routes";
 import "./index.css";
 
@@ -17,7 +16,6 @@ if (!rootElement) {
 }
 
 AmplitudeAnalytics.initialize(applicationRouter, config.analytics.amplitude);
-GoogleAdsAnalytics.initialize(config.analytics.googleAds);
 
 createRoot(rootElement).render(
   <StrictMode>
