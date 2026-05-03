@@ -338,7 +338,11 @@ function EnvironmentDetailPageContent() {
               }}
             />
           ) : (
-            <EnvironmentMetricsTab environmentId={environment.id} />
+            <EnvironmentMetricsTab
+              diskSpaceGb={environment.diskSpaceGb}
+              environmentId={environment.id}
+              memoryGb={environment.memoryGb}
+            />
           )}
         </CardContent>
       </Card>

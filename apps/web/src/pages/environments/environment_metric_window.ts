@@ -4,8 +4,8 @@ export type EnvironmentMetricWindowRange = {
 };
 
 /**
- * Builds the fixed time range used by the environment detail metrics query so Relay receives a
- * stable set of variables while the Suspense boundary is waiting for the first response.
+ * Builds the fixed time range used by the environment metrics tab query so Relay receives a stable
+ * set of variables while the Suspense boundary is waiting for the first response.
  */
 export class EnvironmentMetricWindow {
   static createLastHour(endTime: Date = new Date()): EnvironmentMetricWindowRange {

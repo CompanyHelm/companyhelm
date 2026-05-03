@@ -1,4 +1,4 @@
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,16 +8,24 @@ import type { environmentMetricsTabQuery } from "./__generated__/environmentMetr
 
 type MetricsTabKey = "cpuUsedPct" | "memUsedBytes" | "diskUsedBytes";
 
+const metricsRefreshIntervalMilliseconds = 60_000;
+
 interface EnvironmentMetricsTabProps {
+  diskSpaceGb: number;
   environmentId: string;
+  memoryGb: number;
 }
 
 interface EnvironmentMetricsTabContentProps {
+  diskSpaceGb: number;
   environmentId: string;
+  memoryGb: number;
   metricWindow: EnvironmentMetricWindowRange;
 }
 
 interface EnvironmentMetricsChartProps {
+  diskSpaceGb: number;
+  memoryGb: number;
   samples: ReadonlyArray<{
     cpuUsedPct: number | null | undefined;
     diskUsedBytes: number | null | undefined;
@@ -30,6 +38,11 @@ type MetricChartDefinition = {
   gradientId: string;
   key: MetricsTabKey;
   label: string;
+};
+
+type MetricChartCapacity = {
+  diskUsedBytes: number;
+  memUsedBytes: number;
 };
 
 const environmentMetricsTabQueryNode = graphql`
@@ -49,11 +62,11 @@ const chartConfig: ChartConfig = {
     label: "CPU used %",
   },
   diskUsedBytes: {
-    color: "hsl(222 76% 54%)",
+    color: "hsl(213 92% 48%)",
     label: "Disk used",
   },
   memUsedBytes: {
-    color: "hsl(199 89% 46%)",
+    color: "hsl(213 92% 48%)",
     label: "Memory used",
   },
 };
@@ -108,8 +121,27 @@ function formatAxisTick(metricKey: MetricsTabKey, value: number): string {
   return formatBytes(value);
 }
 
+function gigabytesToBytes(value: number): number {
+  return value * 1024 * 1024 * 1024;
+}
+
 function hasMetricValue(value: number | null | undefined): value is number {
   return value !== null && value !== undefined;
+}
+
+function resolveMetricDomain(
+  metricKey: MetricsTabKey,
+  capacity: MetricChartCapacity,
+): [number, number | "auto"] {
+  if (metricKey === "cpuUsedPct") {
+    return [0, 100];
+  }
+
+  if (metricKey === "memUsedBytes") {
+    return [0, capacity.memUsedBytes];
+  }
+
+  return [0, capacity.diskUsedBytes];
 }
 
 /**
@@ -117,6 +149,13 @@ function hasMetricValue(value: number | null | undefined): value is number {
  * memory, and disk without switching context between incompatible units.
  */
 function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
+  const capacity = useMemo(
+    () => ({
+      diskUsedBytes: gigabytesToBytes(props.diskSpaceGb),
+      memUsedBytes: gigabytesToBytes(props.memoryGb),
+    }),
+    [props.diskSpaceGb, props.memoryGb],
+  );
   const chartData = useMemo(() => {
     return props.samples.map((sample) => ({
       cpuUsedPct: sample.cpuUsedPct,
@@ -155,15 +194,11 @@ function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
 
           return (
             <Card key={definition.key}>
-              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+              <CardHeader>
                 <div className="grid gap-1">
                   <CardDescription>{definition.label}</CardDescription>
                   <CardTitle>{formatMetricValue(definition.key, latestMetricValue)}</CardTitle>
                 </div>
-                <span
-                  className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: chartConfig[definition.key]?.color }}
-                />
               </CardHeader>
               <CardContent>
                 <ChartContainer className="h-56 w-full" config={chartConfig}>
@@ -178,6 +213,7 @@ function EnvironmentMetricsChart(props: EnvironmentMetricsChartProps) {
                     <XAxis axisLine={false} dataKey="label" minTickGap={24} tickLine={false} tickMargin={8} />
                     <YAxis
                       axisLine={false}
+                      domain={resolveMetricDomain(definition.key, capacity)}
                       tickFormatter={(value: number) => formatAxisTick(definition.key, value)}
                       tickLine={false}
                       tickMargin={8}
@@ -224,7 +260,13 @@ function EnvironmentMetricsTabContent(props: EnvironmentMetricsTabContentProps) 
     },
   );
 
-  return <EnvironmentMetricsChart samples={data.EnvironmentMetricSamples} />;
+  return (
+    <EnvironmentMetricsChart
+      diskSpaceGb={props.diskSpaceGb}
+      memoryGb={props.memoryGb}
+      samples={data.EnvironmentMetricSamples}
+    />
+  );
 }
 
 /**
@@ -232,14 +274,30 @@ function EnvironmentMetricsTabContent(props: EnvironmentMetricsTabContentProps) 
  * until operators open the metrics tab.
  */
 export function EnvironmentMetricsTab(props: EnvironmentMetricsTabProps) {
-  const metricWindow = useMemo(
+  const [metricWindow, setMetricWindow] = useState<EnvironmentMetricWindowRange>(
     () => EnvironmentMetricWindow.createLastHour(),
-    [props.environmentId],
   );
+
+  useEffect(() => {
+    setMetricWindow(EnvironmentMetricWindow.createLastHour());
+
+    const intervalId = window.setInterval(() => {
+      setMetricWindow(EnvironmentMetricWindow.createLastHour());
+    }, metricsRefreshIntervalMilliseconds);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [props.environmentId]);
 
   return (
     <Suspense fallback={<EnvironmentMetricsTabFallback />}>
-      <EnvironmentMetricsTabContent environmentId={props.environmentId} metricWindow={metricWindow} />
+      <EnvironmentMetricsTabContent
+        diskSpaceGb={props.diskSpaceGb}
+        environmentId={props.environmentId}
+        memoryGb={props.memoryGb}
+        metricWindow={metricWindow}
+      />
     </Suspense>
   );
 }
