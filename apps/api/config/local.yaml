@@ -56,7 +56,7 @@ agent_tools:
 web_search:
   exa:
     api_key: "${EXA_API_KEY}"
-# CompanyHelm default compute settings. Platform LLM credentials are stored in the database.
+# CompanyHelm default compute settings. LLM credentials are company-provided in the app.
 companyhelm:
   e2b:
     api_key: "${E2B_API_KEY}"

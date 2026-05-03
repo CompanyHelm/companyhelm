@@ -13,21 +13,20 @@ Useful system-skill capabilities include managing company skills, workflows, tas
 - Chat with agents from Chats, pick an agent/model for a session, review live transcript updates, and answer human handoff questions in Inbox.
 - Create and configure agents from Agents. Agent configuration includes name/title, model credential and model, reasoning level when supported, default compute/template, custom instructions, default skills, skill groups, MCP servers, secrets, and secret groups.
 - Add model credentials from LLM Credentials. Users can add provider keys, pick defaults for new agents, refresh models, inspect available models, set a default model, review usage, and delete or replace credentials when no longer needed.
-- Use the built-in CompanyHelm managed credential when available. It is managed by CompanyHelm; users normally do not paste an API key for it, but they may choose it as the default credential/model where the UI allows.
 - Manage Skills and Skill Groups. Skills teach agents reusable instructions. Git-backed skills can include supporting files; manual skills store instructions directly in CompanyHelm. Skill groups let users attach multiple skills to agents together.
 - Manage MCP Servers. MCP servers expose external tools and data sources to agents; OAuth callback flows appear under the MCP server pages when required.
 - Manage Secrets and Secret Groups. Secrets are environment variables or credentials exposed to selected agents/sessions. Users should store sensitive values here instead of pasting them into chat.
-- Manage Repositories and GitHub connections. Users can connect GitHub, select repositories available to agents, and then ask agents to inspect code, make branches, push changes, and open PRs when the GitHub installation permits it.
+- Manage Repositories and GitHub connections. Users can connect GitHub, select repositories available to agents, and then ask agents to inspect code, make branches, push changes, and open PRs when the GitHub installation permits it. Self-hosted deployments need their own GitHub App configuration before this flow can work.
 - Manage Environments. Users can start/stop/delete environments, open browser/desktop access when supported, open terminals, and inspect metrics on environment detail pages.
 - Manage Tasks, task stages, and Artifacts. Tasks track work, stages define lanes, and artifacts store durable outputs such as PR links, docs, and other deliverables.
 - Manage Workflows. Workflows are reusable multi-step processes that can be started and tracked through workflow runs.
-- Review Usage and Billing. Usage shows AI token/spend trends. Settings > Billing shows plan, credits, and pay-as-you-go balance. Settings > Members manages company members. Settings > Company covers company details, and Settings > Agents / AI covers company-wide base instructions inherited by agent sessions.
+- Review Usage for AI token and provider cost trends. Settings > Members manages company members. Settings > Company covers company details, and Settings > Agents / AI covers company-wide base instructions inherited by agent sessions.
 
 ## How to set up LLM credentials
 
 1. Open the company's LLM Credentials page.
 2. Click Create credentials.
-3. Pick the provider: CompanyHelm managed, OpenAI, Anthropic, Google Gemini API, OpenRouter, OpenAI-compatible API, or OpenAI Codex OAuth when available.
+3. Pick the provider: OpenAI, Anthropic, Google Gemini API, OpenRouter, OpenAI-compatible API, or OpenAI Codex OAuth when available.
 4. For API-key providers, paste the provider API key. For OpenAI-compatible APIs, also provide the compatible `/v1` base URL when the UI asks for it. For OpenAI Codex OAuth, run the command shown in the dialog, then paste the generated auth file JSON into the Auth File field.
 5. Optionally name the credential and mark it as the default for new agents.
 6. Save, then open the credential detail page to refresh models if needed and choose the default model for that credential.

@@ -40,19 +40,17 @@ Required by `apps/api/config/local.yaml`:
 - `GITHUB_APP_PRIVATE_KEY_PEM`
 - `GITHUB_APP_URL`
 - `LOCAL_AUTH_SESSION_SECRET`
-- `LOCAL_AUTH_PASSWORD_PEPPER`
 
 Use real `GITHUB_*` values when testing GitHub install flows, GitHub API calls, or webhooks. Placeholder values are enough only for local work that does not touch GitHub features.
 
 `DATABASE_URL` is required by Drizzle commands. The API runtime itself reads database role credentials from `apps/api/config/local.yaml`.
 
-3. Fill in the web variables in `apps/web/.env.local`.
+3. Review the web variables in `apps/web/.env.local`.
 
 Useful defaults are already present:
 
-- `VITE_GRAPHQL_URL=http://localhost:4000/graphql`
 - `VITE_AUTH_PROVIDER=local`
-- `VITE_AMPLITUDE_ENABLED=false`
+- `VITE_GRAPHQL_URL=http://localhost:4000/graphql`
 
 4. Install dependencies.
 
@@ -89,17 +87,13 @@ npm run dev:web
 
 ## Optional Local Environment Variables
 
-`COMPANYHELM_OPENAI_API_KEY`
-
-Seeds the managed CompanyHelm OpenAI provider when present. If omitted, users can still add their own model provider credentials from the UI.
-
 `GITHUB_WEBHOOK_SECRET`
 
 Enables `POST /webhooks/github` and verifies GitHub webhook signatures. If omitted, the API does not register the webhook route and local requests to `/webhooks/github` return `404`. This is the normal local setup when localhost is not exposed to GitHub.
 
 `VITE_TERMS_OF_SERVICE_URL` and `VITE_PRIVACY_POLICY_URL`
 
-Used by the web app for sign-up legal links. Keep placeholders locally unless you need to test the exact legal URLs.
+Used by the web app for local sign-up legal links. Keep placeholders locally unless you need to test the exact legal URLs.
 
 `VITE_AMPLITUDE_ENABLED` and `VITE_AMPLITUDE_ID`
 
@@ -183,7 +177,7 @@ For day-to-day local development, prefer the dev-auth boot command:
 npm run local-dev
 ```
 
-This command starts Postgres, Redis, and pgAdmin when they are not already reachable, runs the local seed, then starts the API and web app. It uses `apps/api/config/local-dev.yaml` and `apps/web/.env.local-dev`. The local seed creates the deterministic dev user `andrea.local@companyhelm.dev`, the `CompanyHelm Local` company, and the `CEO` agent backed by the CompanyHelm-managed model provider.
+This command starts Postgres, Redis, and pgAdmin when they are not already reachable, runs the local seed, then starts the API and web app. It uses `apps/api/config/local-dev.yaml` and `apps/web/.env.local-dev`. The local seed creates the deterministic dev user `andrea.local@companyhelm.dev`, the `CompanyHelm Local` company, and the `CEO` agent. Add company-owned LLM credentials in the app before running real agent prompts.
 
 The command still expects the product integrations that power normal agent work:
 
@@ -192,7 +186,6 @@ The command still expects the product integrations that power normal agent work:
 - `GITHUB_APP_CLIENT_ID`
 - `GITHUB_APP_PRIVATE_KEY_PEM`
 - `GITHUB_APP_URL`
-- `COMPANYHELM_OPENAI_API_KEY` or `OPENAI_API_KEY`
 
 For the CompanyHelm E2B runtime, expose both ports first and inject the forwarded URLs:
 

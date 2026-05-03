@@ -13,7 +13,6 @@ import { CompanyDeletionQueueService } from "../services/company_deletions/queue
 import { QueuePolicyValidator } from "../services/redis/queue_policy_validator.ts";
 import { SessionTurnUsageQueueService } from "../services/agent/session/session_turn_usage_queue.ts";
 import { WorkflowTriggerQueueService } from "../services/workflows/queue.ts";
-import { WalletRechargeQueueService } from "../services/wallet/queue.ts";
 import { WorkflowSchedulerSyncService } from "../services/workflows/scheduler_sync.ts";
 import { CompanyDeletionSweepWorker } from "../workers/company_deletion_sweep.ts";
 import { CompanyDeletionWorker } from "../workers/company_deletions.ts";
@@ -24,7 +23,6 @@ import { SessionProcessWorker } from "../workers/session_process.ts";
 import { SessionTurnUsageWorker } from "../workers/session_turn_usage.ts";
 import { SkillRepositoryUpdateWorker } from "../workers/skill_repository_updates.ts";
 import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
-import { WalletRechargeWorker } from "../workers/wallet_recharges.ts";
 import { DevAuthRoute } from "./dev_auth_route.ts";
 import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 import { GithubWebhookRoute } from "./github_webhook_route.ts";
@@ -58,8 +56,6 @@ export class ApiServer {
   private readonly sessionTurnUsageWorker: SessionTurnUsageWorker;
   private readonly skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker;
   private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
-  private readonly walletRechargeQueueService: WalletRechargeQueueService;
-  private readonly walletRechargeWorker: WalletRechargeWorker;
   private readonly workflowTriggerQueueService: WorkflowTriggerQueueService;
   private readonly workflowTriggerWorker: WorkflowTriggerWorker;
   private readonly app;
@@ -144,16 +140,6 @@ export class ApiServer {
       start() {},
       stop() {},
     } as never,
-    @inject(WalletRechargeQueueService)
-    walletRechargeQueueService: WalletRechargeQueueService = {
-      async upsertDailyRechargeScheduler() {},
-      async close() {},
-    } as never,
-    @inject(WalletRechargeWorker)
-    walletRechargeWorker: WalletRechargeWorker = {
-      start() {},
-      async stop() {},
-    } as never,
     @inject(SessionTurnUsageQueueService)
     sessionTurnUsageQueueService: SessionTurnUsageQueueService = {
       async close() {},
@@ -187,8 +173,6 @@ export class ApiServer {
     this.sessionTurnUsageWorker = sessionTurnUsageWorker;
     this.skillRepositoryUpdateWorker = skillRepositoryUpdateWorker;
     this.workflowSchedulerSyncService = workflowSchedulerSyncService;
-    this.walletRechargeQueueService = walletRechargeQueueService;
-    this.walletRechargeWorker = walletRechargeWorker;
     this.workflowTriggerQueueService = workflowTriggerQueueService;
     this.workflowTriggerWorker = workflowTriggerWorker;
     this.app = Fastify({
@@ -231,13 +215,11 @@ export class ApiServer {
     });
 
     await this.workflowSchedulerSyncService.syncEnabledCronTriggers();
-    await this.walletRechargeQueueService.upsertDailyRechargeScheduler();
     this.llmOauthRefreshWorker.start();
     this.githubWebhookWorker.start();
     this.sessionProcessWorker.start();
     this.sessionTurnUsageWorker.start();
     this.workflowTriggerWorker.start();
-    this.walletRechargeWorker.start();
     this.skillRepositoryUpdateWorker.start();
     this.companyDeletionWorker.start();
     this.companyDeletionSweepWorker.start();
@@ -281,14 +263,12 @@ export class ApiServer {
       await this.sessionProcessWorker.stop();
       await this.sessionTurnUsageWorker.stop();
       await this.workflowTriggerWorker.stop();
-      await this.walletRechargeWorker.stop();
       this.skillRepositoryUpdateWorker.stop();
       this.companyDeletionSweepWorker.stop();
       await this.companyDeletionWorker.stop();
       this.environmentMetricsWorker.stop();
       await this.workflowTriggerQueueService.close();
       await this.sessionTurnUsageQueueService.close();
-      await this.walletRechargeQueueService.close();
       await this.githubWebhookQueueService.close();
       await this.companyDeletionQueueService.close();
       await this.database.close();

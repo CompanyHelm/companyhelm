@@ -120,7 +120,6 @@ test("CodexRateLimits refreshes from upstream when no snapshot exists", async ()
     baseUrl: null,
     companyId: "company-1",
     credentialId: "credential-1",
-    credentialSource: "user_provided",
     modelProvider: "openai-codex",
   }]);
   assert.deepEqual(result, {

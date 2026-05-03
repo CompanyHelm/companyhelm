@@ -32,21 +32,13 @@ class AgentCreateOptionsQueryTestHarness {
   }
 
   static createDatabaseMock(input?: {
-    platformModelRecords?: Array<Record<string, unknown>>;
-    platformRouteRecords?: Array<Record<string, unknown>>;
-    managedProviderSettingsRecords?: Array<Record<string, unknown>>;
     defaultProviderSelectionRecords?: Array<Record<string, unknown>>;
     credentialRecords?: Array<Record<string, unknown>>;
     modelRecords?: Array<Record<string, unknown>>;
   }) {
     let selectCallCount = 0;
     const selectResults = [
-      [],
-      input?.platformModelRecords ?? [],
-      input?.platformRouteRecords ?? [],
-      input?.managedProviderSettingsRecords ?? [],
       input?.defaultProviderSelectionRecords ?? [{
-        modelCredentialSource: "user_provided",
         modelProviderCredentialId: "credential-1",
       }],
       input?.credentialRecords ?? [{
@@ -80,9 +72,7 @@ class AgentCreateOptionsQueryTestHarness {
                 from() {
                   return {
                     where() {
-                      return selectCallCount === 1
-                        ? { async limit() { return selectResult; } }
-                        : selectResult;
+                      return selectResult;
                     },
                   };
                 },
@@ -152,8 +142,6 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
         query AgentCreateOptions {
           AgentCreateOptions {
             id
-            modelCredentialSource
-            platformModelProviderCredentialId
             modelProviderCredentialId
             isDefault
             label
@@ -163,9 +151,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
             defaultReasoningLevel
             models {
               id
-              modelCredentialSource
               llmModelId
-              platformModelProviderCredentialModelId
               modelProviderCredentialModelId
               modelId
               name
@@ -184,8 +170,6 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
   assert.equal(document.errors, undefined);
   assert.deepEqual(document.data.AgentCreateOptions, [{
     id: "agent-create-provider-option:credential-1",
-    modelCredentialSource: "user_provided",
-    platformModelProviderCredentialId: null,
     modelProviderCredentialId: "credential-1",
     isDefault: true,
     label: "OpenAI / Codex",
@@ -195,9 +179,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
     defaultReasoningLevel: "high",
     models: [{
       id: "agent-create-model-option:model-row-1",
-      modelCredentialSource: "user_provided",
       llmModelId: "model-row-1",
-      platformModelProviderCredentialModelId: null,
       modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
       name: "GPT-5.4",
@@ -210,29 +192,10 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
   await app.close();
 });
 
-test("GraphQL AgentCreateOptions exposes only one default across managed and user credentials", async () => {
+test("GraphQL AgentCreateOptions exposes the selected company credential as default", async () => {
   const app = Fastify();
   const config = AgentCreateOptionsQueryTestHarness.createConfigMock();
-  const database = AgentCreateOptionsQueryTestHarness.createDatabaseMock({
-    platformModelRecords: [{
-      id: "platform-model-1",
-      isDefault: true,
-      modelProvider: "companyhelm",
-      modelId: "gpt-5.5",
-      name: "GPT-5.5",
-      description: "CompanyHelm managed model.",
-      reasoningSupported: true,
-      reasoningLevels: ["low", "medium", "high"],
-    }],
-    platformRouteRecords: [{
-      platformModelId: "platform-model-1",
-      platformModelProviderCredentialModelId: "platform-model-row-1",
-    }],
-    defaultProviderSelectionRecords: [{
-      modelCredentialSource: "user_provided",
-      modelProviderCredentialId: "credential-1",
-    }],
-  });
+  const database = AgentCreateOptionsQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -280,7 +243,6 @@ test("GraphQL AgentCreateOptions exposes only one default across managed and use
       query: `
         query AgentCreateOptions {
           AgentCreateOptions {
-            modelCredentialSource
             isDefault
           }
         }
@@ -292,7 +254,6 @@ test("GraphQL AgentCreateOptions exposes only one default across managed and use
   const document = response.json();
   assert.equal(document.errors, undefined);
   assert.deepEqual(document.data.AgentCreateOptions.map((option: { isDefault: boolean }) => option.isDefault), [
-    false,
     true,
   ]);
 

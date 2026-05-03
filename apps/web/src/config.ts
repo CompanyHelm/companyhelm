@@ -1,15 +1,6 @@
 import packageDocument from "../../../package.json";
 
-export type PaddleConfigDocument = {
-  clientToken: string;
-  environment: "sandbox" | "production";
-};
-
-type RuntimePaddleConfigDocument = Partial<PaddleConfigDocument>;
-
-type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "paddle">> & {
-  paddle?: RuntimePaddleConfigDocument;
-};
+type RuntimeConfigDocument = Partial<ConfigDocument>;
 
 /**
  * Resolves the browser runtime configuration from an injected window document first and falls
@@ -19,7 +10,6 @@ export type ConfigDocument = {
   authProvider: "dev" | "local";
   appVersion: string;
   graphqlUrl: string;
-  paddle: PaddleConfigDocument;
   privacyPolicyUrl: string;
   termsOfServiceUrl: string;
 };
@@ -46,17 +36,6 @@ export class Config {
         importMetaEnv?.VITE_GRAPHQL_URL,
         "http://localhost:4000/graphql",
       ),
-      paddle: {
-        clientToken: Config.resolveRuntimeRequiredStringValue(
-          runtimeDocument.paddle?.clientToken,
-          importMetaEnv?.VITE_PADDLE_CLIENT_TOKEN,
-          "",
-        ),
-        environment: Config.resolvePaddleEnvironment(
-          runtimeDocument.paddle?.environment,
-          importMetaEnv?.VITE_PADDLE_ENVIRONMENT,
-        ),
-      },
       privacyPolicyUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.privacyPolicyUrl,
         importMetaEnv?.VITE_PRIVACY_POLICY_URL,
@@ -104,16 +83,6 @@ export class Config {
     }
 
     return "local";
-  }
-
-  private static resolvePaddleEnvironment(
-    runtimeValue: unknown,
-    fallbackSourceValue: unknown,
-  ): "sandbox" | "production" {
-    const value = typeof runtimeValue === "string" && runtimeValue.trim().length > 0
-      ? runtimeValue.trim()
-      : Config.resolveRequiredStringValue(fallbackSourceValue, "sandbox");
-    return value === "production" ? "production" : "sandbox";
   }
 
   private static getRuntimeDocument(): RuntimeConfigDocument {

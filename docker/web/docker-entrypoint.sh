@@ -6,8 +6,6 @@ AUTH_PROVIDER="${VITE_AUTH_PROVIDER:-local}"
 GRAPHQL_URL="${VITE_GRAPHQL_URL:-http://localhost:4000/graphql}"
 PRIVACY_POLICY_URL="${VITE_PRIVACY_POLICY_URL:-}"
 TERMS_OF_SERVICE_URL="${VITE_TERMS_OF_SERVICE_URL:-}"
-PADDLE_CLIENT_TOKEN="${VITE_PADDLE_CLIENT_TOKEN:-}"
-PADDLE_ENVIRONMENT="${VITE_PADDLE_ENVIRONMENT:-sandbox}"
 
 escape_javascript_string() {
   printf '%s' "$1" | awk '
@@ -26,14 +24,6 @@ escape_javascript_string() {
   '
 }
 
-build_optional_paddle_property() {
-  if [ -n "$PADDLE_CLIENT_TOKEN" ]; then
-    printf ',\n  paddle: {\n    clientToken: "%s",\n    environment: "%s"\n  }' \
-      "$(escape_javascript_string "$PADDLE_CLIENT_TOKEN")" \
-      "$(escape_javascript_string "$PADDLE_ENVIRONMENT")"
-  fi
-}
-
 write_runtime_config() {
   mkdir -p "$(dirname "$RUNTIME_CONFIG_PATH")"
 
@@ -42,7 +32,7 @@ window.__COMPANYHELM_CONFIG__ = Object.freeze({
   authProvider: "$(escape_javascript_string "$AUTH_PROVIDER")",
   graphqlUrl: "$(escape_javascript_string "$GRAPHQL_URL")",
   privacyPolicyUrl: "$(escape_javascript_string "$PRIVACY_POLICY_URL")",
-  termsOfServiceUrl: "$(escape_javascript_string "$TERMS_OF_SERVICE_URL")"$(build_optional_paddle_property)
+  termsOfServiceUrl: "$(escape_javascript_string "$TERMS_OF_SERVICE_URL")"
 });
 EOF
 }

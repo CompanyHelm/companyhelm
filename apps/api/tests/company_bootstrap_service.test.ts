@@ -10,8 +10,6 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelRoutes,
-  platformModels,
   taskStages,
   workflowDefinitionInputs,
   workflowDefinitions,
@@ -90,26 +88,12 @@ type AgentRow = {
   created_at: Date;
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
-  defaultModelCredentialSource: "platform" | "user_provided";
   defaultModelProviderCredentialModelId: string | null;
-  defaultPlatformModelId: string | null;
   default_reasoning_level: string | null;
   id: string;
   name: string;
   system_prompt: string | null;
   updated_at: Date;
-};
-
-type PlatformModelRow = {
-  id: string;
-  isDefault: boolean;
-  isAvailable: boolean;
-  modelId: string;
-  reasoningLevels: string[] | null;
-};
-
-type PlatformModelRouteRow = {
-  platformModelId: string;
 };
 
 type AgentSkillRow = {
@@ -163,7 +147,7 @@ type CompanyOnboardingRow = {
   githubSetupStatus: "pending" | "completed" | "skipped";
   githubSkippedAt: Date | null;
   llmCompletedAt: Date | null;
-  llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+  llmSetupStatus: "pending" | "third_party" | "skipped";
   llmSkippedAt: Date | null;
   missionSkippedAt: Date | null;
   sessionId: string | null;
@@ -187,8 +171,6 @@ class CompanyBootstrapServiceTestHarness {
   private readonly companyModelProviderDefaultRows: CompanyModelProviderDefaultRow[];
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
-  private readonly platformModelRows: PlatformModelRow[];
-  private readonly platformRouteRows: PlatformModelRouteRow[];
   private readonly taskStageRows: TaskStageRow[];
   private readonly workflowDefinitionRows: WorkflowDefinitionRow[];
   private readonly workflowDefinitionInputRows: WorkflowDefinitionInputRow[];
@@ -202,8 +184,6 @@ class CompanyBootstrapServiceTestHarness {
     companyModelProviderDefaultRows?: CompanyModelProviderDefaultRow[];
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
-    platformModelRows?: PlatformModelRow[];
-    platformRouteRows?: PlatformModelRouteRow[];
     taskStageRows?: TaskStageRow[];
     workflowDefinitionRows?: WorkflowDefinitionRow[];
     workflowDefinitionInputRows?: WorkflowDefinitionInputRow[];
@@ -216,16 +196,6 @@ class CompanyBootstrapServiceTestHarness {
     this.companyModelProviderDefaultRows = [...(params?.companyModelProviderDefaultRows ?? [])];
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
-    this.platformModelRows = [...(params?.platformModelRows ?? [{
-      id: "platform-model-1",
-      isAvailable: true,
-      isDefault: true,
-      modelId: "gpt-5.4",
-      reasoningLevels: ["low", "medium", "high", "xhigh"],
-    }])];
-    this.platformRouteRows = [...(params?.platformRouteRows ?? [{
-      platformModelId: "platform-model-1",
-    }])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
     this.workflowDefinitionRows = [...(params?.workflowDefinitionRows ?? [])];
     this.workflowDefinitionInputRows = [...(params?.workflowDefinitionInputRows ?? [])];
@@ -252,11 +222,6 @@ class CompanyBootstrapServiceTestHarness {
     return new CompanyBootstrapService(
       new CompanyHelmComputeProviderService(config),
       new ModelRegistry(),
-      {
-        async ensureSubscriptionWalletForCompanyInTransaction() {
-          return undefined;
-        },
-      } as never,
     );
   }
 
@@ -268,8 +233,6 @@ class CompanyBootstrapServiceTestHarness {
     const companyModelProviderDefaultRows = this.companyModelProviderDefaultRows;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
-    const platformModelRows = this.platformModelRows;
-    const platformRouteRows = this.platformRouteRows;
     const taskStageRows = this.taskStageRows;
     const workflowDefinitionRows = this.workflowDefinitionRows;
     const workflowDefinitionInputRows = this.workflowDefinitionInputRows;
@@ -337,9 +300,7 @@ class CompanyBootstrapServiceTestHarness {
                   const agent = agentRows[0];
                   if (agent) {
                     agent.defaultComputeProviderDefinitionId = value.defaultComputeProviderDefinitionId as string;
-                    agent.defaultModelCredentialSource = value.defaultModelCredentialSource as "platform" | "user_provided";
                     agent.defaultModelProviderCredentialModelId = value.defaultModelProviderCredentialModelId as string | null;
-                    agent.defaultPlatformModelId = value.defaultPlatformModelId as string | null;
                     agent.default_reasoning_level = value.default_reasoning_level as string | null;
                     agent.updated_at = value.updated_at as Date;
                   }
@@ -436,9 +397,7 @@ class CompanyBootstrapServiceTestHarness {
                 created_at: value.created_at as Date,
                 defaultComputeProviderDefinitionId: value.defaultComputeProviderDefinitionId as string,
                 defaultEnvironmentTemplateId: value.defaultEnvironmentTemplateId as string,
-                defaultModelCredentialSource: value.defaultModelCredentialSource as "platform" | "user_provided",
                 defaultModelProviderCredentialModelId: value.defaultModelProviderCredentialModelId as string | null,
-                defaultPlatformModelId: value.defaultPlatformModelId as string | null,
                 default_reasoning_level: value.default_reasoning_level as string | null,
                 id: value.id as string,
                 name: value.name as string,
@@ -626,13 +585,6 @@ class CompanyBootstrapServiceTestHarness {
                 if (table === modelProviderCredentialModels) {
                   return Promise.resolve([...modelRows]);
                 }
-                if (table === platformModelRoutes) {
-                  return Promise.resolve([...platformRouteRows]);
-                }
-                if (table === platformModels) {
-                  return Promise.resolve(platformModelRows.filter((row) => row.isAvailable));
-                }
-
                 return {
                   async limit() {
                     if (table === companies) {
@@ -734,14 +686,44 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
 });
 
 test("CompanyBootstrapService creates the CEO onboarding assets lazily", async () => {
-  const harness = new CompanyBootstrapServiceTestHarness();
+  const harness = new CompanyBootstrapServiceTestHarness({
+    companyModelProviderDefaultRows: [{
+      companyId: "company-1",
+      createdAt: new Date("2026-04-22T10:00:00.000Z"),
+      modelCredentialSource: "user_provided",
+      modelProviderCredentialId: "credential-1",
+      updatedAt: new Date("2026-04-22T10:00:00.000Z"),
+    }],
+    modelCredentialRows: [{
+      companyId: "company-1",
+      createdAt: new Date("2026-04-22T10:00:00.000Z"),
+      encryptedApiKey: "sk-openai",
+      id: "credential-1",
+      isDefault: true,
+      modelProvider: "openai",
+      name: "OpenAI",
+      type: "api_key",
+      updatedAt: new Date("2026-04-22T10:00:00.000Z"),
+    }],
+    modelRows: [{
+      companyId: "company-1",
+      description: "Latest frontier agentic coding model.",
+      id: "model-row-1",
+      isDefault: true,
+      modelId: "gpt-5.4",
+      modelProviderCredentialId: "credential-1",
+      name: "GPT-5.4",
+      reasoningLevels: ["low", "medium", "high"],
+      reasoningSupported: true,
+    }],
+  });
 
   await (await harness.buildService()).ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
   await (await harness.buildService()).ensureOnboardingAssets(
     harness.buildTransaction() as never,
     {
       companyId: "company-1",
-      llmSetupStatus: "company_managed",
+      llmSetupStatus: "third_party",
     },
   );
 
@@ -752,11 +734,7 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.equal(seedAgent?.name, "CEO");
   assert.equal(seedAgent?.defaultComputeProviderDefinitionId, defaultDefinition?.id);
   assert.equal(seedAgent?.defaultEnvironmentTemplateId, "medium");
-  assert.equal(seedAgent?.defaultModelCredentialSource, "platform");
-  assert.equal(seedAgent?.defaultPlatformModelId, "platform-model-1");
-  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, null);
-  assert.deepEqual(harness.listModelCredentials(), []);
-  assert.deepEqual(harness.listModels(), []);
+  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, "model-row-1");
   assert.equal(seedAgent?.default_reasoning_level, "medium");
   assert.equal(seedAgent?.system_prompt, null);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
@@ -833,9 +811,7 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       created_at: now,
       defaultComputeProviderDefinitionId: "companyhelm-definition-1",
       defaultEnvironmentTemplateId: "medium",
-      defaultModelCredentialSource: "user_provided",
       defaultModelProviderCredentialModelId: "model-row-1",
-      defaultPlatformModelId: null,
       default_reasoning_level: "high",
       id: "agent-row-1",
       name: "CEO",

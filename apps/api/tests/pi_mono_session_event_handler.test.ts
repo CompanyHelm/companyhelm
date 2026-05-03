@@ -6,8 +6,6 @@ import {
   messageContents,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -46,7 +44,6 @@ type SessionQueuedMessageRecord = Record<string, unknown> & {
 };
 
 type PiMonoSessionEventHandlerTestHarnessInput = {
-  credentialSource?: "platform" | "user_provided";
   credentialType?: "api_key" | "oauth_token";
   modelProvider?: string;
 };
@@ -171,16 +168,13 @@ class PiMonoSessionEventHandlerTestHarness {
                         return [{
                           agentId: "agent-1",
                           companyId: "company-1",
-                          currentModelCredentialSource: input.credentialSource ?? "user_provided",
                           currentModelProviderCredentialModelId: "credential-model-1",
-                          currentPlatformModelId: "platform-model-1",
-                          currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
                         }];
                       },
                     };
                   }
 
-                  if (table === modelProviderCredentialModels || table === platformModelProviderCredentialModels) {
+                  if (table === modelProviderCredentialModels) {
                     return {
                       async where() {
                         return [{
@@ -190,7 +184,7 @@ class PiMonoSessionEventHandlerTestHarness {
                     };
                   }
 
-                  if (table === modelProviderCredentials || table === platformModelProviderCredentials) {
+                  if (table === modelProviderCredentials) {
                     return {
                       async where() {
                         return [{
@@ -791,8 +785,6 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
-  assert.equal(usageRecords[0]?.credentialSource, "user_provided");
-  assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.turnId, messageRecord.turnId);
@@ -812,65 +804,6 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
     totalTokens: 200,
   });
 });
-
-for (const scenario of [
-  {
-    description: "oauth subscription credentials",
-    expectedCredentialSource: "user_provided" as const,
-    input: {
-      credentialType: "oauth_token" as const,
-    },
-  },
-  {
-    description: "platform credentials",
-    expectedCredentialSource: "platform" as const,
-    input: {
-      credentialSource: "platform" as const,
-    },
-  },
-]) {
-  test(`PiMonoSessionEventHandler marks ${scenario.description} as virtual cost`, async () => {
-    const harness = PiMonoSessionEventHandlerTestHarness.create(scenario.input);
-    const usageRecords: SessionTurnUsageRecordInput[] = [];
-    const handler = new PiMonoSessionEventHandler(
-      harness.transactionProvider as never,
-      "session-1",
-      harness.redisService as never,
-      {
-        sessionTurnUsageService: {
-          async recordUsage(_transactionProvider: unknown, input: SessionTurnUsageRecordInput) {
-            usageRecords.push(input);
-          },
-        } as never,
-      },
-    );
-
-    try {
-      await handler.handle({
-        message: {
-          content: "Done",
-          role: "assistant",
-          timestamp: Date.parse("2026-04-20T16:30:00.000Z"),
-          usage: {
-            cost: {
-              input: 0.000001,
-              total: 0.000001,
-            },
-            input: 100,
-            totalTokens: 100,
-          },
-        },
-        type: "message_end",
-      });
-    } finally {
-      harness.restore();
-    }
-
-    assert.equal(usageRecords.length, 1);
-    assert.equal(usageRecords[0]?.credentialSource, scenario.expectedCredentialSource);
-    assert.equal(usageRecords[0]?.costKind, "virtual");
-  });
-}
 
 test("PiMonoSessionEventHandler ignores completed assistant messages without usage", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
@@ -948,8 +881,6 @@ test("PiMonoSessionEventHandler records current assistant usage when interrupted
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
-  assert.equal(usageRecords[0]?.credentialSource, "user_provided");
-  assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.recordedAt, interruptedAt);

@@ -12,7 +12,6 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import { ModelProvidersQueryResolver } from "../src/graphql/resolvers/model_providers.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class ModelProvidersQueryTestHarness {
@@ -119,13 +118,6 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   const document = response.json();
   assert.deepEqual(document.data.ModelProviders, [
     {
-      id: "companyhelm",
-      isAvailable: false,
-      name: "CompanyHelm",
-      type: "api_key",
-      authorizationInstructionsMarkdown: "Included and managed by CompanyHelm.",
-    },
-    {
       id: "openai",
       isAvailable: true,
       name: "OpenAI",
@@ -180,44 +172,6 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   ]);
 
   await app.close();
-});
-
-test("ModelProviders resolver marks CompanyHelm available when a platform model route exists", async () => {
-  const resolver = new ModelProvidersQueryResolver();
-
-  const providers = await resolver.execute({}, {}, {
-    authSession: {
-      company: {
-        id: "company-123",
-        name: "Example Org",
-      },
-    },
-    app_runtime_transaction_provider: {
-      async transaction(callback: (tx: unknown) => Promise<unknown>) {
-        return callback({
-          select() {
-            return {
-              from() {
-                return {
-                  where() {
-                    return {
-                      async limit() {
-                        return [{ id: "route-1" }];
-                      },
-                    };
-                  },
-                };
-              },
-            };
-          },
-        });
-      },
-    },
-  } as never);
-
-  const companyHelmProvider = providers.find((provider) => provider.id === "companyhelm");
-
-  assert.equal(companyHelmProvider?.isAvailable, true);
 });
 
 test("GraphQL ModelProviders query rejects unauthenticated requests", async () => {

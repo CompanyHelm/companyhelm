@@ -68,37 +68,14 @@ const dashboardPageQueryNode = graphql`
       status
       updatedAt
     }
-    CompanyWallet {
-      currentPlan
-      pendingPlan
-      pendingPlanEffectiveAt
-      totalBalanceNanoUsd
-      nextRechargeAmountNanoUsd
-      nextRechargeAt
-      wallets {
-        id
-        type
-        amountNanoUsd
-      }
-      transactions {
-        id
-        category
-        amountNanoUsd
-        createdAt
-      }
-    }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -109,21 +86,16 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     companyDaily: LlmUsageAggregates(input: { scopeType: company, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -134,21 +106,16 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     companyMonthly: LlmUsageAggregates(input: { scopeType: company, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -159,7 +126,6 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
   }
@@ -349,7 +315,6 @@ function DashboardPageContent() {
       </div>
 
       <UsageSection
-        budget={data.CompanyWallet}
         currentDayUsage={currentDayUsage}
         currentMonthUsage={currentMonthUsage}
         organizationName={organizationName}

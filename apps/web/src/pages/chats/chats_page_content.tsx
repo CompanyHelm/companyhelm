@@ -109,10 +109,7 @@ import {
 } from "./chats_page_helpers";
 import { ChatListPanel } from "./chat_list_panel";
 import { ChatTranscriptPane } from "./chat_transcript_pane";
-import { CompanyHelmWalletDepletedDialog } from "./companyhelm_wallet_depleted_dialog";
 import { useChatTranscript } from "./use_chat_transcript";
-
-const COMPANYHELM_WALLET_DEPLETED_MESSAGE = "CompanyHelm AI wallet balance is depleted for this company.";
 
 function ChatsReconnectBanner({ visible }: { visible: boolean }) {
   if (!visible) {
@@ -188,7 +185,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [isAttachmentDragActive, setIsAttachmentDragActive] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
-  const [isCompanyHelmWalletDepletedDialogOpen, setIsCompanyHelmWalletDepletedDialogOpen] = useState(false);
   const [isAlternateModelDialogOpen, setIsAlternateModelDialogOpen] = useState(false);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>(
     () => ChatsPagePreferenceStorage.loadCollapsedAgentIds(),
@@ -280,8 +276,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         return providerOption.models.map((modelOption) => ({
           description: modelOption.description,
           id: modelOption.id,
-          modelCredentialSource: modelOption.modelCredentialSource as "platform" | "user_provided",
-          platformModelId: modelOption.platformModelId,
           modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
           modelId: modelOption.modelId,
           name: modelOption.name,
@@ -305,7 +299,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     return new Map(composerModelOptions.map((modelOption) => [modelOption.id, modelOption]));
   }, [composerModelOptions]);
   const alternateComposerModelOptions = useMemo<ChatComposerModelOption[]>(() => {
-    return composerModelOptions.filter((modelOption) => modelOption.modelCredentialSource === "user_provided");
+    return composerModelOptions;
   }, [composerModelOptions]);
   const alternateModelSelectionOptions = useMemo<ModelSelectionOption[]>(() => {
     return alternateComposerModelOptions.map((modelOption) => ({
@@ -317,22 +311,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       providerLabel: modelOption.providerLabel,
     }));
   }, [alternateComposerModelOptions]);
-  const companyHelmPlanName = useMemo(() => {
-    if (!composerSetupData) {
-      return "current plan";
-    }
-
-    const currentPlan = composerSetupData.BillingPlans.find((plan) => plan.key === composerSetupData.CompanyWallet.currentPlan);
-    return currentPlan?.name ?? composerSetupData.CompanyWallet.currentPlan;
-  }, [composerSetupData]);
-  const companyHelmWalletProviderLogos = useMemo(() => {
-    return (composerSetupData?.ModelProviders ?? [])
-      .filter((provider) => provider.id !== "companyhelm")
-      .map((provider) => ({
-        id: provider.id,
-        label: provider.name,
-      }));
-  }, [composerSetupData?.ModelProviders]);
   const activeSessions = useMemo(() => {
     return data.Sessions.filter((session) => !isArchivedSession(session));
   }, [data.Sessions]);
@@ -488,12 +466,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   }, []);
 
   const handleChatActionError = useCallback((error: unknown, fallbackMessage: string) => {
-    if (error instanceof Error && error.message === COMPANYHELM_WALLET_DEPLETED_MESSAGE) {
-      setErrorMessage(null);
-      setIsCompanyHelmWalletDepletedDialogOpen(true);
-      return;
-    }
-
     setErrorMessage(error instanceof Error ? error.message : fallbackMessage);
   }, []);
 
@@ -1139,10 +1111,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     // picker when the operator actually switches chat targets or the current model disappears.
     const nextModelOptionId = resolveComposerModelOptionId(
       composerModelOptions,
-      selectedSession?.platformModelId ?? null,
       selectedSession?.modelProviderCredentialModelId ?? null,
       selectedSession?.modelId ?? null,
-      selectedAgent.platformModelId ?? null,
       selectedAgent.modelProviderCredentialModelId ?? null,
     );
     const nextModelOption = composerModelOptionById.get(nextModelOptionId) ?? null;
@@ -1160,7 +1130,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     selectedAgent,
     selectedSession?.id,
     selectedSession?.modelId,
-    selectedSession?.platformModelId,
     selectedSession?.modelProviderCredentialModelId,
     selectedSession?.reasoningLevel,
   ]);
@@ -1532,8 +1501,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           input: {
             agentId: selectedAgent.id,
             images: promptImages.length > 0 ? promptImages : undefined,
-            modelCredentialSource: selectedComposerModelOption.modelCredentialSource,
-            platformModelId: selectedComposerModelOption.platformModelId,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
@@ -1742,8 +1709,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           input: {
             id: selectedSession.id,
             images: promptImages.length > 0 ? promptImages : undefined,
-            modelCredentialSource: selectedComposerModelOption.modelCredentialSource,
-            platformModelId: selectedComposerModelOption.platformModelId,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer,
@@ -2277,40 +2242,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       selectedOptionId={composerModelOptionId}
     />
   );
-  const companyHelmWalletDepletedDialog = (
-    <CompanyHelmWalletDepletedDialog
-      currentPlanName={companyHelmPlanName}
-      hasAlternateProvider={alternateComposerModelOptions.length > 0}
-      isOpen={isCompanyHelmWalletDepletedDialogOpen}
-      onAddProvider={() => {
-        setIsCompanyHelmWalletDepletedDialogOpen(false);
-        void navigate({
-          params: {
-            organizationSlug,
-          },
-          to: OrganizationPath.route("/model-provider-credentials"),
-        });
-      }}
-      onChooseAlternateProvider={() => {
-        setIsCompanyHelmWalletDepletedDialogOpen(false);
-        setIsAlternateModelDialogOpen(true);
-      }}
-      onOpenChange={setIsCompanyHelmWalletDepletedDialogOpen}
-      onUpgrade={() => {
-        setIsCompanyHelmWalletDepletedDialogOpen(false);
-        void navigate({
-          params: {
-            organizationSlug,
-          },
-          search: {
-            tab: "billing",
-          },
-          to: OrganizationPath.route("/settings"),
-        });
-      }}
-      providers={companyHelmWalletProviderLogos}
-    />
-  );
   const chatComposer = selectedAgent && (!isFixedSessionMode || selectedSession) ? (
     <ChatComposerPane
       canForkLatestSession={canForkSelectedSessionLatestContext}
@@ -2378,7 +2309,6 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       {mobileChatListOverlay}
       {newChatDialog}
       {alternateModelDialog}
-      {companyHelmWalletDepletedDialog}
       <ChatEnvironmentPanel
         actingSessionEnvironmentId={actingSessionEnvironmentId}
         composerModelOptionId={composerModelOptionId}

@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
-import { MANAGED_MODEL_PROVIDER_CREDENTIAL_ID } from "../model-provider-credentials/managed_credential";
 import { formatProviderCredentialType, formatProviderLabel } from "../model-provider-credentials/provider_label";
 import type { usagePageQuery } from "./__generated__/usagePageQuery.graphql";
 
@@ -24,16 +23,12 @@ const usagePageQueryNode = graphql`
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -44,21 +39,16 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     companyDaily: LlmUsageAggregates(input: { scopeType: company, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -69,21 +59,16 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     companyMonthly: LlmUsageAggregates(input: { scopeType: company, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -94,13 +79,11 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     LlmUsageProviderCredentials {
       id
       credentialId
-      modelCredentialSource
       name
       modelProvider
       status
@@ -108,29 +91,22 @@ const usagePageQueryNode = graphql`
       baseUrl
       total {
         cacheReadCostNanoUsd
-        cacheReadCostNanoVirtualUsd
         cacheReadTokens
         cacheWriteCostNanoUsd
-        cacheWriteCostNanoVirtualUsd
         cacheWriteTokens
         inputCostNanoUsd
-        inputCostNanoVirtualUsd
         inputTokens
         outputCostNanoUsd
-        outputCostNanoVirtualUsd
         outputTokens
         period
         periodStart
         requestCount
         companyId
         agentId
-        modelCredentialSource
         modelProviderCredentialId
-        platformModelProviderCredentialId
         sessionId
         scopeType
         totalCostNanoUsd
-        totalCostNanoVirtualUsd
         totalTokens
       }
     }
@@ -187,7 +163,6 @@ function UsagePageContent() {
         description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
         scopeId={data.Me.company.id}
         scopeType="company"
-        spendKind="virtual"
         title="Company usage"
       />
 
@@ -196,7 +171,7 @@ function UsagePageContent() {
           <div className="min-w-0">
             <CardTitle>Provider breakdown</CardTitle>
             <CardDescription>
-              Actual spend, virtual spend, and token volume grouped by model provider credential.
+              Provider spend, token volume, and request count grouped by model provider credential.
             </CardDescription>
           </div>
         </CardHeader>
@@ -206,8 +181,7 @@ function UsagePageContent() {
               <TableRow>
                 <TableHead>Credential</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead className="text-right">Actual spend</TableHead>
-                <TableHead className="text-right">Virtual spend</TableHead>
+                <TableHead className="text-right">Spend</TableHead>
                 <TableHead className="text-right">Tokens</TableHead>
                 <TableHead className="text-right">Requests</TableHead>
                 <TableHead className="w-24 text-right">Usage</TableHead>
@@ -216,7 +190,7 @@ function UsagePageContent() {
             <TableBody>
               {providerRows.length === 0 ? (
                 <TableRow>
-                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={7}>
+                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={6}>
                     No provider credentials found.
                   </TableCell>
                 </TableRow>
@@ -228,9 +202,7 @@ function UsagePageContent() {
                     <div className="flex min-w-0 flex-col gap-1">
                       <span className="truncate font-medium text-foreground">{credential.name}</span>
                       <span className="text-xs text-muted-foreground">
-                        {credential.modelCredentialSource === "platform"
-                          ? "Managed"
-                          : formatProviderCredentialType(String(credential.type))}
+                        {formatProviderCredentialType(String(credential.type))}
                       </span>
                     </div>
                   </TableCell>
@@ -250,9 +222,6 @@ function UsagePageContent() {
                     {UsageMetrics.formatUsdFromNano(total.totalCostNanoUsd)}
                   </TableCell>
                   <TableCell className="text-right">
-                    {UsageMetrics.formatUsdFromNano(total.totalCostNanoVirtualUsd)}
-                  </TableCell>
-                  <TableCell className="text-right">
                     {UsageMetrics.formatTokenCount(total.totalTokens)}
                   </TableCell>
                   <TableCell className="text-right">
@@ -263,9 +232,7 @@ function UsagePageContent() {
                       render={(
                         <Link
                           params={{
-                            credentialId: credential.modelCredentialSource === "platform"
-                              ? MANAGED_MODEL_PROVIDER_CREDENTIAL_ID
-                              : credential.credentialId,
+                            credentialId: credential.credentialId,
                             organizationSlug,
                           }}
                           search={{

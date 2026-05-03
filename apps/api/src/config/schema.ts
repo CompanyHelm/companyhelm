@@ -70,7 +70,6 @@ export const ConfigDocument = z.object({
     session_process: z.object({
       concurrency: PositiveIntegerSchema,
     }),
-    wallet_recharges: DefaultWorkerConcurrencySchema,
     workflow_triggers: DefaultWorkerConcurrencySchema,
   }),
   agent_tools: z.object({

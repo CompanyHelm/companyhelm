@@ -42,31 +42,24 @@ class LlmUsageProviderCredentialsQueryTestHarness {
   static createAggregate(overrides: Partial<Record<string, unknown>> = {}) {
     return {
       cacheReadCostNanoUsd: 0,
-      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
-      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       companyId: "company-1",
       createdAt: new Date("2026-04-20T12:00:00.000Z"),
       id: "aggregate-1",
       inputCostNanoUsd: 0,
-      inputCostNanoVirtualUsd: 0,
       inputTokens: 0,
       outputCostNanoUsd: 0,
-      outputCostNanoVirtualUsd: 0,
       outputTokens: 0,
       period: "total",
       periodStart: new Date(0),
       requestCount: 1,
       agentId: null,
-      modelCredentialSource: "platform",
       modelProviderCredentialId: null,
-      platformModelProviderCredentialId: "platform-credential-1",
       sessionId: null,
       scopeType: "model_provider_credential",
       totalCostNanoUsd: 0,
-      totalCostNanoVirtualUsd: 1_000,
       totalTokens: 10,
       updatedAt: new Date("2026-04-20T12:00:00.000Z"),
       ...overrides,
@@ -74,7 +67,7 @@ class LlmUsageProviderCredentialsQueryTestHarness {
   }
 }
 
-test("LlmUsageProviderCredentialsQueryResolver returns user and managed credentials with totals", async () => {
+test("LlmUsageProviderCredentialsQueryResolver returns user credentials with totals", async () => {
   const resolver = new LlmUsageProviderCredentialsQueryResolver();
   const harness = new LlmUsageProviderCredentialsQueryTestHarness([
     [{
@@ -88,48 +81,18 @@ test("LlmUsageProviderCredentialsQueryResolver returns user and managed credenti
     [
       LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
         id: "user-total",
-        modelCredentialSource: "user_provided",
         modelProviderCredentialId: "user-credential-1",
-        platformModelProviderCredentialId: null,
         totalCostNanoUsd: 2_000,
-        totalCostNanoVirtualUsd: 0,
       }),
-      LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
-        id: "managed-total",
-        modelCredentialSource: null,
-        platformModelProviderCredentialId: null,
-        scopeType: "managed_model_provider_credential",
-        totalCostNanoVirtualUsd: 5_000,
-      }),
-      LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
-        id: "platform-openai-total",
-        platformModelProviderCredentialId: "platform-credential-1",
-        totalCostNanoVirtualUsd: 1_000,
-      }),
-      LlmUsageProviderCredentialsQueryTestHarness.createAggregate({
-        id: "platform-codex-total",
-        platformModelProviderCredentialId: "platform-credential-2",
-        totalCostNanoVirtualUsd: 1_500,
-      }),
-    ],
-    [
-      { id: "platform-credential-1" },
-      { id: "platform-credential-2" },
     ],
   ]);
 
   const result = await resolver.execute(null, null, harness.createContext());
 
-  assert.deepEqual(result.map((row) => row.id), [
-    "platform:managed",
-    "user_provided:user-credential-1",
-  ]);
-  assert.equal(result[0]?.name, "CompanyHelm managed");
-  assert.equal(result[0]?.modelCredentialSource, "platform");
-  assert.equal(result[0]?.modelProvider, "companyhelm");
-  assert.equal(result[0]?.total.scopeType, "managed_model_provider_credential");
-  assert.equal(result[0]?.total.platformModelProviderCredentialId, null);
-  assert.equal(result[0]?.total.totalCostNanoVirtualUsd, 5_000);
-  assert.equal(result[1]?.name, "OpenAI");
-  assert.equal(result[1]?.total.totalCostNanoUsd, 2_000);
+  assert.deepEqual(result.map((row) => row.id), ["user-credential-1"]);
+  assert.equal(result[0]?.name, "OpenAI");
+  assert.equal(result[0]?.modelProvider, "openai");
+  assert.equal(result[0]?.total.scopeType, "model_provider_credential");
+  assert.equal(result[0]?.total.modelProviderCredentialId, "user-credential-1");
+  assert.equal(result[0]?.total.totalCostNanoUsd, 2_000);
 });

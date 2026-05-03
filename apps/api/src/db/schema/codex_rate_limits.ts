@@ -12,7 +12,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { modelProviderCredentials } from "./agents.ts";
 import { companies } from "./company.ts";
-import { platformModelProviderCredentials } from "./platform_ai.ts";
 
 export const codexRateLimitSnapshots = pgTable("codex_rate_limit_snapshots", {
   id: uuid("id")
@@ -49,40 +48,6 @@ export const codexRateLimitSnapshots = pgTable("codex_rate_limit_snapshots", {
   credentialLimitUnique: uniqueIndex("codex_rate_limit_snapshots_credential_limit_uidx").on(
     table.companyId,
     table.credentialId,
-    table.limitId,
-  ),
-}));
-
-export const platformCodexRateLimitSnapshots = pgTable("platform_codex_rate_limit_snapshots", {
-  id: uuid("id")
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  platformModelProviderCredentialId: uuid("platform_model_provider_credential_id")
-    .references(() => platformModelProviderCredentials.id, { onDelete: "cascade" })
-    .notNull(),
-  limitId: text("limit_id").notNull(),
-  limitName: text("limit_name"),
-  planType: text("plan_type"),
-  primaryUsedPercent: doublePrecision("primary_used_percent"),
-  primaryWindowMinutes: integer("primary_window_minutes"),
-  primaryResetsAt: timestamp("primary_resets_at", { withTimezone: true }),
-  secondaryUsedPercent: doublePrecision("secondary_used_percent"),
-  secondaryWindowMinutes: integer("secondary_window_minutes"),
-  secondaryResetsAt: timestamp("secondary_resets_at", { withTimezone: true }),
-  creditsHasCredits: boolean("credits_has_credits"),
-  creditsUnlimited: boolean("credits_unlimited"),
-  creditsBalance: text("credits_balance"),
-  rateLimitReachedType: text("rate_limit_reached_type"),
-  lastError: text("last_error"),
-  refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-}, (table) => ({
-  credentialIndex: index("platform_codex_rate_limit_snapshots_credential_idx").on(
-    table.platformModelProviderCredentialId,
-  ),
-  credentialLimitUnique: uniqueIndex("platform_codex_rate_limit_snapshots_credential_limit_uidx").on(
-    table.platformModelProviderCredentialId,
     table.limitId,
   ),
 }));

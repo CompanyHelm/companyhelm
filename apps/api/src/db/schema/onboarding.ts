@@ -28,7 +28,6 @@ export const companyOnboardingSetupStatusEnum = pgEnum("company_onboarding_setup
 export const companyOnboardingLlmSetupStatusEnum = pgEnum("company_onboarding_llm_setup_status", [
   "pending",
   "third_party",
-  "company_managed",
   "skipped",
 ]);
 

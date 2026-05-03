@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { agentSessions } from "../../../db/schema.ts";
-import { CompanyWalletService } from "../../wallet/service.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
@@ -38,7 +37,6 @@ type PreparedSessionPrompt = {
  */
 @injectable()
 export class SessionPromptService {
-  private readonly companyWalletService: CompanyWalletService;
   private readonly redisService: RedisService;
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
@@ -57,10 +55,7 @@ export class SessionPromptService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(SessionQueuedMessageService)
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
-    @inject(CompanyWalletService)
-    companyWalletService: CompanyWalletService = new CompanyWalletService(),
   ) {
-    this.companyWalletService = companyWalletService;
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
@@ -79,9 +74,6 @@ export class SessionPromptService {
     shouldSteer = false,
     images?: SessionPromptImageInput[],
     userId?: string | null,
-    modelCredentialSource?: "platform" | "user_provided" | null,
-    platformModelId?: string | null,
-    platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.queuePromptInTransaction(
@@ -93,10 +85,7 @@ export class SessionPromptService {
         userMessage,
         {
           images,
-          modelCredentialSource,
           modelProviderCredentialModelId,
-          platformModelId,
-          platformModelProviderCredentialModelId,
           reasoningLevel,
           shouldSteer,
           userId,
@@ -121,9 +110,6 @@ export class SessionPromptService {
     const [existingSession] = await selectableDatabase
       .select({
         agentId: agentSessions.agentId,
-        currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-        currentPlatformModelId: agentSessions.currentPlatformModelId,
-        currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
         currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         currentReasoningLevel: agentSessions.currentReasoningLevel,
         id: agentSessions.id,
@@ -157,19 +143,11 @@ export class SessionPromptService {
       options.reasoningLevel,
       existingSession.currentReasoningLevel,
     );
-    if (selectedModelRecord.modelCredentialSource === "platform") {
-      await this.companyWalletService.assertCompanyHasPositiveBalanceInTransaction(selectableDatabase, {
-        companyId,
-      });
-    }
     const preparedPrompt = this.prepareQueuedPrompt(userMessage, options.images);
     const now = new Date();
     const [updatedSessionRecord] = await updatableDatabase
       .update(agentSessions)
       .set({
-        currentModelCredentialSource: selectedModelRecord.modelCredentialSource,
-        currentPlatformModelId: selectedModelRecord.platformModelId,
-        currentPlatformModelProviderCredentialModelId: selectedModelRecord.platformModelProviderCredentialModelId,
         currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,
         lastUserMessageAt: now,

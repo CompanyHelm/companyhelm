@@ -6,7 +6,6 @@ import { Resolver } from "./resolver.ts";
 type GraphqlCompanySettingsRecord = {
   companyId: string;
   baseSystemPrompt: string | null;
-  defaultManagedPlatformModelId: string | null;
 };
 
 /**

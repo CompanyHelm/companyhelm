@@ -159,37 +159,6 @@ test("CodexRateLimitService stores Codex usage snapshots with account-scoped hea
   expect(transactionProvider.deleteCount).toBe(1);
 });
 
-test("CodexRateLimitService stores platform credential snapshots in the platform table", async () => {
-  const factory = new CodexRateLimitServiceTestFactory();
-  const service = new CodexRateLimitService();
-  const transactionProvider = factory.createTransactionProvider();
-  factory.mockCodexUsageResponse({
-    rate_limit: {
-      primary_window: {
-        used_percent: 10,
-      },
-    },
-  });
-
-  await service.refreshCredentialLimits(
-    transactionProvider,
-    factory.createCredential({
-      credentialId: "33333333-3333-4333-8333-333333333333",
-      credentialSource: "platform",
-    }),
-    new Date("2026-04-28T10:00:00.000Z"),
-  );
-
-  expect(transactionProvider.upserts).toHaveLength(1);
-  expect(transactionProvider.upserts[0]?.record).toMatchObject({
-    platformModelProviderCredentialId: "33333333-3333-4333-8333-333333333333",
-    limitId: "codex",
-    primaryUsedPercent: 10,
-  });
-  expect(transactionProvider.upserts[0]?.record).not.toHaveProperty("companyId");
-  expect(transactionProvider.deleteCount).toBe(1);
-});
-
 test("CodexRateLimitService still supports legacy flat ChatGPT account ID claims", async () => {
   const factory = new CodexRateLimitServiceTestFactory();
   const service = new CodexRateLimitService();

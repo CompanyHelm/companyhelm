@@ -173,9 +173,8 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   const githubWorkerStop = vi.fn(async () => {});
   const llmOauthStop = vi.fn();
   const sessionStop = vi.fn(async () => {});
-  const walletQueueClose = vi.fn(async () => {});
-  const walletSchedulerUpsert = vi.fn(async () => {});
-  const walletWorkerStop = vi.fn(async () => {});
+  const sessionTurnUsageQueueClose = vi.fn(async () => {});
+  const sessionTurnUsageWorkerStop = vi.fn(async () => {});
   const workflowQueueClose = vi.fn(async () => {});
   const workflowStop = vi.fn(async () => {});
   const server = new ApiServer({
@@ -242,15 +241,10 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
     start: () => {},
     stop: environmentMetricsStop,
   } as never, {
-    async close() {
-      await walletQueueClose();
-    },
-    async upsertDailyRechargeScheduler() {
-      await walletSchedulerUpsert();
-    },
+    close: sessionTurnUsageQueueClose,
   } as never, {
     start: () => {},
-    stop: walletWorkerStop,
+    stop: sessionTurnUsageWorkerStop,
   } as never);
 
   await server.start();
@@ -261,9 +255,8 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   assert.equal(sessionStop.mock.calls.length, 1);
   assert.equal(workflowStop.mock.calls.length, 1);
   assert.equal(environmentMetricsStop.mock.calls.length, 1);
-  assert.equal(walletWorkerStop.mock.calls.length, 1);
-  assert.equal(walletSchedulerUpsert.mock.calls.length, 1);
-  assert.equal(walletQueueClose.mock.calls.length, 1);
+  assert.equal(sessionTurnUsageWorkerStop.mock.calls.length, 1);
+  assert.equal(sessionTurnUsageQueueClose.mock.calls.length, 1);
   assert.equal(workflowQueueClose.mock.calls.length, 1);
   assert.equal(githubQueueClose.mock.calls.length, 1);
   assert.equal(databaseClose.mock.calls.length, 1);

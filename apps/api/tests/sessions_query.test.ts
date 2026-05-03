@@ -113,10 +113,7 @@ class SessionsQueryTestHarness {
                               agentId: "agent-2",
                               contextMessagesSnapshot: [],
                               currentContextTokens: null,
-                              currentModelCredentialSource: "platform",
-                              currentPlatformModelId: "platform-model-1",
-                              currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
-                              currentModelProviderCredentialModelId: null,
+                              currentModelProviderCredentialModelId: "model-row-1",
                               currentReasoningLevel: "high",
                               forkedFromTurnId: "turn-source-1",
                               inferredTitle: null,
@@ -138,9 +135,6 @@ class SessionsQueryTestHarness {
                                 role: "assistant",
                               }],
                               currentContextTokens: 32000,
-                              currentModelCredentialSource: "user_provided",
-                              currentPlatformModelId: null,
-                              currentPlatformModelProviderCredentialModelId: null,
                               currentModelProviderCredentialModelId: "model-row-1",
                               currentReasoningLevel: "medium",
                               forkedFromTurnId: null,
@@ -231,23 +225,6 @@ class SessionsQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
-                      return [
-                        {
-                          id: "platform-model-1",
-                          modelId: "claude-3.7-sonnet",
-                        },
-                      ];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 7) {
-              return {
-                from() {
-                  return {
                     async where(condition: unknown) {
                       if (SessionsQueryTestHarness.conditionIncludes(condition, "finished_at")
                         || SessionsQueryTestHarness.conditionIncludes(condition, "status")) {
@@ -293,7 +270,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 8) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -321,7 +298,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 9) {
+            if (selectCallCount === 8) {
               return {
                 from() {
                   return {
@@ -348,7 +325,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 10) {
+            if (selectCallCount === 9) {
               return {
                 from() {
                   return {
@@ -369,7 +346,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 11) {
+            if (selectCallCount === 10) {
               return {
                 from() {
                   return {
@@ -412,7 +389,21 @@ class SessionsQueryTestHarness {
               };
             }
 
-            throw new Error("Unexpected select call.");
+            if (selectCallCount === 11) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        sessionId: "session-older",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error(`Unexpected select call: ${selectCallCount}`);
           },
         } as never;
       },
@@ -485,7 +476,7 @@ class SessionsQueryTestHarness {
                 async where() {
                   return [
                     {
-                      id: "platform-model-1",
+                      id: "model-row-1",
                       modelId: "gpt-5.4",
                     },
                   ];
@@ -529,10 +520,7 @@ class SessionsQueryTestHarness {
       agentId: "agent-archive",
       contextMessagesSnapshot: [],
       currentContextTokens: null,
-      currentModelCredentialSource: "platform",
-      currentPlatformModelId: "platform-model-1",
-      currentPlatformModelProviderCredentialModelId: "platform-credential-model-1",
-      currentModelProviderCredentialModelId: null,
+      currentModelProviderCredentialModelId: "model-row-1",
       currentReasoningLevel: "medium",
       forkedFromTurnId: null,
       inferredTitle: null,
@@ -656,9 +644,6 @@ test("GraphQL Sessions query lists non-archived company sessions ordered by most
             forkedFromSessionTitle
             forkedFromTurnId
             isCompacting
-            modelCredentialSource
-            platformModelId
-            platformModelProviderCredentialModelId
             modelProviderCredentialModelId
             modelId
             maxContextTokens
@@ -695,11 +680,8 @@ test("GraphQL Sessions query lists non-archived company sessions ordered by most
       forkedFromSessionTitle: "Original review thread",
       forkedFromTurnId: "turn-source-1",
       isCompacting: true,
-      modelCredentialSource: "platform",
-      platformModelId: "platform-model-1",
-      platformModelProviderCredentialModelId: "platform-credential-model-1",
-      modelProviderCredentialModelId: null,
-      modelId: "claude-3.7-sonnet",
+      modelProviderCredentialModelId: "model-row-1",
+      modelId: "gpt-5.4",
       maxContextTokens: 200000,
       reasoningLevel: "high",
       inferredTitle: null,
@@ -746,9 +728,6 @@ test("GraphQL Sessions query lists non-archived company sessions ordered by most
       forkedFromSessionTitle: null,
       forkedFromTurnId: null,
       isCompacting: false,
-      modelCredentialSource: "user_provided",
-      platformModelId: null,
-      platformModelProviderCredentialModelId: null,
       modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
       maxContextTokens: 200000,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2e5cae296d8eb2ead196cfb4f3604e62>>
+ * @generated SignedSource<<eb425e7e15907703c0097c3989fec08e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,7 +16,6 @@ export type chatsPageDataChatListPanelAgentFragment$data = {
   readonly modelProvider: string | null | undefined;
   readonly modelProviderCredentialModelId: string | null | undefined;
   readonly name: string;
-  readonly platformModelId: string | null | undefined;
   readonly reasoningLevel: string | null | undefined;
   readonly " $fragmentType": "chatsPageDataChatListPanelAgentFragment";
 };
@@ -43,13 +42,6 @@ const node: ReaderFragment = {
       "args": null,
       "kind": "ScalarField",
       "name": "name",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "platformModelId",
       "storageKey": null
     },
     {
@@ -85,6 +77,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "a270486e77ccbbcb099a802ff97245a3";
+(node as any).hash = "89fdddd695d93e02aa78788a58fd01bf";
 
 export default node;

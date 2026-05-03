@@ -4,7 +4,6 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 import { agentInboxItems, agentSessions, agents, sessionMessages, sessionTurns } from "../../../db/schema.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
-import { CompanyWalletService } from "../../wallet/service.ts";
 import { AgentInboxPubSubNames } from "../../inbox/pub_sub_names.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueuedNames } from "./process/queued_names.ts";
@@ -54,7 +53,6 @@ type LatestContextForkTurnRow = {
  */
 @injectable()
 export class SessionLifecycleService {
-  private readonly companyWalletService: CompanyWalletService;
   private readonly redisService: RedisService;
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionPromptService: SessionPromptService;
@@ -75,10 +73,7 @@ export class SessionLifecycleService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(AgentInboxPubSubNames)
     inboxPubSubNames: AgentInboxPubSubNames = new AgentInboxPubSubNames(),
-    @inject(CompanyWalletService)
-    companyWalletService: CompanyWalletService = new CompanyWalletService(),
   ) {
-    this.companyWalletService = companyWalletService;
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionPromptService = sessionPromptService;
@@ -98,9 +93,6 @@ export class SessionLifecycleService {
     sessionId?: string | null,
     userId?: string | null,
     images?: SessionPromptImageInput[],
-    modelCredentialSource?: "platform" | "user_provided" | null,
-    platformModelId?: string | null,
-    platformModelProviderCredentialModelId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.createSessionInTransaction(
@@ -111,10 +103,7 @@ export class SessionLifecycleService {
         userMessage,
         {
           images,
-          modelCredentialSource,
           modelProviderCredentialModelId,
-          platformModelId,
-          platformModelProviderCredentialModelId,
           reasoningLevel,
           sessionId,
           userId,
@@ -138,8 +127,6 @@ export class SessionLifecycleService {
     const [agentRecord] = await selectableDatabase
       .select({
         id: agents.id,
-        defaultModelCredentialSource: agents.defaultModelCredentialSource,
-        defaultPlatformModelId: agents.defaultPlatformModelId,
         defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
         defaultReasoningLevel: agents.default_reasoning_level,
       })
@@ -166,11 +153,6 @@ export class SessionLifecycleService {
       options.reasoningLevel,
       agentRecord.defaultReasoningLevel,
     );
-    if (selectedModelRecord.modelCredentialSource === "platform") {
-      await this.companyWalletService.assertCompanyHasPositiveBalanceInTransaction(selectableDatabase, {
-        companyId,
-      });
-    }
     const preparedPrompt = this.sessionPromptService.prepareQueuedPrompt(userMessage, options.images);
     const resolvedSessionId = String(options.sessionId || "").trim();
     const now = new Date();
@@ -179,9 +161,6 @@ export class SessionLifecycleService {
       .values({
         ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
         companyId,
-        currentModelCredentialSource: selectedModelRecord.modelCredentialSource,
-        currentPlatformModelId: selectedModelRecord.platformModelId,
-        currentPlatformModelProviderCredentialModelId: selectedModelRecord.platformModelProviderCredentialModelId,
         currentContextTokens: null,
         agentId,
         currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
@@ -240,9 +219,6 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -330,9 +306,6 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -400,9 +373,6 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -501,9 +471,6 @@ export class SessionLifecycleService {
           contextMessagesSnapshotAt: sourceSession.contextMessagesSnapshotAt ?? latestCompletedTurn.endedAt,
           currentContextTokens: sourceSession.currentContextTokens,
           agentId: sourceSession.agentId,
-          currentModelCredentialSource: sourceSession.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: sourceSession.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: sourceSession.currentPlatformModelId,
           currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,
           currentReasoningLevel: sourceSession.currentReasoningLevel,
           forkedFromTurnId: latestCompletedTurn.id,
@@ -568,9 +535,6 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
@@ -714,9 +678,6 @@ export class SessionLifecycleService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelCredentialSource: agentSessions.currentModelCredentialSource,
-          currentPlatformModelProviderCredentialModelId: agentSessions.currentPlatformModelProviderCredentialModelId,
-          currentPlatformModelId: agentSessions.currentPlatformModelId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,

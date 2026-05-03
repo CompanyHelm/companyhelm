@@ -11,7 +11,6 @@ type Query {
   ): AgentConversationMessageConnection!
   CompanySettings: CompanySettings!
   CompanyMembers: [CompanyMemberAccess!]!
-  FreeCompanyCreationEligibility: FreeCompanyCreationEligibility!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
   Environment(id: ID!): Environment!
@@ -23,22 +22,9 @@ type Query {
   GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
-  BillingPlans: [BillingPlan!]!
-  CompanyWallet: CompanyWallet!
   CodexRateLimits(modelProviderCredentialId: ID!): CodexRateLimits!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   LlmUsageProviderCredentials: [LlmUsageProviderCredential!]!
-  PlatformAdminCompanies(page: Int!, pageSize: Int!, search: String, userId: ID): PlatformAdminCompanyPage!
-  PlatformAdminCompany(id: ID!): PlatformAdminCompanyDetail!
-  PlatformAdminCompanyWallets(companyId: ID!): [PlatformAdminCompanyWallet!]!
-  PlatformAdminCompanyWallet(companyId: ID!, walletId: ID!): PlatformAdminCompanyWalletDetail!
-  PlatformModels: [PlatformModel!]!
-  PlatformModelRoutes(platformModelId: ID!): [PlatformModelRoute!]!
-  PlatformModelProviderCredentials: [PlatformModelProviderCredential!]!
-  PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
-  PlatformCodexRateLimits(platformModelProviderCredentialId: ID!): CodexRateLimits!
-  PlatformAdminUsers(page: Int!, pageSize: Int!, search: String): PlatformAdminUserPage!
-  PlatformAdminUser(id: ID!): PlatformAdminUserDetail!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -100,8 +86,6 @@ type Mutation {
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
-  DeletePlatformAdminCompany(input: DeletePlatformAdminCompanyInput!): PlatformAdminCompanyDeletionPayload!
-  DeletePlatformAdminUser(input: DeletePlatformAdminUserInput!): PlatformAdminUserDeletionPayload!
   CreateCompany(input: CreateCompanyInput!): CreatedCompany!
   InviteCompanyMember(input: InviteCompanyMemberInput!): CompanyMemberInvitation!
   RemoveCompanyMember(input: RemoveCompanyMemberInput!): CompanyMemberAccess!
@@ -109,16 +93,9 @@ type Mutation {
   EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanyOnboarding(input: UpdateCompanyOnboardingInput!): CompanyOnboarding!
   UpdateCompanyMemberRole(input: UpdateCompanyMemberRoleInput!): CompanyMemberAccess!
-  UpdatePlatformAdminCompanyEnhancedLogging(
-    input: UpdatePlatformAdminCompanyEnhancedLoggingInput!
-  ): PlatformAdminCompanyEnhancedLogging!
-  AddPlatformAdminWalletAdjustment(input: AddPlatformAdminWalletAdjustmentInput!): PlatformAdminWalletTransaction!
-  GrantPlatformAdmin(input: GrantPlatformAdminInput!): PlatformAdminUser!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
-  AddPlatformModelProviderCredential(input: AddPlatformModelProviderCredentialInput!): PlatformModelProviderCredential!
-  CreatePlatformModel(input: CreatePlatformModelInput!): PlatformModel!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
   AttachSecretGroupToAgent(input: AttachSecretGroupToAgentInput!): SecretGroup!
   AttachSkillGroupToAgent(input: AttachSkillGroupToAgentInput!): SkillGroup!
@@ -136,7 +113,6 @@ type Mutation {
   CompleteMcpServerOAuth(input: CompleteMcpServerOAuthInput!): CompleteMcpServerOAuthPayload!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
-  ImportPlatformModel(input: ImportPlatformModelInput!): PlatformModel!
   ImportGithubSkills(input: ImportGithubSkillsInput!): [Skill!]!
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
@@ -150,10 +126,6 @@ type Mutation {
     input: DeleteGithubRepositoryProvisioningInput!
   ): DeleteGithubRepositoryProvisioningPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
-  DeletePlatformModel(input: DeletePlatformModelInput!): PlatformModel!
-  DeletePlatformModelProviderCredential(
-    input: DeletePlatformModelProviderCredentialInput!
-  ): PlatformModelProviderCredential!
   DeleteSession(input: DeleteSessionInput!): Session!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
@@ -185,7 +157,6 @@ type Mutation {
   ): RefreshGithubInstallationRepositoriesPayload!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
-  UpdatePlatformModel(input: UpdatePlatformModelInput!): PlatformModel!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskStage(input: CreateTaskStageInput!): TaskStage!
   DeleteTaskStage(input: DeleteTaskStageInput!): TaskStage!
@@ -194,31 +165,19 @@ type Mutation {
   RefreshModelProviderCredentialToken(
     input: RefreshModelProviderCredentialTokenInput!
   ): ModelProviderCredential!
-  RefreshPlatformModelProviderCredentialToken(
-    input: RefreshPlatformModelProviderCredentialTokenInput!
-  ): PlatformModelProviderCredential!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
-  RefreshPlatformModelProviderCredentialModels(
-    input: RefreshPlatformModelProviderCredentialModelsInput!
-  ): [PlatformModelProviderCredentialModel!]!
   RefreshCodexRateLimits(input: RefreshCodexRateLimitsInput!): CodexRateLimits!
-  RefreshPlatformCodexRateLimits(input: RefreshPlatformCodexRateLimitsInput!): CodexRateLimits!
   SetDefaultComputeProviderDefinition(
     input: SetDefaultComputeProviderDefinitionInput!
   ): ComputeProviderDefinition!
   SetDefaultModelProviderCredential(
     input: SetDefaultModelProviderCredentialInput!
   ): ModelProviderCredential!
-  SetDefaultManagedModelProviderCredential: Boolean!
   SetDefaultModelProviderCredentialModel(
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
-  SetDefaultPlatformModelProviderCredentialModel(
-    input: SetDefaultPlatformModelProviderCredentialModelInput!
-  ): PlatformModelProviderCredentialModel!
-  SetPlatformModelRoutes(input: SetPlatformModelRoutesInput!): PlatformModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
   CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
@@ -274,12 +233,6 @@ type AuthenticatedCompany {
   onboarding: CompanyOnboarding!
 }
 
-enum CompanySubscriptionPlan {
-  free
-  plus
-  pro
-}
-
 enum CompanyOnboardingStatus {
   not_started
   in_progress
@@ -296,7 +249,6 @@ enum CompanyOnboardingSetupStatus {
 enum CompanyOnboardingLlmSetupStatus {
   pending
   third_party
-  company_managed
   skipped
 }
 
@@ -326,14 +278,6 @@ type CompanyOnboarding {
 type CompanySettings {
   companyId: ID!
   baseSystemPrompt: String
-  defaultManagedPlatformModelId: ID
-}
-
-type FreeCompanyCreationEligibility {
-  allowed: Boolean!
-  currentFreeCompanyCount: Int!
-  limit: Int!
-  reason: String
 }
 
 type CreatedCompany {
@@ -567,7 +511,6 @@ type MeUser {
   id: ID!
   email: String!
   firstName: String!
-  isPlatformAdmin: Boolean!
   lastName: String
 }
 
@@ -590,143 +533,6 @@ type Me {
   serverVersion: String!
 }
 
-type PlatformAdminUser {
-  id: ID!
-  email: String!
-  firstName: String!
-  lastName: String
-  isPlatformAdmin: Boolean!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformAdminUserDetail {
-  id: ID!
-  email: String!
-  firstName: String!
-  lastName: String
-  isPlatformAdmin: Boolean!
-  companyMemberships: [PlatformAdminUserCompanyMembership!]!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformAdminUserCompanyMembership {
-  companyId: ID!
-  companyName: String!
-  companySlug: String
-  companyPlan: CompanySubscriptionPlan!
-  role: CompanyMemberRole!
-  status: CompanyMemberStatus!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformAdminUserDeletionPayload {
-  id: ID!
-  email: String!
-  membershipCount: Int!
-}
-
-type PlatformAdminUserPage {
-  nodes: [PlatformAdminUser!]!
-  page: Int!
-  pageSize: Int!
-  totalCount: Int!
-  totalPages: Int!
-}
-
-type PlatformAdminCompany {
-  id: ID!
-  name: String!
-  slug: String
-  plan: CompanySubscriptionPlan!
-  memberCount: Int!
-  enhancedLogging: PlatformAdminCompanyEnhancedLogging!
-}
-
-type PlatformAdminCompanyEnhancedLogging {
-  enabled: Boolean!
-  expiresAt: String
-  ttlSeconds: Int
-  components: [String!]!
-  sessionIds: [String!]!
-}
-
-type PlatformAdminCompanyPage {
-  nodes: [PlatformAdminCompany!]!
-  page: Int!
-  pageSize: Int!
-  totalCount: Int!
-  totalPages: Int!
-}
-
-type PlatformAdminCompanyDetail {
-  id: ID!
-  name: String!
-  slug: String
-  plan: CompanySubscriptionPlan!
-  memberCount: Int!
-  usage: PlatformAdminCompanyUsage!
-  wallets: [PlatformAdminCompanyWallet!]!
-}
-
-type PlatformAdminCompanyUsage {
-  requestCount: Float!
-  inputTokens: Float!
-  outputTokens: Float!
-  cacheReadTokens: Float!
-  cacheWriteTokens: Float!
-  totalTokens: Float!
-  inputCostNanoUsd: Float!
-  outputCostNanoUsd: Float!
-  cacheReadCostNanoUsd: Float!
-  cacheWriteCostNanoUsd: Float!
-  totalCostNanoUsd: Float!
-  inputCostNanoVirtualUsd: Float!
-  outputCostNanoVirtualUsd: Float!
-  cacheReadCostNanoVirtualUsd: Float!
-  cacheWriteCostNanoVirtualUsd: Float!
-  totalCostNanoVirtualUsd: Float!
-}
-
-type PlatformAdminCompanyWallet {
-  id: ID!
-  companyId: ID!
-  type: String!
-  amountNanoUsd: Float!
-  transactionCount: Int!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformAdminCompanyWalletDetail {
-  wallet: PlatformAdminCompanyWallet!
-  company: PlatformAdminCompanyWalletCompany!
-  transactions: [PlatformAdminWalletTransaction!]!
-}
-
-type PlatformAdminCompanyWalletCompany {
-  id: ID!
-  name: String!
-  slug: String
-  plan: CompanySubscriptionPlan!
-  memberCount: Int!
-}
-
-type PlatformAdminWalletTransaction {
-  id: ID!
-  companyId: ID!
-  walletId: ID!
-  category: String!
-  amountNanoUsd: Float!
-  periodStart: String
-  periodEnd: String
-  sessionId: ID
-  sessionTurnId: ID
-  createdAt: String!
-}
-
 type Agent {
   title: String
   defaultComputeProvider: String
@@ -735,10 +541,7 @@ type Agent {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
-  modelCredentialSource: String!
   llmModelId: ID
-  platformModelId: ID
-  platformModelProviderCredentialModelId: ID
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
   modelProvider: String
@@ -827,8 +630,6 @@ type E2bComputeProviderDefinition {
 
 type AgentCreateProviderOption {
   id: ID!
-  modelCredentialSource: String!
-  platformModelProviderCredentialId: ID
   modelProviderCredentialId: ID
   isDefault: Boolean!
   label: String!
@@ -841,10 +642,7 @@ type AgentCreateProviderOption {
 
 type AgentCreateModelOption {
   id: ID!
-  modelCredentialSource: String!
   llmModelId: ID!
-  platformModelId: ID
-  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   modelId: String!
   name: String!
@@ -866,9 +664,6 @@ type Session {
   forkedFromTurnId: ID
   hasUnread: Boolean!
   lastUserMessageAt: String
-  modelCredentialSource: String!
-  platformModelId: ID
-  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   modelId: String!
   reasoningLevel: String!
@@ -950,7 +745,6 @@ type SessionTurn {
 
 enum LlmUsageAggregateScope {
   company
-  managed_model_provider_credential
   model_provider_credential
   agent
   session
@@ -964,9 +758,7 @@ enum LlmUsageAggregatePeriod {
 
 input LlmUsageAggregatesInput {
   scopeType: LlmUsageAggregateScope!
-  modelCredentialSource: String
   modelProviderCredentialId: ID
-  platformModelProviderCredentialId: ID
   agentId: ID
   sessionId: ID
   period: LlmUsageAggregatePeriod
@@ -977,9 +769,7 @@ type LlmUsageAggregate {
   id: ID!
   companyId: ID!
   scopeType: LlmUsageAggregateScope!
-  modelCredentialSource: String
   modelProviderCredentialId: ID
-  platformModelProviderCredentialId: ID
   agentId: ID
   sessionId: ID
   period: LlmUsageAggregatePeriod!
@@ -991,15 +781,10 @@ type LlmUsageAggregate {
   cacheWriteTokens: Float!
   totalTokens: Float!
   inputCostNanoUsd: Float!
-  inputCostNanoVirtualUsd: Float!
   outputCostNanoUsd: Float!
-  outputCostNanoVirtualUsd: Float!
   cacheReadCostNanoUsd: Float!
-  cacheReadCostNanoVirtualUsd: Float!
   cacheWriteCostNanoUsd: Float!
-  cacheWriteCostNanoVirtualUsd: Float!
   totalCostNanoUsd: Float!
-  totalCostNanoVirtualUsd: Float!
   createdAt: String!
   updatedAt: String!
 }
@@ -1007,68 +792,12 @@ type LlmUsageAggregate {
 type LlmUsageProviderCredential {
   id: ID!
   credentialId: ID!
-  modelCredentialSource: String!
   name: String!
   modelProvider: String!
   type: String!
   status: String!
   baseUrl: String
   total: LlmUsageAggregate!
-}
-
-type CompanyWallet {
-  currentPlan: CompanySubscriptionPlan!
-  pendingPlan: CompanySubscriptionPlan
-  pendingPlanEffectiveAt: String
-  totalBalanceNanoUsd: Float!
-  nextRechargeAmountNanoUsd: Float!
-  nextRechargeAt: String!
-  wallets: [Wallet!]!
-  transactions: [WalletTransaction!]!
-}
-
-type BillingPlan {
-  key: CompanySubscriptionPlan!
-  name: String!
-  description: String!
-  priceCents: Int!
-  currencyCode: String!
-  paddlePriceId: String
-  monthlyCreditsNanoUsd: Float!
-}
-
-type Wallet {
-  id: ID!
-  type: String!
-  amountNanoUsd: Float!
-}
-
-type WalletTransaction {
-  id: ID!
-  walletId: ID!
-  category: String!
-  amountNanoUsd: Float!
-  periodStart: String
-  periodEnd: String
-  sessionId: ID
-  sessionTurnId: ID
-  createdAt: String!
-}
-
-type CompanyManagedLlmBudgetPeriod {
-  period: LlmUsageAggregatePeriod!
-  periodStart: String!
-  limitCostNanoUsd: Float
-  usedCostNanoUsd: Float!
-  remainingCostNanoUsd: Float
-  overageCostNanoUsd: Float!
-  exhausted: Boolean!
-}
-
-type CompanyManagedLlmBudget {
-  plan: CompanySubscriptionPlan!
-  daily: CompanyManagedLlmBudgetPeriod!
-  monthly: CompanyManagedLlmBudgetPeriod!
 }
 
 type SessionQueuedMessage {
@@ -1177,50 +906,6 @@ type CodexRateLimitCredits {
   unlimited: Boolean
 }
 
-type PlatformModelProviderCredential {
-  id: ID!
-  baseUrl: String
-  createdByUserId: ID
-  name: String!
-  modelProvider: String!
-  defaultModelId: String
-  defaultReasoningLevel: String
-  type: String!
-  status: String!
-  errorMessage: String
-  refreshToken: String
-  refreshedAt: String
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformModel {
-  id: ID!
-  key: String!
-  modelProvider: String!
-  modelId: String!
-  name: String!
-  description: String!
-  reasoningSupported: Boolean!
-  reasoningLevels: [String!]!
-  isDefault: Boolean!
-  isAvailable: Boolean!
-  agentCount: Int!
-  sessionCount: Int!
-  routeCount: Int!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformModelRoute {
-  id: ID!
-  platformModelId: ID!
-  platformModelProviderCredentialModelId: ID!
-  platformModelProviderCredentialModel: PlatformModelProviderCredentialModel!
-  createdAt: String!
-  updatedAt: String!
-}
-
 type Secret {
   id: ID!
   companyId: ID!
@@ -1316,28 +1001,6 @@ type ModelProviderCredentialModel {
   description: String!
   reasoningSupported: Boolean!
   reasoningLevels: [String!]!
-}
-
-type PlatformModelProviderCredentialModel {
-  id: ID!
-  isDefault: Boolean!
-  isAvailable: Boolean!
-  platformModelProviderCredentialId: ID!
-  platformModelProviderCredential: PlatformModelProviderCredentialSummary
-  modelId: String!
-  name: String!
-  description: String!
-  reasoningSupported: Boolean!
-  reasoningLevels: [String!]!
-  createdAt: String!
-  updatedAt: String!
-}
-
-type PlatformModelProviderCredentialSummary {
-  id: ID!
-  name: String!
-  modelProvider: String!
-  status: String!
 }
 
 type ModelProvider {
@@ -1508,32 +1171,6 @@ input AddModelProviderCredentialInput {
   refreshToken: String
 }
 
-input AddPlatformModelProviderCredentialInput {
-  accessToken: String
-  accessTokenExpiresAtMilliseconds: String
-  apiKey: String
-  baseUrl: String
-  name: String
-  modelProvider: String!
-  refreshToken: String
-}
-
-input CreatePlatformModelInput {
-  description: String
-  isDefault: Boolean
-  modelId: String!
-  modelProvider: String!
-  name: String
-  reasoningLevels: [String!]
-  reasoningSupported: Boolean
-}
-
-input ImportPlatformModelInput {
-  isDefault: Boolean
-  modelProvider: String
-  platformModelProviderCredentialModelId: ID!
-}
-
 input AddGithubInstallationInput {
   installationId: ID!
   setupAction: String
@@ -1572,7 +1209,6 @@ input UpdateAgentInput {
 
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
-  defaultManagedPlatformModelId: ID
 }
 
 input CreateCompanyInput {
@@ -1597,24 +1233,6 @@ input UpdateCompanyMemberRoleInput {
   userId: ID!
 }
 
-input UpdatePlatformAdminCompanyEnhancedLoggingInput {
-  companyId: ID!
-  enabled: Boolean!
-  ttlSeconds: Int
-  components: [String!]
-  sessionIds: [String!]
-}
-
-input AddPlatformAdminWalletAdjustmentInput {
-  companyId: ID!
-  walletId: ID!
-  amountNanoUsd: Float!
-}
-
-input GrantPlatformAdminInput {
-  userId: ID!
-}
-
 input UpdateCompanyOnboardingInput {
   companyMission: String
   githubSetupStatus: CompanyOnboardingSetupStatus
@@ -1626,33 +1244,9 @@ input DeleteCompanyInput {
   confirmationName: String!
 }
 
-input DeletePlatformAdminCompanyInput {
-  companyId: ID!
-  confirmationName: String!
-}
-
-input DeletePlatformAdminUserInput {
-  userId: ID!
-  confirmationEmail: String!
-}
-
-type PlatformAdminCompanyDeletionPayload {
-  id: ID!
-  name: String!
-}
-
 input DeleteModelProviderCredentialInput {
   id: ID!
   replacementCredentialId: ID
-}
-
-input DeletePlatformModelInput {
-  id: ID!
-  replacementPlatformModelId: ID
-}
-
-input DeletePlatformModelProviderCredentialInput {
-  id: ID!
 }
 
 input DeleteAgentInput {
@@ -1728,9 +1322,6 @@ input ForkSessionInput {
 input CreateSessionInput {
   agentId: ID!
   images: [SessionPromptImageInput!]
-  modelCredentialSource: String
-  platformModelId: ID
-  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   sessionId: ID
@@ -1740,9 +1331,6 @@ input CreateSessionInput {
 input PromptSessionInput {
   id: ID!
   images: [SessionPromptImageInput!]
-  modelCredentialSource: String
-  platformModelId: ID
-  platformModelProviderCredentialModelId: ID
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   shouldSteer: Boolean
@@ -1997,34 +1585,12 @@ input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
 }
 
-input RefreshPlatformModelProviderCredentialModelsInput {
-  platformModelProviderCredentialId: ID!
-}
-
 input RefreshCodexRateLimitsInput {
   modelProviderCredentialId: ID!
 }
 
-input RefreshPlatformCodexRateLimitsInput {
-  platformModelProviderCredentialId: ID!
-}
-
 input RefreshModelProviderCredentialTokenInput {
   modelProviderCredentialId: ID!
-}
-
-input RefreshPlatformModelProviderCredentialTokenInput {
-  platformModelProviderCredentialId: ID!
-}
-
-input UpdatePlatformModelInput {
-  description: String
-  isAvailable: Boolean
-  isDefault: Boolean
-  name: String
-  platformModelId: ID!
-  reasoningLevels: [String!]
-  reasoningSupported: Boolean
 }
 
 input SetDefaultComputeProviderDefinitionInput {
@@ -2037,15 +1603,6 @@ input SetDefaultModelProviderCredentialInput {
 
 input SetDefaultModelProviderCredentialModelInput {
   id: ID!
-}
-
-input SetDefaultPlatformModelProviderCredentialModelInput {
-  id: ID!
-}
-
-input SetPlatformModelRoutesInput {
-  platformModelId: ID!
-  platformModelProviderCredentialModelIds: [ID!]!
 }
 
 input ArtifactsInput {

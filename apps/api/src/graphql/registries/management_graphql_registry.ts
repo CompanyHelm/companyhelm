@@ -1,200 +1,144 @@
 import { inject, injectable } from "inversify";
-import { Config } from "../../config/schema.ts";
 import { OrganizationSlugResolverFactory } from "../../auth/organization_slug_resolver_factory.ts";
+import { Config } from "../../config/schema.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
+import { CompanyMemberInvitationService } from "../../services/company_member_invitation_service.ts";
+import { McpAuthTypeDetectionService } from "../../services/mcp/auth_type_detection.ts";
+import { McpOauthClientCredentialsConnectionService } from "../../services/mcp/oauth/client_credentials_connection.ts";
+import { McpOauthDiscoveryService } from "../../services/mcp/oauth/discovery.ts";
+import { McpOauthTokenService } from "../../services/mcp/oauth/token_service.ts";
+import { McpService } from "../../services/mcp/service.ts";
 import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
 import { SecretService } from "../../services/secrets/service.ts";
-import { SkillGithubPublicClient } from "../../services/skills/github/public_client.ts";
 import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
+import { SkillGithubPublicClient } from "../../services/skills/github/public_client.ts";
 import { SkillService } from "../../services/skills/service.ts";
-import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
-import { ModelService } from "../../services/ai_providers/model_service.ts";
-import { PlatformModelProviderCredentialService } from "../../services/ai_providers/platform_model_provider_credential_service.ts";
-import { McpService } from "../../services/mcp/service.ts";
 import { AddGithubInstallationMutation } from "../mutations/add_github_installation.ts";
-import { AddPlatformAdminWalletAdjustmentMutation } from "../mutations/add_platform_admin_wallet_adjustment.ts";
-import { AddPlatformModelProviderCredentialMutation } from "../mutations/add_platform_model_provider_credential.ts";
+import { CompleteMcpServerOauthMutation } from "../mutations/complete_mcp_server_oauth.ts";
+import { ConnectMcpServerOauthClientCredentialsMutation } from "../mutations/connect_mcp_server_oauth_client_credentials.ts";
+import { CreateCompanyMutation } from "../mutations/create_company.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateGithubRepositoryProvisioningMutation } from "../mutations/create_github_repository_provisioning.ts";
-import { CreateCompanyMutation } from "../mutations/create_company.ts";
-import { CreatePlatformModelMutation } from "../mutations/create_platform_model.ts";
-import { CreateSecretMutation } from "../mutations/create_secret.ts";
-import { CreateSecretGroupMutation } from "../mutations/create_secret_group.ts";
 import { CreateMcpServerMutation } from "../mutations/create_mcp_server.ts";
+import { CreateSecretGroupMutation } from "../mutations/create_secret_group.ts";
+import { CreateSecretMutation } from "../mutations/create_secret.ts";
 import { CreateSkillGroupMutation } from "../mutations/create_skill_group.ts";
 import { CreateSkillMutation } from "../mutations/create_skill.ts";
-import { ConnectMcpServerOauthClientCredentialsMutation } from "../mutations/connect_mcp_server_oauth_client_credentials.ts";
-import { CompleteMcpServerOauthMutation } from "../mutations/complete_mcp_server_oauth.ts";
 import { DeleteCompanyMutation } from "../mutations/delete_company.ts";
-import { DeletePlatformAdminCompanyMutation } from "../mutations/delete_platform_admin_company.ts";
-import { DeletePlatformAdminUserMutation } from "../mutations/delete_platform_admin_user.ts";
 import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
 import { DeleteGithubRepositoryProvisioningMutation } from "../mutations/delete_github_repository_provisioning.ts";
-import { DeletePlatformModelMutation } from "../mutations/delete_platform_model.ts";
-import { DeletePlatformModelProviderCredentialMutation } from "../mutations/delete_platform_model_provider_credential.ts";
-import { DisconnectMcpServerOauthMutation } from "../mutations/disconnect_mcp_server_oauth.ts";
-import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
-import { DeleteSecretGroupMutation } from "../mutations/delete_secret_group.ts";
 import { DeleteMcpServerMutation } from "../mutations/delete_mcp_server.ts";
+import { DeleteSecretGroupMutation } from "../mutations/delete_secret_group.ts";
+import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
 import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
+import { DisconnectMcpServerOauthMutation } from "../mutations/disconnect_mcp_server_oauth.ts";
 import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onboarding.ts";
-import { GrantPlatformAdminMutation } from "../mutations/grant_platform_admin.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
-import { ImportPlatformModelMutation } from "../mutations/import_platform_model.ts";
 import { InviteCompanyMemberMutation } from "../mutations/invite_company_member.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
-import { RefreshPlatformCodexRateLimitsMutation } from "../mutations/refresh_platform_codex_rate_limits.ts";
-import { RefreshPlatformModelProviderCredentialModelsMutation } from "../mutations/refresh_platform_model_provider_credential_models.ts";
-import { RefreshPlatformModelProviderCredentialTokenMutation } from "../mutations/refresh_platform_model_provider_credential_token.ts";
 import { RemoveCompanyMemberMutation } from "../mutations/remove_company_member.ts";
 import { RevokeCompanyMemberInvitationMutation } from "../mutations/revoke_company_member_invitation.ts";
-import { SetDefaultPlatformModelProviderCredentialModelMutation } from "../mutations/set_default_platform_model_provider_credential_model.ts";
-import { SetPlatformModelRoutesMutation } from "../mutations/set_platform_model_routes.ts";
 import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
-import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
 import { UpdateCompanyMemberRoleMutation } from "../mutations/update_company_member_role.ts";
+import { UpdateCompanyOnboardingMutation } from "../mutations/update_company_onboarding.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
-import { UpdatePlatformAdminCompanyEnhancedLoggingMutation } from "../mutations/update_platform_admin_company_enhanced_logging.ts";
-import { UpdatePlatformModelMutation } from "../mutations/update_platform_model.ts";
-import { UpdateSecretMutation } from "../mutations/update_secret.ts";
-import { UpdateSecretGroupMutation } from "../mutations/update_secret_group.ts";
 import { UpdateMcpServerMutation } from "../mutations/update_mcp_server.ts";
+import { UpdateSecretGroupMutation } from "../mutations/update_secret_group.ts";
+import { UpdateSecretMutation } from "../mutations/update_secret.ts";
 import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_from_repository.ts";
-import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
-import { BillingPlansQueryResolver } from "../resolvers/billing_plans.ts";
+import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { CodexRateLimitsQueryResolver } from "../resolvers/codex_rate_limits.ts";
-import { CompanyWalletQueryResolver } from "../resolvers/company_wallet.ts";
 import { CompanyMembersQueryResolver } from "../resolvers/company_members.ts";
-import { FreeCompanyCreationEligibilityQueryResolver } from "../resolvers/free_company_creation_eligibility.ts";
 import { CompanyOnboardingFieldResolver } from "../resolvers/company_onboarding.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
 import { GithubDiscoveredSkillsQueryResolver } from "../resolvers/github_discovered_skills.ts";
 import { GithubInstallationsQueryResolver } from "../resolvers/github_installations.ts";
-import { GithubRepositoryProvisioningsQueryResolver } from "../resolvers/github_repository_provisionings.ts";
 import { GithubRepositoriesQueryResolver } from "../resolvers/github_repositories.ts";
+import { GithubRepositoryProvisioningsQueryResolver } from "../resolvers/github_repository_provisionings.ts";
 import { GithubSkillBranchesQueryResolver } from "../resolvers/github_skill_branches.ts";
 import { HealthQueryResolver } from "../resolvers/health.ts";
 import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregates.ts";
 import { LlmUsageProviderCredentialsQueryResolver } from "../resolvers/llm_usage_provider_credentials.ts";
-import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
-import { PlatformAdminCompaniesQueryResolver } from "../resolvers/platform_admin_companies.ts";
-import { PlatformAdminCompanyWalletsQueryResolver } from "../resolvers/platform_admin_company_wallets.ts";
-import { PlatformCodexRateLimitsQueryResolver } from "../resolvers/platform_codex_rate_limits.ts";
-import { PlatformModelRoutesQueryResolver } from "../resolvers/platform_model_routes.ts";
-import { PlatformModelsQueryResolver } from "../resolvers/platform_models.ts";
-import { PlatformModelProviderCredentialModelsQueryResolver } from "../resolvers/platform_model_provider_credential_models.ts";
-import { PlatformModelProviderCredentialsQueryResolver } from "../resolvers/platform_model_provider_credentials.ts";
-import { PlatformAdminUsersQueryResolver } from "../resolvers/platform_admin_users.ts";
-import { SecretsQueryResolver } from "../resolvers/secrets.ts";
-import { SecretGroupsQueryResolver } from "../resolvers/secret_groups.ts";
 import { McpServersQueryResolver } from "../resolvers/mcp_servers.ts";
+import { MeQueryResolver } from "../resolvers/me.ts";
+import { SecretGroupsQueryResolver } from "../resolvers/secret_groups.ts";
+import { SecretsQueryResolver } from "../resolvers/secrets.ts";
 import { SkillGroupsQueryResolver } from "../resolvers/skill_groups.ts";
 import { SkillQueryResolver } from "../resolvers/skill.ts";
 import { SkillsQueryResolver } from "../resolvers/skills.ts";
-import { McpAuthTypeDetectionService } from "../../services/mcp/auth_type_detection.ts";
-import { McpOauthClientCredentialsConnectionService } from "../../services/mcp/oauth/client_credentials_connection.ts";
-import { McpOauthDiscoveryService } from "../../services/mcp/oauth/discovery.ts";
-import { McpOauthTokenService } from "../../services/mcp/oauth/token_service.ts";
-import { CompanyMemberInvitationService } from "../../services/company_member_invitation_service.ts";
-import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
+import type { GraphqlRegistryInterface, GraphqlResolverFragment } from "./graphql_registry_interface.ts";
 
 /**
- * Collects management-oriented GraphQL entry points such as company settings, GitHub integration,
- * shared secrets, and skill catalog administration.
+ * Collects OSS management GraphQL entry points for company settings, GitHub integration, shared
+ * secrets, MCP servers, skills, and usage reporting. Cloud operator backoffice and monetization
+ * surfaces intentionally live outside this registry.
  */
 @injectable()
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
-  private readonly addPlatformAdminWalletAdjustmentMutation: AddPlatformAdminWalletAdjustmentMutation;
-  private readonly addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation;
-  private readonly billingPlansQueryResolver: BillingPlansQueryResolver;
   private readonly codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver;
-  private readonly companyWalletQueryResolver: CompanyWalletQueryResolver;
   private readonly companyMembersQueryResolver: CompanyMembersQueryResolver;
   private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
+  private readonly completeMcpServerOauthMutation: CompleteMcpServerOauthMutation;
   private readonly connectMcpServerOauthClientCredentialsMutation: ConnectMcpServerOauthClientCredentialsMutation;
   private readonly createCompanyMutation: CreateCompanyMutation;
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
   private readonly createGithubRepositoryProvisioningMutation: CreateGithubRepositoryProvisioningMutation;
-  private readonly createPlatformModelMutation: CreatePlatformModelMutation;
-  private readonly createSecretMutation: CreateSecretMutation;
-  private readonly createSecretGroupMutation: CreateSecretGroupMutation;
   private readonly createMcpServerMutation: CreateMcpServerMutation;
-  private readonly completeMcpServerOauthMutation: CompleteMcpServerOauthMutation;
-  private readonly createSkillMutation: CreateSkillMutation;
+  private readonly createSecretGroupMutation: CreateSecretGroupMutation;
+  private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSkillGroupMutation: CreateSkillGroupMutation;
+  private readonly createSkillMutation: CreateSkillMutation;
+  private readonly deleteCompanyMutation: DeleteCompanyMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteGithubRepositoryProvisioningMutation: DeleteGithubRepositoryProvisioningMutation;
-  private readonly deletePlatformModelMutation: DeletePlatformModelMutation;
-  private readonly deletePlatformModelProviderCredentialMutation: DeletePlatformModelProviderCredentialMutation;
-  private readonly disconnectMcpServerOauthMutation: DisconnectMcpServerOauthMutation;
-  private readonly deleteSecretMutation: DeleteSecretMutation;
-  private readonly deleteSecretGroupMutation: DeleteSecretGroupMutation;
   private readonly deleteMcpServerMutation: DeleteMcpServerMutation;
-  private readonly deleteCompanyMutation: DeleteCompanyMutation;
-  private readonly deletePlatformAdminCompanyMutation: DeletePlatformAdminCompanyMutation;
-  private readonly deletePlatformAdminUserMutation: DeletePlatformAdminUserMutation;
-  private readonly deleteSkillMutation: DeleteSkillMutation;
+  private readonly deleteSecretGroupMutation: DeleteSecretGroupMutation;
+  private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
+  private readonly deleteSkillMutation: DeleteSkillMutation;
+  private readonly disconnectMcpServerOauthMutation: DisconnectMcpServerOauthMutation;
   private readonly ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation;
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
   private readonly githubDiscoveredSkillsQueryResolver: GithubDiscoveredSkillsQueryResolver;
   private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
-  private readonly githubRepositoryProvisioningsQueryResolver: GithubRepositoryProvisioningsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
+  private readonly githubRepositoryProvisioningsQueryResolver: GithubRepositoryProvisioningsQueryResolver;
   private readonly githubSkillBranchesQueryResolver: GithubSkillBranchesQueryResolver;
-  private readonly freeCompanyCreationEligibilityQueryResolver: FreeCompanyCreationEligibilityQueryResolver;
-  private readonly grantPlatformAdminMutation: GrantPlatformAdminMutation;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
-  private readonly importPlatformModelMutation: ImportPlatformModelMutation;
   private readonly inviteCompanyMemberMutation: InviteCompanyMemberMutation;
   private readonly llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver;
   private readonly llmUsageProviderCredentialsQueryResolver: LlmUsageProviderCredentialsQueryResolver;
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
+  private readonly mcpServersQueryResolver: McpServersQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
-  private readonly refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation;
-  private readonly refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation;
-  private readonly platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver;
-  private readonly platformAdminCompanyWalletsQueryResolver: PlatformAdminCompanyWalletsQueryResolver;
-  private readonly platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver;
-  private readonly platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver;
-  private readonly platformModelsQueryResolver: PlatformModelsQueryResolver;
-  private readonly platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver;
-  private readonly platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver;
-  private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
-  private readonly refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation;
   private readonly removeCompanyMemberMutation: RemoveCompanyMemberMutation;
   private readonly revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation;
-  private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
-  private readonly mcpServersQueryResolver: McpServersQueryResolver;
-  private readonly startMcpServerOauthMutation: StartMcpServerOauthMutation;
-  private readonly skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation;
+  private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
-  private readonly setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation;
-  private readonly setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation;
-  private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
+  private readonly skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation;
+  private readonly startMcpServerOauthMutation: StartMcpServerOauthMutation;
   private readonly updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation;
   private readonly updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation;
-  private readonly updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation;
-  private readonly updatePlatformModelMutation: UpdatePlatformModelMutation;
-  private readonly updateSecretMutation: UpdateSecretMutation;
-  private readonly updateSecretGroupMutation: UpdateSecretGroupMutation;
+  private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateMcpServerMutation: UpdateMcpServerMutation;
+  private readonly updateSecretGroupMutation: UpdateSecretGroupMutation;
+  private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly updateSkillFromRepositoryMutation: UpdateSkillFromRepositoryMutation;
-  private readonly updateSkillMutation: UpdateSkillMutation;
   private readonly updateSkillGroupMutation: UpdateSkillGroupMutation;
+  private readonly updateSkillMutation: UpdateSkillMutation;
 
   constructor(
     @inject(Config) config: Config,
@@ -227,14 +171,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         new GithubClient({} as Config),
         new GithubInstallationStateService({} as Config),
         {} as never,
-      ),
-    @inject(AddPlatformModelProviderCredentialMutation)
-    addPlatformModelProviderCredentialMutation: AddPlatformModelProviderCredentialMutation =
-      new AddPlatformModelProviderCredentialMutation(
-        new PlatformModelProviderCredentialService(
-          new ModelRegistry(),
-          new ModelService(new ModelRegistry()),
-        ),
       ),
     @inject(DeleteGithubInstallationMutation)
     deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
@@ -312,87 +248,20 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(DeleteGithubRepositoryProvisioningMutation)
     deleteGithubRepositoryProvisioningMutation: DeleteGithubRepositoryProvisioningMutation =
       new DeleteGithubRepositoryProvisioningMutation(),
-    @inject(DeletePlatformModelMutation)
-    deletePlatformModelMutation: DeletePlatformModelMutation = new DeletePlatformModelMutation(),
-    @inject(DeletePlatformModelProviderCredentialMutation)
-    deletePlatformModelProviderCredentialMutation: DeletePlatformModelProviderCredentialMutation =
-      new DeletePlatformModelProviderCredentialMutation(),
     @inject(DeleteCompanyMutation)
     deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
-    @inject(DeletePlatformAdminCompanyMutation)
-    deletePlatformAdminCompanyMutation: DeletePlatformAdminCompanyMutation =
-      new DeletePlatformAdminCompanyMutation(),
-    @inject(DeletePlatformAdminUserMutation)
-    deletePlatformAdminUserMutation: DeletePlatformAdminUserMutation =
-      new DeletePlatformAdminUserMutation(),
     @inject(CreateCompanyMutation)
     createCompanyMutation: CreateCompanyMutation = new CreateCompanyMutation({} as never),
-    @inject(FreeCompanyCreationEligibilityQueryResolver)
-    freeCompanyCreationEligibilityQueryResolver: FreeCompanyCreationEligibilityQueryResolver =
-      new FreeCompanyCreationEligibilityQueryResolver({} as never),
     @inject(CodexRateLimitsQueryResolver)
     codexRateLimitsQueryResolver: CodexRateLimitsQueryResolver = new CodexRateLimitsQueryResolver(),
-    @inject(BillingPlansQueryResolver)
-    billingPlansQueryResolver: BillingPlansQueryResolver = new BillingPlansQueryResolver(),
     @inject(CompanyOnboardingFieldResolver)
     companyOnboardingFieldResolver: CompanyOnboardingFieldResolver = new CompanyOnboardingFieldResolver(),
     @inject(EnsureCompanyOnboardingMutation)
     ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation = new EnsureCompanyOnboardingMutation(),
     @inject(SkipCompanyOnboardingMutation)
     skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation = new SkipCompanyOnboardingMutation(),
-    @inject(PlatformAdminCompaniesQueryResolver)
-    platformAdminCompaniesQueryResolver: PlatformAdminCompaniesQueryResolver =
-      new PlatformAdminCompaniesQueryResolver(),
-    @inject(PlatformAdminCompanyWalletsQueryResolver)
-    platformAdminCompanyWalletsQueryResolver: PlatformAdminCompanyWalletsQueryResolver =
-      new PlatformAdminCompanyWalletsQueryResolver(),
-    @inject(PlatformCodexRateLimitsQueryResolver)
-    platformCodexRateLimitsQueryResolver: PlatformCodexRateLimitsQueryResolver =
-      new PlatformCodexRateLimitsQueryResolver(),
-    @inject(PlatformAdminUsersQueryResolver)
-    platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
-    @inject(PlatformModelsQueryResolver)
-    platformModelsQueryResolver: PlatformModelsQueryResolver = new PlatformModelsQueryResolver(),
-    @inject(CreatePlatformModelMutation)
-    createPlatformModelMutation: CreatePlatformModelMutation = new CreatePlatformModelMutation(),
-    @inject(ImportPlatformModelMutation)
-    importPlatformModelMutation: ImportPlatformModelMutation = new ImportPlatformModelMutation(),
-    @inject(UpdatePlatformModelMutation)
-    updatePlatformModelMutation: UpdatePlatformModelMutation = new UpdatePlatformModelMutation(),
-    @inject(PlatformModelRoutesQueryResolver)
-    platformModelRoutesQueryResolver: PlatformModelRoutesQueryResolver = new PlatformModelRoutesQueryResolver(),
-    @inject(PlatformModelProviderCredentialsQueryResolver)
-    platformModelProviderCredentialsQueryResolver: PlatformModelProviderCredentialsQueryResolver =
-      new PlatformModelProviderCredentialsQueryResolver(),
-    @inject(PlatformModelProviderCredentialModelsQueryResolver)
-    platformModelProviderCredentialModelsQueryResolver: PlatformModelProviderCredentialModelsQueryResolver =
-      new PlatformModelProviderCredentialModelsQueryResolver(),
-    @inject(RefreshPlatformModelProviderCredentialModelsMutation)
-    refreshPlatformModelProviderCredentialModelsMutation: RefreshPlatformModelProviderCredentialModelsMutation =
-      new RefreshPlatformModelProviderCredentialModelsMutation(
-        new PlatformModelProviderCredentialService(
-          new ModelRegistry(),
-          new ModelService(new ModelRegistry()),
-        ),
-      ),
-    @inject(RefreshPlatformModelProviderCredentialTokenMutation)
-    refreshPlatformModelProviderCredentialTokenMutation: RefreshPlatformModelProviderCredentialTokenMutation =
-      new RefreshPlatformModelProviderCredentialTokenMutation(),
-    @inject(RefreshPlatformCodexRateLimitsMutation)
-    refreshPlatformCodexRateLimitsMutation: RefreshPlatformCodexRateLimitsMutation =
-      new RefreshPlatformCodexRateLimitsMutation(),
-    @inject(SetDefaultPlatformModelProviderCredentialModelMutation)
-    setDefaultPlatformModelProviderCredentialModelMutation: SetDefaultPlatformModelProviderCredentialModelMutation =
-      new SetDefaultPlatformModelProviderCredentialModelMutation(),
-    @inject(SetPlatformModelRoutesMutation)
-    setPlatformModelRoutesMutation: SetPlatformModelRoutesMutation = new SetPlatformModelRoutesMutation(),
-    @inject(GrantPlatformAdminMutation)
-    grantPlatformAdminMutation: GrantPlatformAdminMutation = new GrantPlatformAdminMutation(),
     @inject(UpdateCompanyOnboardingMutation)
     updateCompanyOnboardingMutation: UpdateCompanyOnboardingMutation = new UpdateCompanyOnboardingMutation(),
-    @inject(UpdatePlatformAdminCompanyEnhancedLoggingMutation)
-    updatePlatformAdminCompanyEnhancedLoggingMutation: UpdatePlatformAdminCompanyEnhancedLoggingMutation =
-      new UpdatePlatformAdminCompanyEnhancedLoggingMutation(),
     @inject(InviteCompanyMemberMutation)
     inviteCompanyMemberMutation: InviteCompanyMemberMutation =
       new InviteCompanyMemberMutation(new CompanyMemberInvitationService()),
@@ -408,11 +277,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(UpdateCompanyMemberRoleMutation)
     updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
       new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService()),
-    @inject(CompanyWalletQueryResolver)
-    companyWalletQueryResolver: CompanyWalletQueryResolver = new CompanyWalletQueryResolver(),
-    @inject(AddPlatformAdminWalletAdjustmentMutation)
-    addPlatformAdminWalletAdjustmentMutation: AddPlatformAdminWalletAdjustmentMutation =
-      new AddPlatformAdminWalletAdjustmentMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -426,85 +290,68 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new SecretEncryptionService(config),
       defaultMcpOauthTokenService,
     );
-    const defaultSkillGithubCatalog = new SkillGithubCatalog(new SkillGithubPublicClient(config), new GithubClient(config));
+    const defaultSkillGithubCatalog = new SkillGithubCatalog(
+      new SkillGithubPublicClient(config),
+      new GithubClient(config),
+    );
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
-    this.addPlatformAdminWalletAdjustmentMutation = addPlatformAdminWalletAdjustmentMutation;
-    this.addPlatformModelProviderCredentialMutation = addPlatformModelProviderCredentialMutation;
-    this.billingPlansQueryResolver = billingPlansQueryResolver;
     this.codexRateLimitsQueryResolver = codexRateLimitsQueryResolver;
-    this.companyWalletQueryResolver = companyWalletQueryResolver;
     this.companyMembersQueryResolver = companyMembersQueryResolver;
     this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
+    this.completeMcpServerOauthMutation = completeMcpServerOauthMutation
+      ?? new CompleteMcpServerOauthMutation({} as never, {} as never, {} as never, defaultMcpService, {} as never);
     this.connectMcpServerOauthClientCredentialsMutation = connectMcpServerOauthClientCredentialsMutation
       ?? new ConnectMcpServerOauthClientCredentialsMutation(
         defaultMcpService,
         defaultMcpOauthClientCredentialsConnectionService,
       );
     this.createCompanyMutation = createCompanyMutation;
-    this.completeMcpServerOauthMutation = completeMcpServerOauthMutation
-      ?? new CompleteMcpServerOauthMutation({} as never, {} as never, {} as never, defaultMcpService, {} as never);
     this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
     this.createGithubRepositoryProvisioningMutation = createGithubRepositoryProvisioningMutation;
-    this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
-    this.createSecretGroupMutation = createSecretGroupMutation ?? new CreateSecretGroupMutation(defaultSecretService);
     this.createMcpServerMutation = createMcpServerMutation ?? new CreateMcpServerMutation(defaultMcpService);
-    this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
+    this.createSecretGroupMutation = createSecretGroupMutation ?? new CreateSecretGroupMutation(defaultSecretService);
+    this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
+    this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
+    this.deleteCompanyMutation = deleteCompanyMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteGithubRepositoryProvisioningMutation = deleteGithubRepositoryProvisioningMutation;
-    this.deletePlatformModelMutation = deletePlatformModelMutation;
-    this.deletePlatformModelProviderCredentialMutation = deletePlatformModelProviderCredentialMutation;
+    this.deleteMcpServerMutation = deleteMcpServerMutation ?? new DeleteMcpServerMutation(defaultMcpService);
+    this.deleteSecretGroupMutation = deleteSecretGroupMutation ?? new DeleteSecretGroupMutation(defaultSecretService);
+    this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
+    this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.disconnectMcpServerOauthMutation = disconnectMcpServerOauthMutation
       ?? new DisconnectMcpServerOauthMutation(defaultMcpService);
-    this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
-    this.deleteSecretGroupMutation = deleteSecretGroupMutation ?? new DeleteSecretGroupMutation(defaultSecretService);
-    this.deleteMcpServerMutation = deleteMcpServerMutation ?? new DeleteMcpServerMutation(defaultMcpService);
-    this.deleteCompanyMutation = deleteCompanyMutation;
-    this.deletePlatformAdminCompanyMutation = deletePlatformAdminCompanyMutation;
-    this.deletePlatformAdminUserMutation = deletePlatformAdminUserMutation;
-    this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
-    this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.ensureCompanyOnboardingMutation = ensureCompanyOnboardingMutation;
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
     this.githubDiscoveredSkillsQueryResolver = githubDiscoveredSkillsQueryResolver
       ?? new GithubDiscoveredSkillsQueryResolver(defaultSkillGithubCatalog);
     this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
-    this.githubRepositoryProvisioningsQueryResolver = githubRepositoryProvisioningsQueryResolver;
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
+    this.githubRepositoryProvisioningsQueryResolver = githubRepositoryProvisioningsQueryResolver;
     this.githubSkillBranchesQueryResolver = githubSkillBranchesQueryResolver
       ?? new GithubSkillBranchesQueryResolver(defaultSkillGithubCatalog);
-    this.freeCompanyCreationEligibilityQueryResolver = freeCompanyCreationEligibilityQueryResolver;
-    this.grantPlatformAdminMutation = grantPlatformAdminMutation;
     this.healthQueryResolver = healthQueryResolver;
-    this.createPlatformModelMutation = createPlatformModelMutation;
     this.importGithubSkillsMutation = importGithubSkillsMutation
       ?? new ImportGithubSkillsMutation(defaultSkillGithubCatalog);
-    this.importPlatformModelMutation = importPlatformModelMutation;
     this.inviteCompanyMemberMutation = inviteCompanyMemberMutation;
     this.llmUsageAggregatesQueryResolver = llmUsageAggregatesQueryResolver;
     this.llmUsageProviderCredentialsQueryResolver = llmUsageProviderCredentialsQueryResolver;
     this.mcpServerAuthTypeQueryResolver = mcpServerAuthTypeQueryResolver
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
+    this.mcpServersQueryResolver = mcpServersQueryResolver ?? new McpServersQueryResolver(defaultMcpService);
     this.meQueryResolver = meQueryResolver;
-    this.platformAdminCompaniesQueryResolver = platformAdminCompaniesQueryResolver;
-    this.platformAdminCompanyWalletsQueryResolver = platformAdminCompanyWalletsQueryResolver;
-    this.platformCodexRateLimitsQueryResolver = platformCodexRateLimitsQueryResolver;
-    this.platformModelRoutesQueryResolver = platformModelRoutesQueryResolver;
-    this.platformModelsQueryResolver = platformModelsQueryResolver;
-    this.platformModelProviderCredentialModelsQueryResolver = platformModelProviderCredentialModelsQueryResolver;
-    this.platformModelProviderCredentialsQueryResolver = platformModelProviderCredentialsQueryResolver;
-    this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
-    this.refreshPlatformCodexRateLimitsMutation = refreshPlatformCodexRateLimitsMutation;
     this.removeCompanyMemberMutation = removeCompanyMemberMutation;
     this.revokeCompanyMemberInvitationMutation = revokeCompanyMemberInvitationMutation;
-    this.refreshPlatformModelProviderCredentialModelsMutation = refreshPlatformModelProviderCredentialModelsMutation;
-    this.refreshPlatformModelProviderCredentialTokenMutation = refreshPlatformModelProviderCredentialTokenMutation;
-    this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.secretGroupsQueryResolver = secretGroupsQueryResolver ?? new SecretGroupsQueryResolver(defaultSecretService);
-    this.mcpServersQueryResolver = mcpServersQueryResolver ?? new McpServersQueryResolver(defaultMcpService);
+    this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
+    this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
+    this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
+    this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
     this.skipCompanyOnboardingMutation = skipCompanyOnboardingMutation;
     this.startMcpServerOauthMutation = startMcpServerOauthMutation
       ?? new StartMcpServerOauthMutation(
@@ -517,117 +364,80 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         {} as never,
         OrganizationSlugResolverFactory.create(config),
       );
-    this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
-    this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
-    this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
-    this.setDefaultPlatformModelProviderCredentialModelMutation = setDefaultPlatformModelProviderCredentialModelMutation;
-    this.setPlatformModelRoutesMutation = setPlatformModelRoutesMutation;
-    this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updateCompanyMemberRoleMutation = updateCompanyMemberRoleMutation;
-    this.updatePlatformAdminCompanyEnhancedLoggingMutation = updatePlatformAdminCompanyEnhancedLoggingMutation;
-    this.updatePlatformModelMutation = updatePlatformModelMutation;
+    this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
-    this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
-    this.updateSecretGroupMutation = updateSecretGroupMutation ?? new UpdateSecretGroupMutation(defaultSecretService);
     this.updateMcpServerMutation = updateMcpServerMutation ?? new UpdateMcpServerMutation(defaultMcpService);
+    this.updateSecretGroupMutation = updateSecretGroupMutation ?? new UpdateSecretGroupMutation(defaultSecretService);
+    this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSkillFromRepositoryMutation = updateSkillFromRepositoryMutation
       ?? new UpdateSkillFromRepositoryMutation({} as never);
-    this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
     this.updateSkillGroupMutation = updateSkillGroupMutation ?? new UpdateSkillGroupMutation(defaultSkillService);
+    this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
   }
 
   createResolvers(): GraphqlResolverFragment {
     return {
       Mutation: {
         AddGithubInstallation: this.addGithubInstallationMutation.execute,
-        AddPlatformAdminWalletAdjustment: this.addPlatformAdminWalletAdjustmentMutation.execute,
-        AddPlatformModelProviderCredential: this.addPlatformModelProviderCredentialMutation.execute,
+        CompleteMcpServerOAuth: this.completeMcpServerOauthMutation.execute,
         ConnectMcpServerOAuthClientCredentials: this.connectMcpServerOauthClientCredentialsMutation.execute,
+        CreateCompany: this.createCompanyMutation.execute,
         CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
+        CreateGithubRepositoryProvisioning: this.createGithubRepositoryProvisioningMutation.execute,
+        CreateMcpServer: this.createMcpServerMutation.execute,
         CreateSecret: this.createSecretMutation.execute,
         CreateSecretGroup: this.createSecretGroupMutation.execute,
-        CreateMcpServer: this.createMcpServerMutation.execute,
-        StartMcpServerOAuth: this.startMcpServerOauthMutation.execute,
-        CompleteMcpServerOAuth: this.completeMcpServerOauthMutation.execute,
-        CreateGithubRepositoryProvisioning: this.createGithubRepositoryProvisioningMutation.execute,
-        CreateCompany: this.createCompanyMutation.execute,
-        CreatePlatformModel: this.createPlatformModelMutation.execute,
         CreateSkill: this.createSkillMutation.execute,
         CreateSkillGroup: this.createSkillGroupMutation.execute,
+        DeleteCompany: this.deleteCompanyMutation.execute,
         DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
         DeleteGithubRepositoryProvisioning: this.deleteGithubRepositoryProvisioningMutation.execute,
-        DeletePlatformModel: this.deletePlatformModelMutation.execute,
-        DeletePlatformModelProviderCredential: this.deletePlatformModelProviderCredentialMutation.execute,
-        DisconnectMcpServerOAuth: this.disconnectMcpServerOauthMutation.execute,
-        DeleteCompany: this.deleteCompanyMutation.execute,
-        DeletePlatformAdminCompany: this.deletePlatformAdminCompanyMutation.execute,
-        DeletePlatformAdminUser: this.deletePlatformAdminUserMutation.execute,
+        DeleteMcpServer: this.deleteMcpServerMutation.execute,
         DeleteSecret: this.deleteSecretMutation.execute,
         DeleteSecretGroup: this.deleteSecretGroupMutation.execute,
-        DeleteMcpServer: this.deleteMcpServerMutation.execute,
         DeleteSkill: this.deleteSkillMutation.execute,
         DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
+        DisconnectMcpServerOAuth: this.disconnectMcpServerOauthMutation.execute,
         EnsureCompanyOnboarding: this.ensureCompanyOnboardingMutation.execute,
-        GrantPlatformAdmin: this.grantPlatformAdminMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
-        ImportPlatformModel: this.importPlatformModelMutation.execute,
         InviteCompanyMember: this.inviteCompanyMemberMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
-        RefreshPlatformCodexRateLimits: this.refreshPlatformCodexRateLimitsMutation.execute,
-        RefreshPlatformModelProviderCredentialModels: this.refreshPlatformModelProviderCredentialModelsMutation.execute,
-        RefreshPlatformModelProviderCredentialToken: this.refreshPlatformModelProviderCredentialTokenMutation.execute,
         RemoveCompanyMember: this.removeCompanyMemberMutation.execute,
         RevokeCompanyMemberInvitation: this.revokeCompanyMemberInvitationMutation.execute,
-        SetDefaultPlatformModelProviderCredentialModel: this.setDefaultPlatformModelProviderCredentialModelMutation.execute,
-        SetPlatformModelRoutes: this.setPlatformModelRoutesMutation.execute,
         SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
-        UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
+        StartMcpServerOAuth: this.startMcpServerOauthMutation.execute,
         UpdateCompanyMemberRole: this.updateCompanyMemberRoleMutation.execute,
-        UpdatePlatformAdminCompanyEnhancedLogging: this.updatePlatformAdminCompanyEnhancedLoggingMutation.execute,
+        UpdateCompanyOnboarding: this.updateCompanyOnboardingMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
-        UpdatePlatformModel: this.updatePlatformModelMutation.execute,
+        UpdateMcpServer: this.updateMcpServerMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
         UpdateSecretGroup: this.updateSecretGroupMutation.execute,
-        UpdateMcpServer: this.updateMcpServerMutation.execute,
-        UpdateSkillFromRepository: this.updateSkillFromRepositoryMutation.execute,
         UpdateSkill: this.updateSkillMutation.execute,
+        UpdateSkillFromRepository: this.updateSkillFromRepositoryMutation.execute,
         UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },
       Query: {
-        BillingPlans: this.billingPlansQueryResolver.execute,
         CodexRateLimits: this.codexRateLimitsQueryResolver.execute,
-        CompanyWallet: this.companyWalletQueryResolver.execute,
         CompanyMembers: this.companyMembersQueryResolver.execute,
-        FreeCompanyCreationEligibility: this.freeCompanyCreationEligibilityQueryResolver.execute,
         CompanySettings: this.companySettingsQueryResolver.execute,
         GithubAppConfig: this.githubAppConfigQueryResolver.execute,
         GithubDiscoveredSkills: this.githubDiscoveredSkillsQueryResolver.execute,
         GithubInstallations: this.githubInstallationsQueryResolver.execute,
-        GithubRepositoryProvisionings: this.githubRepositoryProvisioningsQueryResolver.execute,
         GithubRepositories: this.githubRepositoriesQueryResolver.execute,
+        GithubRepositoryProvisionings: this.githubRepositoryProvisioningsQueryResolver.execute,
         GithubSkillBranches: this.githubSkillBranchesQueryResolver.execute,
-        health: this.healthQueryResolver.execute,
         LlmUsageAggregates: this.llmUsageAggregatesQueryResolver.execute,
         LlmUsageProviderCredentials: this.llmUsageProviderCredentialsQueryResolver.execute,
-        Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
-        PlatformAdminCompanies: this.platformAdminCompaniesQueryResolver.execute,
-        PlatformAdminCompany: this.platformAdminCompanyWalletsQueryResolver.executeCompany,
-        PlatformAdminCompanyWallets: this.platformAdminCompanyWalletsQueryResolver.executeWallets,
-        PlatformAdminCompanyWallet: this.platformAdminCompanyWalletsQueryResolver.executeWallet,
-        PlatformAdminUser: this.platformAdminUsersQueryResolver.executeUser,
-        PlatformCodexRateLimits: this.platformCodexRateLimitsQueryResolver.execute,
-        PlatformModels: this.platformModelsQueryResolver.execute,
-        PlatformModelRoutes: this.platformModelRoutesQueryResolver.execute,
-        PlatformModelProviderCredentials: this.platformModelProviderCredentialsQueryResolver.execute,
-        PlatformModelProviderCredentialModels: this.platformModelProviderCredentialModelsQueryResolver.execute,
-        PlatformAdminUsers: this.platformAdminUsersQueryResolver.execute,
-        Secrets: this.secretsQueryResolver.execute,
-        SecretGroups: this.secretGroupsQueryResolver.execute,
         McpServers: this.mcpServersQueryResolver.execute,
+        Me: this.meQueryResolver.execute,
+        SecretGroups: this.secretGroupsQueryResolver.execute,
+        Secrets: this.secretsQueryResolver.execute,
         Skill: this.skillQueryResolver.execute,
         SkillGroups: this.skillGroupsQueryResolver.execute,
         Skills: this.skillsQueryResolver.execute,
+        health: this.healthQueryResolver.execute,
       },
       AuthenticatedCompany: {
         onboarding: this.companyOnboardingFieldResolver.execute,

@@ -5,7 +5,6 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
-import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import { ModelProviderModelCollection } from "../../services/ai_providers/model_provider_model_collection.js";
 import {
@@ -126,15 +125,12 @@ export class AddModelProviderCredentialMutation extends Mutation<
     const modelProvider = String(arguments_.input.modelProvider || "").trim();
     const providerDefinition = this.modelProviderService.get(modelProvider);
     if (this.modelProviderService.isSystemManagedProviderId(modelProvider)) {
-      throw new Error("CompanyHelm model provider is managed by the system.");
+      throw new Error("System-managed model providers are not available.");
     }
     const credentialName = AddModelProviderCredentialMutation.resolveCredentialName(
       arguments_.input.name,
       providerDefinition,
     );
-    if (CompanyHelmLlmProviderService.CREDENTIAL_NAME === credentialName) {
-      throw new Error("CompanyHelm model provider is managed by the system.");
-    }
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -360,7 +356,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
         .insert(companyModelProviderDefaults)
         .values({
           companyId,
-          modelCredentialSource: "user_provided",
           modelProviderCredentialId: credentialId,
           createdAt: now,
           updatedAt: now,
@@ -374,7 +369,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
     await updatableDatabase
       .update(companyModelProviderDefaults)
       .set({
-        modelCredentialSource: "user_provided",
         modelProviderCredentialId: credentialId,
         updatedAt: now,
       })

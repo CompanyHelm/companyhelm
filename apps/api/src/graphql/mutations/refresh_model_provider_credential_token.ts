@@ -48,8 +48,7 @@ type RefreshableCredentialRecord = ModelProviderCredentialRecord & {
 };
 
 type DefaultProviderSelectionRecord = {
-  modelCredentialSource: "platform" | "user_provided";
-  modelProviderCredentialId: string | null;
+  modelProviderCredentialId: string;
 };
 
 @injectable()
@@ -188,7 +187,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
       }
       const [defaultProviderSelectionRecord] = await selectableDatabase
         .select({
-          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
           modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
         })
         .from(companyModelProviderDefaults)
@@ -211,8 +209,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
 
       return serializeModelProviderCredentialRecord(this.modelRegistry, {
         ...updatedCredential,
-        isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
-          && defaultProviderSelectionRecord.modelProviderCredentialId === updatedCredential.id,
+        isDefault: defaultProviderSelectionRecord?.modelProviderCredentialId === updatedCredential.id,
       }, models);
     });
   };

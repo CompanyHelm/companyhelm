@@ -5,20 +5,16 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type LlmUsageAggregateScopeType =
   | "company"
-  | "managed_model_provider_credential"
   | "model_provider_credential"
   | "agent"
   | "session";
 type LlmUsageAggregatePeriod = "total" | "day" | "month";
-type LlmUsageModelCredentialSource = "platform" | "user_provided";
 
 type LlmUsageAggregatesInput = {
   agentId?: string | null;
-  modelCredentialSource?: LlmUsageModelCredentialSource | null;
   modelProviderCredentialId?: string | null;
   period?: LlmUsageAggregatePeriod | null;
   periodStartAfter?: string | null;
-  platformModelProviderCredentialId?: string | null;
   sessionId?: string | null;
   scopeType: LlmUsageAggregateScopeType;
 };
@@ -29,63 +25,31 @@ type LlmUsageAggregatesArguments = {
 
 type LlmUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
-  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
-  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   companyId: string;
   createdAt: Date;
   id: string;
   inputCostNanoUsd: number;
-  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
-  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: LlmUsageAggregatePeriod;
   periodStart: Date;
   requestCount: number;
   agentId: string | null;
-  modelCredentialSource: LlmUsageModelCredentialSource | null;
   modelProviderCredentialId: string | null;
-  platformModelProviderCredentialId: string | null;
   sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
-  totalCostNanoVirtualUsd: number;
   totalTokens: number;
   updatedAt: Date;
 };
 
-type GraphqlLlmUsageAggregateRecord = {
-  cacheReadCostNanoUsd: number;
-  cacheReadCostNanoVirtualUsd: number;
-  cacheReadTokens: number;
-  cacheWriteCostNanoUsd: number;
-  cacheWriteCostNanoVirtualUsd: number;
-  cacheWriteTokens: number;
-  companyId: string;
+type GraphqlLlmUsageAggregateRecord = Omit<LlmUsageAggregateRecord, "createdAt" | "periodStart" | "updatedAt"> & {
   createdAt: string;
-  id: string;
-  inputCostNanoUsd: number;
-  inputCostNanoVirtualUsd: number;
-  inputTokens: number;
-  outputCostNanoUsd: number;
-  outputCostNanoVirtualUsd: number;
-  outputTokens: number;
-  period: LlmUsageAggregatePeriod;
   periodStart: string;
-  requestCount: number;
-  agentId: string | null;
-  modelCredentialSource: LlmUsageModelCredentialSource | null;
-  modelProviderCredentialId: string | null;
-  platformModelProviderCredentialId: string | null;
-  sessionId: string | null;
-  scopeType: LlmUsageAggregateScopeType;
-  totalCostNanoUsd: number;
-  totalCostNanoVirtualUsd: number;
-  totalTokens: number;
   updatedAt: string;
 };
 
@@ -98,9 +62,8 @@ type SelectableDatabase = {
 };
 
 /**
- * Reads pre-aggregated LLM usage rows for the authenticated company. The resolver deliberately
- * returns the stored aggregate shape instead of calculating rollups on demand so charts and quota
- * surfaces stay cheap as usage grows.
+ * Reads OSS LLM usage aggregates. It keeps operational usage visibility by company, credential,
+ * agent, and session while excluding Cloud monetization accounting.
  */
 @injectable()
 export class LlmUsageAggregatesQueryResolver {
@@ -126,7 +89,7 @@ export class LlmUsageAggregatesQueryResolver {
         eq(llmUsageAggregates.companyId, companyId),
         eq(llmUsageAggregates.scopeType, input.scopeType),
       ];
-      this.appendScopeConditions(conditions, input, context.isPlatformAdmin === true);
+      this.appendScopeConditions(conditions, input);
 
       if (input.period) {
         conditions.push(eq(llmUsageAggregates.period, input.period));
@@ -138,31 +101,24 @@ export class LlmUsageAggregatesQueryResolver {
       const rows = await selectableDatabase
         .select({
           cacheReadCostNanoUsd: llmUsageAggregates.cacheReadCostNanoUsd,
-          cacheReadCostNanoVirtualUsd: llmUsageAggregates.cacheReadCostNanoVirtualUsd,
           cacheReadTokens: llmUsageAggregates.cacheReadTokens,
           cacheWriteCostNanoUsd: llmUsageAggregates.cacheWriteCostNanoUsd,
-          cacheWriteCostNanoVirtualUsd: llmUsageAggregates.cacheWriteCostNanoVirtualUsd,
           cacheWriteTokens: llmUsageAggregates.cacheWriteTokens,
           companyId: llmUsageAggregates.companyId,
           createdAt: llmUsageAggregates.createdAt,
           id: llmUsageAggregates.id,
           inputCostNanoUsd: llmUsageAggregates.inputCostNanoUsd,
-          inputCostNanoVirtualUsd: llmUsageAggregates.inputCostNanoVirtualUsd,
           inputTokens: llmUsageAggregates.inputTokens,
           outputCostNanoUsd: llmUsageAggregates.outputCostNanoUsd,
-          outputCostNanoVirtualUsd: llmUsageAggregates.outputCostNanoVirtualUsd,
           outputTokens: llmUsageAggregates.outputTokens,
           period: llmUsageAggregates.period,
           periodStart: llmUsageAggregates.periodStart,
           requestCount: llmUsageAggregates.requestCount,
           agentId: llmUsageAggregates.agentId,
-          modelCredentialSource: llmUsageAggregates.modelCredentialSource,
           modelProviderCredentialId: llmUsageAggregates.modelProviderCredentialId,
-          platformModelProviderCredentialId: llmUsageAggregates.platformModelProviderCredentialId,
           sessionId: llmUsageAggregates.sessionId,
           scopeType: llmUsageAggregates.scopeType,
           totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
-          totalCostNanoVirtualUsd: llmUsageAggregates.totalCostNanoVirtualUsd,
           totalTokens: llmUsageAggregates.totalTokens,
           updatedAt: llmUsageAggregates.updatedAt,
         })
@@ -171,31 +127,17 @@ export class LlmUsageAggregatesQueryResolver {
 
       return [...rows]
         .sort(LlmUsageAggregatesQueryResolver.compareRecords)
-        .map((record) => this.serializeRecord(record, context.isPlatformAdmin === true));
+        .map((record) => this.serializeRecord(record));
     });
   };
 
   private appendScopeConditions(
     conditions: SQL[],
     input: LlmUsageAggregatesInput,
-    isPlatformAdmin: boolean,
   ): void {
     if (input.scopeType === "model_provider_credential") {
-      if (input.modelCredentialSource) {
-        conditions.push(eq(llmUsageAggregates.modelCredentialSource, input.modelCredentialSource));
-      }
       if (input.modelProviderCredentialId) {
         conditions.push(eq(llmUsageAggregates.modelProviderCredentialId, input.modelProviderCredentialId));
-      }
-      if (input.platformModelProviderCredentialId) {
-        if (!isPlatformAdmin) {
-          throw new Error("Platform model provider credential filters require platform admin access.");
-        }
-
-        conditions.push(eq(
-          llmUsageAggregates.platformModelProviderCredentialId,
-          input.platformModelProviderCredentialId,
-        ));
       }
       return;
     }
@@ -240,17 +182,11 @@ export class LlmUsageAggregatesQueryResolver {
     return left.periodStart.getTime() - right.periodStart.getTime();
   }
 
-  private serializeRecord(
-    record: LlmUsageAggregateRecord,
-    canReadPlatformModelProviderCredentialId: boolean,
-  ): GraphqlLlmUsageAggregateRecord {
+  private serializeRecord(record: LlmUsageAggregateRecord): GraphqlLlmUsageAggregateRecord {
     return {
       ...record,
       createdAt: record.createdAt.toISOString(),
       periodStart: record.periodStart.toISOString(),
-      platformModelProviderCredentialId: canReadPlatformModelProviderCredentialId
-        ? record.platformModelProviderCredentialId
-        : null,
       updatedAt: record.updatedAt.toISOString(),
     };
   }

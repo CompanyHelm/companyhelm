@@ -48,8 +48,6 @@ test("SessionTurnUsageQueueService enqueues one deterministic job per turn", asy
   await service.enqueueUsage({
     agentId: "agent-1",
     companyId: "company-1",
-    credentialSource: "platform",
-    costKind: "virtual",
     modelProviderCredentialId: "credential-1",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
     sessionId: "session-1",
@@ -64,8 +62,6 @@ test("SessionTurnUsageQueueService enqueues one deterministic job per turn", asy
     {
       agentId: "agent-1",
       companyId: "company-1",
-      credentialSource: "platform",
-      costKind: "virtual",
       modelProviderCredentialId: "credential-1",
       recordedAt: new Date("2026-04-20T23:30:00.000Z"),
       sessionId: "session-1",

@@ -18,7 +18,6 @@ type MeQueryResult = {
     email: string;
     firstName: string;
     id: string;
-    isPlatformAdmin: boolean;
     lastName: string | null;
   };
 };
@@ -60,7 +59,6 @@ export class MeQueryResolver extends Resolver<MeQueryResult> {
         email: context.authSession.user.email,
         firstName: context.authSession.user.firstName,
         id: context.authSession.user.id,
-        isPlatformAdmin: context.isPlatformAdmin === true,
         lastName: context.authSession.user.lastName,
       },
     };

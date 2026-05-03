@@ -1,17 +1,14 @@
 import { Buffer } from "node:buffer";
 import { and, eq, notInArray } from "drizzle-orm";
 import { injectable } from "inversify";
-import { codexRateLimitSnapshots, platformCodexRateLimitSnapshots } from "../../db/schema.ts";
+import { codexRateLimitSnapshots } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-
-export type CodexRateLimitCredentialSource = "platform" | "user_provided";
 
 export type CodexRateLimitRefreshCredential = {
   apiKey: string;
   baseUrl: string | null;
   companyId: string;
   credentialId: string;
-  credentialSource: CodexRateLimitCredentialSource;
   modelProvider: string;
 };
 
@@ -38,7 +35,6 @@ type CodexRateLimitSnapshotPayload = {
 };
 
 type CodexRateLimitSnapshotInsert = typeof codexRateLimitSnapshots.$inferInsert;
-type PlatformCodexRateLimitSnapshotInsert = typeof platformCodexRateLimitSnapshots.$inferInsert;
 
 /**
  * Fetches Codex subscription usage and persists it as small DB snapshots. The in-memory throttle
@@ -142,11 +138,6 @@ export class CodexRateLimitService {
     snapshots: CodexRateLimitSnapshotPayload[],
     refreshedAt: Date,
   ): Promise<void> {
-    if (credential.credentialSource === "platform") {
-      await this.persistPlatformSnapshots(transactionProvider, credential, snapshots, refreshedAt);
-      return;
-    }
-
     const records = snapshots.map((snapshot) => this.buildCompanySnapshotRecord(credential, snapshot, refreshedAt));
     if (records.length === 0) {
       await this.persistRefreshError(transactionProvider, credential, refreshedAt, "Codex usage response had no limits.");
@@ -198,27 +189,6 @@ export class CodexRateLimitService {
     refreshedAt: Date,
     lastError: string,
   ): Promise<void> {
-    if (credential.credentialSource === "platform") {
-      const record = this.buildPlatformErrorSnapshotRecord(credential, refreshedAt, lastError);
-      await transactionProvider.transaction(async (tx) => {
-        await tx
-          .insert(platformCodexRateLimitSnapshots)
-          .values(record)
-          .onConflictDoUpdate({
-            target: [
-              platformCodexRateLimitSnapshots.platformModelProviderCredentialId,
-              platformCodexRateLimitSnapshots.limitId,
-            ],
-            set: {
-              lastError: record.lastError,
-              refreshedAt: record.refreshedAt,
-              updatedAt: record.updatedAt,
-            },
-          });
-      });
-      return;
-    }
-
     const record = this.buildCompanyErrorSnapshotRecord(credential, refreshedAt, lastError);
     await transactionProvider.transaction(async (tx) => {
       await tx
@@ -236,55 +206,6 @@ export class CodexRateLimitService {
             updatedAt: record.updatedAt,
           },
         });
-    });
-  }
-
-  private async persistPlatformSnapshots(
-    transactionProvider: TransactionProviderInterface,
-    credential: CodexRateLimitRefreshCredential,
-    snapshots: CodexRateLimitSnapshotPayload[],
-    refreshedAt: Date,
-  ): Promise<void> {
-    const records = snapshots.map((snapshot) => this.buildPlatformSnapshotRecord(credential, snapshot, refreshedAt));
-    if (records.length === 0) {
-      await this.persistRefreshError(transactionProvider, credential, refreshedAt, "Codex usage response had no limits.");
-      return;
-    }
-
-    await transactionProvider.transaction(async (tx) => {
-      for (const record of records) {
-        await tx
-          .insert(platformCodexRateLimitSnapshots)
-          .values(record)
-          .onConflictDoUpdate({
-            target: [
-              platformCodexRateLimitSnapshots.platformModelProviderCredentialId,
-              platformCodexRateLimitSnapshots.limitId,
-            ],
-            set: {
-              creditsBalance: record.creditsBalance,
-              creditsHasCredits: record.creditsHasCredits,
-              creditsUnlimited: record.creditsUnlimited,
-              lastError: null,
-              limitName: record.limitName,
-              planType: record.planType,
-              primaryResetsAt: record.primaryResetsAt,
-              primaryUsedPercent: record.primaryUsedPercent,
-              primaryWindowMinutes: record.primaryWindowMinutes,
-              rateLimitReachedType: record.rateLimitReachedType,
-              refreshedAt: record.refreshedAt,
-              secondaryResetsAt: record.secondaryResetsAt,
-              secondaryUsedPercent: record.secondaryUsedPercent,
-              secondaryWindowMinutes: record.secondaryWindowMinutes,
-              updatedAt: record.updatedAt,
-            },
-          });
-      }
-
-      await tx.delete(platformCodexRateLimitSnapshots).where(and(
-        eq(platformCodexRateLimitSnapshots.platformModelProviderCredentialId, credential.credentialId),
-        notInArray(platformCodexRateLimitSnapshots.limitId, records.map((record) => record.limitId)),
-      ));
     });
   }
 
@@ -424,60 +345,6 @@ export class CodexRateLimitService {
     };
   }
 
-  private buildPlatformSnapshotRecord(
-    credential: CodexRateLimitRefreshCredential,
-    snapshot: CodexRateLimitSnapshotPayload,
-    timestamp: Date,
-  ): PlatformCodexRateLimitSnapshotInsert {
-    return {
-      platformModelProviderCredentialId: credential.credentialId,
-      creditsBalance: snapshot.credits.balance,
-      creditsHasCredits: snapshot.credits.hasCredits,
-      creditsUnlimited: snapshot.credits.unlimited,
-      lastError: null,
-      limitId: snapshot.limitId,
-      limitName: snapshot.limitName,
-      planType: snapshot.planType,
-      primaryResetsAt: snapshot.primary.resetsAt,
-      primaryUsedPercent: snapshot.primary.usedPercent,
-      primaryWindowMinutes: snapshot.primary.windowMinutes,
-      rateLimitReachedType: snapshot.rateLimitReachedType,
-      refreshedAt: timestamp,
-      secondaryResetsAt: snapshot.secondary.resetsAt,
-      secondaryUsedPercent: snapshot.secondary.usedPercent,
-      secondaryWindowMinutes: snapshot.secondary.windowMinutes,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-  }
-
-  private buildPlatformErrorSnapshotRecord(
-    credential: CodexRateLimitRefreshCredential,
-    timestamp: Date,
-    lastError: string,
-  ): PlatformCodexRateLimitSnapshotInsert {
-    return {
-      platformModelProviderCredentialId: credential.credentialId,
-      creditsBalance: null,
-      creditsHasCredits: null,
-      creditsUnlimited: null,
-      lastError,
-      limitId: "codex",
-      limitName: "Codex",
-      planType: null,
-      primaryResetsAt: null,
-      primaryUsedPercent: null,
-      primaryWindowMinutes: null,
-      rateLimitReachedType: null,
-      refreshedAt: timestamp,
-      secondaryResetsAt: null,
-      secondaryUsedPercent: null,
-      secondaryWindowMinutes: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-  }
-
   private resolveUsageUrl(baseUrl: string | null): string {
     const normalizedBaseUrl = String(baseUrl || CodexRateLimitService.defaultCodexBaseUrl).trim()
       || CodexRateLimitService.defaultCodexBaseUrl;
@@ -508,7 +375,7 @@ export class CodexRateLimitService {
   }
 
   private createCredentialKey(credential: CodexRateLimitRefreshCredential): string {
-    return `${credential.credentialSource}:${credential.credentialId}`;
+    return credential.credentialId;
   }
 
   private resolveErrorMessage(error: unknown): string {

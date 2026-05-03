@@ -13,8 +13,8 @@ type CreateCompanyMutationArguments = {
 };
 
 /**
- * Creates a free company for the signed-in user through the DB-first company creation service so
- * CompanyHelm owns workspace identity, slug allocation, and membership limits in one database path.
+ * Creates a company for the signed-in user through the DB-first company creation service so
+ * CompanyHelm owns workspace identity, slug allocation, and membership in one path.
  */
 @injectable()
 export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArguments, CreatedCompanyRecord> {
@@ -37,7 +37,6 @@ export class CreateCompanyMutation extends Mutation<CreateCompanyMutationArgumen
     }
 
     return this.companyCreationService.createCompany({
-      isPlatformAdmin: context.isPlatformAdmin === true,
       name: arguments_.input.name,
       userId: context.authSession.user.id,
     });

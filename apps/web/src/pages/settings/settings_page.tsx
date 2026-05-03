@@ -4,7 +4,6 @@ import { Building2Icon, Loader2Icon, PlusIcon, Settings2Icon, Trash2Icon } from 
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { OrganizationMembersSettingsPanel } from "@/components/auth/organization_members_settings_panel";
-import { BillingPanel } from "@/components/settings/billing_panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
@@ -20,7 +19,7 @@ import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphq
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI" | "company" | "billing" | "members";
+  tab?: "tasks" | "AI" | "company" | "members";
 };
 
 const settingsPageQueryNode = graphql`
@@ -45,25 +44,6 @@ const settingsPageQueryNode = graphql`
       taskCount
       createdAt
       updatedAt
-    }
-    BillingPlans {
-      key
-      name
-      description
-      priceCents
-      currencyCode
-      paddlePriceId
-      monthlyCreditsNanoUsd
-    }
-    CompanyWallet {
-      currentPlan
-      pendingPlan
-      pendingPlanEffectiveAt
-      nextRechargeAt
-      wallets {
-        type
-        amountNanoUsd
-      }
     }
   }
 `;
@@ -197,7 +177,7 @@ function SettingsPageContent() {
   const [commitDeleteCompany, isDeleteCompanyInFlight] = useMutation<settingsPageDeleteCompanyMutation>(
     settingsPageDeleteCompanyMutationNode,
   );
-  const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "billing" || search.tab === "members"
+  const selectedTab = search.tab === "AI" || search.tab === "company" || search.tab === "members"
     ? search.tab
     : "tasks";
   const companyName = data.Me.company.name;
@@ -228,10 +208,6 @@ function SettingsPageContent() {
             {
               key: "company" as const,
               label: "Company",
-            },
-            {
-              key: "billing" as const,
-              label: "Billing",
             },
             {
               key: "members" as const,
@@ -493,10 +469,6 @@ function SettingsPageContent() {
             </div>
           </CardContent>
         </Card>
-      ) : null}
-
-      {selectedTab === "billing" ? (
-        <BillingPanel billing={data.CompanyWallet} companyId={data.Me.company.id} plans={data.BillingPlans} />
       ) : null}
 
       {selectedTab === "members" ? (

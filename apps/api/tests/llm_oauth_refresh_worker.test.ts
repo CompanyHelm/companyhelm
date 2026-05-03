@@ -15,7 +15,6 @@ type QueryCall = {
 
 type AdminDatabaseMockInput = {
   companyRows?: unknown[];
-  platformRows?: unknown[];
 };
 
 class LlmOauthRefreshWorkerTestHarness {
@@ -23,7 +22,6 @@ class LlmOauthRefreshWorkerTestHarness {
     const queryCalls: QueryCall[] = [];
     const updateCalls: QueryCall[] = [];
     const companyRows = input.companyRows ?? [];
-    const platformRows = input.platformRows ?? [];
 
     const transactionSql = async (
       strings: TemplateStringsArray,
@@ -35,22 +33,11 @@ class LlmOauthRefreshWorkerTestHarness {
         values,
       });
 
-      if (query.includes("set_config('app.platform_admin_access'")) {
-        return [];
-      }
-
       if (query.includes("FROM \"model_provider_credentials\"")) {
         return companyRows;
       }
 
-      if (query.includes("FROM \"platform_model_provider_credentials\"")) {
-        return platformRows;
-      }
-
-      if (
-        query.includes("UPDATE \"model_provider_credentials\"")
-        || query.includes("UPDATE \"platform_model_provider_credentials\"")
-      ) {
+      if (query.includes("UPDATE \"model_provider_credentials\"")) {
         updateCalls.push({
           query,
           values,
@@ -164,11 +151,7 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
   const companySelectCall = adminDatabase.queryCalls.find((call) =>
     call.query.includes("FROM \"model_provider_credentials\"")
   );
-  const platformSelectCall = adminDatabase.queryCalls.find((call) =>
-    call.query.includes("FROM \"platform_model_provider_credentials\"")
-  );
   assert.match(companySelectCall?.query ?? "", /FOR UPDATE SKIP LOCKED/);
-  assert.match(platformSelectCall?.query ?? "", /FOR UPDATE SKIP LOCKED/);
   assert.equal(typeof companySelectCall?.values[0], "string");
   assert.equal(companySelectCall?.values[1], 20);
   assert.equal(adminDatabase.updateCalls.length, 1);
@@ -241,7 +224,6 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
   });
   assert.deepEqual(loggedErrors[0]?.arguments_[0], {
     credentialId: "credential-1",
-    credentialScope: "company",
     error: "refresh failed for credential-1",
   });
 });

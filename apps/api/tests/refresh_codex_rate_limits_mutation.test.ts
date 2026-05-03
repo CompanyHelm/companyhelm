@@ -117,7 +117,6 @@ test("RefreshCodexRateLimits forces an upstream refresh and returns the latest s
     baseUrl: null,
     companyId: "company-1",
     credentialId: "credential-1",
-    credentialSource: "user_provided",
     modelProvider: "openai-codex",
   });
   assert.equal(result.snapshots[0]?.limitId, "codex");

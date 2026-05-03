@@ -23,8 +23,7 @@ type SelectableDatabase = {
 };
 
 type DefaultProviderSelectionRecord = {
-  modelCredentialSource: "platform" | "user_provided";
-  modelProviderCredentialId: string | null;
+  modelProviderCredentialId: string;
 };
 
 /**
@@ -52,7 +51,6 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
       const selectableDatabase = tx as SelectableDatabase;
       const [defaultProviderSelectionRecord] = await selectableDatabase
         .select({
-          modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
           modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
         })
         .from(companyModelProviderDefaults)
@@ -87,8 +85,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
       return credentials.map((credential) =>
         serializeModelProviderCredentialRecord(this.modelRegistry, {
           ...credential,
-          isDefault: defaultProviderSelectionRecord?.modelCredentialSource === "user_provided"
-            && defaultProviderSelectionRecord.modelProviderCredentialId === credential.id,
+          isDefault: defaultProviderSelectionRecord?.modelProviderCredentialId === credential.id,
         }, modelRecords)
       );
     });

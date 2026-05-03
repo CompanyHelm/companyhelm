@@ -17,39 +17,16 @@ import type { credentialDetailPageQuery } from "./__generated__/credentialDetail
 import type { credentialDetailPageRefreshLimitMutation } from "./__generated__/credentialDetailPageRefreshLimitMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
-import type { credentialDetailPageUpdateCompanySettingsMutation } from "./__generated__/credentialDetailPageUpdateCompanySettingsMutation.graphql";
 import {
   getCredentialRefreshFailureReason,
   getCredentialRefreshFailureRecoveryMessage,
   hasCredentialRefreshFailure,
 } from "./credential_health";
-import { isManagedModelProviderCredentialId } from "./managed_credential";
 import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
-  query credentialDetailPageQuery($credentialId: ID!, $isManagedCredential: Boolean!, $dailyStart: String!, $monthlyStart: String!) {
-    CompanySettings @include(if: $isManagedCredential) {
-      companyId
-      defaultManagedPlatformModelId
-    }
-    AgentCreateOptions @include(if: $isManagedCredential) {
-      id
-      modelCredentialSource
-      label
-      modelProvider
-      defaultModelId
-      models {
-        id
-        modelCredentialSource
-        platformModelId
-        modelId
-        name
-        description
-        reasoningSupported
-        reasoningLevels
-      }
-    }
-    ModelProviderCredentials @skip(if: $isManagedCredential) {
+  query credentialDetailPageQuery($credentialId: ID!, $dailyStart: String!, $monthlyStart: String!) {
+    ModelProviderCredentials {
       id
       baseUrl
       name
@@ -60,7 +37,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       refreshedAt
       updatedAt
     }
-    CodexRateLimits(modelProviderCredentialId: $credentialId) @skip(if: $isManagedCredential) {
+    CodexRateLimits(modelProviderCredentialId: $credentialId) {
       isCodexCredential
       modelProviderCredentialId
       snapshots {
@@ -87,7 +64,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
         }
       }
     }
-    ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) @skip(if: $isManagedCredential) {
+    ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
       isDefault
       name
@@ -95,18 +72,14 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       reasoningSupported
       reasoningLevels
     }
-    providerTotal: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: total }) @skip(if: $isManagedCredential) {
+    providerTotal: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: total }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -117,21 +90,16 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
-    providerDaily: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: day, periodStartAfter: $dailyStart }) @skip(if: $isManagedCredential) {
+    providerDaily: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -142,21 +110,16 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
-    providerMonthly: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: month, periodStartAfter: $monthlyStart }) @skip(if: $isManagedCredential) {
+    providerMonthly: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -167,95 +130,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
-    }
-    managedTotal: LlmUsageAggregates(input: { scopeType: managed_model_provider_credential, period: total }) @include(if: $isManagedCredential) {
-      cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
-      cacheReadTokens
-      cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
-      cacheWriteTokens
-      inputCostNanoUsd
-      inputCostNanoVirtualUsd
-      inputTokens
-      outputCostNanoUsd
-      outputCostNanoVirtualUsd
-      outputTokens
-      period
-      periodStart
-      requestCount
-      companyId
-      agentId
-      modelProviderCredentialId
-      sessionId
-      scopeType
-      totalCostNanoUsd
-      totalCostNanoVirtualUsd
-      totalTokens
-    }
-    managedDaily: LlmUsageAggregates(input: { scopeType: managed_model_provider_credential, period: day, periodStartAfter: $dailyStart }) @include(if: $isManagedCredential) {
-      cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
-      cacheReadTokens
-      cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
-      cacheWriteTokens
-      inputCostNanoUsd
-      inputCostNanoVirtualUsd
-      inputTokens
-      outputCostNanoUsd
-      outputCostNanoVirtualUsd
-      outputTokens
-      period
-      periodStart
-      requestCount
-      companyId
-      agentId
-      modelProviderCredentialId
-      sessionId
-      scopeType
-      totalCostNanoUsd
-      totalCostNanoVirtualUsd
-      totalTokens
-    }
-    managedMonthly: LlmUsageAggregates(input: { scopeType: managed_model_provider_credential, period: month, periodStartAfter: $monthlyStart }) @include(if: $isManagedCredential) {
-      cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
-      cacheReadTokens
-      cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
-      cacheWriteTokens
-      inputCostNanoUsd
-      inputCostNanoVirtualUsd
-      inputTokens
-      outputCostNanoUsd
-      outputCostNanoVirtualUsd
-      outputTokens
-      period
-      periodStart
-      requestCount
-      companyId
-      agentId
-      modelProviderCredentialId
-      sessionId
-      scopeType
-      totalCostNanoUsd
-      totalCostNanoVirtualUsd
-      totalTokens
-    }
-  }
-`;
-
-const credentialDetailPageUpdateCompanySettingsMutationNode = graphql`
-  mutation credentialDetailPageUpdateCompanySettingsMutation(
-    $input: UpdateCompanySettingsInput!
-  ) {
-    UpdateCompanySettings(input: $input) {
-      companyId
-      baseSystemPrompt
-      defaultManagedPlatformModelId
     }
   }
 `;
@@ -404,7 +279,6 @@ type CredentialDetailModelRecord = {
   isDefault: boolean;
   modelProviderCredentialModelId: string | null;
   name: string;
-  platformModelId: string | null;
   reasoningSupported: boolean;
   reasoningLevels: ReadonlyArray<string>;
 };
@@ -508,12 +382,10 @@ function ModelProviderCredentialDetailPageContent() {
   if (!normalizedCredentialId) {
     throw new Error("Credential ID is required.");
   }
-  const isManagedCredential = isManagedModelProviderCredentialId(normalizedCredentialId);
   const data = useLazyLoadQuery<credentialDetailPageQuery>(
     modelProviderCredentialDetailPageQueryNode,
     {
       credentialId: normalizedCredentialId,
-      isManagedCredential,
       dailyStart: UsageMetrics.resolveUtcDayStart(29),
       monthlyStart: UsageMetrics.resolveUtcMonthStart(11),
     },
@@ -534,29 +406,13 @@ function ModelProviderCredentialDetailPageContent() {
     useMutation<credentialDetailPageSetDefaultModelMutation>(
       modelProviderCredentialDetailPageSetDefaultModelMutationNode,
     );
-  const [commitUpdateCompanySettings, isUpdateCompanySettingsInFlight] =
-    useMutation<credentialDetailPageUpdateCompanySettingsMutation>(
-      credentialDetailPageUpdateCompanySettingsMutationNode,
-    );
   const currentCredential = (data.ModelProviderCredentials ?? [])
     .find((credential) => credential.id === normalizedCredentialId);
-  const managedProviderOption = (data.AgentCreateOptions ?? [])
-    .find((providerOption) =>
-      providerOption.modelCredentialSource === "platform" && providerOption.models.length > 0
-    );
-  const configuredManagedDefaultPlatformModelId = data.CompanySettings?.defaultManagedPlatformModelId ?? null;
-  const managedDefaultPlatformModelId = managedProviderOption?.models
-    .find((model) => model.platformModelId === configuredManagedDefaultPlatformModelId)?.platformModelId
-    ?? managedProviderOption?.models.find((model) => model.modelId === managedProviderOption.defaultModelId)?.platformModelId
-    ?? managedProviderOption?.models[0]?.platformModelId
-    ?? null;
-  const providerLabel = isManagedCredential
-    ? (managedProviderOption?.label ?? "CompanyHelm")
-    : (formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
+  const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
       baseUrl: currentCredential?.baseUrl ?? null,
-    }) || "Credential");
+    }) || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
-  const isCodexCredential = !isManagedCredential && currentCredential?.modelProvider === "openai-codex";
+  const isCodexCredential = currentCredential?.modelProvider === "openai-codex";
   const selectedTab = search.tab === "limit" && isCodexCredential
     ? "limit"
     : search.tab === "usage"
@@ -567,41 +423,18 @@ function ModelProviderCredentialDetailPageContent() {
     ? (currentCredential?.refreshedAt
       ? `Token refreshed ${formatTimestamp(currentCredential.refreshedAt)}`
       : "Token has not been refreshed yet.")
-    : isManagedCredential
-      ? "Managed by CompanyHelm"
-      : `Credential updated ${formatTimestamp(currentCredential?.updatedAt)}`;
+    : `Credential updated ${formatTimestamp(currentCredential?.updatedAt)}`;
   const credentialModels = useMemo<CredentialDetailModelRecord[]>(() => {
-    if (isManagedCredential) {
-      return (managedProviderOption?.models ?? [])
-        .filter((model) => model.platformModelId)
-        .map((model) => ({
-          description: model.description,
-          id: String(model.platformModelId),
-          isDefault: model.platformModelId === managedDefaultPlatformModelId,
-          modelProviderCredentialModelId: null,
-          name: model.name,
-          platformModelId: model.platformModelId ?? null,
-          reasoningSupported: model.reasoningSupported,
-          reasoningLevels: model.reasoningLevels,
-        }));
-    }
-
     return (data.ModelProviderCredentialModels ?? []).map((model) => ({
       description: model.description,
       id: model.id,
       isDefault: model.isDefault,
       modelProviderCredentialModelId: model.id,
       name: model.name,
-      platformModelId: null,
       reasoningSupported: model.reasoningSupported,
       reasoningLevels: model.reasoningLevels,
     }));
-  }, [
-    data.ModelProviderCredentialModels,
-    isManagedCredential,
-    managedDefaultPlatformModelId,
-    managedProviderOption,
-  ]);
+  }, [data.ModelProviderCredentialModels]);
 
   useEffect(() => {
     setDetailLabel(providerLabel);
@@ -611,27 +444,15 @@ function ModelProviderCredentialDetailPageContent() {
     };
   }, [providerLabel, setDetailLabel]);
   const providerUsageAggregates = useMemo(() => {
-    if (isManagedCredential) {
-      return UsageMetrics.fromGraphqlAggregates([
-        ...(data.managedTotal ?? []),
-        ...(data.managedDaily ?? []),
-        ...(data.managedMonthly ?? []),
-      ]);
-    }
-
     return UsageMetrics.fromGraphqlAggregates([
       ...(data.providerTotal ?? []),
       ...(data.providerDaily ?? []),
       ...(data.providerMonthly ?? []),
     ]);
   }, [
-    data.managedDaily,
-    data.managedMonthly,
-    data.managedTotal,
     data.providerDaily,
     data.providerMonthly,
     data.providerTotal,
-    isManagedCredential,
   ]);
 
   return (
@@ -674,21 +495,18 @@ function ModelProviderCredentialDetailPageContent() {
                 className="-ml-1 size-4 rounded-sm bg-transparent"
                 imageClassName="size-3"
                 label={providerLabel}
-                providerId={isManagedCredential ? "companyhelm" : String(currentCredential?.modelProvider || "").trim()}
+                providerId={String(currentCredential?.modelProvider || "").trim()}
               />
               <span>{providerLabel}</span>
             </Badge>
             <Badge variant="secondary">
-              {isManagedCredential ? "Managed" : formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
+              {formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
             </Badge>
             <span className="text-xs text-muted-foreground">{credentialStatus}</span>
           </CardDescription>
           <CardAction>
             <div className="flex items-center gap-2">
-              {isManagedCredential ? (
-                <Badge variant="secondary">Read only</Badge>
-              ) : null}
-              {!isManagedCredential && selectedTab === "models" ? (
+              {selectedTab === "models" ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -726,7 +544,7 @@ function ModelProviderCredentialDetailPageContent() {
                   <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
                   Refresh models
                 </Button>
-              ) : !isManagedCredential && selectedTab === "limit" ? (
+              ) : selectedTab === "limit" ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -794,15 +612,10 @@ function ModelProviderCredentialDetailPageContent() {
             <div className="grid gap-6">
               <UsageSummaryPanel
                 aggregates={providerUsageAggregates}
-                description={isManagedCredential
-                  ? "CompanyHelm-managed model usage for this company, including day and month trends from the live usage aggregate table."
-                  : "Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."}
-                scopeId={isManagedCredential ? (data.CompanySettings?.companyId ?? "") : normalizedCredentialId}
-                scopeType={isManagedCredential ? "managed_model_provider_credential" : "model_provider_credential"}
-                spendKind={isManagedCredential || isOauthCredential ? "virtual" : "actual"}
-                title={isManagedCredential
-                  ? "CompanyHelm managed usage"
-                  : `${currentCredential?.name ?? providerLabel} usage`}
+                description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
+                scopeId={normalizedCredentialId}
+                scopeType="model_provider_credential"
+                title={`${currentCredential?.name ?? providerLabel} usage`}
               />
             </div>
           ) : credentialModels.length === 0 ? (
@@ -837,39 +650,13 @@ function ModelProviderCredentialDetailPageContent() {
                     <TableCell>{formatReasoning(model)}</TableCell>
                     <TableCell className="text-right">
                       <Button
-                        disabled={model.isDefault || isSetDefaultModelInFlight || isUpdateCompanySettingsInFlight}
+                        disabled={model.isDefault || isSetDefaultModelInFlight}
                         onClick={async () => {
-                          if (model.isDefault || isSetDefaultModelInFlight || isUpdateCompanySettingsInFlight) {
+                          if (model.isDefault || isSetDefaultModelInFlight) {
                             return;
                           }
 
                           setErrorMessage(null);
-                          if (isManagedCredential) {
-                            await new Promise<void>((resolve, reject) => {
-                              commitUpdateCompanySettings({
-                                variables: {
-                                  input: {
-                                    defaultManagedPlatformModelId: model.platformModelId,
-                                  },
-                                },
-                                onCompleted: (_response, errors) => {
-                                  const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                                  if (nextErrorMessage) {
-                                    reject(new Error(nextErrorMessage));
-                                    return;
-                                  }
-
-                                  setFetchKey((current) => current + 1);
-                                  resolve();
-                                },
-                                onError: reject,
-                              });
-                            }).catch((error: unknown) => {
-                              setErrorMessage(error instanceof Error ? error.message : "Failed to update default model.");
-                            });
-                            return;
-                          }
-
                           await new Promise<void>((resolve, reject) => {
                             commitSetDefaultModel({
                               variables: {

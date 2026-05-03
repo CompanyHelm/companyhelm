@@ -1,5 +1,4 @@
 import { injectable } from "inversify";
-import { CompanyHelmRuntimeProviderAdapter } from "./provider_adapters/companyhelm.ts";
 import { IdentityRuntimeProviderAdapter } from "./provider_adapters/identity.ts";
 import { OpenAiRuntimeProviderAdapter } from "./provider_adapters/openai.ts";
 import type {
@@ -20,7 +19,6 @@ export class RuntimeProviderAdapterRegistry {
   constructor() {
     this.adapters = new Map<string, RuntimeProviderAdapterInterface>([
       ["anthropic", new IdentityRuntimeProviderAdapter("anthropic")],
-      ["companyhelm", new CompanyHelmRuntimeProviderAdapter()],
       ["google", new IdentityRuntimeProviderAdapter("google")],
       ["openai", new OpenAiRuntimeProviderAdapter()],
       ["openai-codex", new IdentityRuntimeProviderAdapter("openai-codex")],

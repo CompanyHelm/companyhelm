@@ -181,7 +181,6 @@ test("SessionProcessExecutionService emits enhanced cleanup diagnostics when ena
     } as never,
     undefined as never,
     companySettingsService as never,
-    undefined as never,
     {
       shouldLogEnhanced(_companyId: string, diagnosticComponent: string) {
         return diagnosticComponent === "session_process_cleanup";
@@ -710,7 +709,6 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       companyBaseSystemPrompt: null,
       companyId: "company-1",
       companyName: "My Organization",
-      isCompanyHelmManagedCredential: false,
       modelId: "gpt-5.4",
       modelProviderCredentialId: "credential-1",
       providerId: "openai",
@@ -739,7 +737,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
   assert.deepEqual(disposeCalls, [runtime]);
 });
 
-test("SessionProcessExecutionService maps CompanyHelm managed credentials to the OpenAI runtime provider", async () => {
+test("SessionProcessExecutionService maps company credentials to the runtime provider", async () => {
   const runtime = { id: "runtime-1" };
   const createRuntimeCalls: unknown[] = [];
   let selectCallCount = 0;
@@ -769,8 +767,7 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelCredentialSource: "platform",
-                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
                         ownerUserId: null,
                         status: "queued",
@@ -816,7 +813,7 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
                     async where() {
                       return [{
                         modelId: "gpt-5.4",
-                        platformModelProviderCredentialId: "platform-credential-1",
+                        modelProviderCredentialId: "credential-1",
                       }];
                     },
                   };
@@ -831,8 +828,8 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
                     async where() {
                       return [{
                         baseUrl: null,
-                        encryptedApiKey: "platform-openai-key",
-                        modelProvider: "companyhelm",
+                        encryptedApiKey: "sk-openai",
+                        modelProvider: "openai",
                       }];
                     },
                   };
@@ -936,13 +933,6 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
     } as never,
     undefined as never,
     companySettingsService as never,
-    {
-      async checkCompanyHasPositiveBalance() {
-        return {
-          allowed: true,
-        };
-      },
-    } as never,
   );
 
   await service.execute("company-1", "session-1");
@@ -952,13 +942,12 @@ test("SessionProcessExecutionService maps CompanyHelm managed credentials to the
       agentId: "agent-1",
       agentName: "Support Agent",
       agentSystemPrompt: undefined,
-      apiKey: "platform-openai-key",
+      apiKey: "sk-openai",
       companyBaseSystemPrompt: null,
       companyId: "company-1",
       companyName: "My Organization",
-      isCompanyHelmManagedCredential: true,
       modelId: "gpt-5.4",
-      modelProviderCredentialId: "platform-credential-1",
+      modelProviderCredentialId: "credential-1",
       providerId: "openai",
       reasoningLevel: "high",
     },
@@ -1231,8 +1220,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelCredentialSource: "platform",
-                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
                         ownerUserId: null,
                         status: "queued",
@@ -1278,7 +1266,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                     async where() {
                       return [{
                         modelId: "gpt-5.4",
-                        platformModelProviderCredentialId: "platform-credential-1",
+                        modelProviderCredentialId: "credential-1",
                       }];
                     },
                   };
@@ -1406,13 +1394,6 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     } as never,
     undefined as never,
     companySettingsService as never,
-    {
-      async checkCompanyHasPositiveBalance() {
-        return {
-          allowed: true,
-        };
-      },
-    } as never,
   );
 
   await assert.rejects(
@@ -1655,221 +1636,6 @@ test("SessionProcessExecutionService clears stale queued work when the session s
   }]);
 });
 
-test("SessionProcessExecutionService clears queued work when the managed provider budget is exhausted", async () => {
-  const budgetChecks: Array<{ companyId: string }> = [];
-  const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
-  const publishedChannels: string[] = [];
-  const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
-  let selectCallCount = 0;
-  const service = new SessionProcessExecutionService(
-    {
-      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
-        assert.equal(companyId, "company-1");
-        return callback({
-          async execute() {
-            return undefined;
-          },
-          select() {
-            selectCallCount += 1;
-            if (selectCallCount === 1) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        agentId: "agent-1",
-                        currentModelCredentialSource: "platform",
-                        currentPlatformModelProviderCredentialModelId: "platform-model-row-1",
-                        currentReasoningLevel: "high",
-                        ownerUserId: null,
-                        status: "queued",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 2) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        name: "Support Agent",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 3) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        name: "My Organization",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 4) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        modelId: "gpt-5.4",
-                        platformModelProviderCredentialId: "platform-credential-1",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 5) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        baseUrl: null,
-                        encryptedApiKey: "platform-openai-key",
-                        modelProvider: "openai",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            throw new Error("Unexpected select call.");
-          },
-        });
-      },
-    } as never,
-    {
-      child() {
-        return {
-          debug() {},
-          error() {},
-          info() {},
-        };
-      },
-    } as never,
-    {
-      async createRuntime() {
-        throw new Error("createRuntime should not run after a budget denial.");
-      },
-      async prompt() {
-        throw new Error("prompt should not run after a budget denial.");
-      },
-    } as never,
-    {
-      async getClient() {
-        return {
-          async publish(channel: string) {
-            publishedChannels.push(channel);
-            return 1;
-          },
-        };
-      },
-      async getSubscriberClient() {
-        throw new Error("Budget denial should not subscribe to Redis.");
-      },
-    } as never,
-    {
-      async acquire(companyId: string, sessionId: string) {
-        return {
-          companyId,
-          sessionId,
-          token: "lease-token",
-        };
-      },
-      async heartbeat() {
-        return true;
-      },
-      async release(handle: { companyId: string; sessionId: string; token: string }) {
-        releaseCalls.push(handle);
-      },
-    } as never,
-    {
-      async enqueueSessionWake() {
-        throw new Error("Budget denial should not enqueue wake jobs.");
-      },
-    } as never,
-    new SessionProcessQueuedNames(),
-    {
-      async listProcessable() {
-        return [{
-          createdAt: new Date("2026-03-26T12:00:00.000Z"),
-          id: "queued-1",
-          images: [],
-          sessionId: "session-1",
-          shouldSteer: false,
-          status: "pending",
-          text: "Investigate the regression.",
-          updatedAt: new Date("2026-03-26T12:00:00.000Z"),
-        }];
-      },
-      async deleteAllForSession(_transactionProvider: unknown, companyId: string, sessionId: string) {
-        clearQueuedCalls.push({
-          companyId,
-          sessionId,
-        });
-      },
-      async listPendingSteer() {
-        throw new Error("listPendingSteer should not run after a budget denial.");
-      },
-      async markProcessing() {
-        throw new Error("markProcessing should not run after a budget denial.");
-      },
-      async deleteProcessed() {
-        throw new Error("deleteProcessed should not run after a budget denial.");
-      },
-      async markPending() {
-        throw new Error("markPending should not run after a budget denial.");
-      },
-      async hasPendingMessages() {
-        throw new Error("hasPendingMessages should not run after a budget denial.");
-      },
-    } as never,
-    undefined as never,
-    companySettingsService as never,
-    {
-      async checkCompanyHasPositiveBalance(_transactionProvider: unknown, input: { companyId: string }) {
-        budgetChecks.push(input);
-        return {
-          allowed: false,
-          balanceNanoUsd: 0,
-          message: "CompanyHelm AI wallet balance is depleted for this company.",
-        };
-      },
-    } as never,
-  );
-
-  await service.execute("company-1", "session-1");
-
-  assert.deepEqual(budgetChecks, [{
-    companyId: "company-1",
-  }]);
-  assert.deepEqual(clearQueuedCalls, [{
-    companyId: "company-1",
-    sessionId: "session-1",
-  }]);
-  assert.deepEqual(publishedChannels, ["company:company-1:session:session-1:queued:update"]);
-  assert.deepEqual(releaseCalls, [{
-    companyId: "company-1",
-    sessionId: "session-1",
-    token: "lease-token",
-  }]);
-});
 
 test("SessionProcessExecutionService aborts the active prompt when an interrupt signal arrives", async () => {
   const runtime = { id: "runtime-1" };

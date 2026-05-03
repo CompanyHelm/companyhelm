@@ -11,7 +11,6 @@ export class ModelRegistry {
   private static readonly OPENAI_REASONING_LEVELS = ["low", "medium", "high", "xhigh"];
 
   private static defaultModels: Record<string, string> = {
-    companyhelm: "gpt-5.4",
     openai: "gpt-5.4",
     "openai-codex": "gpt-5.4",
     anthropic: "claude-opus-4-6",
@@ -20,7 +19,6 @@ export class ModelRegistry {
   };
 
   private static defaultReasoningLevels: Record<string, string> = {
-    companyhelm: "high",
     openai: "high",
     "openai-codex": "high",
     google: "high",
@@ -116,21 +114,12 @@ export class ModelRegistry {
    * and downstream persistence stay deterministic across requests.
    */
   getModelsForProvider(provider: string): ModelProviderModel[] {
-    const normalizedProvider = this.resolveCatalogProvider(provider);
+    const normalizedProvider = String(provider || "").trim();
     if (!normalizedProvider) {
       throw new Error("Model provider is required.");
     }
 
     return this.models.filter((model) => model.provider === normalizedProvider);
-  }
-
-  private resolveCatalogProvider(provider: string): string {
-    const normalizedProvider = String(provider || "").trim();
-    if (normalizedProvider === "companyhelm") {
-      return "openai";
-    }
-
-    return normalizedProvider;
   }
 
   getDefaultModelForProvider(provider: string): string | null {

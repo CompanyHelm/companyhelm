@@ -37,9 +37,7 @@ const agentDetailPageQueryNode = graphql`
       id
       name
       title
-      modelCredentialSource
       llmModelId
-      platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
@@ -153,16 +151,12 @@ const agentDetailPageQueryNode = graphql`
     }
     agentTotal: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: total }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -173,21 +167,16 @@ const agentDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     agentDaily: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -198,21 +187,16 @@ const agentDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
     agentMonthly: LlmUsageAggregates(input: { scopeType: agent, agentId: $agentId, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
-      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
-      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
-      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
-      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -223,7 +207,6 @@ const agentDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
-      totalCostNanoVirtualUsd
       totalTokens
     }
   }
@@ -235,9 +218,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       id
       name
       title
-      modelCredentialSource
       llmModelId
-      platformModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
@@ -1001,7 +982,6 @@ function AgentDetailPageContent() {
           description="Agent-specific rollup across every session owned by this agent, including interrupted and completed assistant turns."
           scopeId={agent.id}
           scopeType="agent"
-          spendKind="split"
           title={`${agent.name} usage`}
         />
       ) : (

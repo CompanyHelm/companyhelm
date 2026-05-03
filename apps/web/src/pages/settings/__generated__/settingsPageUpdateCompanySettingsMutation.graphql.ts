@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<01729f51d14c3e8c8e58b0c1d82cbb6e>>
+ * @generated SignedSource<<88d1e2769281f93e4e22994673d2c92b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,6 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type UpdateCompanySettingsInput = {
   baseSystemPrompt?: string | null | undefined;
-  defaultManagedPlatformModelId?: string | null | undefined;
 };
 export type settingsPageUpdateCompanySettingsMutation$variables = {
   input: UpdateCompanySettingsInput;

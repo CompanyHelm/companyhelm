@@ -7,17 +7,6 @@ import {
 } from "@tanstack/react-router";
 import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
-import { AdminCompaniesPage } from "./pages/admin/companies_page";
-import { AdminCompanyDetailPage } from "./pages/admin/company_detail_page";
-import { AdminCompanyWalletDetailPage } from "./pages/admin/company_wallet_detail_page";
-import { AdminCompanyWalletsPage } from "./pages/admin/company_wallets_page";
-import { AdminDashboardPage } from "./pages/admin/dashboard_page";
-import { AdminLlmCredentialDetailPage } from "./pages/admin/llm_credential_detail_page";
-import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
-import { AdminModelDetailPage } from "./pages/admin/model_detail_page";
-import { AdminModelsPage } from "./pages/admin/models_page";
-import { AdminUserDetailPage } from "./pages/admin/user_detail_page";
-import { AdminUsersPage } from "./pages/admin/users_page";
 import { CompaniesRoute } from "./pages/auth/companies_route";
 import { SignedUpPage } from "./pages/auth/signed_up_page";
 import { CompanyCreationPage } from "./pages/company_creation_page";
@@ -91,10 +80,6 @@ type ModelProviderCredentialDetailRouteSearch = {
   tab?: "limit" | "models" | "usage";
 };
 
-type AdminLlmCredentialDetailRouteSearch = {
-  tab?: "limit" | "models";
-};
-
 type WorkflowDetailRouteSearch = {
   tab?: "overview" | "runs";
 };
@@ -112,7 +97,7 @@ type ConversationsRouteSearch = {
 };
 
 type SettingsRouteSearch = {
-  tab?: "tasks" | "AI" | "company" | "billing" | "members";
+  tab?: "tasks" | "AI" | "company" | "members";
 };
 
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
@@ -178,16 +163,6 @@ function validateModelProviderCredentialDetailRouteSearch(
   };
 }
 
-function validateAdminLlmCredentialDetailRouteSearch(
-  search: Record<string, unknown>,
-): AdminLlmCredentialDetailRouteSearch {
-  return {
-    tab: search.tab === "limit" || search.tab === "models"
-      ? search.tab
-      : undefined,
-  };
-}
-
 function validateWorkflowDetailRouteSearch(search: Record<string, unknown>): WorkflowDetailRouteSearch {
   return {
     tab: search.tab === "overview" || search.tab === "runs"
@@ -230,12 +205,6 @@ function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsR
   if (search.tab === "company") {
     return {
       tab: "company",
-    };
-  }
-
-  if (search.tab === "billing") {
-    return {
-      tab: "billing",
     };
   }
 
@@ -301,97 +270,6 @@ const organizationDashboardRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/"),
   component: DashboardPage,
-});
-
-const adminDashboardRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/admin",
-  component: AdminDashboardPage,
-});
-
-const adminUsersRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/admin/users",
-  component: Outlet,
-});
-
-const adminUsersIndexRoute = createRoute({
-  getParentRoute: () => adminUsersRoute,
-  path: "/",
-  component: AdminUsersPage,
-});
-
-const adminUserDetailRoute = createRoute({
-  getParentRoute: () => adminUsersRoute,
-  path: "$userId" as string,
-  component: AdminUserDetailPage,
-});
-
-const adminCompaniesRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/admin/companies",
-  component: Outlet,
-});
-
-const adminCompaniesIndexRoute = createRoute({
-  getParentRoute: () => adminCompaniesRoute,
-  path: "/",
-  component: AdminCompaniesPage,
-});
-
-const adminCompanyDetailRoute = createRoute({
-  getParentRoute: () => adminCompaniesRoute,
-  path: "$companyId" as string,
-  component: AdminCompanyDetailPage,
-});
-
-const adminCompanyWalletsRoute = createRoute({
-  getParentRoute: () => adminCompaniesRoute,
-  path: "$companyId/wallets" as string,
-  component: AdminCompanyWalletsPage,
-});
-
-const adminCompanyWalletDetailRoute = createRoute({
-  getParentRoute: () => adminCompaniesRoute,
-  path: "$companyId/wallets/$walletId" as string,
-  component: AdminCompanyWalletDetailPage,
-});
-
-const adminModelsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/admin/models",
-  component: Outlet,
-});
-
-const adminModelsIndexRoute = createRoute({
-  getParentRoute: () => adminModelsRoute,
-  path: "/",
-  component: AdminModelsPage,
-});
-
-const adminModelDetailRoute = createRoute({
-  getParentRoute: () => adminModelsRoute,
-  path: "$platformModelId" as string,
-  component: AdminModelDetailPage,
-});
-
-const adminLlmCredentialsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/admin/llm-credentials",
-  component: Outlet,
-});
-
-const adminLlmCredentialsIndexRoute = createRoute({
-  getParentRoute: () => adminLlmCredentialsRoute,
-  path: "/",
-  component: AdminLlmCredentialsPage,
-});
-
-const adminLlmCredentialModelsRoute = createRoute({
-  getParentRoute: () => adminLlmCredentialsRoute,
-  path: "$platformCredentialId" as string,
-  validateSearch: validateAdminLlmCredentialDetailRouteSearch,
-  component: AdminLlmCredentialDetailPage,
 });
 
 const flagsRoute = createRoute({
@@ -655,25 +533,6 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
-      adminDashboardRoute,
-      adminUsersRoute.addChildren([
-        adminUsersIndexRoute,
-        adminUserDetailRoute,
-      ]),
-      adminCompaniesRoute.addChildren([
-        adminCompaniesIndexRoute,
-        adminCompanyDetailRoute,
-        adminCompanyWalletsRoute,
-        adminCompanyWalletDetailRoute,
-      ]),
-      adminModelsRoute.addChildren([
-        adminModelsIndexRoute,
-        adminModelDetailRoute,
-      ]),
-      adminLlmCredentialsRoute.addChildren([
-        adminLlmCredentialsIndexRoute,
-        adminLlmCredentialModelsRoute,
-      ]),
       organizationRoute.addChildren([
         organizationDashboardRoute,
         flagsRoute,

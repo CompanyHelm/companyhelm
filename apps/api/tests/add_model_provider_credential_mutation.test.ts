@@ -333,7 +333,6 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues[1]?.description, "Latest frontier agentic coding model.");
   assert.deepEqual(database.insertedValues[1]?.reasoningLevels, ["low", "medium"]);
   assert.equal(database.insertedValues[2]?.companyId, "company-123");
-  assert.equal(database.insertedValues[2]?.modelCredentialSource, "user_provided");
   assert.equal(database.insertedValues[2]?.modelProviderCredentialId, "credential-1");
   assert.deepEqual(modelManager.calls, [{
     provider: "openai",
@@ -418,13 +417,13 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
   await app.close();
 });
 
-test("GraphQL AddModelProviderCredential mutation rejects the CompanyHelm managed provider", async () => {
+test("GraphQL AddModelProviderCredential mutation rejects the removed CompanyHelm managed provider", async () => {
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
   const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
-      throw new Error("fetchModels should not be called for the CompanyHelm provider");
+      throw new Error("fetchModels should not be called for an unsupported provider");
     },
   };
   const authProvider = {
@@ -485,7 +484,7 @@ test("GraphQL AddModelProviderCredential mutation rejects the CompanyHelm manage
   assert.equal(response.statusCode, 200);
   const document = response.json();
   assert.equal(document.data, null);
-  assert.equal(document.errors?.[0]?.message, "CompanyHelm model provider is managed by the system.");
+  assert.equal(document.errors?.[0]?.message, "Unsupported model provider: companyhelm");
   assert.equal(database.insertedValues.length, 0);
 
   await app.close();

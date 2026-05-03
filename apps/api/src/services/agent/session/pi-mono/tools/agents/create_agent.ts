@@ -24,7 +24,7 @@ export class AgentCreateAgentTool {
       }),
     ])),
     modelProviderCredentialModelId: Type.String({
-      description: "Model option id from list_agents providerOptions.models. This can be a managed CompanyHelm model or a user-provided provider model.",
+      description: "Model option id from list_agents providerOptions.models.",
     }),
     name: Type.String({
       description: "Name of the new agent.",

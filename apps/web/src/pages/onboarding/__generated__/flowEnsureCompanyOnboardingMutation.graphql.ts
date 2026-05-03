@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2edd058b4daef9a987bb3c89b24f91c1>>
+ * @generated SignedSource<<ca7d33df9a37835c933610b03010f680>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CompanyOnboardingLlmSetupStatus = "company_managed" | "pending" | "skipped" | "third_party" | "%future added value";
+export type CompanyOnboardingLlmSetupStatus = "pending" | "skipped" | "third_party" | "%future added value";
 export type CompanyOnboardingSetupStatus = "completed" | "pending" | "skipped" | "%future added value";
 export type CompanyOnboardingStatus = "completed" | "in_progress" | "not_started" | "skipped" | "%future added value";
 export type flowEnsureCompanyOnboardingMutation$variables = Record<PropertyKey, never>;

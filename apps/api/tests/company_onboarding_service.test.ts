@@ -5,7 +5,6 @@ import {
   companyGithubInstallations,
   companyOnboardings,
   modelProviderCredentials,
-  platformModelRoutes,
   workflowDefinitions,
 } from "../src/db/schema.ts";
 import {
@@ -18,7 +17,6 @@ type CompanyOnboardingRow = CompanyOnboardingRecord;
 
 type ModelCredentialRow = {
   id: string;
-  isManaged: boolean;
 };
 
 type OnboardingWorkflowCall = {
@@ -40,19 +38,16 @@ class CompanyOnboardingServiceTestHarness {
   }> = [];
   private finalizeCount = 0;
   private readonly githubInstallations: Array<{ companyId: string }>;
-  private readonly hasManagedLlmProvider: boolean;
   private readonly modelCredentials: ModelCredentialRow[];
   private readonly onboardingRows: CompanyOnboardingRow[];
   private readonly workflowCalls: OnboardingWorkflowCall[] = [];
 
   constructor(params: {
     githubInstallations?: Array<{ companyId: string }>;
-    hasManagedLlmProvider?: boolean;
     modelCredentials?: ModelCredentialRow[];
     onboardingRows?: CompanyOnboardingRow[];
   } = {}) {
     this.githubInstallations = [...(params.githubInstallations ?? [])];
-    this.hasManagedLlmProvider = params.hasManagedLlmProvider ?? true;
     this.modelCredentials = [...(params.modelCredentials ?? [])];
     this.onboardingRows = [...(params.onboardingRows ?? [])];
   }
@@ -91,7 +86,6 @@ class CompanyOnboardingServiceTestHarness {
 
   buildTransactionProvider() {
     const githubInstallations = this.githubInstallations;
-    const hasManagedLlmProvider = this.hasManagedLlmProvider;
     const modelCredentials = this.modelCredentials;
     const onboardingRows = this.onboardingRows;
 
@@ -168,10 +162,6 @@ class CompanyOnboardingServiceTestHarness {
                             id: credential.id,
                           }));
                         }
-                        if (table === platformModelRoutes) {
-                          return hasManagedLlmProvider ? [{ id: "route-1" }] : [];
-                        }
-
                         return [];
                       },
                     };
@@ -268,7 +258,7 @@ test("CompanyOnboardingService creates a default onboarding row with pending set
 test("CompanyOnboardingService saves static setup choices before the CEO chat starts", async () => {
   const harness = new CompanyOnboardingServiceTestHarness({
     githubInstallations: [{ companyId: "company-1" }],
-    modelCredentials: [{ id: "credential-1", isManaged: false }],
+    modelCredentials: [{ id: "credential-1" }],
   });
   const service = harness.buildService();
 
@@ -293,25 +283,8 @@ test("CompanyOnboardingService saves static setup choices before the CEO chat st
   assert.ok(onboarding.llmCompletedAt instanceof Date);
 });
 
-test("CompanyOnboardingService records CompanyHelm-managed setup without requiring a preexisting credential", async () => {
+test("CompanyOnboardingService requires a company LLM credential before marking third-party setup complete", async () => {
   const harness = new CompanyOnboardingServiceTestHarness();
-  const service = harness.buildService();
-
-  await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
-  const onboarding = await service.updateSetup(harness.buildTransactionProvider() as never, {
-    companyId: "company-1",
-    llmSetupStatus: "company_managed",
-  });
-
-  assert.equal(onboarding.llmSetupStatus, "company_managed");
-  assert.ok(onboarding.llmCompletedAt instanceof Date);
-  assert.equal(onboarding.llmSkippedAt, null);
-});
-
-test("CompanyOnboardingService requires third-party LLM credentials when managed access is unavailable", async () => {
-  const harness = new CompanyOnboardingServiceTestHarness({
-    hasManagedLlmProvider: false,
-  });
   const service = harness.buildService();
 
   await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
@@ -319,9 +292,9 @@ test("CompanyOnboardingService requires third-party LLM credentials when managed
   await assert.rejects(
     service.updateSetup(harness.buildTransactionProvider() as never, {
       companyId: "company-1",
-      llmSetupStatus: "company_managed",
+      llmSetupStatus: "third_party",
     }),
-    /Add an LLM provider credential before continuing/,
+    /Add a third-party model provider credential before continuing/,
   );
   assert.equal(harness.loadOnboarding()?.llmSetupStatus, "pending");
 });
@@ -343,13 +316,13 @@ test("CompanyOnboardingService resolves first-run static setup defaults before C
   assert.equal(onboarding.status, "in_progress");
   assert.equal(onboarding.companyMission, null);
   assert.equal(onboarding.githubSetupStatus, "skipped");
-  assert.equal(onboarding.llmSetupStatus, "company_managed");
+  assert.equal(onboarding.llmSetupStatus, "skipped");
   assert.ok(onboarding.missionSkippedAt instanceof Date);
   assert.ok(onboarding.githubSkippedAt instanceof Date);
-  assert.ok(onboarding.llmCompletedAt instanceof Date);
+  assert.ok(onboarding.llmSkippedAt instanceof Date);
   assert.deepEqual(harness.listEnsureOnboardingAssetCalls(), [{
     companyId: "company-1",
-    llmSetupStatus: "company_managed",
+    llmSetupStatus: "skipped",
   }]);
   assert.deepEqual(harness.listWorkflowCalls()[0]?.inputValues, []);
 });
@@ -359,7 +332,6 @@ test("CompanyOnboardingService starts the CEO workflow without static setup inpu
     githubInstallations: [{ companyId: "company-1" }],
     modelCredentials: [{
       id: "credential-1",
-      isManaged: false,
     }],
     onboardingRows: [{
       agentId: null,
@@ -422,9 +394,9 @@ test("CompanyOnboardingService returns existing in-progress onboarding without f
       githubCompletedAt: null,
       githubSetupStatus: "skipped",
       githubSkippedAt: new Date("2026-04-22T10:05:00.000Z"),
-      llmCompletedAt: new Date("2026-04-22T10:06:00.000Z"),
-      llmSetupStatus: "company_managed",
-      llmSkippedAt: null,
+      llmCompletedAt: null,
+      llmSetupStatus: "skipped",
+      llmSkippedAt: new Date("2026-04-22T10:06:00.000Z"),
       missionSkippedAt: new Date("2026-04-22T10:07:00.000Z"),
       sessionId: "session-1",
       skippedAt: null,
@@ -457,7 +429,6 @@ test("CompanyOnboardingService starts the CEO workflow when mission is skipped",
     githubInstallations: [{ companyId: "company-1" }],
     modelCredentials: [{
       id: "credential-1",
-      isManaged: true,
     }],
     onboardingRows: [{
       agentId: null,

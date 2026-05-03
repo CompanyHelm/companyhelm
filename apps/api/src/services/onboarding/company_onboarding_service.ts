@@ -5,7 +5,6 @@ import {
   companyGithubInstallations,
   companyOnboardings,
   modelProviderCredentials,
-  platformModelRoutes,
   workflowDefinitions,
 } from "../../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
@@ -15,7 +14,7 @@ import type { WorkflowRunCreateInput, WorkflowRunInputValue, WorkflowRunRecord }
 
 export type CompanyOnboardingStatus = "not_started" | "in_progress" | "completed" | "skipped";
 export type CompanyOnboardingSetupStatus = "pending" | "completed" | "skipped";
-export type CompanyOnboardingLlmSetupStatus = "pending" | "third_party" | "company_managed" | "skipped";
+export type CompanyOnboardingLlmSetupStatus = "pending" | "third_party" | "skipped";
 
 export type CompanyOnboardingRecord = {
   agentId: string | null;
@@ -219,9 +218,6 @@ export class CompanyOnboardingService {
             throw new Error("Add a third-party model provider credential before continuing.");
           }
         }
-        if (input.llmSetupStatus === "company_managed" && !await this.hasCompanyManagedPlatformModel(tx)) {
-          throw new Error("Add an LLM provider credential before continuing.");
-        }
         if (input.llmSetupStatus === "skipped") {
           values.llmCompletedAt = null;
           values.llmSkippedAt = new Date();
@@ -411,13 +407,10 @@ export class CompanyOnboardingService {
     }
 
     if (onboarding.llmSetupStatus === "pending") {
-      if (!await this.hasCompanyManagedPlatformModel(tx)) {
-        throw new Error("CompanyHelm-managed model access is unavailable.");
-      }
-
-      values.llmCompletedAt = new Date();
-      values.llmSetupStatus = "company_managed";
-      values.llmSkippedAt = null;
+      const hasThirdPartyCredential = await this.hasThirdPartyCredential(tx, onboarding.companyId);
+      values.llmCompletedAt = hasThirdPartyCredential ? new Date() : null;
+      values.llmSetupStatus = hasThirdPartyCredential ? "third_party" : "skipped";
+      values.llmSkippedAt = hasThirdPartyCredential ? null : new Date();
       hasChanges = true;
     }
 
@@ -505,18 +498,6 @@ export class CompanyOnboardingService {
       .limit(1) as ExistenceRow[];
 
     return Boolean(credential);
-  }
-
-  private async hasCompanyManagedPlatformModel(tx: AppRuntimeTransaction): Promise<boolean> {
-    const [route] = await tx
-      .select({
-        id: platformModelRoutes.id,
-      })
-      .from(platformModelRoutes)
-      .where(eq(platformModelRoutes.platformModelId, platformModelRoutes.platformModelId))
-      .limit(1);
-
-    return Boolean(route);
   }
 
   private selection() {

@@ -1,11 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { PlatformAdminAccess } from "../../../../db/platform_admin_access.ts";
 import {
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelProviderCredentialModels,
-  platformModelProviderCredentials,
 } from "../../../../db/schema.ts";
 import type { SelectableDatabase } from "../session_manager_service_types.ts";
 import { RuntimeProviderAdapterRegistry } from "./provider_adapter_registry.ts";
@@ -17,9 +14,8 @@ import type {
 
 type ModelRow = {
   modelId: string;
-  modelProviderCredentialId: string | null;
+  modelProviderCredentialId: string;
   name?: string;
-  platformModelProviderCredentialId: string | null;
   reasoningSupported?: boolean;
 };
 
@@ -30,9 +26,8 @@ type CredentialRow = {
 };
 
 /**
- * Resolves the persisted session model selection into the concrete provider, model, and API key
- * required by PI Mono. Platform sessions use the selected route credential; CompanyHelm remains a
- * product/provider label unless a legacy credential row still stores it as the concrete provider.
+ * Resolves the persisted session model selection into the concrete company-provided provider,
+ * model, and API key required by PI Mono.
  */
 @injectable()
 export class RuntimeModelResolver implements RuntimeModelResolverInterface {
@@ -50,23 +45,20 @@ export class RuntimeModelResolver implements RuntimeModelResolverInterface {
     companyId: string,
     input: RuntimeModelResolverInput,
   ): Promise<RuntimeModelResolution> {
-    const [modelRow] = input.currentModelCredentialSource === "platform"
-      ? await this.loadPlatformModelRow(
-        selectableDatabase,
-        input.currentPlatformModelProviderCredentialModelId ?? "",
-      )
-      : await this.loadUserProvidedModelRow(
-        selectableDatabase,
-        companyId,
-        input.currentModelProviderCredentialModelId ?? "",
-      );
+    const [modelRow] = await this.loadUserProvidedModelRow(
+      selectableDatabase,
+      companyId,
+      input.currentModelProviderCredentialModelId ?? "",
+    );
     if (!modelRow) {
       throw new Error("Session model not found.");
     }
 
-    const [credentialRow] = input.currentModelCredentialSource === "platform"
-      ? await this.loadPlatformCredentialRow(selectableDatabase, modelRow.platformModelProviderCredentialId ?? "")
-      : await this.loadUserProvidedCredentialRow(selectableDatabase, companyId, modelRow.modelProviderCredentialId ?? "");
+    const [credentialRow] = await this.loadUserProvidedCredentialRow(
+      selectableDatabase,
+      companyId,
+      modelRow.modelProviderCredentialId,
+    );
     if (!credentialRow) {
       throw new Error("Session credential not found.");
     }
@@ -76,7 +68,6 @@ export class RuntimeModelResolver implements RuntimeModelResolverInterface {
       baseUrl: credentialRow.baseUrl,
       modelId: modelRow.modelId,
     });
-    const resolvedCredentialId = modelRow.platformModelProviderCredentialId ?? modelRow.modelProviderCredentialId;
 
     return {
       apiKey: runtimeProvider.apiKey,
@@ -84,41 +75,10 @@ export class RuntimeModelResolver implements RuntimeModelResolverInterface {
       credentialProviderId: credentialRow.modelProvider,
       modelId: modelRow.modelId,
       ...(modelRow.name ? { modelName: modelRow.name } : {}),
-      modelProviderCredentialId: resolvedCredentialId ?? "",
+      modelProviderCredentialId: modelRow.modelProviderCredentialId,
       providerId: runtimeProvider.providerId,
       ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
     };
-  }
-
-  private async loadPlatformModelRow(
-    selectableDatabase: SelectableDatabase,
-    platformModelProviderCredentialModelId: string,
-  ): Promise<ModelRow[]> {
-    await PlatformAdminAccess.enable(selectableDatabase);
-    return selectableDatabase
-      .select({
-        modelId: platformModelProviderCredentialModels.modelId,
-        platformModelProviderCredentialId: platformModelProviderCredentialModels.platformModelProviderCredentialId,
-        name: platformModelProviderCredentialModels.name,
-        reasoningSupported: platformModelProviderCredentialModels.reasoningSupported,
-      })
-      .from(platformModelProviderCredentialModels)
-      .where(eq(platformModelProviderCredentialModels.id, platformModelProviderCredentialModelId)) as Promise<ModelRow[]>;
-  }
-
-  private async loadPlatformCredentialRow(
-    selectableDatabase: SelectableDatabase,
-    platformModelProviderCredentialId: string,
-  ): Promise<CredentialRow[]> {
-    await PlatformAdminAccess.enable(selectableDatabase);
-    return selectableDatabase
-      .select({
-        baseUrl: platformModelProviderCredentials.baseUrl,
-        encryptedApiKey: platformModelProviderCredentials.encryptedApiKey,
-        modelProvider: platformModelProviderCredentials.modelProvider,
-      })
-      .from(platformModelProviderCredentials)
-      .where(eq(platformModelProviderCredentials.id, platformModelProviderCredentialId)) as Promise<CredentialRow[]>;
   }
 
   private async loadUserProvidedModelRow(

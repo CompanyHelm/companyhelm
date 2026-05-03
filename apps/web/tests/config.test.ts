@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Config } from "../src/config";
 
-test("falls back to the local HTTP GraphQL endpoint by default", () => {
+test("falls back to local auth and the local HTTP GraphQL endpoint by default", () => {
   const originalWindow = globalThis.window;
 
   try {

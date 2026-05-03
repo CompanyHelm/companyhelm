@@ -11,19 +11,15 @@ import {
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModelRoutes,
-  platformModels,
   taskStages,
   workflowDefinitionInputs,
   workflowDefinitions,
   workflowStepDefinitions,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
-import { ModelRegistry } from "../ai_providers/model_registry.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
 import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
-import { CompanyWalletService } from "../wallet/service.ts";
 
 type ComputeProviderDefinitionRecord = {
   companyId: string;
@@ -40,8 +36,7 @@ type ModelProviderCredentialRecord = {
 };
 
 type DefaultProviderSelectionRecord = {
-  modelCredentialSource: "platform" | "user_provided";
-  modelProviderCredentialId: string | null;
+  modelProviderCredentialId: string;
 };
 
 type ModelProviderCredentialModelRecord = {
@@ -49,13 +44,6 @@ type ModelProviderCredentialModelRecord = {
   isDefault: boolean;
   modelId: string;
   modelProviderCredentialId?: string;
-  reasoningLevels: string[] | null;
-};
-
-type PlatformModelRecord = {
-  id: string;
-  isDefault: boolean;
-  modelId: string;
   reasoningLevels: string[] | null;
 };
 
@@ -113,7 +101,7 @@ export class CompanyBootstrapService {
     "Run this workflow in the CEO onboarding chat for newly created companies.",
     "Keep the conversation focused and ask only one question at a time.",
     "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
-    "Assume CompanyHelm-managed model access is active for the first conversation unless the user says otherwise.",
+    "If no model credential is configured, tell the user to add one before starting agent work.",
     "Treat GitHub access, custom LLM credentials, skill imports, agent creation, and task creation as just-in-time setup.",
     "Do not create agents, import skills, connect GitHub, or create tasks without explicit user confirmation. Explain what will happen before doing it.",
   ].join("\n");
@@ -126,7 +114,6 @@ export class CompanyBootstrapService {
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
       "Welcome the user to CompanyHelm as their CEO.",
-      "Explain briefly that CompanyHelm-managed model access is already available for this setup conversation.",
       "Ask exactly one question: what does their business do, and what goal do they want to make progress on today?",
       "Use the answer as the working business context for later recommendations in this chat.",
       "Do not ask about GitHub, skills, agents, or tasks until the user has answered the business-and-goal question.",
@@ -158,21 +145,13 @@ export class CompanyBootstrapService {
     stepId: "create-engineer-and-first-task",
   }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
-  private readonly modelRegistry: ModelRegistry;
-  private readonly companyWalletService: CompanyWalletService;
   private readonly systemSkillRegistry = new SystemSkillRegistry();
 
   constructor(
     @inject(CompanyHelmComputeProviderService)
     companyHelmComputeProviderService: CompanyHelmComputeProviderService,
-    @inject(ModelRegistry)
-    modelRegistry: ModelRegistry = new ModelRegistry(),
-    @inject(CompanyWalletService)
-    companyWalletService: CompanyWalletService = new CompanyWalletService(),
   ) {
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
-    this.modelRegistry = modelRegistry;
-    this.companyWalletService = companyWalletService;
   }
 
   async ensureMembership(
@@ -254,7 +233,7 @@ export class CompanyBootstrapService {
     transaction: DatabaseTransactionInterface,
     input: {
       companyId: string;
-      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+      llmSetupStatus: "pending" | "third_party" | "skipped";
     },
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, input.companyId);
@@ -274,14 +253,6 @@ export class CompanyBootstrapService {
       modelSelection,
     );
     await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, input.companyId, seedAgent.id);
-  }
-
-
-  async ensureCompanySubscriptionWallet(
-    transaction: DatabaseTransactionInterface,
-    input: { companyId: string; plan: "free" | "plus" | "pro" },
-  ): Promise<void> {
-    await this.companyWalletService.ensureSubscriptionWalletForCompanyInTransaction(transaction as never, input);
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(
@@ -367,8 +338,6 @@ export class CompanyBootstrapService {
     companyId: string,
     computeProviderDefinitionId: string,
     modelSelection: {
-      defaultModelCredentialSource: "platform" | "user_provided";
-      defaultPlatformModelId: string | null;
       defaultModelProviderCredentialModelId: string | null;
       defaultReasoningLevel: string | null;
     },
@@ -379,8 +348,6 @@ export class CompanyBootstrapService {
         .update(agents)
         .set({
           defaultComputeProviderDefinitionId: computeProviderDefinitionId,
-          defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
-          defaultPlatformModelId: modelSelection.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
           default_reasoning_level: modelSelection.defaultReasoningLevel,
           updated_at: new Date(),
@@ -401,8 +368,6 @@ export class CompanyBootstrapService {
         created_at: now,
         defaultComputeProviderDefinitionId: computeProviderDefinitionId,
         defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
-        defaultModelCredentialSource: modelSelection.defaultModelCredentialSource,
-        defaultPlatformModelId: modelSelection.defaultPlatformModelId,
         defaultModelProviderCredentialModelId: modelSelection.defaultModelProviderCredentialModelId,
         default_reasoning_level: modelSelection.defaultReasoningLevel,
         id: seedAgentId,
@@ -566,35 +531,9 @@ export class CompanyBootstrapService {
     await insertOperation.onConflictDoNothing();
   }
 
-  private async findCompanyHelmDefaultModel(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-    credentialId: string,
-  ): Promise<ModelProviderCredentialModelRecord | null> {
-    const models = await (transaction
-      .select({
-        id: modelProviderCredentialModels.id,
-        isDefault: modelProviderCredentialModels.isDefault,
-        modelId: modelProviderCredentialModels.modelId,
-        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-      })
-      .from(modelProviderCredentialModels)
-      .where(and(
-        eq(modelProviderCredentialModels.companyId, companyId),
-        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
-      )) as unknown as Promise<ModelProviderCredentialModelRecord[]>);
-
-    return models.find((model) => model.isDefault) ?? null;
-  }
-
   private resolveSeedAgentDefaultReasoningLevel(reasoningLevels: string[]): string | null {
     if (reasoningLevels.includes(CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL)) {
       return CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL;
-    }
-
-    const defaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider("companyhelm");
-    if (defaultReasoningLevel && reasoningLevels.includes(defaultReasoningLevel)) {
-      return defaultReasoningLevel;
     }
 
     return reasoningLevels[0] ?? null;
@@ -604,28 +543,11 @@ export class CompanyBootstrapService {
     transaction: DatabaseTransactionInterface,
     input: {
       companyId: string;
-      llmSetupStatus: "pending" | "third_party" | "company_managed" | "skipped";
+      llmSetupStatus: "pending" | "third_party" | "skipped";
     },
-  ): Promise<{
-    defaultModelCredentialSource: "platform" | "user_provided";
-    defaultPlatformModelId: string | null;
-    defaultModelProviderCredentialModelId: string | null;
-    defaultReasoningLevel: string | null;
-  }> {
+  ): Promise<{ defaultModelProviderCredentialModelId: string | null; defaultReasoningLevel: string | null }> {
     const credentials = await this.listModelProviderCredentials(transaction, input.companyId);
     const defaultProviderSelection = await this.loadDefaultProviderSelection(transaction, input.companyId);
-    if (input.llmSetupStatus !== "third_party") {
-      const platformModel = await this.findPreferredPlatformModel(transaction);
-      if (platformModel) {
-        return {
-          defaultModelCredentialSource: "platform",
-          defaultPlatformModelId: platformModel.id,
-          defaultModelProviderCredentialModelId: null,
-          defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(platformModel.reasoningLevels ?? []),
-        };
-      }
-    }
-
     const preferredCredential = this.selectPreferredCredential(credentials, defaultProviderSelection);
     if (preferredCredential) {
       const preferredModel = await this.findPreferredCredentialModel(
@@ -635,25 +557,13 @@ export class CompanyBootstrapService {
       );
       if (preferredModel) {
         return {
-          defaultModelCredentialSource: "user_provided",
-          defaultPlatformModelId: null,
           defaultModelProviderCredentialModelId: preferredModel.id,
           defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
         };
       }
     }
 
-    const fallbackPlatformModel = await this.findPreferredPlatformModel(transaction);
-    if (fallbackPlatformModel) {
-      return {
-        defaultModelCredentialSource: "platform",
-        defaultPlatformModelId: fallbackPlatformModel.id,
-        defaultModelProviderCredentialModelId: null,
-        defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(fallbackPlatformModel.reasoningLevels ?? []),
-      };
-    }
-
-    throw new Error("Company onboarding requires at least one synced model for the selected provider.");
+    throw new Error("Company onboarding requires at least one user-provided synced model.");
   }
 
   private selectPreferredCredential(
@@ -661,39 +571,8 @@ export class CompanyBootstrapService {
     defaultProviderSelection: DefaultProviderSelectionRecord | null,
   ): ModelProviderCredentialRecord | null {
     return credentials.find((credential) =>
-      defaultProviderSelection?.modelCredentialSource === "user_provided"
-      && defaultProviderSelection.modelProviderCredentialId === credential.id
+      defaultProviderSelection?.modelProviderCredentialId === credential.id
     ) ?? credentials[0] ?? null;
-  }
-
-  private async findPreferredPlatformModel(
-    transaction: DatabaseTransactionInterface,
-  ): Promise<PlatformModelRecord | null> {
-    const routeRecords = await transaction
-      .select({
-        platformModelId: platformModelRoutes.platformModelId,
-      })
-      .from(platformModelRoutes)
-      .where(eq(platformModelRoutes.platformModelId, platformModelRoutes.platformModelId)) as unknown as Array<{
-        platformModelId: string;
-      }>;
-    const platformModelIdsWithRoutes = new Set(routeRecords.map((routeRecord) => routeRecord.platformModelId));
-    if (platformModelIdsWithRoutes.size === 0) {
-      return null;
-    }
-
-    const models = await transaction
-      .select({
-        id: platformModels.id,
-        isDefault: platformModels.isDefault,
-        modelId: platformModels.modelId,
-        reasoningLevels: platformModels.reasoningLevels,
-      })
-      .from(platformModels)
-      .where(eq(platformModels.isAvailable, true)) as unknown as PlatformModelRecord[];
-    const routedModels = models.filter((model) => platformModelIdsWithRoutes.has(model.id));
-
-    return routedModels.find((model) => model.isDefault) ?? routedModels[0] ?? null;
   }
 
   private async listModelProviderCredentials(
@@ -719,7 +598,6 @@ export class CompanyBootstrapService {
   ): Promise<DefaultProviderSelectionRecord | null> {
     const [defaultProviderSelection] = await transaction
       .select({
-        modelCredentialSource: companyModelProviderDefaults.modelCredentialSource,
         modelProviderCredentialId: companyModelProviderDefaults.modelProviderCredentialId,
       })
       .from(companyModelProviderDefaults)
@@ -733,17 +611,8 @@ export class CompanyBootstrapService {
     transaction: DatabaseTransactionInterface,
     companyId: string,
   ): Promise<void> {
-    const now = new Date();
-    const insertOperation = (transaction as BootstrapInsertableDatabase)
-      .insert(companyModelProviderDefaults)
-      .values({
-        companyId,
-        createdAt: now,
-        modelCredentialSource: "platform",
-        modelProviderCredentialId: null,
-        updatedAt: now,
-      }) as BootstrapInsertOperation;
-    await insertOperation.onConflictDoNothing();
+    void transaction;
+    void companyId;
   }
 
   private async findPreferredCredentialModel(

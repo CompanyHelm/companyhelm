@@ -1,12 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { PlatformAdminAccess } from "../../db/platform_admin_access.ts";
 import {
   agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
-  platformModels,
 } from "../../db/schema.ts";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
@@ -31,8 +29,6 @@ type AgentRecord = {
   id: string;
   name: string;
   title: string | null;
-  defaultModelCredentialSource: "platform" | "user_provided";
-  defaultPlatformModelId: string | null;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
@@ -44,9 +40,7 @@ type AgentRecord = {
 
 type ModelRecord = {
   id: string;
-  modelCredentialSource: "platform" | "user_provided";
   modelProviderCredentialId: string;
-  platformModelProviderCredentialId: string | null;
   name: string;
   reasoningLevels: string[] | null;
 };
@@ -75,10 +69,7 @@ type GraphqlAgentRecord = {
   id: string;
   name: string;
   title: string | null;
-  modelCredentialSource: "platform" | "user_provided";
   llmModelId: string | null;
-  platformModelId: string | null;
-  platformModelProviderCredentialModelId: string | null;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
   modelProvider: ModelProviderId | null;
@@ -218,9 +209,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .set({
           name: arguments_.input.name,
           title: UpdateAgentMutation.resolveTitle(arguments_.input.title),
-          defaultModelCredentialSource: modelRecord.modelCredentialSource,
-          defaultPlatformModelId: modelRecord.modelCredentialSource === "platform" ? modelRecord.id : null,
-          defaultModelProviderCredentialModelId: modelRecord.modelCredentialSource === "user_provided" ? modelRecord.id : null,
+          defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
           default_reasoning_level: reasoningLevel,
@@ -235,8 +224,6 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           id: agents.id,
           name: agents.name,
           title: agents.title,
-          defaultModelCredentialSource: agents.defaultModelCredentialSource,
-          defaultPlatformModelId: agents.defaultPlatformModelId,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
@@ -316,52 +303,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       return userProvidedSelection;
     }
 
-    const platformSelection = await this.loadPlatformModelSelection(databaseTransaction, input.llmModelId);
-    if (platformSelection) {
-      return platformSelection;
-    }
-
     throw new Error("Provider model not found.");
-  }
-
-  private async loadPlatformModelSelection(
-    databaseTransaction: DatabaseTransaction,
-    platformModelId: string,
-  ): Promise<{ credentialRecord: CredentialRecord; modelRecord: ModelRecord } | null> {
-    await PlatformAdminAccess.enable(databaseTransaction);
-    const [modelRecord] = await databaseTransaction
-      .select({
-        id: platformModels.id,
-        modelProvider: platformModels.modelProvider,
-        name: platformModels.name,
-        reasoningLevels: platformModels.reasoningLevels,
-      })
-      .from(platformModels)
-      .where(and(
-        eq(platformModels.id, platformModelId),
-        eq(platformModels.isAvailable, true),
-      )) as Array<{
-        id: string;
-        modelProvider: ModelProviderId;
-        name: string;
-        reasoningLevels: string[] | null;
-      }>;
-    if (!modelRecord) {
-      return null;
-    }
-
-    return {
-      credentialRecord: {
-        id: modelRecord.id,
-        modelProvider: modelRecord.modelProvider,
-      },
-      modelRecord: {
-        ...modelRecord,
-        modelCredentialSource: "platform",
-        modelProviderCredentialId: modelRecord.id,
-        platformModelProviderCredentialId: null,
-      },
-    };
   }
 
   private async loadUserProvidedModelSelection(
@@ -372,9 +314,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     const [modelRecord] = await databaseTransaction
       .select({
         id: modelProviderCredentialModels.id,
-        modelCredentialSource: modelProviderCredentialModels.modelProviderCredentialId,
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-        platformModelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
         name: modelProviderCredentialModels.name,
         reasoningLevels: modelProviderCredentialModels.reasoningLevels,
       })
@@ -382,7 +322,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       .where(and(
         eq(modelProviderCredentialModels.companyId, companyId),
         eq(modelProviderCredentialModels.id, llmModelId),
-      )) as Array<ModelRecord & { modelCredentialSource: string }>;
+      )) as ModelRecord[];
     if (!modelRecord) {
       return null;
     }
@@ -402,11 +342,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     }
     return {
       credentialRecord,
-      modelRecord: {
-        ...modelRecord,
-        modelCredentialSource: "user_provided",
-        platformModelProviderCredentialId: null,
-      },
+      modelRecord,
     };
   }
 
@@ -426,11 +362,8 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       id: agentRecord.id,
       name: agentRecord.name,
       title: agentRecord.title,
-      modelCredentialSource: agentRecord.defaultModelCredentialSource,
-      llmModelId: agentRecord.defaultPlatformModelId ?? agentRecord.defaultModelProviderCredentialModelId,
-      platformModelId: agentRecord.defaultPlatformModelId,
-      platformModelProviderCredentialModelId: null,
-      modelProviderCredentialId: modelRecord.modelCredentialSource === "user_provided" ? credentialRecord.id : null,
+      llmModelId: agentRecord.defaultModelProviderCredentialModelId,
+      modelProviderCredentialId: credentialRecord.id,
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord.modelProvider,
       modelName: modelRecord.name,

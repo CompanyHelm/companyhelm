@@ -27,7 +27,7 @@ class MeQueryTestHarness {
     } as Config;
   }
 
-  static createDatabaseMock(isPlatformAdmin = true) {
+  static createDatabaseMock() {
     return {
       getDatabase() {
         return {
@@ -41,7 +41,7 @@ class MeQueryTestHarness {
                   where() {
                     return {
                       async limit() {
-                        return isPlatformAdmin ? [{ userId: "user-123" }] : [];
+                        return [];
                       },
                     };
                   },
@@ -127,7 +127,6 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
               id
               email
               firstName
-              isPlatformAdmin
               lastName
             }
             company {
@@ -148,7 +147,6 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
       id: "user-123",
       email: "user@example.com",
       firstName: "User",
-      isPlatformAdmin: true,
       lastName: "Example",
     },
     company: {
