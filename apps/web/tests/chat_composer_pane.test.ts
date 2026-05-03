@@ -37,14 +37,9 @@ function renderChatComposerPane(input: {
     draftSubmitAriaLabel: "Send message",
     draftTextareaRef: createRef<HTMLTextAreaElement>(),
     hasDraftInput: false,
-    isComposerDragActive: false,
     isDismissInboxHumanQuestionInFlight: false,
     isForkingLatestSession: false,
     isResolveInboxHumanQuestionInFlight: false,
-    onComposerDragEnter: () => {},
-    onComposerDragLeave: () => {},
-    onComposerDragOver: () => {},
-    onComposerDrop: () => {},
     onDeleteQueuedMessage: () => {},
     onDismissHumanQuestion: () => {},
     onDraftImageInputChange: () => {},
@@ -98,6 +93,12 @@ test("renders the latest-context fork button when forking is enabled", () => {
   });
 
   assert.match(html, /Fork latest context/);
+});
+
+test("does not render a local file drop overlay inside the composer", () => {
+  const html = renderChatComposerPane();
+
+  assert.doesNotMatch(html, /Drop JPEG or PNG images here/);
 });
 
 test("uses the requested minimum visible rows for the draft textarea", () => {

@@ -36,23 +36,18 @@ function buildTranscriptPaneProps() {
     status: "completed",
     text: "READY",
     toolCallId: null,
+    turnId: "turn-1",
   }];
   const transcriptScrollRef = {
     current: null,
   } as MutableRefObject<HTMLDivElement | null>;
   const onJumpToLatest = () => {};
   const onScroll = () => {};
-  const onFileDrag = () => {};
 
   return {
-    isFileDropActive: false,
     isLoadingOlderMessages: false,
     isLoadingTranscript: false,
     isTranscriptStuckToBottom: true,
-    onFileDragEnter: onFileDrag,
-    onFileDragLeave: onFileDrag,
-    onFileDragOver: onFileDrag,
-    onFileDrop: onFileDrag,
     onJumpToLatest,
     onScroll,
     organizationSlug: "test-org",
@@ -233,6 +228,12 @@ test("chat transcript pane renders request aborts as an informational divider in
   assert.match(markup, /Request was aborted/u);
   assert.doesNotMatch(markup, />Error</u);
   assert.equal([...markup.matchAll(/bg-border\/60/gu)].length, 2);
+});
+
+test("chat transcript pane does not render a dedicated file drop overlay", () => {
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, buildTranscriptPaneProps()));
+
+  assert.doesNotMatch(markup, /Drop JPEG or PNG images into this chat/u);
 });
 
 test("timestamp tooltip boundary starts below visible workflow chrome", () => {

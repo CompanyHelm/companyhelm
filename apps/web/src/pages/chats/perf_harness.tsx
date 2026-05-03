@@ -153,14 +153,9 @@ function ChatPerformanceHarness() {
         <section className="grid min-h-[80vh] gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="flex min-h-0 flex-col rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
             <ChatTranscriptPane
-              isFileDropActive={false}
               isLoadingOlderMessages={false}
               isLoadingTranscript={false}
               isTranscriptStuckToBottom={true}
-              onFileDragEnter={noop}
-              onFileDragLeave={noop}
-              onFileDragOver={noop}
-              onFileDrop={noop}
               onJumpToLatest={onJumpToLatest}
               onScroll={noop}
               organizationSlug="test-org"
@@ -205,14 +200,9 @@ function ChatPerformanceHarness() {
                 draftSubmitAriaLabel="Send message"
                 draftTextareaRef={draftTextareaRef}
                 hasDraftInput={draftHasInput}
-                isComposerDragActive={false}
                 isDismissInboxHumanQuestionInFlight={false}
                 isForkingLatestSession={false}
                 isResolveInboxHumanQuestionInFlight={false}
-                onComposerDragEnter={noop}
-                onComposerDragLeave={noop}
-                onComposerDragOver={noop}
-                onComposerDrop={noop}
                 onDeleteQueuedMessage={noop}
                 onDismissHumanQuestion={noop}
                 onDraftImageInputChange={noop}

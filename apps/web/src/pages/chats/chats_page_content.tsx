@@ -2282,13 +2282,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       draftTextareaRef={draftTextareaRef}
       hasDraftInput={hasDraftInput}
       isForkingLatestSession={isForkingLatestSession}
-      isComposerDragActive={isAttachmentDragActive}
       isDismissInboxHumanQuestionInFlight={isDismissInboxHumanQuestionInFlight}
       isResolveInboxHumanQuestionInFlight={isResolveInboxHumanQuestionInFlight}
-      onComposerDragEnter={handleAttachmentDragEnter}
-      onComposerDragLeave={handleAttachmentDragLeave}
-      onComposerDragOver={handleAttachmentDragOver}
-      onComposerDrop={handleAttachmentDrop}
       onDeleteQueuedMessage={(queuedMessageId) => {
         void deleteQueuedMessage(queuedMessageId);
       }}
@@ -2327,6 +2322,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       steeringQueuedMessageId={steeringQueuedMessageId}
     />
   ) : null;
+  const shouldShowWorkspaceFileDrop = Boolean(selectedAgent && chatComposer);
 
   return (
     <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -2404,55 +2400,71 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
               </p>
             </div>
           </CardContent>
-        ) : null}
-
-        {selectedAgent && !selectedSession && shouldUseCenteredNewChatLayout ? (
-          <CardContent className="flex flex-1 items-center justify-center px-3 py-8 md:px-6">
-            <div className="flex w-full max-w-3xl flex-col items-center gap-8">
-              <h1 className="text-center text-4xl font-medium tracking-normal text-foreground md:text-5xl">
-                What should we build?
-              </h1>
-              <div className="w-full">
-                {chatComposer}
+        ) : (
+          <div
+            className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-all duration-200 ${
+              isAttachmentDragActive && shouldShowWorkspaceFileDrop
+                ? "rounded-xl"
+                : ""
+            }`}
+            onDragEnter={shouldShowWorkspaceFileDrop ? handleAttachmentDragEnter : undefined}
+            onDragLeave={shouldShowWorkspaceFileDrop ? handleAttachmentDragLeave : undefined}
+            onDragOver={shouldShowWorkspaceFileDrop ? handleAttachmentDragOver : undefined}
+            onDrop={shouldShowWorkspaceFileDrop ? handleAttachmentDrop : undefined}
+          >
+            {isAttachmentDragActive && shouldShowWorkspaceFileDrop ? (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.22),_transparent_42%),linear-gradient(180deg,_rgba(15,23,42,0.12),_rgba(15,23,42,0.32))] px-6 text-center shadow-[0_0_52px_rgba(37,99,235,0.16)] backdrop-blur-md">
+                <div className="grid gap-1 rounded-lg border border-sky-300/20 bg-background/88 px-4 py-3 shadow-[0_18px_45px_rgba(2,6,23,0.38)]">
+                  <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images anywhere in this chat</p>
+                  <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        ) : null}
+            ) : null}
 
-        {selectedAgent && !selectedSession && !shouldUseCenteredNewChatLayout ? (
-          <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
-            <div className="flex max-w-sm items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Loader2Icon className="size-4 animate-spin" />
-              <span>Opening chat</span>
-            </div>
-          </CardContent>
-        ) : null}
+            {!selectedSession && shouldUseCenteredNewChatLayout ? (
+              <CardContent className="flex flex-1 items-center justify-center px-3 py-8 md:px-6">
+                <div className="flex w-full max-w-3xl flex-col items-center gap-8">
+                  <h1 className="text-center text-4xl font-medium tracking-normal text-foreground md:text-5xl">
+                    What should we build?
+                  </h1>
+                  <div className="w-full">
+                    {chatComposer}
+                  </div>
+                </div>
+              </CardContent>
+            ) : null}
 
-        {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-1 pr-0 pt-0 pb-0 md:pl-4 md:pt-0 md:pb-0">
-            <ChatTranscriptPane
-              isTranscriptStuckToBottom={isTranscriptStuckToBottom}
-              isLoadingOlderMessages={isLoadingOlderTranscript}
-              isLoadingTranscript={isLoadingTranscript}
-              isFileDropActive={isAttachmentDragActive}
-              onJumpToLatest={jumpToLatestMessage}
-              onFileDragEnter={handleAttachmentDragEnter}
-              onFileDragLeave={handleAttachmentDragLeave}
-              onFileDragOver={handleAttachmentDragOver}
-              onFileDrop={handleAttachmentDrop}
-              onScroll={handleTranscriptScroll}
-              onSwitchCybersecurityRiskModel={
-                canSwitchCybersecurityFallbackModel ? switchToCybersecurityFallbackModel : null
-              }
-              organizationSlug={organizationSlug}
-              session={selectedSession}
-              sessionMessages={selectedSessionMessages}
-              transcriptScrollRef={transcriptScrollRef}
-            />
-          </CardContent>
-        ) : null}
+            {!selectedSession && !shouldUseCenteredNewChatLayout ? (
+              <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
+                <div className="flex max-w-sm items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Loader2Icon className="size-4 animate-spin" />
+                  <span>Opening chat</span>
+                </div>
+              </CardContent>
+            ) : null}
 
-        {!shouldUseCenteredNewChatLayout ? chatComposer : null}
+            {selectedSession ? (
+              <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-1 pr-0 pt-0 pb-0 md:pl-4 md:pt-0 md:pb-0">
+                <ChatTranscriptPane
+                  isTranscriptStuckToBottom={isTranscriptStuckToBottom}
+                  isLoadingOlderMessages={isLoadingOlderTranscript}
+                  isLoadingTranscript={isLoadingTranscript}
+                  onJumpToLatest={jumpToLatestMessage}
+                  onScroll={handleTranscriptScroll}
+                  onSwitchCybersecurityRiskModel={
+                    canSwitchCybersecurityFallbackModel ? switchToCybersecurityFallbackModel : null
+                  }
+                  organizationSlug={organizationSlug}
+                  session={selectedSession}
+                  sessionMessages={selectedSessionMessages}
+                  transcriptScrollRef={transcriptScrollRef}
+                />
+              </CardContent>
+            ) : null}
+
+            {!shouldUseCenteredNewChatLayout ? chatComposer : null}
+          </div>
+        )}
       </Card>
 
       {isDesktopChatListVisible ? (
