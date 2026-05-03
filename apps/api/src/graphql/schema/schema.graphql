@@ -38,6 +38,7 @@ type Query {
   PlatformModelProviderCredentialModels(platformModelProviderCredentialId: ID): [PlatformModelProviderCredentialModel!]!
   PlatformCodexRateLimits(platformModelProviderCredentialId: ID!): CodexRateLimits!
   PlatformAdminUsers(page: Int!, pageSize: Int!, search: String): PlatformAdminUserPage!
+  PlatformAdminUser(id: ID!): PlatformAdminUserDetail!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -591,7 +592,29 @@ type PlatformAdminUser {
   firstName: String!
   lastName: String
   isPlatformAdmin: Boolean!
-  companyCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminUserDetail {
+  id: ID!
+  clerkUserId: String
+  email: String!
+  firstName: String!
+  lastName: String
+  isPlatformAdmin: Boolean!
+  companyMemberships: [PlatformAdminUserCompanyMembership!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminUserCompanyMembership {
+  companyId: ID!
+  companyName: String!
+  companySlug: String
+  companyPlan: CompanySubscriptionPlan!
+  role: CompanyMemberRole!
+  status: CompanyMemberStatus!
   createdAt: String!
   updatedAt: String!
 }

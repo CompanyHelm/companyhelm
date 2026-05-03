@@ -608,6 +608,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         PlatformAdminCompany: this.platformAdminCompanyWalletsQueryResolver.executeCompany,
         PlatformAdminCompanyWallets: this.platformAdminCompanyWalletsQueryResolver.executeWallets,
         PlatformAdminCompanyWallet: this.platformAdminCompanyWalletsQueryResolver.executeWallet,
+        PlatformAdminUser: this.platformAdminUsersQueryResolver.executeUser,
         PlatformCodexRateLimits: this.platformCodexRateLimitsQueryResolver.execute,
         PlatformModels: this.platformModelsQueryResolver.execute,
         PlatformModelRoutes: this.platformModelRoutesQueryResolver.execute,

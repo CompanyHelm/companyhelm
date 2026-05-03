@@ -16,6 +16,7 @@ import { AdminLlmCredentialDetailPage } from "./pages/admin/llm_credential_detai
 import { AdminLlmCredentialsPage } from "./pages/admin/llm_credentials_page";
 import { AdminModelDetailPage } from "./pages/admin/model_detail_page";
 import { AdminModelsPage } from "./pages/admin/models_page";
+import { AdminUserDetailPage } from "./pages/admin/user_detail_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
 import { CompaniesRoute } from "./pages/auth/companies_route";
 import { SignedUpPage } from "./pages/auth/signed_up_page";
@@ -311,7 +312,19 @@ const adminDashboardRoute = createRoute({
 const adminUsersRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/admin/users",
+  component: Outlet,
+});
+
+const adminUsersIndexRoute = createRoute({
+  getParentRoute: () => adminUsersRoute,
+  path: "/",
   component: AdminUsersPage,
+});
+
+const adminUserDetailRoute = createRoute({
+  getParentRoute: () => adminUsersRoute,
+  path: "$userId" as string,
+  component: AdminUserDetailPage,
 });
 
 const adminCompaniesRoute = createRoute({
@@ -643,7 +656,10 @@ const routeTree = rootRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
       adminDashboardRoute,
-      adminUsersRoute,
+      adminUsersRoute.addChildren([
+        adminUsersIndexRoute,
+        adminUserDetailRoute,
+      ]),
       adminCompaniesRoute.addChildren([
         adminCompaniesIndexRoute,
         adminCompanyDetailRoute,
