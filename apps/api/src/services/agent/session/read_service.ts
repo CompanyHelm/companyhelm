@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   agentSessions,
@@ -343,6 +343,7 @@ export class SessionReadService {
         .from(agentSessions)
         .where(and(
           eq(agentSessions.companyId, companyId),
+          ne(agentSessions.status, "archived"),
           or(
             isNull(agentSessions.ownerUserId),
             eq(agentSessions.ownerUserId, userId),

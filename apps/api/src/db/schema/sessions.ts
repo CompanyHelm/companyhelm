@@ -91,6 +91,15 @@ export const agentSessions = pgTable("agent_sessions", {
 }, (table) => ({
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
   companyLastUserMessageAtIndex: index("agent_sessions_company_last_user_message_at_idx").on(table.companyId, table.lastUserMessageAt),
+  activeCompanyOwnerActivityIndex: index("agent_sessions_active_company_owner_activity_idx")
+    .on(
+      table.companyId,
+      table.ownerUserId,
+      sql`coalesce(${table.lastUserMessageAt}, ${table.created_at}) DESC`,
+      sql`${table.created_at} DESC`,
+      sql`${table.id} DESC`,
+    )
+    .where(sql`${table.status} <> 'archived'`),
   currentModelSelectionCheck: check(
     "agent_sessions_current_model_selection_check",
     sql`(

@@ -1128,6 +1128,13 @@
       "when": 1777666271000,
       "tag": "0161_repair_missing_company_wallets",
       "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1777833032453,
+      "tag": "0162_active_session_list_index",
+      "breakpoints": true
     }
   ]
 }

@@ -24,8 +24,13 @@ class SessionsQueryTestHarness {
       return typeof value === "string" ? value : "";
     }
 
-    if ("value" in value && Array.isArray((value as { value?: unknown }).value)) {
-      return (value as { value: unknown[] }).value
+    if ("value" in value) {
+      const chunkValue = (value as { value?: unknown }).value;
+      if (!Array.isArray(chunkValue)) {
+        return typeof chunkValue === "string" ? chunkValue : "";
+      }
+
+      return chunkValue
         .map((entry) => this.stringifyQueryChunk(entry))
         .join(" ");
     }
@@ -88,7 +93,17 @@ class SessionsQueryTestHarness {
               return {
                 from() {
                   return {
-                    where() {
+                    where(condition: unknown) {
+                      assert.equal(
+                        SessionsQueryTestHarness.conditionIncludes(condition, "status"),
+                        true,
+                        SessionsQueryTestHarness.stringifyQueryChunk(condition),
+                      );
+                      assert.equal(
+                        SessionsQueryTestHarness.conditionIncludes(condition, "archived"),
+                        true,
+                        SessionsQueryTestHarness.stringifyQueryChunk(condition),
+                      );
                       return {
                         async orderBy() {
                           return [
@@ -108,7 +123,7 @@ class SessionsQueryTestHarness {
                               isThinking: true,
                               maxContextTokens: 200000,
                               ownerUserId: "user-123",
-                              status: "archived",
+                              status: "stopped",
                               thinkingText: "Inspecting deployment history",
                               createdAt: new Date("2026-03-24T09:00:00.000Z"),
                               updatedAt: new Date("2026-03-24T09:30:00.000Z"),
@@ -408,7 +423,7 @@ class SessionsQueryTestHarness {
   }
 }
 
-test("GraphQL Sessions query lists company sessions ordered by most recently updated first", async () => {
+test("GraphQL Sessions query lists non-archived company sessions ordered by most recently updated first", async () => {
   const app = Fastify();
   const config = SessionsQueryTestHarness.createConfigMock();
   const database = SessionsQueryTestHarness.createDatabaseMock();
@@ -534,7 +549,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       maxContextTokens: 200000,
       reasoningLevel: "high",
       inferredTitle: null,
-      status: "archived",
+      status: "stopped",
       createdAt: "2026-03-24T09:00:00.000Z",
       updatedAt: "2026-03-24T09:30:00.000Z",
       userSetTitle: "Fallback user title",
