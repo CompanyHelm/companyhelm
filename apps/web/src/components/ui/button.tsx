@@ -46,20 +46,30 @@ const Button = React.forwardRef<
   } & VariantProps<typeof buttonVariants>
 >(function Button(
   {
+    asChild = false,
     className,
-    variant = "default",
+    children,
+    nativeButton,
+    render,
     size = "default",
+    variant = "default",
     ...props
   },
   ref,
 ) {
+  const renderElement = asChild ? React.Children.only(children) as React.ReactElement : render
+
   return (
     <ButtonPrimitive
       ref={ref}
       data-slot="button"
+      nativeButton={asChild ? nativeButton ?? false : nativeButton}
+      render={renderElement}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {asChild ? null : children}
+    </ButtonPrimitive>
   )
 })
 
