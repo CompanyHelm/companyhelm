@@ -136,7 +136,21 @@ export function hasDraggedFiles(dataTransfer: DataTransfer | null): boolean {
   return Array.from(dataTransfer.types).includes("Files");
 }
 
-export function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
+export function resolveDraftTextareaMinimumLines(input: {
+  isMobile: boolean;
+  shouldUseCenteredNewChatLayout: boolean;
+}): number {
+  if (input.isMobile && input.shouldUseCenteredNewChatLayout) {
+    return 3;
+  }
+
+  return CHAT_DRAFT_MIN_LINES;
+}
+
+export function resolveDraftTextareaHeightBounds(
+  textarea: HTMLTextAreaElement,
+  minimumVisibleLines: number = CHAT_DRAFT_MIN_LINES,
+): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
   const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
   const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
@@ -144,7 +158,7 @@ export function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement):
 
   return {
     maxHeight: lineHeight * CHAT_DRAFT_MAX_LINES + paddingTop + paddingBottom,
-    minHeight: lineHeight * CHAT_DRAFT_MIN_LINES + paddingTop + paddingBottom,
+    minHeight: lineHeight * minimumVisibleLines + paddingTop + paddingBottom,
   };
 }
 

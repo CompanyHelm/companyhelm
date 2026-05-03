@@ -6,6 +6,7 @@ export type LocalRunnerMode = "dev" | "e2b";
 type LocalRunnerInput = {
   apiPublicUrl: string;
   mode: LocalRunnerMode;
+  verifyReadiness?: boolean;
   webPublicUrl: string;
 };
 
@@ -37,6 +38,9 @@ export class LocalRunner {
       VITE_AMPLITUDE_ENABLED: "false",
       VITE_AMPLITUDE_ID: "",
     });
+    if (this.input.verifyReadiness) {
+      await this.verifyReadiness();
+    }
     this.printReadyMessage();
   }
 
@@ -100,6 +104,74 @@ export class LocalRunner {
     }
 
     throw new Error(`${label} did not become reachable at ${host}:${port}.`);
+  }
+
+  private async verifyReadiness(): Promise<void> {
+    await this.waitForHttpSuccess(`${this.input.apiPublicUrl}/health`, "API health endpoint");
+    await this.waitForGraphqlHealth();
+    await this.waitForHttpSuccess(this.input.webPublicUrl, "web app");
+    await this.waitForHttpSuccess(`${this.input.apiPublicUrl}/auth/dev/users`, "dev auth users endpoint");
+  }
+
+  private async waitForHttpSuccess(url: string, label: string): Promise<void> {
+    const startedAt = Date.now();
+    const timeoutMilliseconds = 120_000;
+    while (Date.now() - startedAt < timeoutMilliseconds) {
+      if (await this.isHttpSuccess(url)) {
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error(`${label} did not become ready at ${url}.`);
+  }
+
+  private async waitForGraphqlHealth(): Promise<void> {
+    const startedAt = Date.now();
+    const timeoutMilliseconds = 120_000;
+    while (Date.now() - startedAt < timeoutMilliseconds) {
+      if (await this.isGraphqlHealthy()) {
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error(`GraphQL health query did not become ready at ${this.input.apiPublicUrl}/graphql.`);
+  }
+
+  private async isHttpSuccess(url: string): Promise<boolean> {
+    try {
+      const response = await fetch(url);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private async isGraphqlHealthy(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.input.apiPublicUrl}/graphql`, {
+        body: JSON.stringify({
+          query: "query DemoHealth { health }",
+        }),
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      if (!response.ok) {
+        return false;
+      }
+
+      const payload = await response.json() as {
+        data?: {
+          health?: string;
+        };
+      };
+      return typeof payload.data?.health === "string" && payload.data.health.length > 0;
+    } catch {
+      return false;
+    }
   }
 
   private canConnect(host: string, port: number): Promise<boolean> {
@@ -185,6 +257,9 @@ export class LocalRunner {
     console.log(`Web:      ${this.input.webPublicUrl}`);
     console.log(`API:      ${this.input.apiPublicUrl}`);
     console.log(`GraphQL:  ${this.input.apiPublicUrl}/graphql`);
+    if (this.input.verifyReadiness) {
+      console.log("Readiness: API, GraphQL, web, and dev auth verified");
+    }
     console.log("Auth:     dev");
     console.log("Seeded:   Andrea Local / CompanyHelm Local / CEO agent with CompanyHelm provider");
     console.log("Models:   Set COMPANYHELM_LOCAL_OPENAI_API_KEY to validate and seed a local OpenAI route\n");

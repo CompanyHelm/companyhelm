@@ -18,6 +18,7 @@ function createSelectedSession(): SessionRecord {
 function renderChatComposerPane(input: {
   canForkLatestSession?: boolean;
   canManuallyResizeDraftTextarea?: boolean;
+  draftTextareaMinimumLines?: number;
   selectedSession?: SessionRecord | null;
 } = {}): string {
   return renderToStaticMarkup(createElement(ChatComposerPane, {
@@ -29,6 +30,7 @@ function renderChatComposerPane(input: {
     composerModelOptions: [],
     composerReasoningLevel: "high",
     deletingQueuedMessageId: null,
+    draftTextareaMinimumLines: input.draftTextareaMinimumLines ?? 1,
     draftImageFileInputRef: createRef<HTMLInputElement>(),
     draftImages: [],
     draftMessage: "",
@@ -97,4 +99,11 @@ test("does not render a local file drop overlay inside the composer", () => {
   const html = renderChatComposerPane();
 
   assert.doesNotMatch(html, /Drop JPEG or PNG images here/);
+});
+
+test("uses the requested minimum visible rows for the draft textarea", () => {
+  const html = renderChatComposerPane({ draftTextareaMinimumLines: 3 });
+
+  assert.match(html, /rows="3"/);
+});
 });

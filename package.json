@@ -28,6 +28,8 @@
     "test:all": "npm run test:api && npm run test:web",
     "local-dev": "tsx scripts/local/dev.ts",
     "local-e2b": "tsx scripts/local/e2b.ts",
+    "demo:up": "tsx scripts/demo/up.ts",
+    "demo:run": "tsx scripts/demo/run.ts",
     "seed:local-dev": "npm run seed:local-dev -w @companyhelm/api"
   },
   "devDependencies": {
