@@ -2396,15 +2396,19 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           </CardContent>
         ) : (
           <div
-            className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-all duration-200 ${
+              isAttachmentDragActive && shouldShowWorkspaceFileDrop
+                ? "rounded-xl shadow-[0_0_0_1px_rgba(96,165,250,0.32),0_0_0_6px_rgba(59,130,246,0.08)]"
+                : ""
+            }`}
             onDragEnter={shouldShowWorkspaceFileDrop ? handleAttachmentDragEnter : undefined}
             onDragLeave={shouldShowWorkspaceFileDrop ? handleAttachmentDragLeave : undefined}
             onDragOver={shouldShowWorkspaceFileDrop ? handleAttachmentDragOver : undefined}
             onDrop={shouldShowWorkspaceFileDrop ? handleAttachmentDrop : undefined}
           >
             {isAttachmentDragActive && shouldShowWorkspaceFileDrop ? (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border border-primary/30 bg-background/70 px-6 text-center shadow-inner backdrop-blur-sm">
-                <div className="grid gap-1 rounded-lg border border-border/70 bg-background/95 px-4 py-3 shadow-lg">
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border border-sky-400/45 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.18),_transparent_42%),linear-gradient(180deg,_rgba(15,23,42,0.16),_rgba(15,23,42,0.28))] px-6 text-center shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12),0_0_40px_rgba(37,99,235,0.14)] backdrop-blur-md">
+                <div className="grid gap-1 rounded-lg border border-sky-300/20 bg-background/88 px-4 py-3 shadow-[0_18px_45px_rgba(2,6,23,0.38)]">
                   <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images anywhere in this chat</p>
                   <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
                 </div>
