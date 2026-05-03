@@ -16,10 +16,12 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
     "await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id);",
   );
   const ensureMembershipIndex = source.indexOf("await this.companyBootstrapService.ensureMembership(transaction, {");
+  const ensureWalletIndex = source.indexOf("await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction, {");
 
   assert.notEqual(applyContextIndex, -1, "expected company context application in auth transaction");
   assert.notEqual(ensureCompanyDefaultsIndex, -1, "expected company defaults bootstrap in auth transaction");
   assert.notEqual(ensureMembershipIndex, -1, "expected membership bootstrap in auth transaction");
+  assert.notEqual(ensureWalletIndex, -1, "expected wallet bootstrap in auth transaction");
   assert.ok(
     transactionStartIndex < applyContextIndex,
     "expected company context application inside the auth transaction",
@@ -29,12 +31,24 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
     "expected membership bootstrap inside the auth transaction",
   );
   assert.ok(
+    transactionStartIndex < ensureWalletIndex,
+    "expected wallet bootstrap inside the auth transaction",
+  );
+  assert.ok(
     transactionStartIndex < ensureCompanyDefaultsIndex,
     "expected company defaults bootstrap inside the auth transaction",
   );
   assert.ok(
     applyContextIndex < ensureCompanyDefaultsIndex,
     "expected company context to be applied before company-scoped default bootstrap",
+  );
+  assert.ok(
+    applyContextIndex < ensureWalletIndex,
+    "expected company context to be applied before company-scoped wallet bootstrap",
+  );
+  assert.ok(
+    ensureWalletIndex < ensureMembershipIndex,
+    "expected wallet bootstrap to happen before membership and default bootstrap",
   );
   assert.ok(
     ensureMembershipIndex < ensureCompanyDefaultsIndex,

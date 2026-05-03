@@ -59,6 +59,12 @@ class ClerkAuthProviderTestHarness {
         insertCallCount += 1;
         return {
           values(value: Record<string, unknown>) {
+            if (value.type === "subscription") {
+              assert.ok(
+                scopedCompanyIds.includes(String(value.companyId)),
+                "subscription wallet insert requires company context",
+              );
+            }
             insertedValues.push(value);
             const returningRows = insertCallCount === 1
               ? [{
@@ -73,6 +79,7 @@ class ClerkAuthProviderTestHarness {
                 id: "local-company-1",
                 clerk_organization_id: "org_clerk_1",
                 name: "Example Org",
+                plan: "free",
               }]
               : insertCallCount === 3
               ? [{
@@ -135,6 +142,20 @@ class ClerkAuthProviderTestHarness {
       },
       select(selection: Record<string, unknown>) {
         selectCallCount += 1;
+        if ("amountNanoUsd" in selection) {
+          return {
+            from() {
+              return {
+                where: async () => [{
+                  amountNanoUsd: 10_000_000_000,
+                  companyId: "local-company-9",
+                  id: "local-wallet-9",
+                  type: "subscription",
+                }],
+              };
+            },
+          };
+        }
         if ("role" in selection) {
           return {
             from() {
@@ -201,6 +222,7 @@ class ClerkAuthProviderTestHarness {
                       id: "local-company-9",
                       clerk_organization_id: "org_clerk_9",
                       name: "Existing Org",
+                      plan: "free",
                     }],
                   };
                 },
@@ -317,6 +339,20 @@ class ClerkAuthProviderTestHarness {
       },
       select(selection: Record<string, unknown>) {
         selectCallCount += 1;
+        if ("amountNanoUsd" in selection) {
+          return {
+            from() {
+              return {
+                where: async () => [{
+                  amountNanoUsd: 10_000_000_000,
+                  companyId: "local-company-9",
+                  id: "local-wallet-9",
+                  type: "subscription",
+                }],
+              };
+            },
+          };
+        }
         if ("role" in selection) {
           return {
             from() {
@@ -397,6 +433,7 @@ class ClerkAuthProviderTestHarness {
                       id: "local-company-9",
                       clerk_organization_id: "org_clerk_9",
                       name: "Existing Org",
+                      plan: "free",
                     }],
                   };
                 },
@@ -587,6 +624,7 @@ class ClerkAuthProviderTestHarness {
                       id: "local-company-race",
                       clerk_organization_id: "org_clerk_race",
                       name: "Race Org",
+                      plan: "free",
                     }],
                   };
                 },
@@ -635,7 +673,13 @@ class ClerkAuthProviderTestHarness {
       insert() {
         insertCallCount += 1;
         return {
-          values() {
+          values(value: Record<string, unknown>) {
+            if (value.type === "subscription") {
+              assert.ok(
+                scopedCompanyIds.includes(String(value.companyId)),
+                "subscription wallet insert requires company context",
+              );
+            }
             if (insertCallCount <= 2) {
               return {
                 onConflictDoNothing() {
@@ -651,6 +695,16 @@ class ClerkAuthProviderTestHarness {
               return {
                 onConflictDoNothing() {
                   return undefined;
+                },
+                async returning() {
+                  return value.type === "subscription"
+                    ? [{
+                      amountNanoUsd: value.amountNanoUsd,
+                      companyId: value.companyId,
+                      id: "local-wallet-race",
+                      type: value.type,
+                    }]
+                    : [];
                 },
               };
             }

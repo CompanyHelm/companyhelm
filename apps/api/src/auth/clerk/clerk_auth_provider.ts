@@ -181,6 +181,10 @@ export class ClerkAuthProvider extends AuthProvider {
         throw new Error("Configured database does not support company context binding.");
       }
       await database.applyCompanyContext(transaction as DatabaseClientInterface, company.id);
+      await this.companyBootstrapService.ensureCompanySubscriptionWallet(transaction, {
+        companyId: company.id,
+        plan: company.plan,
+      });
       await this.companyBootstrapService.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,

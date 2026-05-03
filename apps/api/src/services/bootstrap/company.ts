@@ -30,6 +30,7 @@ type CompanyRecord = {
   id: string;
   clerk_organization_id: string | null;
   name: string;
+  plan: "free" | "plus" | "pro";
   wasCreated: boolean;
 };
 
@@ -212,6 +213,7 @@ export class CompanyBootstrapService {
         id: companies.id,
         clerk_organization_id: companies.clerkOrganizationId,
         name: companies.name,
+        plan: companies.plan,
       });
     const createdRows = insertResult ? await insertResult as CompanyRecord[] : [];
     const createdCompany = createdRows[0];
@@ -226,11 +228,6 @@ export class CompanyBootstrapService {
 
       return concurrentCompany;
     }
-
-    await this.ensureCompanySubscriptionWallet(transaction, {
-      companyId: createdCompany.id,
-      plan: "free",
-    });
 
     return {
       ...createdCompany,
@@ -357,6 +354,7 @@ export class CompanyBootstrapService {
         id: companies.id,
         clerk_organization_id: companies.clerkOrganizationId,
         name: companies.name,
+        plan: companies.plan,
       })
       .from(companies)
       .where(eq(companies.clerkOrganizationId, providerSubject))
