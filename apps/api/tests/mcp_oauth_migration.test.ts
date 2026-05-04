@@ -23,8 +23,23 @@ test("graphql schema exposes MCP OAuth fields and mutations", () => {
   );
 
   assert.match(graphqlSchema, /enum McpServerAuthType/);
+  assert.match(graphqlSchema, /enum McpServerValidationStatus/);
   assert.match(graphqlSchema, /oauthConnectionStatus: McpOauthConnectionStatus/);
+  assert.match(graphqlSchema, /lastValidationStatus: McpServerValidationStatus!/);
+  assert.match(graphqlSchema, /ValidateMcpServerDraft\(input: ValidateMcpServerDraftInput!\): ValidateMcpServerDraftPayload!/);
   assert.match(graphqlSchema, /StartMcpServerOAuth\(input: StartMcpServerOAuthInput!\): StartMcpServerOAuthPayload!/);
   assert.match(graphqlSchema, /CompleteMcpServerOAuth\(input: CompleteMcpServerOAuthInput!\): CompleteMcpServerOAuthPayload!/);
   assert.match(graphqlSchema, /DisconnectMcpServerOAuth\(input: DisconnectMcpServerOAuthInput!\): McpServer!/);
+});
+
+test("mcp server validation migration adds last validation state columns", () => {
+  const migrationSql = readFileSync(
+    new URL("../drizzle/0163_mcp_server_validation.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS "last_validation_status" text DEFAULT 'unknown' NOT NULL;/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS "last_validation_error" text;/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS "last_validation_tool_count" integer;/);
+  assert.match(migrationSql, /ADD COLUMN IF NOT EXISTS "last_validated_at" timestamp with time zone;/);
 });

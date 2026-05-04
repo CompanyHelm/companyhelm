@@ -1139,15 +1139,8 @@
     {
       "idx": 163,
       "version": "7",
-      "when": 1777833033453,
-      "tag": "0163_remove_clerk_columns",
-      "breakpoints": true
-    },
-    {
-      "idx": 164,
-      "version": "7",
-      "when": 1777833034000,
-      "tag": "0164_drop_cloud_monetization",
+      "when": 1777857200000,
+      "tag": "0163_mcp_server_validation",
       "breakpoints": true
     }
   ]

@@ -16,6 +16,10 @@ export type McpServersTableRecord = {
   enabled: boolean;
   headersText: string;
   id: string;
+  lastValidatedAt: string | null;
+  lastValidationError: string | null;
+  lastValidationStatus: "unknown" | "ok" | "auth_error" | "network_error" | "protocol_error" | "server_error";
+  lastValidationToolCount: number | null;
   name: string;
   oauthConnectionStatus: "connected" | "error" | "not_connected" | "reauth_required" | null;
   oauthLastError: string | null;
@@ -93,6 +97,46 @@ function getAuthBadgeVariant(record: McpServersTableRecord) {
   return "outline";
 }
 
+function formatValidationLabel(record: McpServersTableRecord): string {
+  if (record.lastValidationStatus === "ok") {
+    return record.lastValidationToolCount == null
+      ? "validated"
+      : `validated · ${record.lastValidationToolCount} tools`;
+  }
+  if (record.lastValidationStatus === "auth_error") {
+    return "auth error";
+  }
+  if (record.lastValidationStatus === "network_error") {
+    return "network error";
+  }
+  if (record.lastValidationStatus === "protocol_error") {
+    return "protocol error";
+  }
+  if (record.lastValidationStatus === "server_error") {
+    return "server error";
+  }
+
+  return "not validated";
+}
+
+function getValidationBadgeVariant(record: McpServersTableRecord) {
+  if (record.lastValidationStatus === "ok") {
+    return "positive";
+  }
+  if (record.lastValidationStatus === "auth_error") {
+    return "destructive";
+  }
+  if (
+    record.lastValidationStatus === "network_error"
+    || record.lastValidationStatus === "protocol_error"
+    || record.lastValidationStatus === "server_error"
+  ) {
+    return "warning";
+  }
+
+  return "outline";
+}
+
 export function McpServersTable(props: McpServersTableProps) {
   if (props.isLoading) {
     return (
@@ -117,6 +161,7 @@ export function McpServersTable(props: McpServersTableProps) {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Auth</TableHead>
+            <TableHead>Validation</TableHead>
             <TableHead>URL</TableHead>
             <TableHead>Enabled</TableHead>
             <TableHead>Updated</TableHead>
@@ -148,6 +193,22 @@ export function McpServersTable(props: McpServersTableProps) {
                     {mcpServer.oauthLastError ? (
                       <span className="max-w-xs text-xs text-muted-foreground">
                         {mcpServer.oauthLastError}
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="grid gap-1">
+                    <Badge variant={getValidationBadgeVariant(mcpServer)}>
+                      {formatValidationLabel(mcpServer)}
+                    </Badge>
+                    {mcpServer.lastValidationError ? (
+                      <span className="max-w-xs text-xs text-muted-foreground">
+                        {mcpServer.lastValidationError}
+                      </span>
+                    ) : mcpServer.lastValidatedAt ? (
+                      <span className="max-w-xs text-xs text-muted-foreground">
+                        {formatTimestamp(mcpServer.lastValidatedAt)}
                       </span>
                     ) : null}
                   </div>

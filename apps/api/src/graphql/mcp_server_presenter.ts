@@ -9,6 +9,10 @@ export type GraphqlMcpServerRecord = {
   enabled: boolean;
   headersText: string;
   id: string;
+  lastValidatedAt: string | null;
+  lastValidationError: string | null;
+  lastValidationStatus: string;
+  lastValidationToolCount: number | null;
   name: string;
   oauthClientId: string | null;
   oauthConnectionStatus: string | null;
@@ -33,6 +37,10 @@ export class GraphqlMcpServerPresenter {
         .map(([name, value]) => `${name}: ${value}`)
         .join("\n"),
       id: record.id,
+      lastValidatedAt: record.lastValidatedAt?.toISOString() ?? null,
+      lastValidationError: record.lastValidationError,
+      lastValidationStatus: record.lastValidationStatus,
+      lastValidationToolCount: record.lastValidationToolCount,
       name: record.name,
       oauthClientId: record.oauthClientId,
       oauthConnectionStatus: record.oauthConnectionStatus,

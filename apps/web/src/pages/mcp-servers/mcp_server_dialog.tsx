@@ -36,6 +36,10 @@ export type EditableMcpServerRecord = {
   enabled: boolean;
   headersText: string;
   id: string;
+  lastValidatedAt: string | null;
+  lastValidationError: string | null;
+  lastValidationStatus: "unknown" | "ok" | "auth_error" | "network_error" | "protocol_error" | "server_error";
+  lastValidationToolCount: number | null;
   name: string;
   oauthClientId: string | null;
   oauthConnectionStatus: "connected" | "error" | "not_connected" | "reauth_required" | null;

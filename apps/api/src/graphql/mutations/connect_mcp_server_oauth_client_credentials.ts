@@ -3,6 +3,7 @@ import { GraphqlMcpServerPresenter, type GraphqlMcpServerRecord } from "../mcp_s
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { McpService } from "../../services/mcp/service.ts";
 import { McpOauthClientCredentialsConnectionService } from "../../services/mcp/oauth/client_credentials_connection.ts";
+import { McpValidationService } from "../../services/mcp/validation_service.ts";
 import { Mutation } from "./mutation.ts";
 
 type ConnectMcpServerOauthClientCredentialsMutationArguments = {
@@ -25,15 +26,18 @@ export class ConnectMcpServerOauthClientCredentialsMutation extends Mutation<
 > {
   private readonly clientCredentialsConnectionService: McpOauthClientCredentialsConnectionService;
   private readonly mcpService: McpService;
+  private readonly mcpValidationService: McpValidationService;
 
   constructor(
     @inject(McpService) mcpService: McpService,
     @inject(McpOauthClientCredentialsConnectionService)
     clientCredentialsConnectionService: McpOauthClientCredentialsConnectionService,
+    @inject(McpValidationService) mcpValidationService: McpValidationService,
   ) {
     super();
     this.clientCredentialsConnectionService = clientCredentialsConnectionService;
     this.mcpService = mcpService;
+    this.mcpValidationService = mcpValidationService;
   }
 
   protected resolve = async (
@@ -64,6 +68,23 @@ export class ConnectMcpServerOauthClientCredentialsMutation extends Mutation<
         requestedScopes: arguments_.input.requestedScopes,
         serverUrl: server.url,
       });
+    });
+
+    const validation = await this.mcpValidationService.validatePersistedServer(
+      context.app_runtime_transaction_provider,
+      {
+        companyId: context.authSession.company.id,
+        mcpServerId: server.id,
+      },
+    );
+    await this.mcpService.updateMcpServerValidation(context.app_runtime_transaction_provider, {
+      companyId: context.authSession.company.id,
+      lastValidatedAt: validation.validatedAt,
+      lastValidationError: validation.errorMessage,
+      lastValidationStatus: validation.status,
+      lastValidationToolCount: validation.toolCount,
+      mcpServerId: server.id,
+      userId: context.authSession.user.id,
     });
 
     const connectedServer = await this.mcpService.getMcpServer(

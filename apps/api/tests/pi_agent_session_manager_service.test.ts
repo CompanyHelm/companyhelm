@@ -1343,6 +1343,10 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
           oauthGrantedScopes: [],
           oauthLastError: null,
           oauthRequestedScopes: [],
+          lastValidatedAt: null,
+          lastValidationError: null,
+          lastValidationStatus: "unknown",
+          lastValidationToolCount: null,
           updatedAt: new Date("2026-04-11T08:00:00.000Z"),
           url: "https://github.example.com/mcp",
         }];

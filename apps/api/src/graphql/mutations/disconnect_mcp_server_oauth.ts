@@ -55,6 +55,16 @@ export class DisconnectMcpServerOauthMutation extends Mutation<
       arguments_.input.mcpServerId,
     );
 
-    return GraphqlMcpServerPresenter.present(server);
+    const disconnectedServer = await this.mcpService.updateMcpServerValidation(context.app_runtime_transaction_provider, {
+      companyId: context.authSession.company.id,
+      lastValidatedAt: null,
+      lastValidationError: null,
+      lastValidationStatus: "unknown",
+      lastValidationToolCount: null,
+      mcpServerId: server.id,
+      userId: context.authSession.user.id,
+    });
+
+    return GraphqlMcpServerPresenter.present(disconnectedServer);
   };
 }

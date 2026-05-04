@@ -106,6 +106,7 @@ type Mutation {
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateSecretGroup(input: CreateSecretGroupInput!): SecretGroup!
   CreateMcpServer(input: CreateMcpServerInput!): McpServer!
+  ValidateMcpServerDraft(input: ValidateMcpServerDraftInput!): ValidateMcpServerDraftPayload!
   StartMcpServerOAuth(input: StartMcpServerOAuthInput!): StartMcpServerOAuthPayload!
   ConnectMcpServerOAuthClientCredentials(
     input: ConnectMcpServerOAuthClientCredentialsInput!
@@ -225,6 +226,15 @@ enum McpOauthConnectionStatus {
   error
   not_connected
   reauth_required
+}
+
+enum McpServerValidationStatus {
+  unknown
+  ok
+  auth_error
+  network_error
+  protocol_error
+  server_error
 }
 
 type AuthenticatedCompany {
@@ -938,8 +948,20 @@ type McpServer {
   oauthGrantedScopes: [String!]!
   oauthLastError: String
   oauthRequestedScopes: [String!]!
+  lastValidationStatus: McpServerValidationStatus!
+  lastValidationError: String
+  lastValidationToolCount: Int
+  lastValidatedAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type ValidateMcpServerDraftPayload {
+  status: McpServerValidationStatus!
+  errorMessage: String
+  toolCount: Int
+  toolNames: [String!]!
+  validatedAt: String
 }
 
 type Skill {
@@ -1437,6 +1459,13 @@ input CreateMcpServerInput {
   headersText: String
   callTimeoutMs: Int
   enabled: Boolean
+}
+
+input ValidateMcpServerDraftInput {
+  url: String!
+  authType: McpServerAuthType!
+  headersText: String
+  callTimeoutMs: Int
 }
 
 input UpdateMcpServerInput {
