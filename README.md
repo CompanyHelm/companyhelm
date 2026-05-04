@@ -95,8 +95,8 @@ npm run dev:web
 - Web health: `http://localhost:5173/health`
 - API GraphQL: `http://localhost:4000/graphql`
 - API health: `http://localhost:4000/health`
-- pgAdmin: `http://localhost:5050`
-- Redis: `localhost:6379`
+- pgAdmin: `http://localhost:15050`
+- Redis: `localhost:16379`
 
 Local development defaults to HTTP for both the web app and API. Keep `VITE_GRAPHQL_URL` pointed at
 `http://localhost:4000/graphql` unless you also choose to proxy the API over HTTPS locally.

@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-companyhelm}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-15432}:5432"
     volumes:
       - companyhelm_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
     image: redis:8-alpine
     container_name: companyhelm-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-16379}:6379"
     volumes:
       - companyhelm_redis_data:/data
     healthcheck:
@@ -46,7 +46,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "${PGADMIN_PORT:-15050}:80"
     entrypoint:
       - /bin/sh
       - -c

@@ -229,7 +229,7 @@ webPublicUrl: "http://localhost:5173"
 database:
   name: "postgres"
   host: "127.0.0.1"
-  port: 5432
+  port: 15432
   roles:
     app_runtime:
       username: "app-runtime"
@@ -239,7 +239,7 @@ database:
       password: "postgres"
 redis:
   host: "127.0.0.1"
-  port: 6379
+  port: 16379
   username: ""
   password: ""
 workers:
@@ -325,7 +325,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   });
   assert.deepEqual(document.redis, {
     host: "127.0.0.1",
-    port: 6379,
+    port: 16379,
     username: "",
     password: "",
   });

@@ -82,8 +82,8 @@ npm run dev:web
 - API GraphQL: `http://localhost:4000/graphql`
 - API health: `http://localhost:4000/health`
 - GitHub webhook endpoint, if enabled: `http://localhost:4000/webhooks/github`
-- pgAdmin: `http://localhost:5050`
-- Redis: `localhost:6379`
+- pgAdmin: `http://localhost:15050`
+- Redis: `localhost:16379`
 
 ## Optional Local Environment Variables
 

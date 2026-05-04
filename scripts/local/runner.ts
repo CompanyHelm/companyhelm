@@ -76,12 +76,12 @@ export class LocalRunner {
       console.warn("Docker Compose failed, but Postgres and Redis are already reachable; continuing.");
     }
 
-    await this.waitForPort("127.0.0.1", 5432, "Postgres");
-    await this.waitForPort("127.0.0.1", 6379, "Redis");
+    await this.waitForPort("127.0.0.1", 15432, "Postgres");
+    await this.waitForPort("127.0.0.1", 16379, "Redis");
   }
 
   private async areDataServicesReachable(): Promise<boolean> {
-    return await this.canConnect("127.0.0.1", 5432) && await this.canConnect("127.0.0.1", 6379);
+    return await this.canConnect("127.0.0.1", 15432) && await this.canConnect("127.0.0.1", 16379);
   }
 
   private resolveSeedCommandArguments(): string[] {
