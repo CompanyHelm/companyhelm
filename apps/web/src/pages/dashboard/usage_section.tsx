@@ -35,25 +35,35 @@ function UsageMetricTile(props: {
   );
 }
 
-function UsageSpendTile(props: {
+function UsageSpendSplitTile(props: {
+  actualValue: string;
   description: string;
   title: string;
-  value: string;
+  virtualValue: string;
 }) {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-4">
       <p className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {props.title}
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{props.value}</p>
-      <p className="mt-2 text-xs text-muted-foreground">{props.description}</p>
+      <div className="mt-3 grid gap-2">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Spend</span>
+          <span className="font-semibold text-foreground">{props.actualValue}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">Virtual spend</span>
+          <span className="font-semibold text-foreground">{props.virtualValue}</span>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">{props.description}</p>
     </div>
   );
 }
 
 /**
- * Condenses the richer usage page into one dashboard card so operators can see spend, request
- * volume, and token counts without leaving the operations overview.
+ * Condenses the richer usage page into one dashboard card so operators can see actual spend,
+ * virtual spend, request volume, and token counts without leaving the operations overview.
  */
 export function UsageSection(props: UsageSectionProps) {
   const organizationSlug = useCurrentOrganizationSlug();
@@ -82,20 +92,23 @@ export function UsageSection(props: UsageSectionProps) {
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 lg:grid-cols-4">
-          <UsageSpendTile
+          <UsageSpendSplitTile
+            actualValue={currentDaySummary.actualValue}
             description={currentDaySummary.supportingText}
             title="UTC day"
-            value={currentDaySummary.spendValue}
+            virtualValue={currentDaySummary.virtualValue}
           />
-          <UsageSpendTile
+          <UsageSpendSplitTile
+            actualValue={currentMonthSummary.actualValue}
             description={currentMonthSummary.supportingText}
             title="UTC month"
-            value={currentMonthSummary.spendValue}
+            virtualValue={currentMonthSummary.virtualValue}
           />
-          <UsageSpendTile
+          <UsageSpendSplitTile
+            actualValue={totalSummary.actualValue}
             description={totalSummary.supportingText}
             title="All-time"
-            value={totalSummary.spendValue}
+            virtualValue={totalSummary.virtualValue}
           />
           <UsageMetricTile
             description={`${UsageMetrics.formatTokenCount(props.totalUsage.totalTokens)} tokens processed`}

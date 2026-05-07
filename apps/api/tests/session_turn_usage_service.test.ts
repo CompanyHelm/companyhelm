@@ -98,8 +98,11 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.equal(sessionTotal.inputCostNanoUsd, 1);
   assert.equal(sessionTotal.outputCostNanoUsd, 2);
   assert.equal(sessionTotal.cacheReadCostNanoUsd, 3);
+  assert.equal(sessionTotal.cacheReadCostNanoVirtualUsd, 0);
   assert.equal(sessionTotal.cacheWriteCostNanoUsd, 4);
+  assert.equal(sessionTotal.cacheWriteCostNanoVirtualUsd, 0);
   assert.equal(sessionTotal.totalCostNanoUsd, 10);
+  assert.equal(sessionTotal.totalCostNanoVirtualUsd, 0);
   assert.equal((sessionTotal.periodStart as Date).toISOString(), "1970-01-01T00:00:00.000Z");
 
   assert.ok(agentDay);
@@ -139,6 +142,40 @@ test("SessionTurnUsageService stores provider costs under the credential scope",
   assert.ok(providerTotal);
   assert.equal(providerTotal.modelProviderCredentialId, "00000000-0000-0000-0000-000000000005");
   assert.equal(providerTotal.totalCostNanoUsd, 1);
+  assert.equal(providerTotal.totalCostNanoVirtualUsd, 0);
+});
+
+test("SessionTurnUsageService stores virtual costs separately from actual provider spend", async () => {
+  const harness = new SessionTurnUsageServiceTestHarness();
+  const service = new SessionTurnUsageService();
+
+  await service.recordUsage(harness.createTransactionProvider() as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    costKind: "virtual",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      cost: {
+        input: 0.000000001,
+        total: 0.000000001,
+      },
+      input: 100,
+      totalTokens: 100,
+    },
+  });
+
+  const sessionTotal = harness.aggregateRows.find((row) => {
+    return row.scopeType === "session" && row.period === "total";
+  });
+
+  assert.ok(sessionTotal);
+  assert.equal(sessionTotal.totalCostNanoUsd, 0);
+  assert.equal(sessionTotal.totalCostNanoVirtualUsd, 1);
+  assert.equal(sessionTotal.inputCostNanoUsd, 0);
+  assert.equal(sessionTotal.inputCostNanoVirtualUsd, 1);
 });
 
 test("SessionTurnUsageService skips empty usage payloads", async () => {

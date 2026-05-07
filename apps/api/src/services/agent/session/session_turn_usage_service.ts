@@ -19,9 +19,12 @@ export type SessionTurnUsagePayload = {
   };
 };
 
+export type SessionTurnUsageCostKind = "actual" | "virtual";
+
 export type SessionTurnUsageRecordInput = {
   agentId: string;
   companyId: string;
+  costKind?: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   recordedAt: Date;
   sessionId: string;

@@ -18,12 +18,16 @@ const usagePageQueryNode = graphql`
   query usagePageQuery($dailyStart: String!, $monthlyStart: String!) {
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -34,16 +38,21 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyDaily: LlmUsageAggregates(input: { scopeType: company, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -54,16 +63,21 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyMonthly: LlmUsageAggregates(input: { scopeType: company, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -74,6 +88,7 @@ const usagePageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     LlmUsageProviderCredentials {
@@ -86,12 +101,16 @@ const usagePageQueryNode = graphql`
       baseUrl
       total {
         cacheReadCostNanoUsd
+        cacheReadCostNanoVirtualUsd
         cacheReadTokens
         cacheWriteCostNanoUsd
+        cacheWriteCostNanoVirtualUsd
         cacheWriteTokens
         inputCostNanoUsd
+        inputCostNanoVirtualUsd
         inputTokens
         outputCostNanoUsd
+        outputCostNanoVirtualUsd
         outputTokens
         period
         periodStart
@@ -102,6 +121,7 @@ const usagePageQueryNode = graphql`
         sessionId
         scopeType
         totalCostNanoUsd
+        totalCostNanoVirtualUsd
         totalTokens
       }
     }
@@ -167,7 +187,7 @@ function UsagePageContent() {
           <div className="min-w-0">
             <CardTitle>Provider breakdown</CardTitle>
             <CardDescription>
-              Provider spend, token volume, and request count grouped by model provider credential.
+              Actual spend, virtual spend, token volume, and request count grouped by model provider credential.
             </CardDescription>
           </div>
         </CardHeader>
@@ -177,7 +197,8 @@ function UsagePageContent() {
               <TableRow>
                 <TableHead>Credential</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
+                <TableHead className="text-right">Actual spend</TableHead>
+                <TableHead className="text-right">Virtual spend</TableHead>
                 <TableHead className="text-right">Tokens</TableHead>
                 <TableHead className="text-right">Requests</TableHead>
                 <TableHead className="w-24 text-right">Usage</TableHead>
@@ -186,7 +207,7 @@ function UsagePageContent() {
             <TableBody>
               {providerRows.length === 0 ? (
                 <TableRow>
-                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={6}>
+                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={7}>
                     No provider credentials found.
                   </TableCell>
                 </TableRow>
@@ -216,6 +237,9 @@ function UsagePageContent() {
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {UsageMetrics.formatUsdFromNano(total.totalCostNanoUsd)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {UsageMetrics.formatUsdFromNano(total.totalCostNanoVirtualUsd)}
                   </TableCell>
                   <TableCell className="text-right">
                     {UsageMetrics.formatTokenCount(total.totalTokens)}
