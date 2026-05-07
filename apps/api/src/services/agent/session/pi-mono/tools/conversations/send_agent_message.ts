@@ -11,6 +11,7 @@ import { AgentConversationToolService } from "./service.ts";
  */
 export class AgentSendAgentMessageTool {
   private static readonly parameters = AgentToolParameterSchema.object({
+    createNewSession: Type.Optional(Type.Boolean()),
     replyPolicy: Type.Optional(Type.Union([
       Type.Literal("none"),
       Type.Literal("if_needed"),
@@ -30,7 +31,7 @@ export class AgentSendAgentMessageTool {
   createDefinition(): ToolDefinition<typeof AgentSendAgentMessageTool.parameters> {
     return {
       description:
-        "Send a message to another agent or to a specific agent session. Provide exactly one of targetAgentId or targetSessionId.",
+        "Send a message to another agent or to a specific agent session. Provide exactly one of targetAgentId or targetSessionId. Set createNewSession to true with targetAgentId when you need a fresh session, including another session of the same agent.",
       execute: async (_toolCallId, input) => {
         const result = await this.conversationToolService.sendMessage(input);
         return {
@@ -53,6 +54,7 @@ export class AgentSendAgentMessageTool {
       parameters: AgentSendAgentMessageTool.parameters,
       promptGuidelines: [
         "Use send_agent_message to delegate work, ping another running agent session, or reply to an agent message using the targetSessionId from the delivery metadata.",
+        "Set createNewSession to true with targetAgentId when you need a fresh session instead of reusing an existing one. This is required when routing work to another session of the same agent.",
         "Set replyPolicy to required when you need an answer, if_needed for substantive follow-up only, and none for acknowledgements, thanks, or closure-only messages that should not trigger another reply.",
         "Do not send acknowledgement-only ping-pong replies. If the conversation is already in a closure loop, stop replying.",
       ],

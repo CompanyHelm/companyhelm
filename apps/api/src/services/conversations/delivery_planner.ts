@@ -112,41 +112,44 @@ export class ConversationDeliveryPlanner {
     }
 
     const targetAgentId = input.targetAgentId as string;
-    if (targetAgentId === input.sourceAgentId) {
+    const forceCreateNewSession = input.createNewSession === true;
+    if (targetAgentId === input.sourceAgentId && !forceCreateNewSession) {
       throw new Error("Cannot send an agent message to the same agent without an explicit target session.");
     }
 
     await this.loadAgent(tx, input.companyId, targetAgentId);
-    const reusableTarget = await this.findReusableTargetSession(
-      tx,
-      input.companyId,
-      input.sourceSessionId,
-      targetAgentId,
-    );
-    if (reusableTarget) {
-      await this.sessionManagerService.queuePromptInTransaction(
-        tx,
-        tx,
+    if (!forceCreateNewSession) {
+      const reusableTarget = await this.findReusableTargetSession(
         tx,
         input.companyId,
-        reusableTarget.targetSessionId,
-        deliveryText,
-        {
-          principalMetadata: {
-            principalAgentId: input.sourceAgentId,
-            principalSessionId: input.sourceSessionId,
-            principalType: "agent_message",
-          },
-          shouldSteer: true,
-        },
-      );
-
-      return {
-        createdNewTargetSession: false,
-        shouldSteerDelivery: true,
+        input.sourceSessionId,
         targetAgentId,
-        targetSessionId: reusableTarget.targetSessionId,
-      };
+      );
+      if (reusableTarget) {
+        await this.sessionManagerService.queuePromptInTransaction(
+          tx,
+          tx,
+          tx,
+          input.companyId,
+          reusableTarget.targetSessionId,
+          deliveryText,
+          {
+            principalMetadata: {
+              principalAgentId: input.sourceAgentId,
+              principalSessionId: input.sourceSessionId,
+              principalType: "agent_message",
+            },
+            shouldSteer: true,
+          },
+        );
+
+        return {
+          createdNewTargetSession: false,
+          shouldSteerDelivery: true,
+          targetAgentId,
+          targetSessionId: reusableTarget.targetSessionId,
+        };
+      }
     }
 
     const createdSession = await this.sessionManagerService.createSessionInTransaction(

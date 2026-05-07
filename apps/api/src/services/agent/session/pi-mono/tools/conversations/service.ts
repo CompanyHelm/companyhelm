@@ -5,6 +5,7 @@ import {
 } from "../../../../../conversations/service.ts";
 
 export type AgentConversationToolSendMessageInput = {
+  createNewSession?: boolean | null;
   replyPolicy?: "none" | "if_needed" | "required" | null;
   targetAgentId?: string | null;
   targetSessionId?: string | null;
@@ -38,6 +39,7 @@ export class AgentConversationToolService {
 
   async sendMessage(input: AgentConversationToolSendMessageInput): Promise<AgentConversationSendMessageResult> {
     return this.agentConversationService.sendMessage(this.transactionProvider, {
+      createNewSession: input.createNewSession,
       companyId: this.companyId,
       replyPolicy: input.replyPolicy,
       sourceAgentId: this.agentId,
