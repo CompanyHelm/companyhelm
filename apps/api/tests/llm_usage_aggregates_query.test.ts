@@ -38,15 +38,19 @@ class LlmUsageAggregatesQueryTestHarness {
   static createAggregate(overrides: Partial<Record<string, unknown>> = {}) {
     return {
       cacheReadCostNanoUsd: 500,
+      cacheReadCostNanoVirtualUsd: 250,
       cacheReadTokens: 2,
       cacheWriteCostNanoUsd: 700,
+      cacheWriteCostNanoVirtualUsd: 350,
       cacheWriteTokens: 3,
       companyId: "company-1",
       createdAt: new Date("2026-04-20T12:00:00.000Z"),
       id: "aggregate-1",
       inputCostNanoUsd: 1_000,
+      inputCostNanoVirtualUsd: 500,
       inputTokens: 10,
       outputCostNanoUsd: 2_000,
+      outputCostNanoVirtualUsd: 1_000,
       outputTokens: 20,
       period: "total",
       periodStart: new Date(0),
@@ -56,6 +60,7 @@ class LlmUsageAggregatesQueryTestHarness {
       sessionId: null,
       scopeType: "company",
       totalCostNanoUsd: 4_200,
+      totalCostNanoVirtualUsd: 2_100,
       totalTokens: 35,
       updatedAt: new Date("2026-04-20T12:05:00.000Z"),
       ...overrides,
@@ -93,6 +98,7 @@ test("LlmUsageAggregatesQueryResolver serializes aggregate rows for the authenti
   assert.equal(result[0]?.companyId, "company-1");
   assert.equal(result[0]?.periodStart, "2026-04-20T00:00:00.000Z");
   assert.equal(result[0]?.totalCostNanoUsd, 4_200);
+  assert.equal(result[0]?.totalCostNanoVirtualUsd, 2_100);
   assert.equal(result[0]?.totalTokens, 35);
 });
 

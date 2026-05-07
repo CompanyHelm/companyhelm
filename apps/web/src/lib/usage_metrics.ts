@@ -2,12 +2,16 @@ export type UsageAggregatePeriod = "total" | "day" | "month";
 
 export type UsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: UsageAggregatePeriod;
   periodStart: string;
@@ -15,17 +19,22 @@ export type UsageAggregateRecord = {
   scopeId: string;
   scopeType: string;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
   totalTokens: number;
 };
 
 type GraphqlUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd?: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd?: number;
   cacheWriteTokens: number;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd?: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd?: number;
   outputTokens: number;
   period: string;
   periodStart: string;
@@ -36,6 +45,7 @@ type GraphqlUsageAggregateRecord = {
   sessionId: string | null | undefined;
   scopeType: string;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd?: number;
   totalTokens: number;
 };
 
@@ -55,12 +65,16 @@ export class UsageMetrics {
 
       return [{
         cacheReadCostNanoUsd: record.cacheReadCostNanoUsd,
+        cacheReadCostNanoVirtualUsd: record.cacheReadCostNanoVirtualUsd ?? 0,
         cacheReadTokens: record.cacheReadTokens,
         cacheWriteCostNanoUsd: record.cacheWriteCostNanoUsd,
+        cacheWriteCostNanoVirtualUsd: record.cacheWriteCostNanoVirtualUsd ?? 0,
         cacheWriteTokens: record.cacheWriteTokens,
         inputCostNanoUsd: record.inputCostNanoUsd,
+        inputCostNanoVirtualUsd: record.inputCostNanoVirtualUsd ?? 0,
         inputTokens: record.inputTokens,
         outputCostNanoUsd: record.outputCostNanoUsd,
+        outputCostNanoVirtualUsd: record.outputCostNanoVirtualUsd ?? 0,
         outputTokens: record.outputTokens,
         period,
         periodStart: record.periodStart,
@@ -68,6 +82,7 @@ export class UsageMetrics {
         scopeId: UsageMetrics.resolveGraphqlScopeId(record),
         scopeType: record.scopeType,
         totalCostNanoUsd: record.totalCostNanoUsd,
+        totalCostNanoVirtualUsd: record.totalCostNanoVirtualUsd ?? 0,
         totalTokens: record.totalTokens,
       }];
     });
@@ -95,12 +110,16 @@ export class UsageMetrics {
   ): UsageAggregateRecord {
     return {
       cacheReadCostNanoUsd: 0,
+      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
+      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       inputCostNanoUsd: 0,
+      inputCostNanoVirtualUsd: 0,
       inputTokens: 0,
       outputCostNanoUsd: 0,
+      outputCostNanoVirtualUsd: 0,
       outputTokens: 0,
       period,
       periodStart,
@@ -108,6 +127,7 @@ export class UsageMetrics {
       scopeId,
       scopeType,
       totalCostNanoUsd: 0,
+      totalCostNanoVirtualUsd: 0,
       totalTokens: 0,
     };
   }
@@ -249,11 +269,19 @@ export class UsageMetrics {
   }
 
   static resolveCombinedCostNanoUsd(aggregate: UsageAggregateRecord): number {
-    return aggregate.totalCostNanoUsd;
+    return aggregate.totalCostNanoUsd + aggregate.totalCostNanoVirtualUsd;
   }
 
   static formatCostBreakdown(aggregate: UsageAggregateRecord): string {
-    return UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoUsd);
+    const parts: string[] = [];
+    if (aggregate.totalCostNanoUsd > 0) {
+      parts.push(`${UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoUsd)} actual`);
+    }
+    if (aggregate.totalCostNanoVirtualUsd > 0) {
+      parts.push(`${UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoVirtualUsd)} virtual`);
+    }
+
+    return parts.length > 0 ? parts.join(", ") : "$0.00 actual";
   }
 
   static formatPeriodLabel(periodStart: string, period: UsageAggregatePeriod): string {

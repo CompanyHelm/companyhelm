@@ -65,12 +65,16 @@ const dashboardPageQueryNode = graphql`
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -81,16 +85,21 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyDaily: LlmUsageAggregates(input: { scopeType: company, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -101,16 +110,21 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyMonthly: LlmUsageAggregates(input: { scopeType: company, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -121,6 +135,7 @@ const dashboardPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
   }

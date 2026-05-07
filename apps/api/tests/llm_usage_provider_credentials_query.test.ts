@@ -42,15 +42,19 @@ class LlmUsageProviderCredentialsQueryTestHarness {
   static createAggregate(overrides: Partial<Record<string, unknown>> = {}) {
     return {
       cacheReadCostNanoUsd: 0,
+      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
+      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       companyId: "company-1",
       createdAt: new Date("2026-04-20T12:00:00.000Z"),
       id: "aggregate-1",
       inputCostNanoUsd: 0,
+      inputCostNanoVirtualUsd: 0,
       inputTokens: 0,
       outputCostNanoUsd: 0,
+      outputCostNanoVirtualUsd: 0,
       outputTokens: 0,
       period: "total",
       periodStart: new Date(0),
@@ -60,6 +64,7 @@ class LlmUsageProviderCredentialsQueryTestHarness {
       sessionId: null,
       scopeType: "model_provider_credential",
       totalCostNanoUsd: 0,
+      totalCostNanoVirtualUsd: 0,
       totalTokens: 10,
       updatedAt: new Date("2026-04-20T12:00:00.000Z"),
       ...overrides,
@@ -83,6 +88,7 @@ test("LlmUsageProviderCredentialsQueryResolver returns user credentials with tot
         id: "user-total",
         modelProviderCredentialId: "user-credential-1",
         totalCostNanoUsd: 2_000,
+        totalCostNanoVirtualUsd: 1_000,
       }),
     ],
   ]);
@@ -95,4 +101,5 @@ test("LlmUsageProviderCredentialsQueryResolver returns user credentials with tot
   assert.equal(result[0]?.total.scopeType, "model_provider_credential");
   assert.equal(result[0]?.total.modelProviderCredentialId, "user-credential-1");
   assert.equal(result[0]?.total.totalCostNanoUsd, 2_000);
+  assert.equal(result[0]?.total.totalCostNanoVirtualUsd, 1_000);
 });

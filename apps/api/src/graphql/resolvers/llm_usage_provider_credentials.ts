@@ -24,15 +24,19 @@ type CredentialRecord = {
 
 type LlmUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   companyId: string;
   createdAt: Date;
   id: string;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: LlmUsageAggregatePeriod;
   periodStart: Date;
@@ -42,6 +46,7 @@ type LlmUsageAggregateRecord = {
   sessionId: string | null;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
   totalTokens: number;
   updatedAt: Date;
 };
@@ -107,15 +112,19 @@ export class LlmUsageProviderCredentialsQueryResolver {
       const totals = await selectableDatabase
         .select({
           cacheReadCostNanoUsd: llmUsageAggregates.cacheReadCostNanoUsd,
+          cacheReadCostNanoVirtualUsd: llmUsageAggregates.cacheReadCostNanoVirtualUsd,
           cacheReadTokens: llmUsageAggregates.cacheReadTokens,
           cacheWriteCostNanoUsd: llmUsageAggregates.cacheWriteCostNanoUsd,
+          cacheWriteCostNanoVirtualUsd: llmUsageAggregates.cacheWriteCostNanoVirtualUsd,
           cacheWriteTokens: llmUsageAggregates.cacheWriteTokens,
           companyId: llmUsageAggregates.companyId,
           createdAt: llmUsageAggregates.createdAt,
           id: llmUsageAggregates.id,
           inputCostNanoUsd: llmUsageAggregates.inputCostNanoUsd,
+          inputCostNanoVirtualUsd: llmUsageAggregates.inputCostNanoVirtualUsd,
           inputTokens: llmUsageAggregates.inputTokens,
           outputCostNanoUsd: llmUsageAggregates.outputCostNanoUsd,
+          outputCostNanoVirtualUsd: llmUsageAggregates.outputCostNanoVirtualUsd,
           outputTokens: llmUsageAggregates.outputTokens,
           period: llmUsageAggregates.period,
           periodStart: llmUsageAggregates.periodStart,
@@ -125,6 +134,7 @@ export class LlmUsageProviderCredentialsQueryResolver {
           sessionId: llmUsageAggregates.sessionId,
           scopeType: llmUsageAggregates.scopeType,
           totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
+          totalCostNanoVirtualUsd: llmUsageAggregates.totalCostNanoVirtualUsd,
           totalTokens: llmUsageAggregates.totalTokens,
           updatedAt: llmUsageAggregates.updatedAt,
         })
@@ -142,7 +152,7 @@ export class LlmUsageProviderCredentialsQueryResolver {
         this.serializeRow(companyId, credential, totalByCredentialId)
       );
 
-      return rows.sort((left, right) => right.total.totalCostNanoUsd - left.total.totalCostNanoUsd);
+      return rows.sort((left, right) => this.resolveCombinedCostNanoUsd(right.total) - this.resolveCombinedCostNanoUsd(left.total));
     });
   };
 
@@ -173,15 +183,19 @@ export class LlmUsageProviderCredentialsQueryResolver {
     const epoch = new Date(0);
     return {
       cacheReadCostNanoUsd: 0,
+      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
+      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       companyId,
       createdAt: epoch,
       id: `empty:${credentialId}`,
       inputCostNanoUsd: 0,
+      inputCostNanoVirtualUsd: 0,
       inputTokens: 0,
       outputCostNanoUsd: 0,
+      outputCostNanoVirtualUsd: 0,
       outputTokens: 0,
       period: "total",
       periodStart: epoch,
@@ -191,6 +205,7 @@ export class LlmUsageProviderCredentialsQueryResolver {
       sessionId: null,
       scopeType: "model_provider_credential",
       totalCostNanoUsd: 0,
+      totalCostNanoVirtualUsd: 0,
       totalTokens: 0,
       updatedAt: epoch,
     };
@@ -203,5 +218,9 @@ export class LlmUsageProviderCredentialsQueryResolver {
       periodStart: record.periodStart.toISOString(),
       updatedAt: record.updatedAt.toISOString(),
     };
+  }
+
+  private resolveCombinedCostNanoUsd(record: GraphqlLlmUsageAggregateRecord): number {
+    return record.totalCostNanoUsd + record.totalCostNanoVirtualUsd;
   }
 }

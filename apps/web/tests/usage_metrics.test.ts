@@ -27,21 +27,26 @@ test("formats usage period labels with explicit UTC markers", () => {
 test("formats provider cost breakdowns", () => {
   const aggregate = UsageMetrics.emptyAggregate("provider", "credential-1");
   aggregate.totalCostNanoUsd = 2_500_000_000;
+  aggregate.totalCostNanoVirtualUsd = 1_500_000_000;
 
-  assert.equal(UsageMetrics.resolveCombinedCostNanoUsd(aggregate), 2_500_000_000);
-  assert.equal(UsageMetrics.formatCostBreakdown(aggregate), "$2.50");
+  assert.equal(UsageMetrics.resolveCombinedCostNanoUsd(aggregate), 4_000_000_000);
+  assert.equal(UsageMetrics.formatCostBreakdown(aggregate), "$2.50 actual, $1.50 virtual");
 });
 
 test("coerces GraphQL usage aggregates and ignores future enum values", () => {
   const aggregates = UsageMetrics.fromGraphqlAggregates([
     {
       cacheReadCostNanoUsd: 0,
+      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
+      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       inputCostNanoUsd: 100,
+      inputCostNanoVirtualUsd: 0,
       inputTokens: 10,
       outputCostNanoUsd: 200,
+      outputCostNanoVirtualUsd: 0,
       outputTokens: 20,
       period: "total",
       periodStart: "1970-01-01T00:00:00.000Z",
@@ -49,16 +54,21 @@ test("coerces GraphQL usage aggregates and ignores future enum values", () => {
       scopeId: "company-1",
       scopeType: "company",
       totalCostNanoUsd: 300,
+      totalCostNanoVirtualUsd: 0,
       totalTokens: 30,
     },
     {
       cacheReadCostNanoUsd: 0,
+      cacheReadCostNanoVirtualUsd: 0,
       cacheReadTokens: 0,
       cacheWriteCostNanoUsd: 0,
+      cacheWriteCostNanoVirtualUsd: 0,
       cacheWriteTokens: 0,
       inputCostNanoUsd: 100,
+      inputCostNanoVirtualUsd: 0,
       inputTokens: 10,
       outputCostNanoUsd: 200,
+      outputCostNanoVirtualUsd: 0,
       outputTokens: 20,
       period: "%future added value",
       periodStart: "1970-01-01T00:00:00.000Z",
@@ -66,6 +76,7 @@ test("coerces GraphQL usage aggregates and ignores future enum values", () => {
       scopeId: "company-1",
       scopeType: "company",
       totalCostNanoUsd: 300,
+      totalCostNanoVirtualUsd: 0,
       totalTokens: 30,
     },
   ]);

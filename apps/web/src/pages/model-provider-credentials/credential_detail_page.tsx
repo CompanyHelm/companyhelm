@@ -74,12 +74,16 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
     }
     providerTotal: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: total }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -90,16 +94,21 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     providerDaily: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -110,16 +119,21 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     providerMonthly: LlmUsageAggregates(input: { scopeType: model_provider_credential, modelProviderCredentialId: $credentialId, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -130,6 +144,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       sessionId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
   }
