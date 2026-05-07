@@ -191,6 +191,10 @@ export class AgentConversationCommandService {
       throw new Error("text is required.");
     }
 
+    if (input.createNewSession && !input.targetAgentId) {
+      throw new Error("createNewSession requires targetAgentId.");
+    }
+
     const targetCount = [input.targetAgentId, input.targetSessionId]
       .filter((value) => String(value ?? "").trim().length > 0)
       .length;

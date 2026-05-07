@@ -8,6 +8,7 @@ import { AgentConversationQueryService } from "./query_service.ts";
 import type { AgentConversationReplyPolicy } from "./reply_policy_resolver.ts";
 
 export type AgentConversationSendMessageInput = {
+  createNewSession?: boolean | null;
   companyId: string;
   replyPolicy?: AgentConversationReplyPolicy | null;
   sourceAgentId: string;

@@ -322,6 +322,134 @@ test("AgentConversationService rejects targetAgentId when it matches the source 
   }, /Cannot send an agent message to the same agent without an explicit target session/);
 });
 
+test("AgentConversationService creates a fresh session when createNewSession targets the same agent", async () => {
+  const transaction = new AgentConversationServiceTestTransaction([
+    [{ agentId: "agent-1", id: "session-1", status: "running" }],
+    [{ id: "agent-1", name: "Manager" }],
+    [{ id: "agent-1", name: "Manager" }],
+    [],
+    [],
+    [],
+  ]);
+  const createSessionCalls: Array<Record<string, unknown>> = [];
+  const notifyCalls: Array<Record<string, unknown>> = [];
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {
+      async createSessionInTransaction(
+        _selectableDatabase: unknown,
+        _insertableDatabase: unknown,
+        companyId: string,
+        agentId: string,
+        userMessage: string,
+      ) {
+        createSessionCalls.push({
+          agentId,
+          companyId,
+          userMessage,
+        });
+        return {
+          currentContextTokens: null,
+          currentModelId: "gpt-5.4",
+          currentModelProviderCredentialModelId: "model-2",
+          currentReasoningLevel: "high",
+          id: "session-2",
+          agentId,
+          inferredTitle: userMessage.slice(0, 50),
+          isCompacting: false,
+          isThinking: false,
+          maxContextTokens: null,
+          status: "queued",
+          thinkingText: null,
+          createdAt: new Date("2026-03-31T10:05:00.000Z"),
+          updatedAt: new Date("2026-03-31T10:05:00.000Z"),
+          userSetTitle: null,
+        };
+      },
+      async notifyQueuedSessionMessage(companyId: string, sessionId: string, shouldSteer: boolean) {
+        notifyCalls.push({
+          companyId,
+          sessionId,
+          shouldSteer,
+        });
+      },
+      async queuePromptInTransaction() {
+        throw new Error("createNewSession should bypass same-agent session reuse");
+      },
+    } as never,
+  );
+
+  const result = await service.sendMessage({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction as never),
+  } as never, {
+    companyId: "company-1",
+    createNewSession: true,
+    sourceAgentId: "agent-1",
+    sourceSessionId: "session-1",
+    targetAgentId: "agent-1",
+    text: "Continue this work in a separate CEO session.",
+  });
+
+  assert.equal(result.targetAgentId, "agent-1");
+  assert.equal(result.targetSessionId, "session-2");
+  assert.equal(result.createdNewTargetSession, true);
+  assert.equal(createSessionCalls.length, 1);
+  assert.equal(createSessionCalls[0]?.agentId, "agent-1");
+  assert.match(String(createSessionCalls[0]?.userMessage), /Continue this work in a separate CEO session/);
+  assert.deepEqual(notifyCalls, [{
+    companyId: "company-1",
+    sessionId: "session-2",
+    shouldSteer: false,
+  }]);
+});
+
+test("AgentConversationService rejects createNewSession without targetAgentId", async () => {
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {
+      async createSessionInTransaction() {
+        throw new Error("validation should fail before creating a session");
+      },
+      async notifyQueuedSessionMessage() {
+        throw new Error("validation should fail before notifying delivery");
+      },
+      async queuePromptInTransaction() {
+        throw new Error("validation should fail before queueing delivery");
+      },
+    } as never,
+  );
+
+  await assert.rejects(async () => {
+    await service.sendMessage({
+      transaction: async () => {
+        throw new Error("validation should fail before opening a transaction");
+      },
+    } as never, {
+      companyId: "company-1",
+      createNewSession: true,
+      sourceAgentId: "agent-1",
+      sourceSessionId: "session-1",
+      text: "This should fail validation.",
+    });
+  }, /createNewSession requires targetAgentId/);
+});
+
 test("AgentConversationService lists conversations with participant and preview metadata", async () => {
   const transaction = new AgentConversationServiceTestTransaction([
     [{
