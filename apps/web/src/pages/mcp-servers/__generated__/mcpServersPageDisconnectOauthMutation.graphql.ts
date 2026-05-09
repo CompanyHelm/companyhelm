@@ -11,6 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type McpOauthConnectionStatus = "connected" | "error" | "not_connected" | "reauth_required" | "%future added value";
 export type McpServerAuthType = "authorization_header" | "none" | "oauth_authorization_code" | "oauth_client_credentials" | "%future added value";
+export type McpServerValidationStatus = "auth_error" | "network_error" | "ok" | "protocol_error" | "server_error" | "unknown" | "%future added value";
 export type DisconnectMcpServerOAuthInput = {
   mcpServerId: string;
 };
@@ -26,6 +27,10 @@ export type mcpServersPageDisconnectOauthMutation$data = {
     readonly enabled: boolean;
     readonly headersText: string;
     readonly id: string;
+    readonly lastValidatedAt: string | null | undefined;
+    readonly lastValidationError: string | null | undefined;
+    readonly lastValidationStatus: McpServerValidationStatus;
+    readonly lastValidationToolCount: number | null | undefined;
     readonly name: string;
     readonly oauthClientId: string | null | undefined;
     readonly oauthConnectionStatus: McpOauthConnectionStatus | null | undefined;
@@ -69,6 +74,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidatedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationError",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationStatus",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationToolCount",
         "storageKey": null
       },
       {
@@ -196,7 +229,7 @@ return {
     "metadata": {},
     "name": "mcpServersPageDisconnectOauthMutation",
     "operationKind": "mutation",
-    "text": "mutation mcpServersPageDisconnectOauthMutation(\n  $input: DisconnectMcpServerOAuthInput!\n) {\n  DisconnectMcpServerOAuth(input: $input) {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation mcpServersPageDisconnectOauthMutation(\n  $input: DisconnectMcpServerOAuthInput!\n) {\n  DisconnectMcpServerOAuth(input: $input) {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    lastValidationStatus\n    lastValidationError\n    lastValidationToolCount\n    lastValidatedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();

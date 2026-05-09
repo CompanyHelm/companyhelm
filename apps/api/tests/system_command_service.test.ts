@@ -626,6 +626,10 @@ test("SystemCommandService executes agent default skill and MCP commands when ma
           oauthGrantedScopes: [],
           oauthLastError: null,
           oauthRequestedScopes: [],
+          lastValidatedAt: null,
+          lastValidationError: null,
+          lastValidationStatus: "unknown",
+          lastValidationToolCount: null,
           updatedAt: new Date("2026-04-20T12:30:00.000Z"),
           url: "https://mcp.example.com",
         }];

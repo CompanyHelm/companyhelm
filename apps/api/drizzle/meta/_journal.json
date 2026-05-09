@@ -1156,6 +1156,13 @@
       "when": 1778187600000,
       "tag": "0165_virtual_usage_costs",
       "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1777857200000,
+      "tag": "0166_mcp_server_validation",
+      "breakpoints": true
     }
   ]
 }

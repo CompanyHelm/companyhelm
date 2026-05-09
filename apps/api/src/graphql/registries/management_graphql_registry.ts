@@ -8,6 +8,7 @@ import { McpAuthTypeDetectionService } from "../../services/mcp/auth_type_detect
 import { McpOauthClientCredentialsConnectionService } from "../../services/mcp/oauth/client_credentials_connection.ts";
 import { McpOauthDiscoveryService } from "../../services/mcp/oauth/discovery.ts";
 import { McpOauthTokenService } from "../../services/mcp/oauth/token_service.ts";
+import { McpValidationService } from "../../services/mcp/validation_service.ts";
 import { McpService } from "../../services/mcp/service.ts";
 import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
 import { SecretService } from "../../services/secrets/service.ts";
@@ -21,6 +22,7 @@ import { CreateCompanyMutation } from "../mutations/create_company.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateGithubRepositoryProvisioningMutation } from "../mutations/create_github_repository_provisioning.ts";
 import { CreateMcpServerMutation } from "../mutations/create_mcp_server.ts";
+import { ValidateMcpServerDraftMutation } from "../mutations/validate_mcp_server_draft.ts";
 import { CreateSecretGroupMutation } from "../mutations/create_secret_group.ts";
 import { CreateSecretMutation } from "../mutations/create_secret.ts";
 import { CreateSkillGroupMutation } from "../mutations/create_skill_group.ts";
@@ -92,6 +94,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
   private readonly createGithubRepositoryProvisioningMutation: CreateGithubRepositoryProvisioningMutation;
   private readonly createMcpServerMutation: CreateMcpServerMutation;
+  private readonly validateMcpServerDraftMutation: ValidateMcpServerDraftMutation;
   private readonly createSecretGroupMutation: CreateSecretGroupMutation;
   private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSkillGroupMutation: CreateSkillGroupMutation;
@@ -183,6 +186,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     createSecretGroupMutation?: CreateSecretGroupMutation,
     @inject(CreateMcpServerMutation)
     createMcpServerMutation?: CreateMcpServerMutation,
+    @inject(ValidateMcpServerDraftMutation)
+    validateMcpServerDraftMutation?: ValidateMcpServerDraftMutation,
     @inject(ConnectMcpServerOauthClientCredentialsMutation)
     connectMcpServerOauthClientCredentialsMutation?: ConnectMcpServerOauthClientCredentialsMutation,
     @inject(StartMcpServerOauthMutation)
@@ -290,6 +295,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new SecretEncryptionService(config),
       defaultMcpOauthTokenService,
     );
+    const defaultMcpValidationService = new McpValidationService(defaultMcpService);
     const defaultSkillGithubCatalog = new SkillGithubCatalog(
       new SkillGithubPublicClient(config),
       new GithubClient(config),
@@ -301,16 +307,27 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.completeMcpServerOauthMutation = completeMcpServerOauthMutation
-      ?? new CompleteMcpServerOauthMutation({} as never, {} as never, {} as never, defaultMcpService, {} as never);
+      ?? new CompleteMcpServerOauthMutation(
+        {} as never,
+        {} as never,
+        {} as never,
+        defaultMcpService,
+        defaultMcpValidationService,
+        {} as never,
+      );
     this.connectMcpServerOauthClientCredentialsMutation = connectMcpServerOauthClientCredentialsMutation
       ?? new ConnectMcpServerOauthClientCredentialsMutation(
         defaultMcpService,
         defaultMcpOauthClientCredentialsConnectionService,
+        defaultMcpValidationService,
       );
     this.createCompanyMutation = createCompanyMutation;
     this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
     this.createGithubRepositoryProvisioningMutation = createGithubRepositoryProvisioningMutation;
-    this.createMcpServerMutation = createMcpServerMutation ?? new CreateMcpServerMutation(defaultMcpService);
+    this.createMcpServerMutation = createMcpServerMutation
+      ?? new CreateMcpServerMutation(defaultMcpService, defaultMcpValidationService);
+    this.validateMcpServerDraftMutation = validateMcpServerDraftMutation
+      ?? new ValidateMcpServerDraftMutation(defaultMcpService, defaultMcpValidationService);
     this.createSecretGroupMutation = createSecretGroupMutation ?? new CreateSecretGroupMutation(defaultSecretService);
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
@@ -367,7 +384,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.updateCompanyMemberRoleMutation = updateCompanyMemberRoleMutation;
     this.updateCompanyOnboardingMutation = updateCompanyOnboardingMutation;
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
-    this.updateMcpServerMutation = updateMcpServerMutation ?? new UpdateMcpServerMutation(defaultMcpService);
+    this.updateMcpServerMutation = updateMcpServerMutation
+      ?? new UpdateMcpServerMutation(defaultMcpService, defaultMcpValidationService);
     this.updateSecretGroupMutation = updateSecretGroupMutation ?? new UpdateSecretGroupMutation(defaultSecretService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSkillFromRepositoryMutation = updateSkillFromRepositoryMutation
@@ -386,6 +404,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
         CreateGithubRepositoryProvisioning: this.createGithubRepositoryProvisioningMutation.execute,
         CreateMcpServer: this.createMcpServerMutation.execute,
+        ValidateMcpServerDraft: this.validateMcpServerDraftMutation.execute,
         CreateSecret: this.createSecretMutation.execute,
         CreateSecretGroup: this.createSecretGroupMutation.execute,
         CreateSkill: this.createSkillMutation.execute,
