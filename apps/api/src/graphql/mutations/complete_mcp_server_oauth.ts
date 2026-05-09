@@ -10,6 +10,7 @@ import { GraphqlMcpServerPresenter, type GraphqlMcpServerRecord } from "../mcp_s
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 import { McpService } from "../../services/mcp/service.ts";
+import { McpValidationService } from "../../services/mcp/validation_service.ts";
 
 type CompleteMcpServerOauthMutationArguments = {
   input: {
@@ -42,6 +43,7 @@ export class CompleteMcpServerOauthMutation extends Mutation<
   private readonly completeConnectionService: McpOauthCompleteConnectionService;
   private readonly logger: ApiLogger;
   private readonly mcpService: McpService;
+  private readonly mcpValidationService: McpValidationService;
   private readonly stateService: McpOauthStateService;
 
   constructor(
@@ -50,6 +52,7 @@ export class CompleteMcpServerOauthMutation extends Mutation<
     completeConnectionService: McpOauthCompleteConnectionService,
     @inject(McpOauthStateService) stateService: McpOauthStateService,
     @inject(McpService) mcpService: McpService,
+    @inject(McpValidationService) mcpValidationService: McpValidationService,
     @inject(ApiLogger) logger: ApiLogger,
   ) {
     super();
@@ -57,6 +60,7 @@ export class CompleteMcpServerOauthMutation extends Mutation<
     this.completeConnectionService = completeConnectionService;
     this.logger = logger;
     this.mcpService = mcpService;
+    this.mcpValidationService = mcpValidationService;
     this.stateService = stateService;
   }
 
@@ -88,14 +92,26 @@ export class CompleteMcpServerOauthMutation extends Mutation<
         });
       });
 
-      const server = await this.mcpService.getMcpServer(
-        new AppRuntimeTransactionProvider(this.appRuntimeDatabase, result.companyId),
-        result.companyId,
-        result.mcpServerId,
+      const validationTransactionProvider = new AppRuntimeTransactionProvider(this.appRuntimeDatabase, result.companyId);
+      const validation = await this.mcpValidationService.validatePersistedServer(
+        validationTransactionProvider,
+        {
+          companyId: result.companyId,
+          mcpServerId: result.mcpServerId,
+        },
       );
+      const validatedServer = await this.mcpService.updateMcpServerValidation(validationTransactionProvider, {
+        companyId: result.companyId,
+        lastValidatedAt: validation.validatedAt,
+        lastValidationError: validation.errorMessage,
+        lastValidationStatus: validation.status,
+        lastValidationToolCount: validation.toolCount,
+        mcpServerId: result.mcpServerId,
+        userId: context.authSession.user.id,
+      });
 
       return {
-        mcpServer: GraphqlMcpServerPresenter.present(server),
+        mcpServer: GraphqlMcpServerPresenter.present(validatedServer),
         organizationSlug: result.organizationSlug,
       };
     } catch (error) {

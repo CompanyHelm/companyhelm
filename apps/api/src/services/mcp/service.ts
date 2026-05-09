@@ -19,6 +19,7 @@ import {
   serializeStoredMcpOauthToken,
   type McpOauthConnectionStatus,
   type McpServerAuthType,
+  type McpServerValidationStatus,
 } from "./oauth/types.ts";
 
 export type McpServerRecord = {
@@ -30,6 +31,10 @@ export type McpServerRecord = {
   enabled: boolean;
   headers: Record<string, string>;
   id: string;
+  lastValidatedAt: Date | null;
+  lastValidationError: string | null;
+  lastValidationStatus: McpServerValidationStatus;
+  lastValidationToolCount: number | null;
   name: string;
   oauthClientId: string | null;
   oauthConnectionStatus: McpOauthConnectionStatus | null;
@@ -56,6 +61,10 @@ type McpServerBaseRecord = {
   enabled: boolean;
   headers: Record<string, string>;
   id: string;
+  lastValidatedAt: Date | null;
+  lastValidationError: string | null;
+  lastValidationStatus: string;
+  lastValidationToolCount: number | null;
   name: string;
   updatedAt: Date;
   url: string;
@@ -93,6 +102,31 @@ export class McpService {
     this.tokenService = tokenService ?? new McpOauthTokenService();
   }
 
+  normalizeMcpServerDraft(input: {
+    authType?: McpServerAuthType | null;
+    callTimeoutMs?: number | null;
+    description?: string | null;
+    headersText?: string | null;
+    name: string;
+    url: string;
+  }): {
+    authType: McpServerAuthType;
+    callTimeoutMs: number;
+    description: string | null;
+    headers: Record<string, string>;
+    name: string;
+    url: string;
+  } {
+    return {
+      authType: this.resolveAuthType(input.authType ?? undefined),
+      callTimeoutMs: this.resolveCallTimeoutMs(input.callTimeoutMs ?? undefined),
+      description: this.normalizeOptionalText(input.description),
+      headers: this.parseHeadersText(input.headersText),
+      name: this.requireNonEmptyValue(input.name, "MCP server name"),
+      url: this.requireHttpUrl(input.url),
+    };
+  }
+
   async createMcpServer(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -107,12 +141,7 @@ export class McpService {
       userId: string;
     },
   ): Promise<McpServerRecord> {
-    const name = this.requireNonEmptyValue(input.name, "MCP server name");
-    const url = this.requireHttpUrl(input.url);
-    const description = this.normalizeOptionalText(input.description);
-    const headers = this.parseHeadersText(input.headersText);
-    const authType = this.resolveAuthType(input.authType ?? undefined);
-    const callTimeoutMs = this.resolveCallTimeoutMs(input.callTimeoutMs ?? undefined);
+    const draft = this.normalizeMcpServerDraft(input);
     const enabled = input.enabled ?? true;
 
     return transactionProvider.transaction(async (tx) => {
@@ -120,18 +149,18 @@ export class McpService {
       const [createdServer] = await tx
         .insert(mcpServers)
         .values({
-          authType,
-          callTimeoutMs,
+          authType: draft.authType,
+          callTimeoutMs: draft.callTimeoutMs,
           companyId: input.companyId,
           createdAt: now,
           createdByUserId: input.userId,
-          description,
+          description: draft.description,
           enabled,
-          headers,
-          name,
+          headers: draft.headers,
+          name: draft.name,
           updatedAt: now,
           updatedByUserId: input.userId,
-          url,
+          url: draft.url,
         })
         .returning(this.mcpServerSelection()) as McpServerBaseRecord[];
 
@@ -209,6 +238,51 @@ export class McpService {
       return this.hydrateServerRecords(tx, [updatedServer]).then(([server]) => {
         if (!server) {
           throw new Error("Failed to hydrate updated MCP server.");
+        }
+
+        return server;
+      });
+    });
+  }
+
+  async updateMcpServerValidation(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      lastValidatedAt: Date | null;
+      lastValidationError: string | null;
+      lastValidationStatus: McpServerValidationStatus;
+      lastValidationToolCount: number | null;
+      mcpServerId: string;
+      userId: string;
+    },
+  ): Promise<McpServerRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
+
+      const [updatedServer] = await tx
+        .update(mcpServers)
+        .set({
+          lastValidatedAt: input.lastValidatedAt,
+          lastValidationError: this.normalizeOptionalText(input.lastValidationError),
+          lastValidationStatus: input.lastValidationStatus,
+          lastValidationToolCount: input.lastValidationToolCount,
+          updatedAt: new Date(),
+          updatedByUserId: input.userId,
+        })
+        .where(and(
+          eq(mcpServers.companyId, input.companyId),
+          eq(mcpServers.id, input.mcpServerId),
+        ))
+        .returning(this.mcpServerSelection()) as McpServerBaseRecord[];
+
+      if (!updatedServer) {
+        throw new Error("Failed to update MCP server validation state.");
+      }
+
+      return this.hydrateServerRecords(tx, [updatedServer]).then(([server]) => {
+        if (!server) {
+          throw new Error("Failed to hydrate updated MCP server validation state.");
         }
 
         return server;
@@ -723,6 +797,10 @@ export class McpService {
       enabled: mcpServers.enabled,
       headers: mcpServers.headers,
       id: mcpServers.id,
+      lastValidatedAt: mcpServers.lastValidatedAt,
+      lastValidationError: mcpServers.lastValidationError,
+      lastValidationStatus: mcpServers.lastValidationStatus,
+      lastValidationToolCount: mcpServers.lastValidationToolCount,
       name: mcpServers.name,
       updatedAt: mcpServers.updatedAt,
       url: mcpServers.url,
@@ -762,6 +840,10 @@ export class McpService {
       enabled: record.enabled,
       headers: record.headers,
       id: record.id,
+      lastValidatedAt: record.lastValidatedAt,
+      lastValidationError: record.lastValidationError,
+      lastValidationStatus: this.resolveValidationStatus(record.lastValidationStatus),
+      lastValidationToolCount: record.lastValidationToolCount,
       name: record.name,
       updatedAt: record.updatedAt,
       url: record.url,
@@ -854,6 +936,22 @@ export class McpService {
     }
 
     throw new Error("Unsupported MCP auth type.");
+  }
+
+  private resolveValidationStatus(value: string | null | undefined): McpServerValidationStatus {
+    const normalizedValue = normalizeNonEmptyString(value) ?? "unknown";
+    if (
+      normalizedValue === "unknown"
+      || normalizedValue === "ok"
+      || normalizedValue === "auth_error"
+      || normalizedValue === "network_error"
+      || normalizedValue === "protocol_error"
+      || normalizedValue === "server_error"
+    ) {
+      return normalizedValue;
+    }
+
+    throw new Error("Unsupported MCP validation status.");
   }
 
   private parseHeadersText(value: string | null | undefined): Record<string, string> {

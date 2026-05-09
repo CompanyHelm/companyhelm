@@ -30,6 +30,10 @@ export const mcpServers = pgTable("mcp_servers", {
   headers: jsonb("headers").$type<Record<string, string>>().notNull().default(sql`'{}'::jsonb`),
   callTimeoutMs: integer("call_timeout_ms").notNull(),
   enabled: boolean("enabled").notNull().default(true),
+  lastValidationStatus: text("last_validation_status").notNull().default("unknown"),
+  lastValidationError: text("last_validation_error"),
+  lastValidationToolCount: integer("last_validation_tool_count"),
+  lastValidatedAt: timestamp("last_validated_at", { withTimezone: true }),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   updatedByUserId: uuid("updated_by_user_id")

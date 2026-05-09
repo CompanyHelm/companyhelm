@@ -6,6 +6,14 @@ export type McpServerAuthType =
 
 export type McpOauthConnectionStatus = "connected" | "error" | "not_connected" | "reauth_required";
 
+export type McpServerValidationStatus =
+  | "unknown"
+  | "ok"
+  | "auth_error"
+  | "network_error"
+  | "protocol_error"
+  | "server_error";
+
 export type McpSupportedOauthAuthType = "oauth_client_credentials" | "oauth_authorization_code";
 
 export type McpProtectedResourceMetadata = {

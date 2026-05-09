@@ -415,6 +415,7 @@ export class GraphqlApplication {
       undefined,
       undefined,
       undefined,
+      undefined,
       deleteSecretMutation,
       undefined,
       undefined,

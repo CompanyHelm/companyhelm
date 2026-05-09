@@ -36,6 +36,10 @@ const mcpServersPageQueryNode = graphql`
       oauthGrantedScopes
       oauthLastError
       oauthRequestedScopes
+      lastValidationStatus
+      lastValidationError
+      lastValidationToolCount
+      lastValidatedAt
       createdAt
       updatedAt
     }
@@ -58,6 +62,10 @@ const mcpServersPageCreateMutationNode = graphql`
       oauthGrantedScopes
       oauthLastError
       oauthRequestedScopes
+      lastValidationStatus
+      lastValidationError
+      lastValidationToolCount
+      lastValidatedAt
       createdAt
       updatedAt
     }
@@ -80,6 +88,10 @@ const mcpServersPageUpdateMutationNode = graphql`
       oauthGrantedScopes
       oauthLastError
       oauthRequestedScopes
+      lastValidationStatus
+      lastValidationError
+      lastValidationToolCount
+      lastValidatedAt
       createdAt
       updatedAt
     }
@@ -120,6 +132,10 @@ const mcpServersPageConnectClientCredentialsMutationNode = graphql`
       oauthGrantedScopes
       oauthLastError
       oauthRequestedScopes
+      lastValidationStatus
+      lastValidationError
+      lastValidationToolCount
+      lastValidatedAt
       createdAt
       updatedAt
     }
@@ -142,6 +158,10 @@ const mcpServersPageDisconnectOauthMutationNode = graphql`
       oauthGrantedScopes
       oauthLastError
       oauthRequestedScopes
+      lastValidationStatus
+      lastValidationError
+      lastValidationToolCount
+      lastValidatedAt
       createdAt
       updatedAt
     }
@@ -229,6 +249,21 @@ function normalizeOauthConnectionStatus(value: string | null | undefined): Edita
   return null;
 }
 
+function normalizeValidationStatus(value: string | null | undefined): McpServersTableRecord["lastValidationStatus"] {
+  if (
+    value === "unknown"
+    || value === "ok"
+    || value === "auth_error"
+    || value === "network_error"
+    || value === "protocol_error"
+    || value === "server_error"
+  ) {
+    return value;
+  }
+
+  return "unknown";
+}
+
 function McpServersPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -290,6 +325,10 @@ function McpServersPageContent() {
     enabled: server.enabled,
     headersText: server.headersText,
     id: server.id,
+    lastValidatedAt: server.lastValidatedAt ?? null,
+    lastValidationError: server.lastValidationError ?? null,
+    lastValidationStatus: normalizeValidationStatus(server.lastValidationStatus),
+    lastValidationToolCount: server.lastValidationToolCount ?? null,
     name: server.name,
     oauthConnectionStatus: normalizeOauthConnectionStatus(server.oauthConnectionStatus),
     oauthLastError: server.oauthLastError ?? null,
@@ -305,6 +344,10 @@ function McpServersPageContent() {
         enabled: selectedServerRecord.enabled,
         headersText: selectedServerRecord.headersText,
         id: selectedServerRecord.id,
+        lastValidatedAt: selectedServerRecord.lastValidatedAt ?? null,
+        lastValidationError: selectedServerRecord.lastValidationError ?? null,
+        lastValidationStatus: normalizeValidationStatus(selectedServerRecord.lastValidationStatus),
+        lastValidationToolCount: selectedServerRecord.lastValidationToolCount ?? null,
         name: selectedServerRecord.name,
         oauthClientId: selectedServerRecord.oauthClientId ?? null,
         oauthConnectionStatus: normalizeOauthConnectionStatus(selectedServerRecord.oauthConnectionStatus),
