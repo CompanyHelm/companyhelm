@@ -563,6 +563,17 @@ export class CompanyBootstrapService {
       }
     }
 
+    // Local dev/demo boot and first-run onboarding both need a CEO agent before the company has
+    // chosen or synced a third-party model. In those flows we intentionally leave the agent
+    // model unset so the onboarding chat can prompt for credentials later instead of failing the
+    // bootstrap itself.
+    if (input.llmSetupStatus !== "third_party") {
+      return {
+        defaultModelProviderCredentialModelId: null,
+        defaultReasoningLevel: null,
+      };
+    }
+
     throw new Error("Company onboarding requires at least one user-provided synced model.");
   }
 

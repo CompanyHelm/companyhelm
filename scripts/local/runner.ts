@@ -23,7 +23,6 @@ export class LocalRunner {
   }
 
   async run(): Promise<void> {
-    this.assertRequiredEnvironment();
     this.registerShutdownHandlers();
     await this.ensureDockerServices();
     await this.runCommand("npm", this.resolveSeedCommandArguments());
@@ -42,24 +41,6 @@ export class LocalRunner {
       await this.verifyReadiness();
     }
     this.printReadyMessage();
-  }
-
-  private assertRequiredEnvironment(): void {
-    const requiredVariableNames = [
-      "EXA_API_KEY",
-      "E2B_API_KEY",
-      "GITHUB_APP_CLIENT_ID",
-      "GITHUB_APP_PRIVATE_KEY_PEM",
-      "GITHUB_APP_URL",
-    ];
-    if (this.input.mode === "e2b") {
-      requiredVariableNames.push("COMPANYHELM_API_PUBLIC_URL", "COMPANYHELM_WEB_PUBLIC_URL");
-    }
-
-    const missingVariableNames = requiredVariableNames.filter((variableName) => !process.env[variableName]);
-    if (missingVariableNames.length > 0) {
-      throw new Error(`Missing required local ${this.input.mode} environment variables: ${missingVariableNames.join(", ")}.`);
-    }
   }
 
   private async ensureDockerServices(): Promise<void> {

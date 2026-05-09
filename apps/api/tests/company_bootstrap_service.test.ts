@@ -763,6 +763,33 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.deepEqual(harness.listCompanyOnboardings(), []);
 });
 
+test("CompanyBootstrapService allows keyless onboarding assets while llm setup is still pending", async () => {
+  const harness = new CompanyBootstrapServiceTestHarness();
+
+  await (await harness.buildService()).ensureCompanyDefaults(harness.buildTransaction() as never, "company-1");
+  await (await harness.buildService()).ensureOnboardingAssets(
+    harness.buildTransaction() as never,
+    {
+      companyId: "company-1",
+      llmSetupStatus: "pending",
+    },
+  );
+
+  const [seedAgent] = harness.listAgents();
+  const defaultDefinition = harness.loadDefaultDefinition();
+
+  assert.equal(seedAgent?.companyId, "company-1");
+  assert.equal(seedAgent?.name, "CEO");
+  assert.equal(seedAgent?.defaultComputeProviderDefinitionId, defaultDefinition?.id);
+  assert.equal(seedAgent?.defaultEnvironmentTemplateId, "medium");
+  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, null);
+  assert.equal(seedAgent?.default_reasoning_level, null);
+  assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
+
+  const [workflow] = harness.listWorkflowDefinitions();
+  assert.equal(workflow?.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME);
+});
+
 test("CompanyBootstrapService does not duplicate onboarding assets when rerun", async () => {
   const now = new Date("2026-04-03T18:00:00.000Z");
   const harness = new CompanyBootstrapServiceTestHarness({
