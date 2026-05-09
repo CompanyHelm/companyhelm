@@ -1,6 +1,7 @@
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentListAssignedTasksTool } from "./list_assigned_tasks.ts";
 import { AgentAssignedTaskToolService } from "./service.ts";
+import { AgentStartTaskTool } from "./start_task.ts";
 import { AgentUpdateAssignedTaskStatusTool } from "./update_assigned_task_status.ts";
 
 /**
@@ -18,6 +19,7 @@ export class AgentAssignedTaskToolProvider extends AgentToolProviderInterface {
   createToolDefinitions(): unknown[] {
     return [
       new AgentListAssignedTasksTool(this.assignedTaskToolService).createDefinition(),
+      new AgentStartTaskTool(this.assignedTaskToolService).createDefinition(),
       new AgentUpdateAssignedTaskStatusTool(this.assignedTaskToolService).createDefinition(),
     ];
   }

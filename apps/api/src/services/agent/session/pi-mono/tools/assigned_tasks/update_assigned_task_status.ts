@@ -14,7 +14,9 @@ export class AgentUpdateAssignedTaskStatusTool {
       Type.Literal("draft"),
       Type.Literal("in_progress"),
       Type.Literal("completed"),
-    ]),
+    ], {
+      description: "Task status to set. Valid values are draft, in_progress, and completed. Do not use pending.",
+    }),
     taskId: Type.String(),
   });
 
@@ -45,6 +47,7 @@ export class AgentUpdateAssignedTaskStatusTool {
       parameters: AgentUpdateAssignedTaskStatusTool.parameters,
       promptGuidelines: [
         "Use update_assigned_task_status only for tasks currently assigned to this agent.",
+        "Task statuses are draft, in_progress, and completed. Do not use pending.",
       ],
       promptSnippet: "Update an assigned task status",
     };

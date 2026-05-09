@@ -4,10 +4,12 @@ import type { TransactionProviderInterface } from "../src/db/transaction_provide
 import { AgentListAssignedTasksTool } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/list_assigned_tasks.ts";
 import { AgentAssignedTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/provider.ts";
 import { AgentAssignedTaskToolService } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/service.ts";
+import { AgentStartTaskTool } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/start_task.ts";
 import { AgentUpdateAssignedTaskStatusTool } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/update_assigned_task_status.ts";
 import type {
   TaskServiceGetTaskInput,
   TaskServiceListTasksInput,
+  TaskServiceStartTaskInput,
   TaskServiceUpdateTaskStatusInput,
 } from "../src/services/task_service.ts";
 
@@ -17,7 +19,9 @@ type AgentToolExecutionResult = {
   }>;
   details?: {
     nextOffset?: number | null;
+    sessionId?: string | null;
     taskId?: string;
+    taskRunId?: string;
     totalCount?: number;
   };
 };
@@ -27,14 +31,26 @@ test("AgentAssignedTaskToolProvider contributes only assigned task handling tool
     async listAssignedTasks() {
       throw new Error("assigned task listing is lazy");
     },
+    async startTask() {
+      throw new Error("assigned task starting is lazy");
+    },
     async updateAssignedTaskStatus() {
       throw new Error("assigned task status updates are lazy");
     },
   } as never);
+  const definitions = provider.createToolDefinitions();
 
   assert.deepEqual(
-    provider.createToolDefinitions().map((tool) => tool.name),
-    ["list_assigned_tasks", "update_assigned_task_status"],
+    definitions.map((tool) => tool.name),
+    ["list_assigned_tasks", "start_task", "update_assigned_task_status"],
+  );
+  assert.match(
+    definitions.find((tool) => tool.name === "list_assigned_tasks")?.promptGuidelines.join("\n") ?? "",
+    /draft, in_progress, or completed/,
+  );
+  assert.match(
+    definitions.find((tool) => tool.name === "update_assigned_task_status")?.promptGuidelines.join("\n") ?? "",
+    /draft, in_progress, and completed/,
   );
 });
 
@@ -73,6 +89,55 @@ test("AgentListAssignedTasksTool renders the current agent task queue", async ()
   assert.equal(result.details?.totalCount, 2);
   assert.match(result.content[0]?.text ?? "", /name: Write launch post/);
   assert.match(result.content[0]?.text ?? "", /stage: Backlog/);
+});
+
+test("AgentStartTaskTool returns the started task run", async () => {
+  const tool = new AgentStartTaskTool({
+    async startTask() {
+      return {
+        task: {
+          assignedAt: new Date("2026-04-20T12:00:00.000Z"),
+          assignee: {
+            email: null,
+            id: "agent-1",
+            kind: "agent",
+            name: "Engineer",
+          },
+          completedAt: null,
+          createdAt: new Date("2026-04-20T12:00:00.000Z"),
+          description: null,
+          id: "task-1",
+          name: "Ship changelog",
+          status: "in_progress",
+          taskStageId: "stage-backlog",
+          taskStageName: "Backlog",
+          updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+        },
+        taskRun: {
+          agentId: "agent-1",
+          createdAt: new Date("2026-04-20T12:30:00.000Z"),
+          finishedAt: null,
+          id: "task-run-1",
+          sessionId: "session-1",
+          startedAt: new Date("2026-04-20T12:30:00.000Z"),
+          status: "running",
+          taskId: "task-1",
+          updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+        },
+      };
+    },
+  } as never);
+
+  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
+  const result = await execute("tool-call-1", {
+    taskId: "task-1",
+  }, undefined, undefined, undefined);
+
+  assert.equal(result.details?.sessionId, "session-1");
+  assert.equal(result.details?.taskId, "task-1");
+  assert.equal(result.details?.taskRunId, "task-run-1");
+  assert.match(result.content[0]?.text ?? "", /started task/);
+  assert.match(result.content[0]?.text ?? "", /taskRunStatus: running/);
 });
 
 test("AgentUpdateAssignedTaskStatusTool returns the updated assigned task", async () => {
@@ -143,6 +208,66 @@ test("AgentAssignedTaskToolService forwards assigned listing with current agent 
     limit: 10,
     offset: 5,
     status: "draft",
+  });
+});
+
+test("AgentAssignedTaskToolService starts tasks with current agent session scope", async () => {
+  let capturedInput: Record<string, unknown> | null = null;
+  const service = new AgentAssignedTaskToolService(
+    {} as never,
+    "company-1",
+    "agent-1",
+    "session-1",
+    {
+      async startTask(
+        _transactionProvider: TransactionProviderInterface,
+        input: TaskServiceStartTaskInput,
+      ) {
+        capturedInput = input as Record<string, unknown>;
+        return {
+          task: {
+            assignedAt: new Date("2026-04-20T12:00:00.000Z"),
+            assignee: {
+              email: null,
+              id: "agent-1",
+              kind: "agent",
+              name: "Engineer",
+            },
+            completedAt: null,
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            description: null,
+            id: "task-1",
+            name: "Ship the change",
+            status: "in_progress",
+            taskStageId: "stage-1",
+            taskStageName: "Backlog",
+            updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+          },
+          taskRun: {
+            agentId: "agent-1",
+            createdAt: new Date("2026-04-20T12:30:00.000Z"),
+            finishedAt: null,
+            id: "task-run-1",
+            sessionId: "session-1",
+            startedAt: new Date("2026-04-20T12:30:00.000Z"),
+            status: "running",
+            taskId: "task-1",
+            updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+          },
+        };
+      },
+    } as never,
+  );
+
+  await service.startTask({
+    taskId: "task-1",
+  });
+
+  assert.deepEqual(capturedInput, {
+    actorAgentId: "agent-1",
+    companyId: "company-1",
+    sessionId: "session-1",
+    taskId: "task-1",
   });
 });
 

@@ -63,6 +63,72 @@ test("TaskManagementSystemCommandService lists company tasks with filters", asyn
   }]);
 });
 
+test("TaskManagementSystemCommandService lists task runs with session and unfinished filters", async () => {
+  let capturedInput: Record<string, unknown> | null = null;
+  const service = new TaskManagementSystemCommandService({
+    async listTaskRuns(_transactionProvider: unknown, input: Record<string, unknown>) {
+      capturedInput = input;
+      return {
+        nextOffset: null,
+        taskRuns: [{
+          agentId: "agent-2",
+          agentName: "Software Engineer",
+          createdAt: new Date("2026-04-20T12:00:00.000Z"),
+          endedReason: null,
+          finishedAt: null,
+          id: "task-run-1",
+          lastActivityAt: new Date("2026-04-20T12:30:00.000Z"),
+          sessionId: "session-2",
+          startedAt: new Date("2026-04-20T12:01:00.000Z"),
+          status: "running",
+          taskId: "task-1",
+          taskName: "Build onboarding flow",
+          taskStatus: "in_progress",
+          updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+        }],
+        totalCount: 1,
+      };
+    },
+  } as never);
+
+  const result = await service.execute("task_run.list", {
+    assignedAgentId: "agent-2",
+    finished: false,
+    limit: 10,
+    offset: 0,
+    sessionId: "session-2",
+    status: "running",
+    taskId: "task-1",
+  }, context);
+
+  assert.deepEqual(capturedInput, {
+    assignedAgentId: "agent-2",
+    companyId: "company-123",
+    finished: false,
+    limit: 10,
+    offset: 0,
+    sessionId: "session-2",
+    status: "running",
+    taskId: "task-1",
+  });
+  assert.deepEqual(result.taskRuns, [{
+    agentId: "agent-2",
+    agentName: "Software Engineer",
+    createdAt: "2026-04-20T12:00:00.000Z",
+    endedReason: null,
+    finishedAt: null,
+    id: "task-run-1",
+    lastActivityAt: "2026-04-20T12:30:00.000Z",
+    sessionId: "session-2",
+    startedAt: "2026-04-20T12:01:00.000Z",
+    status: "running",
+    taskId: "task-1",
+    taskName: "Build onboarding flow",
+    taskStatus: "in_progress",
+    updatedAt: "2026-04-20T12:30:00.000Z",
+  }]);
+});
+
 test("TaskManagementSystemCommandService forwards partial task updates with session identity", async () => {
   let capturedInput: Record<string, unknown> | null = null;
   const service = new TaskManagementSystemCommandService({

@@ -1,6 +1,7 @@
 import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
 import {
   type TaskServiceListTasksResult,
+  type TaskServiceStartTaskResult,
   type TaskServiceTask,
   TaskService,
 } from "../../../../../task_service.ts";
@@ -44,6 +45,15 @@ export class AgentAssignedTaskToolService {
       limit: input.limit,
       offset: input.offset,
       status: input.status,
+    });
+  }
+
+  async startTask(input: { taskId: string }): Promise<TaskServiceStartTaskResult> {
+    return this.taskService.startTask(this.transactionProvider, {
+      actorAgentId: this.agentId,
+      companyId: this.companyId,
+      sessionId: this.sessionId,
+      taskId: input.taskId,
     });
   }
 

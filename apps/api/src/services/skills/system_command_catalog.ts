@@ -504,6 +504,23 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_tasks",
   }, {
+    description: "List task runs with optional task, session, assigned-agent, status, and finished filters.",
+    id: "task_run.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        assignedAgentId: { type: ["string", "null"] },
+        finished: { type: ["boolean", "null"] },
+        limit: { maximum: 100, minimum: 1, type: "integer" },
+        offset: { minimum: 0, type: "integer" },
+        sessionId: { type: ["string", "null"] },
+        status: { enum: ["queued", "running", "completed", "failed", "canceled", null] },
+        taskId: { type: ["string", "null"] },
+      },
+      type: "object",
+    },
+    systemSkillKey: "manage_tasks",
+  }, {
     description: "Create a company task and optionally assign it to one human user or one agent.",
     id: "task.create",
     inputSchema: {

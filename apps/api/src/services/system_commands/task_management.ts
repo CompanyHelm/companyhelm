@@ -10,6 +10,16 @@ type TaskListInput = {
   status?: string | null;
 };
 
+type TaskRunListInput = {
+  assignedAgentId?: string | null;
+  finished?: boolean | null;
+  limit?: number | null;
+  offset?: number | null;
+  sessionId?: string | null;
+  status?: string | null;
+  taskId?: string | null;
+};
+
 /**
  * Exposes durable task tracker operations through the generic system-command boundary. The command
  * keeps task mutation power behind the Manage tasks system skill while delegating validation and
@@ -32,6 +42,8 @@ export class TaskManagementSystemCommandService {
     switch (commandId) {
       case "task.list":
         return this.listTasks(input, context);
+      case "task_run.list":
+        return this.listTaskRuns(input, context);
       case "task.create":
         return this.createTask(input, context);
       case "task.update":
@@ -54,6 +66,19 @@ export class TaskManagementSystemCommandService {
     });
 
     return this.jsonSerializer.serializeRecord(tasks);
+  }
+
+  private async listTaskRuns(
+    input: unknown,
+    context: SystemCommandExecutionContext,
+  ): Promise<Record<string, unknown>> {
+    const payload = this.inputReader.requireRecord(input);
+    const taskRuns = await this.taskService.listTaskRuns(context.transactionProvider, {
+      ...this.readTaskRunListInput(payload),
+      companyId: context.companyId,
+    });
+
+    return this.jsonSerializer.serializeRecord(taskRuns);
   }
 
   private async createTask(
@@ -115,6 +140,18 @@ export class TaskManagementSystemCommandService {
       limit: this.readBoundedInteger(payload, "limit", 1, 100),
       offset: this.readBoundedInteger(payload, "offset", 0, Number.MAX_SAFE_INTEGER),
       status: this.inputReader.optionalNullableString(payload, "status"),
+    };
+  }
+
+  private readTaskRunListInput(payload: Record<string, unknown>): TaskRunListInput {
+    return {
+      assignedAgentId: this.inputReader.optionalNullableString(payload, "assignedAgentId"),
+      finished: this.inputReader.optionalBoolean(payload, "finished"),
+      limit: this.readBoundedInteger(payload, "limit", 1, 100),
+      offset: this.readBoundedInteger(payload, "offset", 0, Number.MAX_SAFE_INTEGER),
+      sessionId: this.inputReader.optionalNullableString(payload, "sessionId"),
+      status: this.inputReader.optionalNullableString(payload, "status"),
+      taskId: this.inputReader.optionalNullableString(payload, "taskId"),
     };
   }
 

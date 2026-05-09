@@ -178,6 +178,7 @@ const baseToolNames = [
   "ask_human_question",
   "send_agent_message",
   "list_assigned_tasks",
+  "start_task",
   "update_assigned_task_status",
 ] as const;
 
