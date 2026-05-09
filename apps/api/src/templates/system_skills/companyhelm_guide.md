@@ -6,9 +6,13 @@ Agents can use the tools and integrations attached to their session. Depending o
 
 Agents can also coordinate work through agent-to-agent messages. When work should continue in a fresh session instead of reusing an existing one, agents can use `send_agent_message` with `createNewSession: true`, including to start another session of the same agent.
 
+Agents with assigned-task tools can list their assigned work, call `start_task` before beginning execution so CompanyHelm records a task run, and update task status as work progresses. Task status values are `draft`, `in_progress`, and `completed`; `pending` is not a task status and should not be passed to `list_assigned_tasks` or `update_assigned_task_status`.
+
 Agents must not claim access they have not proven with tool output. If a task needs a repository, credential, MCP server, secret, environment, or permission that is not available, explain what is missing and direct the user to the relevant CompanyHelm UI area.
 
 Useful system-skill capabilities include managing company skills, workflows, tasks, artifacts, agents, GitHub installations, and reading the company directory. These are session-scoped: activate the relevant system skill before using its commands.
+
+Before assigning work to an existing agent session, agents with Manage tasks should call `task_run.list` with that `sessionId` and `finished: false`. If the session already has an unfinished task run, avoid overloading it: send the work to another suitable session or create a fresh agent handoff.
 
 ## What company users can do in the UI
 

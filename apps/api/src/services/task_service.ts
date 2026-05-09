@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
@@ -7,6 +7,7 @@ import { agents, companyMembers, taskStages, taskRuns, tasks, users } from "../d
 import { TaskStageService } from "./task_stage_service.ts";
 
 export type TaskStatus = "draft" | "in_progress" | "completed";
+export type TaskRunStatus = "queued" | "running" | "completed" | "failed" | "canceled";
 
 export type TaskServiceTaskAssignee = {
   email: string | null;
@@ -49,6 +50,17 @@ export type TaskServiceListTasksInput = {
   status?: string | null;
 };
 
+export type TaskServiceListTaskRunsInput = {
+  assignedAgentId?: string | null;
+  companyId: string;
+  finished?: boolean | null;
+  limit?: number | null;
+  offset?: number | null;
+  sessionId?: string | null;
+  status?: string | null;
+  taskId?: string | null;
+};
+
 export type TaskServiceGetTaskInput = {
   companyId: string;
   taskId: string;
@@ -62,6 +74,29 @@ export type TaskServiceDeleteTaskInput = {
 export type TaskServiceListTasksResult = {
   nextOffset: number | null;
   tasks: TaskServiceTask[];
+  totalCount: number;
+};
+
+export type TaskServiceTaskRun = {
+  agentId: string;
+  agentName: string;
+  createdAt: Date;
+  endedReason: string | null;
+  finishedAt: Date | null;
+  id: string;
+  lastActivityAt: Date;
+  sessionId: string | null;
+  startedAt: Date | null;
+  status: TaskRunStatus;
+  taskId: string;
+  taskName: string;
+  taskStatus: TaskStatus;
+  updatedAt: Date;
+};
+
+export type TaskServiceListTaskRunsResult = {
+  nextOffset: number | null;
+  taskRuns: TaskServiceTaskRun[];
   totalCount: number;
 };
 
@@ -86,6 +121,30 @@ export type TaskServiceUpdateTaskStatusInput = {
   taskId: string;
 };
 
+export type TaskServiceStartTaskInput = {
+  actorAgentId: string;
+  companyId: string;
+  sessionId: string;
+  taskId: string;
+};
+
+export type TaskServiceTaskRunSummary = {
+  agentId: string;
+  createdAt: Date;
+  finishedAt: Date | null;
+  id: string;
+  sessionId: string | null;
+  startedAt: Date | null;
+  status: string;
+  taskId: string;
+  updatedAt: Date;
+};
+
+export type TaskServiceStartTaskResult = {
+  task: TaskServiceTask;
+  taskRun: TaskServiceTaskRunSummary;
+};
+
 type TaskRow = {
   assignedAgentId: string | null;
   assignedAt: Date | null;
@@ -104,6 +163,14 @@ type OpenTaskRunRow = {
   agentId: string;
   finishedAt: Date | null;
   id: string;
+  sessionId: string | null;
+  taskId: string;
+};
+
+type TaskRunSummaryRow = TaskServiceTaskRunSummary;
+
+type TaskRunListRow = TaskServiceTaskRun & {
+  taskCreatedAt: Date;
 };
 
 type TaskStageRow = {
@@ -130,6 +197,7 @@ type UserRow = {
 @injectable()
 export class TaskService {
   private static readonly supportedStatuses: TaskStatus[] = ["draft", "in_progress", "completed"];
+  private static readonly supportedTaskRunStatuses: TaskRunStatus[] = ["queued", "running", "completed", "failed", "canceled"];
 
   constructor(
     @inject(TaskStageService) private readonly taskStageService: TaskStageService = new TaskStageService(),
@@ -256,6 +324,64 @@ export class TaskService {
           );
         }),
         totalCount: taskRows.length,
+      };
+    });
+  }
+
+  async listTaskRuns(
+    transactionProvider: TransactionProviderInterface,
+    input: TaskServiceListTaskRunsInput,
+  ): Promise<TaskServiceListTaskRunsResult> {
+    return transactionProvider.transaction(async (tx) => {
+      const normalizedOffset = Math.max(0, input.offset ?? 0);
+      const taskRunRows = await tx
+        .select({
+          agentId: taskRuns.agentId,
+          agentName: agents.name,
+          createdAt: taskRuns.createdAt,
+          endedReason: taskRuns.endedReason,
+          finishedAt: taskRuns.finishedAt,
+          id: taskRuns.id,
+          lastActivityAt: taskRuns.lastActivityAt,
+          sessionId: taskRuns.sessionId,
+          startedAt: taskRuns.startedAt,
+          status: taskRuns.status,
+          taskCreatedAt: tasks.createdAt,
+          taskId: taskRuns.taskId,
+          taskName: tasks.name,
+          taskStatus: tasks.status,
+          updatedAt: taskRuns.updatedAt,
+        })
+        .from(taskRuns)
+        .innerJoin(tasks, eq(taskRuns.taskId, tasks.id))
+        .innerJoin(agents, eq(taskRuns.agentId, agents.id))
+        .where(this.buildTaskRunFilterCondition(input)) as TaskRunListRow[];
+      taskRunRows.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+      const resolvedLimit = input.limit ?? (taskRunRows.length > 0 ? taskRunRows.length : 1);
+      const normalizedLimit = Math.max(1, resolvedLimit);
+      const paginatedTaskRunRows = taskRunRows.slice(normalizedOffset, normalizedOffset + normalizedLimit);
+
+      return {
+        nextOffset: normalizedOffset + paginatedTaskRunRows.length < taskRunRows.length
+          ? normalizedOffset + paginatedTaskRunRows.length
+          : null,
+        taskRuns: paginatedTaskRunRows.map((taskRunRow) => ({
+          agentId: taskRunRow.agentId,
+          agentName: taskRunRow.agentName,
+          createdAt: taskRunRow.createdAt,
+          endedReason: taskRunRow.endedReason,
+          finishedAt: taskRunRow.finishedAt,
+          id: taskRunRow.id,
+          lastActivityAt: taskRunRow.lastActivityAt,
+          sessionId: taskRunRow.sessionId,
+          startedAt: taskRunRow.startedAt,
+          status: taskRunRow.status,
+          taskId: taskRunRow.taskId,
+          taskName: taskRunRow.taskName,
+          taskStatus: taskRunRow.taskStatus,
+          updatedAt: taskRunRow.updatedAt,
+        })),
+        totalCount: taskRunRows.length,
       };
     });
   }
@@ -403,6 +529,33 @@ export class TaskService {
     });
   }
 
+  async startTask(
+    transactionProvider: TransactionProviderInterface,
+    input: TaskServiceStartTaskInput,
+  ): Promise<TaskServiceStartTaskResult> {
+    return transactionProvider.transaction(async (tx) => {
+      const taskRow = await this.requireTaskRow(tx, input.companyId, input.taskId);
+      if (taskRow.status === "completed") {
+        throw new Error("Completed tasks cannot be started.");
+      }
+      if (taskRow.assignedUserId) {
+        throw new Error("Task is assigned to a user.");
+      }
+      if (taskRow.assignedAgentId && taskRow.assignedAgentId !== input.actorAgentId) {
+        throw new Error("Task is assigned to another agent.");
+      }
+
+      const now = new Date();
+      const startedTaskRow = await this.ensureStartedTaskRow(tx, taskRow, input, now);
+      const taskRun = await this.ensureStartedTaskRun(tx, input, now);
+
+      return {
+        task: await this.loadSerializedTask(tx, startedTaskRow),
+        taskRun,
+      };
+    });
+  }
+
   private buildTaskFilterCondition(input: TaskServiceListTasksInput) {
     const conditions = [eq(tasks.companyId, input.companyId)];
     const status = input.status && input.status.length > 0 ? input.status : null;
@@ -415,6 +568,37 @@ export class TaskService {
     }
     if (assignedAgentId) {
       conditions.push(eq(tasks.assignedAgentId, assignedAgentId));
+    }
+
+    return conditions.length === 1 ? conditions[0]! : and(...conditions);
+  }
+
+  private buildTaskRunFilterCondition(input: TaskServiceListTaskRunsInput) {
+    const conditions = [eq(taskRuns.companyId, input.companyId)];
+    const taskId = input.taskId && input.taskId.length > 0 ? input.taskId : null;
+    const sessionId = input.sessionId && input.sessionId.length > 0 ? input.sessionId : null;
+    const assignedAgentId = input.assignedAgentId && input.assignedAgentId.length > 0
+      ? input.assignedAgentId
+      : null;
+    const status = input.status && input.status.length > 0 ? input.status : null;
+
+    if (taskId) {
+      conditions.push(eq(taskRuns.taskId, taskId));
+    }
+    if (sessionId) {
+      conditions.push(eq(taskRuns.sessionId, sessionId));
+    }
+    if (assignedAgentId) {
+      conditions.push(eq(taskRuns.agentId, assignedAgentId));
+    }
+    if (status) {
+      conditions.push(eq(taskRuns.status, this.resolveTaskRunStatus(status)));
+    }
+    if (input.finished === true) {
+      conditions.push(isNotNull(taskRuns.finishedAt));
+    }
+    if (input.finished === false) {
+      conditions.push(isNull(taskRuns.finishedAt));
     }
 
     return conditions.length === 1 ? conditions[0]! : and(...conditions);
@@ -515,6 +699,17 @@ export class TaskService {
     }
 
     return status as TaskStatus;
+  }
+
+  private resolveTaskRunStatus(status: string | null | undefined): TaskRunStatus {
+    if (status === undefined || status === null || status === "") {
+      return "queued";
+    }
+    if (!TaskService.supportedTaskRunStatuses.includes(status as TaskRunStatus)) {
+      throw new Error("Unsupported task run status.");
+    }
+
+    return status as TaskRunStatus;
   }
 
   private resolveName(name: string | null): string {
@@ -639,6 +834,8 @@ export class TaskService {
         agentId: taskRuns.agentId,
         finishedAt: taskRuns.finishedAt,
         id: taskRuns.id,
+        sessionId: taskRuns.sessionId,
+        taskId: taskRuns.taskId,
       })
       .from(taskRuns)
       .where(and(
@@ -690,6 +887,169 @@ export class TaskService {
         eq(taskRuns.companyId, input.companyId),
         eq(taskRuns.id, openTaskRun.id),
       ));
+  }
+
+  private async ensureStartedTaskRow(
+    tx: AppRuntimeTransaction,
+    taskRow: TaskRow,
+    input: TaskServiceStartTaskInput,
+    now: Date,
+  ): Promise<TaskRow> {
+    if (taskRow.status === "in_progress" && taskRow.assignedAgentId === input.actorAgentId) {
+      return taskRow;
+    }
+
+    const [updatedTaskRow] = await tx
+      .update(tasks)
+      .set({
+        assignedAgentId: input.actorAgentId,
+        assignedAt: taskRow.assignedAt ?? now,
+        assignedUserId: null,
+        completedAt: null,
+        status: "in_progress",
+        updatedAt: now,
+      })
+      .where(and(
+        eq(tasks.companyId, input.companyId),
+        eq(tasks.id, input.taskId),
+      ))
+      .returning({
+        assignedAgentId: tasks.assignedAgentId,
+        assignedAt: tasks.assignedAt,
+        assignedUserId: tasks.assignedUserId,
+        completedAt: tasks.completedAt,
+        createdAt: tasks.createdAt,
+        description: tasks.description,
+        id: tasks.id,
+        name: tasks.name,
+        status: tasks.status,
+        taskStageId: tasks.taskStageId,
+        updatedAt: tasks.updatedAt,
+      }) as TaskRow[];
+    if (!updatedTaskRow) {
+      throw new Error("Task not found.");
+    }
+
+    return updatedTaskRow;
+  }
+
+  private async ensureStartedTaskRun(
+    tx: AppRuntimeTransaction,
+    input: TaskServiceStartTaskInput,
+    now: Date,
+  ): Promise<TaskServiceTaskRunSummary> {
+    const [sessionTaskRun] = await tx
+      .select({
+        agentId: taskRuns.agentId,
+        createdAt: taskRuns.createdAt,
+        finishedAt: taskRuns.finishedAt,
+        id: taskRuns.id,
+        sessionId: taskRuns.sessionId,
+        startedAt: taskRuns.startedAt,
+        status: taskRuns.status,
+        taskId: taskRuns.taskId,
+        updatedAt: taskRuns.updatedAt,
+      })
+      .from(taskRuns)
+      .where(and(
+        eq(taskRuns.companyId, input.companyId),
+        eq(taskRuns.sessionId, input.sessionId),
+      )) as TaskRunSummaryRow[];
+    if (sessionTaskRun) {
+      if (sessionTaskRun.taskId !== input.taskId) {
+        throw new Error("This session is already linked to another task run.");
+      }
+      if (sessionTaskRun.finishedAt) {
+        throw new Error("This session is already linked to a finished task run.");
+      }
+
+      return sessionTaskRun;
+    }
+
+    const [openTaskRun] = await tx
+      .select({
+        agentId: taskRuns.agentId,
+        finishedAt: taskRuns.finishedAt,
+        id: taskRuns.id,
+        sessionId: taskRuns.sessionId,
+        taskId: taskRuns.taskId,
+      })
+      .from(taskRuns)
+      .where(and(
+        eq(taskRuns.companyId, input.companyId),
+        eq(taskRuns.taskId, input.taskId),
+        isNull(taskRuns.finishedAt),
+      )) as OpenTaskRunRow[];
+    if (openTaskRun?.sessionId && openTaskRun.sessionId !== input.sessionId) {
+      throw new Error("Task is already running in another session.");
+    }
+    if (openTaskRun && !openTaskRun.sessionId) {
+      const [attachedTaskRun] = await tx
+        .update(taskRuns)
+        .set({
+          agentId: input.actorAgentId,
+          lastActivityAt: now,
+          sessionId: input.sessionId,
+          startedAt: now,
+          status: "running",
+          updatedAt: now,
+        })
+        .where(and(
+          eq(taskRuns.companyId, input.companyId),
+          eq(taskRuns.id, openTaskRun.id),
+        ))
+        .returning({
+          agentId: taskRuns.agentId,
+          createdAt: taskRuns.createdAt,
+          finishedAt: taskRuns.finishedAt,
+          id: taskRuns.id,
+          sessionId: taskRuns.sessionId,
+          startedAt: taskRuns.startedAt,
+          status: taskRuns.status,
+          taskId: taskRuns.taskId,
+          updatedAt: taskRuns.updatedAt,
+        }) as TaskRunSummaryRow[];
+      if (!attachedTaskRun) {
+        throw new Error("Failed to attach task run.");
+      }
+
+      return attachedTaskRun;
+    }
+
+    const [createdTaskRun] = await tx
+      .insert(taskRuns)
+      .values({
+        agentId: input.actorAgentId,
+        companyId: input.companyId,
+        createdAt: now,
+        createdByAgentId: input.actorAgentId,
+        createdByUserId: null,
+        endedReason: null,
+        finishedAt: null,
+        id: randomUUID(),
+        lastActivityAt: now,
+        sessionId: input.sessionId,
+        startedAt: now,
+        status: "running",
+        taskId: input.taskId,
+        updatedAt: now,
+      })
+      .returning({
+        agentId: taskRuns.agentId,
+        createdAt: taskRuns.createdAt,
+        finishedAt: taskRuns.finishedAt,
+        id: taskRuns.id,
+        sessionId: taskRuns.sessionId,
+        startedAt: taskRuns.startedAt,
+        status: taskRuns.status,
+        taskId: taskRuns.taskId,
+        updatedAt: taskRuns.updatedAt,
+      }) as TaskRunSummaryRow[];
+    if (!createdTaskRun) {
+      throw new Error("Failed to create task run.");
+    }
+
+    return createdTaskRun;
   }
 
   private async ensureSessionTaskRunForInProgress(

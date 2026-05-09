@@ -16,7 +16,9 @@ export class AgentListAssignedTasksTool {
       Type.Literal("draft"),
       Type.Literal("in_progress"),
       Type.Literal("completed"),
-    ])),
+    ], {
+      description: "Optional task status filter. Valid values are draft, in_progress, and completed. Do not use pending.",
+    })),
   });
 
   private readonly assignedTaskToolService: AgentAssignedTaskToolService;
@@ -47,6 +49,7 @@ export class AgentListAssignedTasksTool {
       parameters: AgentListAssignedTasksTool.parameters,
       promptGuidelines: [
         "Use list_assigned_tasks to inspect only the current agent's assigned task queue.",
+        "The optional status filter accepts only draft, in_progress, or completed. Do not pass pending.",
       ],
       promptSnippet: "List tasks assigned to this agent",
     };

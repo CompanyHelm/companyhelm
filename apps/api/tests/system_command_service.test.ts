@@ -603,6 +603,54 @@ test("SystemCommandService executes task-management commands when manage_tasks i
   });
 });
 
+test("SystemCommandService executes task-run listing when manage_tasks is active", async () => {
+  let capturedInput: Record<string, unknown> | null = null;
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    taskService: {
+      async listTaskRuns(_transactionProvider: unknown, input: Record<string, unknown>) {
+        capturedInput = input;
+        return {
+          nextOffset: null,
+          taskRuns: [],
+          totalCount: 0,
+        };
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("task_run.list", {
+    finished: false,
+    sessionId: "session-2",
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: "transaction-provider" as never,
+  });
+
+  assert.deepEqual(capturedInput, {
+    assignedAgentId: undefined,
+    companyId: "company-123",
+    finished: false,
+    limit: undefined,
+    offset: undefined,
+    sessionId: "session-2",
+    status: undefined,
+    taskId: undefined,
+  });
+  assert.deepEqual(result, {
+    nextOffset: null,
+    taskRuns: [],
+    totalCount: 0,
+  });
+});
+
 test("SystemCommandService executes agent default skill and MCP commands when manage_agents is active", async () => {
   const calls: string[] = [];
   const service = new SystemCommandService({

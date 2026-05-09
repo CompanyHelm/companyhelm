@@ -1,4 +1,8 @@
-import type { TaskServiceListTasksResult, TaskServiceTask } from "../../../../../task_service.ts";
+import type {
+  TaskServiceListTasksResult,
+  TaskServiceStartTaskResult,
+  TaskServiceTask,
+} from "../../../../../task_service.ts";
 
 /**
  * Renders assigned-task tool responses into compact transcript text so agents can inspect their
@@ -19,6 +23,16 @@ export class AgentAssignedTaskResultFormatter {
     return [
       "updated task:",
       this.formatTask(task),
+    ].join("\n");
+  }
+
+  static formatStartedTask(result: TaskServiceStartTaskResult): string {
+    return [
+      "started task:",
+      this.formatTask(result.task),
+      `taskRunId: ${result.taskRun.id}`,
+      `sessionId: ${result.taskRun.sessionId ?? "(none)"}`,
+      `taskRunStatus: ${result.taskRun.status}`,
     ].join("\n");
   }
 
