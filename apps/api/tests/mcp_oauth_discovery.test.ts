@@ -1,6 +1,45 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { McpOauthDiscoveryService } from "../src/services/mcp/oauth/discovery.ts";
+
+test("McpOauthDiscoveryService challenges the MCP endpoint with headers that trigger OAuth discovery", async () => {
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url === "https://mcp.example.com/mcp") {
+      assert.equal(init?.headers instanceof Headers, false);
+      assert.deepEqual(init?.headers, {
+        Accept: "application/json, text/event-stream",
+      });
+      return new Response("", {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": 'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
+        },
+      });
+    }
+    if (url === "https://mcp.example.com/.well-known/oauth-protected-resource/mcp") {
+      return Response.json({
+        authorization_servers: ["https://auth.example.com"],
+      });
+    }
+    if (url === "https://auth.example.com/.well-known/oauth-authorization-server") {
+      return Response.json({
+        authorization_endpoint: "https://auth.example.com/oauth/authorize",
+        token_endpoint: "https://auth.example.com/oauth/token",
+      });
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+  const service = new McpOauthDiscoveryService();
+
+  const discovery = await service.discover({
+    fetchImpl,
+    mcpServerUrl: "https://mcp.example.com/mcp",
+  });
+
+  assert.equal(discovery.authorizationServerIssuer, "https://auth.example.com");
+});
 
 test("McpOauthDiscoveryService follows the MCP challenge to protected resource and AS metadata", async () => {
   const responses = new Map<string, Response>([
@@ -90,6 +129,44 @@ test("McpOauthDiscoveryService falls back to OIDC discovery when RFC8414 metadat
   assert.equal(
     discovery.authorizationServerMetadata.token_endpoint,
     "https://issuer.example.com/token",
+  );
+});
+
+test("McpOauthDiscoveryService loads path-scoped authorization server metadata when the issuer includes an MCP path", async () => {
+  const service = new McpOauthDiscoveryService();
+
+  const discovery = await service.discover({
+    fetchImpl: async (input) => {
+      const url = String(input);
+      if (url === "https://mcp.example.com/mcp") {
+        return new Response("", {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": 'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
+          },
+        });
+      }
+      if (url === "https://mcp.example.com/.well-known/oauth-protected-resource/mcp") {
+        return Response.json({
+          authorization_servers: ["https://issuer.example.com/mcp"],
+        });
+      }
+      if (url === "https://issuer.example.com/.well-known/oauth-authorization-server/mcp") {
+        return Response.json({
+          authorization_endpoint: "https://issuer.example.com/mcp/oauth/authorize",
+          registration_endpoint: "https://issuer.example.com/mcp/oauth/register",
+          token_endpoint: "https://issuer.example.com/mcp/oauth/token",
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    },
+    mcpServerUrl: "https://mcp.example.com/mcp",
+  });
+
+  assert.equal(
+    discovery.authorizationServerMetadata.authorization_endpoint,
+    "https://issuer.example.com/mcp/oauth/authorize",
   );
 });
 
