@@ -230,6 +230,58 @@ test("chat transcript pane renders request aborts as an informational divider in
   assert.equal([...markup.matchAll(/bg-border\/60/gu)].length, 2);
 });
 
+test("chat transcript pane renders agent conversation messages as compact transcript rows", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    sessionMessages: [
+      {
+        contents: [],
+        createdAt: "2026-04-21T00:00:00.000Z",
+        errorMessage: null,
+        id: "message-agent-conversation",
+        isError: false,
+        principalType: "agent_message",
+        role: "user",
+        status: "completed",
+        text: "Source agent name: Product Manager\n\nPlease review the latest draft.",
+        toolCallId: null,
+        turnId: "turn-agent-conversation",
+      },
+    ],
+  }));
+
+  assert.match(markup, /From Product Manager/u);
+  assert.match(markup, /Please review the latest draft\./u);
+  assert.match(markup, /Expand agent message/u);
+});
+
+test("chat transcript pane renders human question answers as compact decision rows", () => {
+  const props = buildTranscriptPaneProps();
+  const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, {
+    ...props,
+    sessionMessages: [
+      {
+        contents: [],
+        createdAt: "2026-04-21T00:00:00.000Z",
+        errorMessage: null,
+        id: "message-human-answer",
+        isError: false,
+        principalType: "user",
+        role: "user",
+        status: "completed",
+        text: 'Human answered your question "Which model should we use?": GPT-5.4',
+        toolCallId: null,
+        turnId: "turn-human-answer",
+      },
+    ],
+  }));
+
+  assert.match(markup, /Human answered/u);
+  assert.match(markup, /GPT-5\.4/u);
+  assert.match(markup, /Which model should we use\?/u);
+});
+
 test("chat transcript pane does not render a dedicated file drop overlay", () => {
   const markup = renderToStaticMarkup(createElement(ChatTranscriptPane, buildTranscriptPaneProps()));
 

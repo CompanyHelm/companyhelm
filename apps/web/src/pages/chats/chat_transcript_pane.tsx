@@ -15,6 +15,7 @@ import {
   GithubIcon,
   Loader2Icon,
   ListTodoIcon,
+  MessageSquareIcon,
   RefreshCwIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -47,21 +48,35 @@ import {
   sanitizeCommandOutput,
 } from "./chats_page_helpers";
 import { ChatsPagePreferenceStorage } from "./chats_page_preference_storage";
+import { useChatTranscriptSmoothText } from "./chat_transcript_text_smoother";
 import { WorkflowRunPresenter } from "./workflow_run_presenter";
+import { AgentConversationTranscriptPresenter } from "./agent_conversation_transcript_presenter";
+import { HumanQuestionAnswerTranscriptPresenter } from "./human_question_answer_transcript_presenter";
 
 const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
   {
     isError,
     recoveryAction,
+    smooth,
+    smoothingKey,
     text,
   }: {
     isError: boolean;
     recoveryAction?: AssistantTranscriptMessageRecoveryAction | null;
+    smooth: boolean;
+    smoothingKey: string;
     text: string;
   },
 ) {
+  const displayedText = useChatTranscriptSmoothText({
+    isStreaming: smooth,
+    smooth,
+    streamKey: smoothingKey,
+    text,
+  });
+
   if (!isError) {
-    return <MarkdownContent content={text} variant="transcript" />;
+    return <MarkdownContent content={displayedText} variant="transcript" />;
   }
 
   return (
@@ -72,7 +87,7 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage(
       </div>
       <MarkdownContent
         className="[&_a]:text-destructive [&_code]:text-destructive [&_p]:text-destructive [&_li]:text-destructive"
-        content={text}
+        content={displayedText}
         variant="transcript"
       />
       {recoveryAction ? (
@@ -99,31 +114,83 @@ type AssistantTranscriptMessageRecoveryAction = {
 };
 
 type CompactionTranscriptMarkerRecord = {
+  isRunning: boolean;
+  reason: "manual" | "threshold" | "overflow" | "unknown";
   text: string;
 };
 
+class CompactionTranscriptPresenter {
+  static resolveMarker(message: SessionMessageRecord): CompactionTranscriptMarkerRecord | null {
+    if (message.role !== "assistant") {
+      return null;
+    }
+
+    const markerContent = message.contents.find((content) => {
+      const structuredContent = content.structuredContent as Record<string, unknown> | null;
+      return structuredContent?.type === "compaction";
+    });
+    if (!markerContent) {
+      return null;
+    }
+
+    const isRunning = message.status.trim().toLowerCase() === "running";
+    const reason = this.resolveReason(markerContent.structuredContent as Record<string, unknown> | null);
+    return {
+      isRunning,
+      reason,
+      text: this.resolveText(reason, isRunning, markerContent.text),
+    };
+  }
+
+  private static resolveReason(
+    structuredContent: Record<string, unknown> | null,
+  ): "manual" | "threshold" | "overflow" | "unknown" {
+    switch (structuredContent?.reason) {
+      case "manual":
+      case "threshold":
+      case "overflow":
+      case "unknown":
+        return structuredContent.reason;
+      default:
+        return "unknown";
+    }
+  }
+
+  private static resolveText(
+    reason: "manual" | "threshold" | "overflow" | "unknown",
+    isRunning: boolean,
+    fallbackText: string | null | undefined,
+  ): string {
+    if (isRunning) {
+      switch (reason) {
+        case "threshold":
+          return "Auto-compacting…";
+        case "overflow":
+          return "Recovering from context overflow…";
+        default:
+          return fallbackText?.trim() || "Compacting…";
+      }
+    }
+
+    switch (reason) {
+      case "threshold":
+        return "Auto-compaction complete";
+      case "overflow":
+        return "Recovered from context overflow";
+      default:
+        return fallbackText?.trim() || "Compaction complete";
+    }
+  }
+}
+
 function resolveCompactionTranscriptMarker(message: SessionMessageRecord): CompactionTranscriptMarkerRecord | null {
-  if (message.role !== "assistant") {
-    return null;
-  }
-
-  const markerContent = message.contents.find((content) => {
-    const structuredContent = content.structuredContent as Record<string, unknown> | null;
-    return structuredContent?.type === "compaction";
-  });
-  if (!markerContent) {
-    return null;
-  }
-
-  return {
-    text: markerContent.text?.trim() || (message.status.trim().toLowerCase() === "running" ? "Compacting…" : "Compaction complete"),
-  };
+  return CompactionTranscriptPresenter.resolveMarker(message);
 }
 
 const CompactionTranscriptMessage = memo(function CompactionTranscriptMessage(
-  { marker, message }: { marker: CompactionTranscriptMarkerRecord; message: SessionMessageRecord },
+  { marker }: { marker: CompactionTranscriptMarkerRecord; message: SessionMessageRecord },
 ) {
-  const isRunningMarker = message.status.trim().toLowerCase() === "running";
+  const isRunningMarker = marker.isRunning;
 
   return (
     <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex min-w-0 items-center gap-3 py-1`}>
@@ -151,6 +218,7 @@ CompactionTranscriptMessage.displayName = "CompactionTranscriptMessage";
  */
 export class RequestAbortedTranscriptPresenter {
   static readonly markerText = "Request was aborted";
+  private static readonly requestAbortedTextPattern = /^(?:request was aborted|this operation was aborted)\.?$/iu;
 
   static isRequestAbortedMessage(message: SessionMessageRecord): boolean {
     if (message.role !== "assistant" || !message.isError) {
@@ -167,7 +235,7 @@ export class RequestAbortedTranscriptPresenter {
   }
 
   private static isRequestAbortedText(value: string | null | undefined): boolean {
-    return typeof value === "string" && /^request was aborted\.?$/iu.test(value.trim());
+    return typeof value === "string" && this.requestAbortedTextPattern.test(value.trim());
   }
 }
 
@@ -661,6 +729,107 @@ const PrincipalExecutionTranscriptMessage = memo(function PrincipalExecutionTran
 
 PrincipalExecutionTranscriptMessage.displayName = "PrincipalExecutionTranscriptMessage";
 
+const AgentConversationTranscriptMessage = memo(function AgentConversationTranscriptMessage(
+  { message }: { message: SessionMessageRecord },
+) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const display = AgentConversationTranscriptPresenter.resolveDisplay(message);
+  if (!display) {
+    return null;
+  }
+
+  return (
+    <div className="min-w-0 w-full max-w-3xl rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/80 text-foreground">
+          <MessageSquareIcon aria-hidden="true" className="size-4" />
+        </div>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="shrink-0 text-sm font-semibold text-foreground">
+            From {display.sourceAgentName}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm text-foreground/90" title={display.previewText}>
+            {display.previewText}
+          </span>
+        </div>
+        <button
+          aria-expanded={isExpanded}
+          className="inline-flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+          onClick={() => setIsExpanded((value) => !value)}
+          title={isExpanded ? "Collapse agent message" : "Expand agent message"}
+          type="button"
+        >
+          <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+        </button>
+      </div>
+      {isExpanded ? (
+        <div className="mt-3 overflow-hidden rounded-md border border-border/60 bg-background/70">
+          <div className="border-b border-border/60 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Agent message
+          </div>
+          <pre className="no-scrollbar max-h-[calc(24*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2.5 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+            {display.fullText}
+          </pre>
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
+AgentConversationTranscriptMessage.displayName = "AgentConversationTranscriptMessage";
+
+const HumanQuestionAnswerTranscriptMessage = memo(function HumanQuestionAnswerTranscriptMessage(
+  { message }: { message: SessionMessageRecord },
+) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const display = HumanQuestionAnswerTranscriptPresenter.resolveDisplay(message);
+  if (!display) {
+    return null;
+  }
+
+  return (
+    <div className="min-w-0 w-full max-w-3xl rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-2">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/80 text-foreground">
+          <CheckIcon aria-hidden="true" className="size-4" />
+        </div>
+        <div className="grid min-w-0 flex-1 gap-0.5">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm font-semibold text-foreground">Human answered</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-foreground/90" title={display.answerText}>
+              {display.answerText}
+            </span>
+          </div>
+          <p className="min-w-0 truncate text-xs text-muted-foreground" title={display.questionText}>
+            {display.questionText}
+          </p>
+        </div>
+        <button
+          aria-expanded={isExpanded}
+          className="inline-flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+          onClick={() => setIsExpanded((value) => !value)}
+          title={isExpanded ? "Collapse human answer" : "Expand human answer"}
+          type="button"
+        >
+          <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+        </button>
+      </div>
+      {isExpanded ? (
+        <div className="mt-3 overflow-hidden rounded-md border border-border/60 bg-background/70">
+          <div className="border-b border-border/60 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Answer
+          </div>
+          <pre className="no-scrollbar max-h-[calc(18*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2.5 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+            {display.fullText}
+          </pre>
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
+HumanQuestionAnswerTranscriptMessage.displayName = "HumanQuestionAnswerTranscriptMessage";
+
 const TranscriptMessageRow = memo(function TranscriptMessageRow({
   assistantContentMode,
   message,
@@ -679,8 +848,14 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   useLeftGutter?: boolean;
 }) {
   const principalExecutionDisplay = resolvePrincipalExecutionMessageDisplay(message, session);
+  const agentConversationDisplay = AgentConversationTranscriptPresenter.resolveDisplay(message);
+  const humanQuestionAnswerDisplay = HumanQuestionAnswerTranscriptPresenter.resolveDisplay(message);
   const compactionMarker = resolveCompactionTranscriptMarker(message);
-  const isUserMessage = message.role === "user" && principalExecutionDisplay === null;
+  const isUserMessage = message.role === "user"
+    && principalExecutionDisplay === null
+    && agentConversationDisplay === null
+    && humanQuestionAnswerDisplay === null;
+  const isStreamingAssistantMessage = message.role === "assistant" && message.status.trim().toLowerCase() === "running";
   const isToolMessage = message.role === "toolResult";
   const userImageContents = isUserMessage ? resolveImageContentDisplay(message) : [];
   const assistantDisplayContents = !isUserMessage && !isToolMessage
@@ -819,6 +994,10 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                   </div>
                 ) : null}
               </div>
+            ) : agentConversationDisplay ? (
+              <AgentConversationTranscriptMessage message={message} />
+            ) : humanQuestionAnswerDisplay ? (
+              <HumanQuestionAnswerTranscriptMessage message={message} />
             ) : principalExecutionDisplay ? (
               <PrincipalExecutionTranscriptMessage message={message} session={session} />
             ) : isToolMessage ? (
@@ -845,6 +1024,8 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                           ? { onClick: onSwitchCybersecurityRiskModel }
                           : null
                       }
+                      smooth={!message.isError && isStreamingAssistantMessage}
+                      smoothingKey={`${message.id}:${content.type}:${contentIndex}`}
                       text={content.text}
                     />
                   </div>
@@ -1371,17 +1552,19 @@ function ChatTranscriptPaneComponent({
                       toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                     />
                   ))}
-                  <TranscriptTurnSummaryRow
-                    durationLabel={turn.durationLabel}
-                    hasHiddenMessages={hasHiddenMessages}
-                    isExpanded={isExpanded}
-                    onToggleHiddenMessages={() => {
-                      setExpandedTurnIds((currentExpandedTurnIds) => ({
-                        ...currentExpandedTurnIds,
-                        [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
-                      }));
-                    }}
-                  />
+                  {turn.containsOnlyCompactionMessages ? null : (
+                    <TranscriptTurnSummaryRow
+                      durationLabel={turn.durationLabel}
+                      hasHiddenMessages={hasHiddenMessages}
+                      isExpanded={isExpanded}
+                      onToggleHiddenMessages={() => {
+                        setExpandedTurnIds((currentExpandedTurnIds) => ({
+                          ...currentExpandedTurnIds,
+                          [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+                        }));
+                      }}
+                    />
+                  )}
                   {hasHiddenMessages && isExpanded ? (
                     <div className="grid gap-1">
                       {turn.hiddenMessages.map((message) => (

@@ -97,6 +97,7 @@ export type TranscriptScrollRestoreRecord = {
 };
 
 export type TranscriptTurnRecord = {
+  containsOnlyCompactionMessages: boolean;
   durationLabel: string;
   hiddenMessages: SessionMessageRecord[];
   hiddenThinkingMessages: SessionMessageRecord[];
@@ -779,6 +780,13 @@ function resolvePrincipalExecutionMessageDisplayRecord(
   return null;
 }
 
+function isCompactionTranscriptMessage(message: SessionMessageRecord): boolean {
+  return message.role === "assistant" && message.contents.some((content) => {
+    const structuredContent = content.structuredContent as Record<string, unknown> | null;
+    return structuredContent?.type === "compaction";
+  });
+}
+
 function resolveFirstLine(value: string): string | null {
   const firstLine = value.split("\n").find((line) => line.trim().length > 0)?.trim();
   return firstLine && firstLine.length > 0 ? firstLine : null;
@@ -843,6 +851,7 @@ export function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecor
     const isRunning = turnRecord?.endedAt == null;
     if (isRunning) {
       return {
+        containsOnlyCompactionMessages: turnMessages.length > 0 && turnMessages.every((message) => isCompactionTranscriptMessage(message)),
         durationLabel: "",
         hiddenMessages: [],
         hiddenThinkingMessages: [],
@@ -853,6 +862,8 @@ export function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecor
     }
 
     const renderableMessages = turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { assistantContentMode: "all" }));
+    const containsOnlyCompactionMessages = renderableMessages.length > 0
+      && renderableMessages.every((message) => isCompactionTranscriptMessage(message));
     const firstUserMessage = renderableMessages.find((message) => message.role === "user") ?? null;
     const lastAssistantMessage = [...renderableMessages]
       .reverse()
@@ -874,6 +885,7 @@ export function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecor
       : [];
 
     return {
+      containsOnlyCompactionMessages,
       durationLabel: formatTurnDuration(turnWindow.endedAt - turnWindow.startedAt),
       hiddenMessages: renderableMessages.filter((message) => !inlineMessageIds.has(message.id)),
       hiddenThinkingMessages,
