@@ -5,12 +5,38 @@ import {
   type McpProtectedResourceMetadata,
 } from "./types.ts";
 
-function buildOauthAuthorizationServerMetadataUrl(issuer: string): string {
-  return new URL("/.well-known/oauth-authorization-server", issuer).toString();
+function normalizePathname(pathname: string): string {
+  if (pathname === "/") {
+    return "";
+  }
+
+  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
 }
 
-function buildOidcConfigurationUrl(issuer: string): string {
-  return new URL("/.well-known/openid-configuration", issuer).toString();
+function buildPathScopedWellKnownUrl(issuer: string, prefix: string): string | null {
+  const parsedIssuer = new URL(issuer);
+  const normalizedPathname = normalizePathname(parsedIssuer.pathname);
+  if (!normalizedPathname) {
+    return null;
+  }
+
+  return new URL(`${prefix}${normalizedPathname}`, parsedIssuer.origin).toString();
+}
+
+function buildOauthAuthorizationServerMetadataUrls(issuer: string): string[] {
+  const candidateUrls = [
+    buildPathScopedWellKnownUrl(issuer, "/.well-known/oauth-authorization-server"),
+    new URL("/.well-known/oauth-authorization-server", issuer).toString(),
+  ];
+  return [...new Set(candidateUrls.filter((candidateUrl): candidateUrl is string => Boolean(candidateUrl)))];
+}
+
+function buildOidcConfigurationUrls(issuer: string): string[] {
+  const candidateUrls = [
+    buildPathScopedWellKnownUrl(issuer, "/.well-known/openid-configuration"),
+    new URL("/.well-known/openid-configuration", issuer).toString(),
+  ];
+  return [...new Set(candidateUrls.filter((candidateUrl): candidateUrl is string => Boolean(candidateUrl)))];
 }
 
 function parseResourceMetadataUrl(wwwAuthenticateHeader: string | null): string | null {
@@ -40,6 +66,12 @@ async function readJsonResponse(
   }
 }
 
+function buildChallengeRequestHeaders(): HeadersInit {
+  return {
+    Accept: "application/json, text/event-stream",
+  };
+}
+
 @injectable()
 export class McpOauthDiscoveryService {
   async discover(params: {
@@ -53,6 +85,7 @@ export class McpOauthDiscoveryService {
 
     const fetchImpl = params.fetchImpl ?? fetch;
     const challengeResponse = await fetchImpl(mcpServerUrl, {
+      headers: buildChallengeRequestHeaders(),
       method: "GET",
       redirect: "manual",
     });
@@ -90,24 +123,47 @@ export class McpOauthDiscoveryService {
     authorizationServerIssuer: string;
     fetchImpl: typeof fetch;
   }): Promise<OAuthAuthorizationServerMetadata> {
-    const oauthMetadataUrl = buildOauthAuthorizationServerMetadataUrl(params.authorizationServerIssuer);
+    const oauthMetadataError = await this.loadMetadataFromCandidateUrls({
+      candidateUrls: buildOauthAuthorizationServerMetadataUrls(params.authorizationServerIssuer),
+      errorPrefix: "Failed to load authorization server metadata",
+      fetchImpl: params.fetchImpl,
+    });
+    if (!(oauthMetadataError instanceof Error)) {
+      return oauthMetadataError;
+    }
 
-    try {
-      return await readJsonResponse(
-        await params.fetchImpl(oauthMetadataUrl, { method: "GET" }),
-        "Failed to load authorization server metadata",
-      ) as OAuthAuthorizationServerMetadata;
-    } catch (oauthMetadataError) {
-      const oidcMetadataUrl = buildOidcConfigurationUrl(params.authorizationServerIssuer);
+    const oidcMetadataResult = await this.loadMetadataFromCandidateUrls({
+      candidateUrls: buildOidcConfigurationUrls(params.authorizationServerIssuer),
+      errorPrefix: "Failed to load OIDC discovery metadata",
+      fetchImpl: params.fetchImpl,
+    });
+    if (!(oidcMetadataResult instanceof Error)) {
+      return oidcMetadataResult;
+    }
 
+    throw oauthMetadataError;
+  }
+
+  private async loadMetadataFromCandidateUrls(params: {
+    candidateUrls: string[];
+    errorPrefix: string;
+    fetchImpl: typeof fetch;
+  }): Promise<OAuthAuthorizationServerMetadata | Error> {
+    let lastError: Error | null = null;
+
+    for (const candidateUrl of params.candidateUrls) {
       try {
         return await readJsonResponse(
-          await params.fetchImpl(oidcMetadataUrl, { method: "GET" }),
-          "Failed to load OIDC discovery metadata",
+          await params.fetchImpl(candidateUrl, { method: "GET" }),
+          params.errorPrefix,
         ) as OAuthAuthorizationServerMetadata;
-      } catch {
-        throw oauthMetadataError;
+      } catch (error) {
+        lastError = error instanceof Error
+          ? error
+          : new Error(params.errorPrefix);
       }
     }
+
+    return lastError ?? new Error(params.errorPrefix);
   }
 }
