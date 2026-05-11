@@ -6,6 +6,7 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
+import { SessionPipelineLogger } from "../src/log/session_pipeline_logger.ts";
 import { AgentManagementToolProvider } from "../src/services/agent/session/pi-mono/tools/agents/provider.ts";
 import { AgentAssignedTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/assigned_tasks/provider.ts";
 import { AgentArtifactToolProvider } from "../src/services/agent/session/pi-mono/tools/artifacts/provider.ts";
@@ -448,6 +449,90 @@ test("AgentToolsService truncates streamed text tool updates", async () => {
   assert.equal(streamedTexts.length, 1);
   assert.equal(streamedTexts[0]?.length, 1_000_000);
   assert.match(streamedTexts[0] ?? "", /^\[Tool output truncated: original length 1000001 characters; maximum is 1000000 characters\.\]\n\n/u);
+});
+
+test("AgentToolsService aborts and logs when a tool exceeds the hard timeout", async () => {
+  vi.useFakeTimers();
+  try {
+    const errorLogs: Record<string, unknown>[] = [];
+    const logger = new SessionPipelineLogger({
+      child() {
+        return this;
+      },
+      debug() {
+        return undefined;
+      },
+      error(payload: Record<string, unknown>) {
+        errorLogs.push(payload);
+        return undefined;
+      },
+      info() {
+        return undefined;
+      },
+      warn() {
+        return undefined;
+      },
+    } as never);
+    const service = new AgentToolsService(
+      {
+        async dispose() {
+          return undefined;
+        },
+        async getEnvironment() {
+          throw new Error("tool execution should not acquire the prompt environment");
+        },
+      } as never,
+      [{
+        createToolDefinitions() {
+          return [{
+            description: "Never resolves.",
+            execute: async (_toolCallId: string, _params: unknown, signal?: AbortSignal) => {
+              await new Promise((_resolve, reject) => {
+                signal?.addEventListener(
+                  "abort",
+                  () => {
+                    reject(new Error("aborted by timeout"));
+                  },
+                  { once: true },
+                );
+              });
+
+              return {
+                content: [{
+                  text: "unreachable",
+                  type: "text",
+                }],
+                details: undefined,
+              };
+            },
+            label: "Never resolves",
+            name: "never_resolves",
+            parameters: {} as never,
+          }];
+        },
+      } as never],
+      logger,
+    );
+
+    const [tool] = service.initializeTools();
+    const resultPromise = tool.execute("tool-call-timeout", {} as never, undefined, undefined, {} as never);
+    const timeoutErrorPromise = resultPromise.then(
+      () => {
+        throw new Error("Expected the hard timeout to reject the tool execution.");
+      },
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1_000);
+
+    const timeoutError = await timeoutErrorPromise;
+    assert.match(String(timeoutError), /Tool execution timed out after 600 seconds\./u);
+    assert.equal(errorLogs.length, 1);
+    assert.equal(errorLogs[0]?.event, "agent_tool_execution_hard_timeout");
+    assert.equal(errorLogs[0]?.toolCallId, "tool-call-timeout");
+    assert.equal(errorLogs[0]?.tool_name, "never_resolves");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("AgentToolsService custom tools can be injected into a live PI Mono session", async () => {
