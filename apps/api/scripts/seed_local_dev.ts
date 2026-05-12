@@ -133,12 +133,21 @@ export class LocalDevSeedScript {
         llmSetupStatus: "pending",
       });
       const agent = await this.loadSeedAgent(transaction as DatabaseTransactionInterface, companyId);
-      await this.seedDemoChats(transaction as DatabaseTransactionInterface, {
-        agent,
-        baseDate: new Date(),
-        companyId,
-        userId,
-      });
+      if (agent.defaultModelProviderCredentialModelId) {
+        await this.seedDemoChats(transaction as DatabaseTransactionInterface, {
+          agent,
+          baseDate: new Date(),
+          companyId,
+          userId,
+        });
+      } else {
+        await this.clearDemoChats(transaction as DatabaseTransactionInterface, {
+          agent,
+          baseDate: new Date(),
+          companyId,
+          userId,
+        });
+      }
       const agentId = agent.id;
       return { agentId, companyId, userId };
     });
@@ -176,6 +185,19 @@ export class LocalDevSeedScript {
     await database.insert(sessionTurns).values(plan.turns);
     await database.insert(sessionMessages).values(plan.messages);
     await database.insert(messageContents).values(plan.contents);
+  }
+
+  private async clearDemoChats(
+    transaction: DatabaseTransactionInterface,
+    input: LocalDevDemoChatSeedPlanInput,
+  ): Promise<void> {
+    const plan = this.buildDemoChatSeedPlan(input);
+    await (transaction as LocalDevMutableDatabase)
+      .delete(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, input.companyId),
+        inArray(agentSessions.id, plan.sessionIds),
+      ));
   }
 
   private buildDenseMarkdownDemoSession(input: LocalDevDemoChatSeedPlanInput): LocalDevDemoSessionSeedRecord {

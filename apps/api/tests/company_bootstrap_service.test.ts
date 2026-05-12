@@ -685,7 +685,7 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
-test("CompanyBootstrapService creates the CEO onboarding assets lazily", async () => {
+test("CompanyBootstrapService creates the OSS CEO seed agent without onboarding workflows", async () => {
   const harness = new CompanyBootstrapServiceTestHarness({
     companyModelProviderDefaultRows: [{
       companyId: "company-1",
@@ -739,31 +739,13 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
   assert.equal(seedAgent?.system_prompt, null);
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
 
-  const [workflow] = harness.listWorkflowDefinitions();
-  assert.equal(workflow?.companyId, "company-1");
-  assert.equal(workflow?.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME);
-  assert.equal(workflow?.isEnabled, true);
-  assert.match(workflow?.description ?? "", /repository discovery/);
-
-  const workflowInputs = harness.listWorkflowInputs();
-  assert.deepEqual(workflowInputs.map((input) => input.name), []);
-
-  const workflowSteps = harness.listWorkflowSteps();
-  assert.deepEqual(workflowSteps.map((step) => step.name), [
-    "Understand the business goal",
-    "Connect repo if useful",
-    "Create engineer and first task",
-  ]);
-  assert.match(workflowSteps[0]?.instructions_template ?? "", /what does their business do/);
-  assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /Superpowers-style/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /GPT-5\.5 with high reasoning/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /task\.create/);
-
+  assert.deepEqual(harness.listWorkflowDefinitions(), []);
+  assert.deepEqual(harness.listWorkflowInputs(), []);
+  assert.deepEqual(harness.listWorkflowSteps(), []);
   assert.deepEqual(harness.listCompanyOnboardings(), []);
 });
 
-test("CompanyBootstrapService does not duplicate onboarding assets when rerun", async () => {
+test("CompanyBootstrapService does not duplicate the OSS CEO seed agent when rerun", async () => {
   const now = new Date("2026-04-03T18:00:00.000Z");
   const harness = new CompanyBootstrapServiceTestHarness({
     agentSkillRows: expectedSystemSkillKeys.map((systemSkillKey) => ({
@@ -834,70 +816,6 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
       name: "Archive",
       updatedAt: now,
     }],
-    workflowDefinitionRows: [{
-      companyId: "company-1",
-      createdAt: now,
-      createdByAgentId: null,
-      createdByUserId: null,
-      description: "Guides a new company through repository discovery, skill options, and first agent recommendations.",
-      id: "workflow-1",
-      instructions_template: "Run this workflow in the CEO onboarding chat for newly created companies.",
-      isEnabled: true,
-      name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
-      updatedAt: now,
-    }],
-    workflowDefinitionInputRows: [{
-      companyId: "company-1",
-      createdAt: now,
-      defaultValue: "",
-      description: "Legacy static onboarding input.",
-      isRequired: true,
-      name: "companyMission",
-      workflowDefinitionId: "workflow-1",
-    }],
-    workflowStepDefinitionRows: [{
-      createdAt: now,
-      instructions_template: "Reflect companyMission and ask about configuring additional agents.",
-      name: "Frame the onboarding goals",
-      ordinal: 1,
-      stepId: "frame-onboarding-goals",
-      workflowDefinitionId: "workflow-1",
-    }, {
-      createdAt: now,
-      instructions_template: "Inspect repos and public skill references including bmad-code-org/BMAD-METHOD.",
-      name: "Inspect repos and skill options",
-      ordinal: 2,
-      stepId: "inspect-repos-and-skills",
-      workflowDefinitionId: "workflow-1",
-    }, {
-      createdAt: now,
-      instructions_template: "Recommend the first agent team.",
-      name: "Recommend the first agent team",
-      ordinal: 3,
-      stepId: "propose-starter-agents",
-      workflowDefinitionId: "workflow-1",
-    }],
-    companyOnboardingRows: [{
-      agentId: null,
-      companyMission: null,
-      companyId: "company-1",
-      completedAt: null,
-      createdAt: now,
-      githubCompletedAt: null,
-      githubSetupStatus: "pending",
-      githubSkippedAt: null,
-      llmCompletedAt: null,
-      llmSetupStatus: "pending",
-      llmSkippedAt: null,
-      missionSkippedAt: null,
-      sessionId: null,
-      skippedAt: null,
-      skippedByUserId: null,
-      startedAt: null,
-      status: "not_started",
-      updatedAt: now,
-      workflowRunId: null,
-    }],
   });
   const service = await harness.buildService();
 
@@ -916,9 +834,9 @@ test("CompanyBootstrapService does not duplicate onboarding assets when rerun", 
   assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
   assert.equal(harness.listAgents()[0]?.default_reasoning_level, "medium");
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
-  assert.equal(harness.listWorkflowDefinitions().length, 1);
+  assert.equal(harness.listWorkflowDefinitions().length, 0);
   assert.equal(harness.listWorkflowInputs().length, 0);
-  assert.equal(harness.listWorkflowSteps().length, 3);
-  assert.equal(harness.listCompanyOnboardings().length, 1);
+  assert.equal(harness.listWorkflowSteps().length, 0);
+  assert.equal(harness.listCompanyOnboardings().length, 0);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

@@ -31,6 +31,33 @@ export type GraphqlCompanyOnboardingRecord = {
  */
 @injectable()
 export class CompanyOnboardingPresenter {
+  createCompletedRecord(companyId: string): GraphqlCompanyOnboardingRecord {
+    const now = new Date().toISOString();
+
+    return {
+      agentId: null,
+      companyMission: null,
+      companyId,
+      completedAt: now,
+      createdAt: now,
+      githubCompletedAt: null,
+      githubSetupStatus: "skipped",
+      githubSkippedAt: now,
+      id: `CompanyOnboarding:${companyId}`,
+      llmCompletedAt: null,
+      llmSetupStatus: "skipped",
+      llmSkippedAt: now,
+      missionSkippedAt: now,
+      sessionId: null,
+      skippedAt: now,
+      skippedByUserId: null,
+      startedAt: null,
+      status: "completed",
+      updatedAt: now,
+      workflowRunId: null,
+    };
+  }
+
   serialize(record: CompanyOnboardingRecord): GraphqlCompanyOnboardingRecord {
     return {
       agentId: record.agentId,

@@ -1,18 +1,13 @@
 import { inject, injectable } from "inversify";
 import { CompanyOnboardingPresenter, type GraphqlCompanyOnboardingRecord } from "../company_onboarding_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import {
-  type CompanyOnboardingLlmSetupStatus,
-  type CompanyOnboardingSetupStatus,
-  CompanyOnboardingService,
-} from "../../services/onboarding/company_onboarding_service.ts";
 import { Mutation } from "./mutation.ts";
 
 type UpdateCompanyOnboardingMutationArguments = {
   input: {
     companyMission?: string | null;
-    githubSetupStatus?: CompanyOnboardingSetupStatus | null;
-    llmSetupStatus?: CompanyOnboardingLlmSetupStatus | null;
+    githubSetupStatus?: string | null;
+    llmSetupStatus?: string | null;
     skipMission?: boolean | null;
   };
 };
@@ -27,8 +22,6 @@ export class UpdateCompanyOnboardingMutation extends Mutation<
   GraphqlCompanyOnboardingRecord
 > {
   constructor(
-    @inject(CompanyOnboardingService)
-    private readonly companyOnboardingService: CompanyOnboardingService = new CompanyOnboardingService(),
     @inject(CompanyOnboardingPresenter)
     private readonly presenter: CompanyOnboardingPresenter = new CompanyOnboardingPresenter(),
   ) {
@@ -43,14 +36,7 @@ export class UpdateCompanyOnboardingMutation extends Mutation<
       throw new Error("Authentication required.");
     }
 
-    return this.presenter.serialize(
-      await this.companyOnboardingService.updateSetup(context.app_runtime_transaction_provider, {
-        companyId: context.authSession.company.id,
-        companyMission: arguments_.input.companyMission,
-        githubSetupStatus: arguments_.input.githubSetupStatus,
-        llmSetupStatus: arguments_.input.llmSetupStatus,
-        skipMission: arguments_.input.skipMission,
-      }),
-    );
+    void arguments_;
+    return this.presenter.createCompletedRecord(context.authSession.company.id);
   };
 }

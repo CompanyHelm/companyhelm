@@ -49,3 +49,18 @@ test("CompanyOnboardingPresenter uses a GraphQL id that cannot collide with Auth
   assert.equal(presentedOnboarding.companyId, companyId);
   assert.equal(presentedOnboarding.id, `CompanyOnboarding:${companyId}`);
 });
+
+test("CompanyOnboardingPresenter can synthesize the OSS completed state", () => {
+  const presenter = new CompanyOnboardingPresenter();
+
+  const presentedOnboarding = presenter.createCompletedRecord("company-oss");
+
+  assert.equal(presentedOnboarding.companyId, "company-oss");
+  assert.equal(presentedOnboarding.id, "CompanyOnboarding:company-oss");
+  assert.equal(presentedOnboarding.status, "completed");
+  assert.equal(presentedOnboarding.githubSetupStatus, "skipped");
+  assert.equal(presentedOnboarding.llmSetupStatus, "skipped");
+  assert.equal(presentedOnboarding.agentId, null);
+  assert.equal(presentedOnboarding.sessionId, null);
+  assert.equal(presentedOnboarding.workflowRunId, null);
+});
