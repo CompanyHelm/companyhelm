@@ -1,7 +1,6 @@
 import { inject, injectable } from "inversify";
 import { CompanyOnboardingPresenter, type GraphqlCompanyOnboardingRecord } from "../company_onboarding_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { CompanyOnboardingService } from "../../services/onboarding/company_onboarding_service.ts";
 import { Mutation } from "./mutation.ts";
 
 /**
@@ -12,8 +11,6 @@ import { Mutation } from "./mutation.ts";
 @injectable()
 export class EnsureCompanyOnboardingMutation extends Mutation<Record<string, never>, GraphqlCompanyOnboardingRecord> {
   constructor(
-    @inject(CompanyOnboardingService)
-    private readonly companyOnboardingService: CompanyOnboardingService = new CompanyOnboardingService(),
     @inject(CompanyOnboardingPresenter)
     private readonly presenter: CompanyOnboardingPresenter = new CompanyOnboardingPresenter(),
   ) {
@@ -28,11 +25,6 @@ export class EnsureCompanyOnboardingMutation extends Mutation<Record<string, nev
       throw new Error("Authentication required.");
     }
 
-    return this.presenter.serialize(
-      await this.companyOnboardingService.ensureOnboarding(context.app_runtime_transaction_provider, {
-        companyId: context.authSession.company.id,
-        userId: context.authSession.user.id,
-      }),
-    );
+    return this.presenter.createCompletedRecord(context.authSession.company.id);
   };
 }

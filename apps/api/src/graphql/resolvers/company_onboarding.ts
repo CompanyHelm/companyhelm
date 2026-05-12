@@ -1,7 +1,6 @@
 import { inject, injectable } from "inversify";
 import { CompanyOnboardingPresenter, type GraphqlCompanyOnboardingRecord } from "../company_onboarding_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { CompanyOnboardingService } from "../../services/onboarding/company_onboarding_service.ts";
 
 type AuthenticatedCompanyParent = {
   id: string;
@@ -14,8 +13,6 @@ type AuthenticatedCompanyParent = {
 @injectable()
 export class CompanyOnboardingFieldResolver {
   constructor(
-    @inject(CompanyOnboardingService)
-    private readonly companyOnboardingService: CompanyOnboardingService = new CompanyOnboardingService(),
     @inject(CompanyOnboardingPresenter)
     private readonly presenter: CompanyOnboardingPresenter = new CompanyOnboardingPresenter(),
   ) {}
@@ -32,11 +29,6 @@ export class CompanyOnboardingFieldResolver {
       throw new Error("Company onboarding is only available for the authenticated company.");
     }
 
-    return this.presenter.serialize(
-      await this.companyOnboardingService.getOnboarding(
-        context.app_runtime_transaction_provider,
-        context.authSession.company.id,
-      ),
-    );
+    return this.presenter.createCompletedRecord(context.authSession.company.id);
   };
 }

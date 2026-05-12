@@ -26,10 +26,6 @@ import { McpOauthCallbackPage } from "./pages/mcp-servers/mcp_oauth_callback_pag
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { McpServersPage } from "./pages/mcp-servers/mcp_servers_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
-import { CreateAgentsPage } from "./pages/onboarding/create_agents_page";
-import { GithubPage } from "./pages/onboarding/github_page";
-import { MissionPage } from "./pages/onboarding/mission_page";
-import { ModelProviderPage } from "./pages/onboarding/model_provider_page";
 import { OnboardingPage } from "./pages/onboarding/onboarding_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
@@ -331,25 +327,25 @@ const onboardingRoute = createRoute({
 const onboardingMissionRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/onboarding/mission"),
-  component: MissionPage,
+  component: OnboardingPage,
 });
 
 const onboardingGithubRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/onboarding/github"),
-  component: GithubPage,
+  component: OnboardingPage,
 });
 
 const onboardingModelProviderRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/onboarding/model-provider"),
-  component: ModelProviderPage,
+  component: OnboardingPage,
 });
 
 const onboardingCreateAgentsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/onboarding/create-agents"),
-  component: CreateAgentsPage,
+  component: OnboardingPage,
 });
 
 const inboxRoute = createRoute({

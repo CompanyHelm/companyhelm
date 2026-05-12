@@ -7,14 +7,10 @@ import {
   agents,
   companyMembers,
   companyModelProviderDefaults,
-  companyOnboardings,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
   taskStages,
-  workflowDefinitionInputs,
-  workflowDefinitions,
-  workflowStepDefinitions,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
@@ -76,12 +72,6 @@ type BootstrapUpdatableDatabase = DatabaseTransactionInterface & {
   };
 };
 
-type BootstrapMutableDatabase = BootstrapUpdatableDatabase & {
-  delete(table: unknown): {
-    where(condition: unknown): Promise<unknown>;
-  };
-};
-
 /**
  * Owns the company-side provisioning steps that must exist before company-scoped API features can
  * run. That includes the company row itself, membership links, and the idempotent default catalog
@@ -95,55 +85,6 @@ export class CompanyBootstrapService {
   static readonly SEED_ONBOARDING_WORKFLOW_NAME = "Company onboarding";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
   private static readonly SEED_AGENT_REASONING_LEVEL = "medium";
-  private static readonly SEED_ONBOARDING_WORKFLOW_DESCRIPTION =
-    "Guides a new company through repository discovery, skill options, and first agent recommendations.";
-  private static readonly SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS = [
-    "Run this workflow in the CEO onboarding chat for newly created companies.",
-    "Keep the conversation focused and ask only one question at a time.",
-    "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
-    "If no model credential is configured, tell the user to add one before starting agent work.",
-    "Treat GitHub access, custom LLM credentials, skill imports, agent creation, and task creation as just-in-time setup.",
-    "Do not create agents, import skills, connect GitHub, or create tasks without explicit user confirmation. Explain what will happen before doing it.",
-  ].join("\n");
-  private static readonly SEED_ONBOARDING_WORKFLOW_INPUTS: Array<{
-    defaultValue: string;
-    description: string;
-    isRequired: boolean;
-    name: string;
-  }> = [];
-  private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
-    instructions: [
-      "Welcome the user to CompanyHelm as their CEO.",
-      "Ask exactly one question: what does their business do, and what goal do they want to make progress on today?",
-      "Use the answer as the working business context for later recommendations in this chat.",
-      "Do not ask about GitHub, skills, agents, or tasks until the user has answered the business-and-goal question.",
-    ].join("\n"),
-    name: "Understand the business goal",
-    stepId: "understand-business-goal",
-  }, {
-    instructions: [
-      "Ask whether the user has a GitHub repository that matters for today's goal.",
-      "If the user says yes, activate the Manage GitHub installations system skill and call github.installation.list.",
-      "If no installation is connected, ask for confirmation before calling github.installation.start, then present the returned installationUrl.",
-      "If GitHub is already connected, ask which repository should be inspected first.",
-      "If the user says no or wants to skip GitHub, continue with goal-based setup without treating GitHub as required.",
-    ].join("\n"),
-    name: "Connect repo if useful",
-    stepId: "connect-repo-if-useful",
-  }, {
-    instructions: [
-      "Ask whether the user wants to create an Engineer agent for implementation work.",
-      "Ask whether they already use particular engineering skills, playbooks, or development workflows.",
-      "If they do not have a preference, propose a Superpowers-style development skill set for the Engineer and explain why it helps.",
-      "Recommend a model before creating the Engineer: prefer GPT-5.5 with high reasoning for coding-heavy work, or GPT-5.5 with medium reasoning when speed and cost matter more.",
-      "Ask for explicit confirmation before importing or creating skills, creating the Engineer agent, or attaching skills to it.",
-      "After confirmation, activate Manage skills and Manage agents as needed, then use skill.list, skill.group.list, skill.get, skill.github.import or skill.create, agent.list, agent.create, and agent.skill.attach.",
-      "Ask whether the user wants to create the first task and assign it to the Engineer.",
-      "If confirmed, activate Manage tasks and call task.create through system_command with assignedAgentId. Use status draft unless the user asks to start the task immediately, in which case use in_progress.",
-    ].join("\n"),
-    name: "Create engineer and first task",
-    stepId: "create-engineer-and-first-task",
-  }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly systemSkillRegistry = new SystemSkillRegistry();
 
@@ -238,7 +179,6 @@ export class CompanyBootstrapService {
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, input.companyId);
     await this.ensureCompanyModelProviderDefault(transaction, input.companyId);
-    await this.ensureCompanyOnboardingWorkflow(transaction, input.companyId);
 
     const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, input.companyId);
     if (!computeProviderDefinition) {
@@ -424,113 +364,6 @@ export class CompanyBootstrapService {
     }
   }
 
-  private async ensureCompanyOnboardingWorkflow(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<void> {
-    const [existingWorkflow] = await transaction
-      .select({
-        id: workflowDefinitions.id,
-      })
-      .from(workflowDefinitions)
-      .where(and(
-        eq(workflowDefinitions.companyId, companyId),
-        eq(workflowDefinitions.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME),
-      ))
-      .limit(1) as Array<{ id: string }>;
-
-    const now = new Date();
-    const workflowDefinitionId = existingWorkflow?.id ?? randomUUID();
-    const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    const mutableDatabase = transaction as BootstrapMutableDatabase;
-    if (existingWorkflow) {
-      await mutableDatabase
-        .update(workflowDefinitions)
-        .set({
-          description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
-          instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
-          isEnabled: true,
-          updatedAt: now,
-        })
-        .where(and(
-          eq(workflowDefinitions.companyId, companyId),
-          eq(workflowDefinitions.id, workflowDefinitionId),
-        ));
-      await mutableDatabase
-        .delete(workflowDefinitionInputs)
-        .where(and(
-          eq(workflowDefinitionInputs.companyId, companyId),
-          eq(workflowDefinitionInputs.workflowDefinitionId, workflowDefinitionId),
-        ));
-      await mutableDatabase
-        .delete(workflowStepDefinitions)
-        .where(eq(workflowStepDefinitions.workflowDefinitionId, workflowDefinitionId));
-    } else {
-      await insertableDatabase
-        .insert(workflowDefinitions)
-        .values({
-          companyId,
-          createdAt: now,
-          createdByAgentId: null,
-          createdByUserId: null,
-          description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
-          id: workflowDefinitionId,
-          instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
-          isEnabled: true,
-          name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
-          updatedAt: now,
-        });
-    }
-    for (const input of CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INPUTS) {
-      await insertableDatabase
-        .insert(workflowDefinitionInputs)
-        .values({
-          companyId,
-          createdAt: now,
-          defaultValue: input.defaultValue,
-          description: input.description,
-          isRequired: input.isRequired,
-          name: input.name,
-          workflowDefinitionId,
-        });
-    }
-    for (const [index, step] of CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_STEPS.entries()) {
-      await insertableDatabase
-        .insert(workflowStepDefinitions)
-        .values({
-          createdAt: now,
-          instructions_template: step.instructions,
-          name: step.name,
-          ordinal: index + 1,
-          stepId: step.stepId,
-          workflowDefinitionId,
-        });
-    }
-  }
-
-  private async ensureCompanyOnboardingState(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<void> {
-    const now = new Date();
-    const insertOperation = (transaction as BootstrapInsertableDatabase)
-      .insert(companyOnboardings)
-      .values({
-        agentId: null,
-        companyId,
-        completedAt: null,
-        createdAt: now,
-        sessionId: null,
-        skippedAt: null,
-        skippedByUserId: null,
-        startedAt: null,
-        status: "not_started",
-        updatedAt: now,
-        workflowRunId: null,
-      }) as BootstrapInsertOperation;
-    await insertOperation.onConflictDoNothing();
-  }
-
   private resolveSeedAgentDefaultReasoningLevel(reasoningLevels: string[]): string | null {
     if (reasoningLevels.includes(CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL)) {
       return CompanyBootstrapService.SEED_AGENT_REASONING_LEVEL;
@@ -561,6 +394,13 @@ export class CompanyBootstrapService {
           defaultReasoningLevel: this.resolveSeedAgentDefaultReasoningLevel(preferredModel.reasoningLevels ?? []),
         };
       }
+    }
+
+    if (input.llmSetupStatus !== "third_party") {
+      return {
+        defaultModelProviderCredentialModelId: null,
+        defaultReasoningLevel: null,
+      };
     }
 
     throw new Error("Company onboarding requires at least one user-provided synced model.");
