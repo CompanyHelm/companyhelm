@@ -25,6 +25,7 @@ import { AgentConversationsQueryResolver } from "../resolvers/agent_conversation
 import { ArchivedAgentSessionsQueryResolver } from "../resolvers/archived_agent_sessions.ts";
 import { InboxHumanQuestionsQueryResolver } from "../resolvers/inbox_human_questions.ts";
 import { InboxHumanQuestionsUpdatedSubscriptionResolver } from "../resolvers/inbox_human_questions_updated.ts";
+import { SessionArtifactsUpdatedSubscriptionResolver } from "../resolvers/session_artifacts_updated.ts";
 import { SessionInboxHumanQuestionsUpdatedSubscriptionResolver } from "../resolvers/session_inbox_human_questions_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "../resolvers/session_message_updated.ts";
 import { SessionMessagesQueryResolver } from "../resolvers/session_messages.ts";
@@ -70,6 +71,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
+  private readonly sessionArtifactsUpdatedSubscriptionResolver: SessionArtifactsUpdatedSubscriptionResolver;
   private readonly sessionInboxHumanQuestionsUpdatedSubscriptionResolver: SessionInboxHumanQuestionsUpdatedSubscriptionResolver;
   private readonly sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver;
   private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
@@ -254,6 +256,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     this.promptSessionMutation = promptSessionMutation;
     this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
+    this.sessionArtifactsUpdatedSubscriptionResolver = new SessionArtifactsUpdatedSubscriptionResolver();
     this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver =
       sessionInboxHumanQuestionsUpdatedSubscriptionResolver;
     this.sessionQueuedMessagesQueryResolver = sessionQueuedMessagesQueryResolver;
@@ -309,6 +312,10 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
         SessionInboxHumanQuestionsUpdated: {
           subscribe: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.subscribe,
           resolve: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.resolve,
+        },
+        SessionArtifactsUpdated: {
+          subscribe: this.sessionArtifactsUpdatedSubscriptionResolver.subscribe,
+          resolve: this.sessionArtifactsUpdatedSubscriptionResolver.resolve,
         },
         SessionMessageUpdated: {
           subscribe: this.sessionMessageUpdatedSubscriptionResolver.subscribe,

@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
-import type { AgentRecord, SessionRecord } from "./chats_page_data";
+import { ChatArtifactsPanel } from "./chat_artifacts_panel";
+import type { AgentRecord, SessionArtifactRecord, SessionRecord } from "./chats_page_data";
 import {
   CHAT_LIST_LEFT_GUTTER_CLASS,
   isRunningSession,
@@ -26,12 +27,16 @@ export function ChatListPanel({
   sessionTitleOverridesById,
   isArchiveSessionInFlight,
   archivingSessionId,
+  dismissingArtifactId,
+  selectedSessionArtifacts,
   onHideChatList,
   onOpenNewChat,
   onToggleAgentExpanded,
   onExpandAgent,
   onOpenDraftForAgent,
   onOpenSession,
+  onDismissArtifact,
+  onOpenArtifact,
   onArchiveSession,
 }: {
   panelMode: "desktop" | "mobile";
@@ -46,18 +51,23 @@ export function ChatListPanel({
   sessionTitleOverridesById: Readonly<Record<string, string>>;
   isArchiveSessionInFlight: boolean;
   archivingSessionId: string | null;
+  dismissingArtifactId: string | null;
+  selectedSessionArtifacts: ReadonlyArray<SessionArtifactRecord>;
   onHideChatList: () => void;
   onOpenNewChat: () => void;
   onToggleAgentExpanded: (agentId: string) => void;
   onExpandAgent: (agentId: string) => void;
   onOpenDraftForAgent: (agentId: string) => void;
   onOpenSession: (agentId: string, sessionId: string) => void;
+  onDismissArtifact: (artifact: SessionArtifactRecord) => void;
+  onOpenArtifact: (artifact: SessionArtifactRecord) => void;
   onArchiveSession: (session: SessionRecord) => void;
 }) {
   const isMobilePanel = panelMode === "mobile";
   const hideButtonLabel = isMobilePanel ? "Close chats panel" : "Hide chats list";
   const hasAvailableAgents = sortedAgents.length > 0;
   const hasExistingChats = chatListAgents.length > 0;
+  const hasVisibleArtifacts = !isMobilePanel && selectedSessionArtifacts.length > 0;
   const emptyState = !hasAvailableAgents ? (
     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
       <p className="text-sm font-medium text-foreground">No agents yet</p>
@@ -319,8 +329,8 @@ export function ChatListPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardContent className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-0">
-          <div className={`${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
+        <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pr-0">
+          <div className={`no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
             <div className="mb-2 flex items-center justify-end pr-1">
               <Button
                 aria-label={hideButtonLabel}
@@ -351,6 +361,14 @@ export function ChatListPanel({
 
             {content}
           </div>
+          {hasVisibleArtifacts ? (
+            <ChatArtifactsPanel
+              artifacts={selectedSessionArtifacts}
+              dismissingArtifactId={dismissingArtifactId}
+              onDismissArtifact={onDismissArtifact}
+              onOpenArtifact={onOpenArtifact}
+            />
+          ) : null}
         </CardContent>
       </Card>
     </div>

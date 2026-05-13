@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
 import { ArtifactService } from "../../services/artifact_service.ts";
+import { SessionArtifactUpdatePublisher } from "../../services/agent/session/process/artifact_update_publisher.ts";
 import { GraphqlArtifactPresenter, type GraphqlArtifactRecord } from "../artifact_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
@@ -17,10 +18,16 @@ type ArchiveArtifactMutationArguments = {
 @injectable()
 export class ArchiveArtifactMutation extends Mutation<ArchiveArtifactMutationArguments, GraphqlArtifactRecord> {
   private readonly artifactService: ArtifactService;
+  private readonly sessionArtifactUpdatePublisher: SessionArtifactUpdatePublisher;
 
-  constructor(@inject(ArtifactService) artifactService: ArtifactService = new ArtifactService()) {
+  constructor(
+    @inject(ArtifactService) artifactService: ArtifactService = new ArtifactService(),
+    @inject(SessionArtifactUpdatePublisher)
+    sessionArtifactUpdatePublisher: SessionArtifactUpdatePublisher = new SessionArtifactUpdatePublisher(),
+  ) {
     super();
     this.artifactService = artifactService;
+    this.sessionArtifactUpdatePublisher = sessionArtifactUpdatePublisher;
   }
 
   protected resolve = async (
@@ -36,6 +43,8 @@ export class ArchiveArtifactMutation extends Mutation<ArchiveArtifactMutationArg
       companyId: context.authSession.company.id,
       updatedByUserId: context.authSession.user.id,
     });
+
+    await this.sessionArtifactUpdatePublisher.publish(context.authSession.company.id, artifact.sessionId);
 
     return GraphqlArtifactPresenter.present(artifact);
   };
