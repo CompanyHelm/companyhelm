@@ -468,23 +468,30 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
+  const currentSessionArtifacts = useMemo(() => {
+    if (!selectedSession) {
+      return [];
+    }
+
+    return selectedSessionArtifacts.filter((artifact) => artifact.sessionId === selectedSession.id);
+  }, [selectedSession, selectedSessionArtifacts]);
   const visibleSelectedSessionArtifacts = useMemo(() => {
-    return selectedSessionArtifacts
+    return currentSessionArtifacts
       .filter((artifact) => artifact.state !== "archived")
       .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
-  }, [selectedSessionArtifacts]);
+  }, [currentSessionArtifacts]);
   const selectedMarkdownArtifact = useMemo(() => {
     if (!selectedArtifactDetailId) {
       return null;
     }
 
-    const artifact = selectedSessionArtifacts.find((record) => record.id === selectedArtifactDetailId) ?? null;
-    if (!artifact || artifact.type !== "markdown_document") {
+    const artifact = currentSessionArtifacts.find((record) => record.id === selectedArtifactDetailId) ?? null;
+    if (!artifact || artifact.type !== "markdown_document" || artifact.state === "archived") {
       return null;
     }
 
     return artifact;
-  }, [selectedArtifactDetailId, selectedSessionArtifacts]);
+  }, [currentSessionArtifacts, selectedArtifactDetailId]);
 
   const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
     const nextTitle = messages.length > 0 ? resolveSessionTitle({ inferredTitle: null, userSetTitle: null }, messages) : "Untitled chat";
@@ -1162,6 +1169,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       return;
     }
 
+    setSelectedSessionArtifacts([]);
+    setSelectedArtifactDetailId(null);
     void loadSelectedSessionArtifacts(selectedSession.id);
   }, [loadSelectedSessionArtifacts, selectedSession?.id]);
 
