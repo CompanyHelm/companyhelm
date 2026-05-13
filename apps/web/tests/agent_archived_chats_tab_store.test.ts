@@ -106,3 +106,64 @@ test("cleans null Relay slots from the root session list during archived delete 
     ["session-kept"],
   );
 });
+
+test("restores an unarchived session into the root session list", () => {
+  const keptSession = createRecord("session-kept");
+  const restoredSession = createRecord("session-restored");
+  let nextSessions: ReadonlyArray<unknown> | null = null;
+
+  const store: RecordSourceSelectorProxy = {
+    delete() {},
+    get() {
+      return null;
+    },
+    getPluralRootField() {
+      return null;
+    },
+    getRoot() {
+      return createRootRecord([keptSession], (records) => {
+        nextSessions = records;
+      });
+    },
+    getRootField(name: string) {
+      assert.equal(name, "UnarchiveSession");
+      return restoredSession;
+    },
+  };
+
+  AgentArchivedChatsTabStore.restoreUnarchivedSession(store, "session-restored");
+
+  assert.deepEqual(
+    nextSessions?.map((record) => (record as RecordProxy).getDataID()),
+    ["session-kept", "session-restored"],
+  );
+});
+
+test("does not duplicate an already restored unarchived session", () => {
+  const keptSession = createRecord("session-kept");
+  const restoredSession = createRecord("session-restored");
+  let didSetSessions = false;
+
+  const store: RecordSourceSelectorProxy = {
+    delete() {},
+    get(dataId: string) {
+      assert.equal(dataId, "session-restored");
+      return restoredSession;
+    },
+    getPluralRootField() {
+      return null;
+    },
+    getRoot() {
+      return createRootRecord([keptSession, restoredSession], () => {
+        didSetSessions = true;
+      });
+    },
+    getRootField() {
+      return null;
+    },
+  };
+
+  AgentArchivedChatsTabStore.restoreUnarchivedSession(store, "session-restored");
+
+  assert.equal(didSetSessions, false);
+});
