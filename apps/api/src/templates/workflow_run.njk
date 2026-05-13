@@ -31,5 +31,6 @@ Instructions:
 Work through the workflow run steps in order unless the workflow instructions require otherwise.
 Before working on a step, call system_command with id workflow.execution.step.update, that workflow run step ID, and status running.
 After completing a step, call system_command with id workflow.execution.step.update, that workflow run step ID, and status done.
+If you lose track of the runtime workflow run step IDs later in the session, call system_command with id workflow.execution.current to recover the current workflow run and its runtime step IDs.
 The workflow run is marked done automatically when all workflow run steps are done.
 When referring to a step, use the workflow run step ID, not the definition step ID.

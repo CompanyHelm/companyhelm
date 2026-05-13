@@ -333,6 +333,15 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "execute_workflows",
   }, {
+    description: "Show the running workflow run for this session, including runtime workflow run step IDs.",
+    id: "workflow.execution.current",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {},
+      type: "object",
+    },
+    systemSkillKey: "execute_workflows",
+  }, {
     description: "Start a workflow run locally in this session or delegate it to another agent session.",
     id: "workflow.execution.start",
     inputSchema: {

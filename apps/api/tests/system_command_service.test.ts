@@ -1033,6 +1033,85 @@ test("SystemCommandService exposes enabled workflow execution commands through e
   assert.equal(((startResult.startedWorkflow as Record<string, unknown>).workflowRun as Record<string, unknown>).sessionId, "session-1");
 });
 
+test("SystemCommandService exposes the current workflow execution run through execute_workflows", async () => {
+  let selectCall = 0;
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  selectCall += 1;
+                  if (selectCall === 1) {
+                    return [{
+                      id: "workflow-run-1",
+                    }];
+                  }
+
+                  return [{
+                    id: "workflow-step-2",
+                    instructions: "Create the PR",
+                    name: "Open PR",
+                    ordinal: 2,
+                    status: "pending",
+                  }, {
+                    id: "workflow-step-1",
+                    instructions: "Implement the change",
+                    name: "Implement",
+                    ordinal: 1,
+                    status: "running",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive(_transactionProvider: unknown, input: {
+        systemSkillKey: string;
+      }) {
+        assert.equal(input.systemSkillKey, "execute_workflows");
+        return true;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+  const context = {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: transactionProvider as never,
+  };
+
+  const currentResult = await service.executeCommand("workflow.execution.current", {}, context);
+
+  assert.deepEqual(currentResult.currentWorkflowRun, {
+    status: "running",
+    steps: [{
+      instructions: "Implement the change",
+      name: "Implement",
+      ordinal: 1,
+      status: "running",
+      workflowRunId: "workflow-run-1",
+      workflowRunStepId: "workflow-step-1",
+    }, {
+      instructions: "Create the PR",
+      name: "Open PR",
+      ordinal: 2,
+      status: "pending",
+      workflowRunId: "workflow-run-1",
+      workflowRunStepId: "workflow-step-2",
+    }],
+    workflowRunId: "workflow-run-1",
+  });
+});
+
 test("SystemCommandService executes company directory commands when company_directory is active", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {
