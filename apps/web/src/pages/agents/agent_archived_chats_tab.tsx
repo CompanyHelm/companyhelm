@@ -396,6 +396,9 @@ export function AgentArchivedChatsTab(props: AgentArchivedChatsTabProps) {
               sessionId: session.id,
             },
           },
+          updater: (store) => {
+            AgentArchivedChatsTabStore.restoreUnarchivedSession(store, session.id);
+          },
           onCompleted: (_response, errors) => {
             const nextErrorMessage = String(errors?.[0]?.message || "").trim();
             if (nextErrorMessage) {

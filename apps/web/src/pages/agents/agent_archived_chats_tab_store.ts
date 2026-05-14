@@ -2,10 +2,25 @@ import type { RecordProxy, RecordSourceSelectorProxy } from "relay-runtime";
 
 /**
  * Keeps the agent detail page's denormalized Relay session list consistent after archived-chat
- * mutations remove records from the normalized store. The root Sessions field is not a connection,
- * so destructive mutations must prune it explicitly before deleting the backing record.
+ * mutations restore or remove records. The root Sessions field is not a connection, so archived
+ * chat mutations must update the cached list explicitly instead of relying on Relay to infer it.
  */
 export class AgentArchivedChatsTabStore {
+  public static restoreUnarchivedSession(store: RecordSourceSelectorProxy, sessionId: string): void {
+    const rootRecord = store.getRoot();
+    const restoredSession = store.getRootField("UnarchiveSession") ?? store.get(sessionId);
+    if (!AgentArchivedChatsTabStore.isRecordProxy(restoredSession)) {
+      return;
+    }
+
+    const currentSessions = AgentArchivedChatsTabStore.filterStoreRecords(rootRecord.getLinkedRecords("Sessions") || []);
+    if (currentSessions.some((sessionRecord) => sessionRecord.getDataID() === restoredSession.getDataID())) {
+      return;
+    }
+
+    rootRecord.setLinkedRecords([...currentSessions, restoredSession], "Sessions");
+  }
+
   public static removeDeletedSession(store: RecordSourceSelectorProxy, sessionId: string): void {
     const rootRecord = store.getRoot();
     const currentSessions = rootRecord.getLinkedRecords("Sessions") || [];
@@ -38,5 +53,9 @@ export class AgentArchivedChatsTabStore {
       && record !== null
       && "getDataID" in record
       && typeof record.getDataID === "function";
+  }
+
+  private static filterStoreRecords(records: ReadonlyArray<unknown>): RecordProxy[] {
+    return records.filter((record): record is RecordProxy => AgentArchivedChatsTabStore.isRecordProxy(record));
   }
 }
