@@ -54,6 +54,21 @@ export type WorkflowExecutionRunStep = {
   status: WorkflowExecutionRunStepStatus;
 };
 
+export type WorkflowExecutionCurrentRunStep = {
+  instructions: string | null;
+  name: string;
+  ordinal: number;
+  status: WorkflowExecutionRunStepStatus;
+  workflowRunId: string;
+  workflowRunStepId: string;
+};
+
+export type WorkflowExecutionCurrentRun = {
+  status: "running";
+  steps: WorkflowExecutionCurrentRunStep[];
+  workflowRunId: string;
+};
+
 export type WorkflowExecutionRunState = {
   allStepsDone: boolean;
   step: WorkflowExecutionRunStep;
@@ -163,6 +178,31 @@ export class WorkflowExecutionSessionService {
     });
 
     return this.serializeLocalRunStart(parentWorkflowRunId, localRun);
+  }
+
+  async listCurrentWorkflowRun(): Promise<WorkflowExecutionCurrentRun | null> {
+    return this.transactionProvider.transaction(async (tx) => {
+      const runRows = await this.loadRunningWorkflowRuns(tx);
+      const runRow = runRows[0] ?? null;
+      if (!runRow) {
+        return null;
+      }
+
+      const steps = await this.loadRunSteps(tx, runRow.id);
+
+      return {
+        status: "running",
+        steps: steps.map((step) => ({
+          instructions: step.instructions,
+          name: step.name,
+          ordinal: step.ordinal,
+          status: step.status,
+          workflowRunId: runRow.id,
+          workflowRunStepId: step.id,
+        })),
+        workflowRunId: runRow.id,
+      };
+    });
   }
 
   async updateStepStatus(input: {

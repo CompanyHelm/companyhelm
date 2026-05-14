@@ -276,6 +276,104 @@ test("WorkflowExecutionSessionService starts delegated workflow runs with the re
   assert.equal(result.workflowRun.agentId, "agent-2");
 });
 
+test("WorkflowExecutionSessionService lists the current running workflow with runtime step ids", async () => {
+  let selectCall = 0;
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  selectCall += 1;
+                  if (selectCall === 1) {
+                    return [{
+                      id: "workflow-run-current",
+                    }];
+                  }
+
+                  return [{
+                    id: "workflow-step-2",
+                    instructions: "Ship the change",
+                    name: "Ship",
+                    ordinal: 2,
+                    status: "pending",
+                  }, {
+                    id: "workflow-step-1",
+                    instructions: "Inspect the repository",
+                    name: "Inspect",
+                    ordinal: 1,
+                    status: "running",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new WorkflowExecutionSessionService(
+    transactionProvider as never,
+    "company-1",
+    "agent-1",
+    "session-1",
+  );
+
+  const result = await service.listCurrentWorkflowRun();
+
+  assert.deepEqual(result, {
+    status: "running",
+    steps: [{
+      instructions: "Inspect the repository",
+      name: "Inspect",
+      ordinal: 1,
+      status: "running",
+      workflowRunId: "workflow-run-current",
+      workflowRunStepId: "workflow-step-1",
+    }, {
+      instructions: "Ship the change",
+      name: "Ship",
+      ordinal: 2,
+      status: "pending",
+      workflowRunId: "workflow-run-current",
+      workflowRunStepId: "workflow-step-2",
+    }],
+    workflowRunId: "workflow-run-current",
+  });
+});
+
+test("WorkflowExecutionSessionService returns null when the session has no running workflow", async () => {
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new WorkflowExecutionSessionService(
+    transactionProvider as never,
+    "company-1",
+    "agent-1",
+    "session-1",
+  );
+
+  const result = await service.listCurrentWorkflowRun();
+
+  assert.equal(result, null);
+});
+
 test("WorkflowService rejects local workflow runs when the target session already has a running workflow", async () => {
   const transactionProvider = {
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {

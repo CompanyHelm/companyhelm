@@ -35,6 +35,8 @@ export class WorkflowExecutionSystemCommandService {
     switch (commandId) {
       case "workflow.execution.list":
         return this.listWorkflows(context);
+      case "workflow.execution.current":
+        return this.listCurrentWorkflowRun(context);
       case "workflow.execution.start":
         return this.startWorkflow(input, context);
       case "workflow.execution.step.update":
@@ -47,6 +49,14 @@ export class WorkflowExecutionSystemCommandService {
   private async listWorkflows(context: WorkflowExecutionSystemCommandContext): Promise<Record<string, unknown>> {
     return this.jsonSerializer.serializeRecord({
       workflows: await this.createWorkflowSessionService(context).listWorkflows(),
+    });
+  }
+
+  private async listCurrentWorkflowRun(
+    context: WorkflowExecutionSystemCommandContext,
+  ): Promise<Record<string, unknown>> {
+    return this.jsonSerializer.serializeRecord({
+      currentWorkflowRun: await this.createWorkflowSessionService(context).listCurrentWorkflowRun(),
     });
   }
 
