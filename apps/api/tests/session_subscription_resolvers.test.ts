@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { SessionInboxHumanQuestionsUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_inbox_human_questions_updated.ts";
+import { SessionArtifactsUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_artifacts_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_message_updated.ts";
 import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_queued_messages_updated.ts";
 import { SessionUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_updated.ts";
@@ -230,6 +231,101 @@ test("SessionUpdated subscription ignores message and queued channels that share
   assert.equal(sessionReadService.getSession.mock.calls.length, 1);
 
   await iterator.return?.();
+});
+
+test("SessionArtifactsUpdated subscription reloads the full session artifact list when Redis signals an update", async () => {
+  const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
+  const sessionReadService = {
+    getSession: vi.fn(async () => ({
+      id: "session-1",
+    })),
+  };
+  const artifactService = {
+    listArtifacts: vi.fn(async () => [{
+      id: "artifact-1",
+      createdBySessionId: "session-1",
+      sessionId: "session-1",
+      taskId: null,
+      scopeType: "session",
+      type: "markdown_document",
+      state: "active",
+      name: "Plan",
+      description: "Draft plan",
+      markdownContent: "# Plan",
+      url: null,
+      pullRequestProvider: null,
+      pullRequestRepository: null,
+      pullRequestNumber: null,
+      createdAt: new Date("2026-03-26T06:00:00.000Z"),
+      updatedAt: new Date("2026-03-26T06:01:00.000Z"),
+    }]),
+  };
+  const resolver = new SessionArtifactsUpdatedSubscriptionResolver(
+    artifactService as never,
+    undefined,
+    sessionReadService as never,
+  );
+  const context = {
+    authSession: {
+      company: {
+        id: "company-1",
+      },
+      user: {
+        id: "user-1",
+      },
+    },
+    app_runtime_transaction_provider: {
+      transaction: vi.fn(),
+    },
+    redisCompanyScopedService: {
+      subscribePattern,
+    },
+  };
+
+  const iterator = resolver.subscribe({}, { sessionId: "session-1" }, context as never);
+  const nextEventPromise = iterator.next();
+  const listener = await waitForListener(getListener);
+  listener("", "company:company-1:session:session-1:artifacts:update");
+  const nextEvent = await nextEventPromise;
+
+  assert.deepEqual(nextEvent.value, {
+    SessionArtifactsUpdated: [{
+      id: "artifact-1",
+      createdBySessionId: "session-1",
+      sessionId: "session-1",
+      taskId: null,
+      scopeType: "session",
+      type: "markdown_document",
+      state: "active",
+      name: "Plan",
+      description: "Draft plan",
+      markdownContent: "# Plan",
+      url: null,
+      pullRequestProvider: null,
+      pullRequestRepository: null,
+      pullRequestNumber: null,
+      createdAt: "2026-03-26T06:00:00.000Z",
+      updatedAt: "2026-03-26T06:01:00.000Z",
+    }],
+  });
+  assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-1:artifacts:update");
+  assert.deepEqual(sessionReadService.getSession.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-1",
+    "user-1",
+  ]);
+  assert.deepEqual(artifactService.listArtifacts.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    {
+      companyId: "company-1",
+      scopeType: "session",
+      sessionId: "session-1",
+    },
+  ]);
+
+  await iterator.return?.();
+  assert.equal(unsubscribe.mock.calls.length, 1);
 });
 
 test("SessionMessageUpdated subscription reloads the message row from Postgres for the selected session", async () => {

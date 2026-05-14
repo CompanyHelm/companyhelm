@@ -24,8 +24,10 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { ChatComposerImage } from "./chat_composer_image";
 import type { ChatComposerModelOption } from "./chat_composer_model_picker";
+import { ChatArtifactDetailDialog } from "./chat_artifact_detail_dialog";
 import { ChatComposerPane } from "./chat_composer_pane";
 import {
+  type ChatsPageArchiveArtifactMutation,
   type ChatsPageArchiveSessionMutation,
   type ChatsPageComposerSetupQuery,
   type ChatsPageCreateSessionMutation,
@@ -42,8 +44,10 @@ import {
   type ChatsPageQueuedMessagesQuery,
   type ChatsPageQuery,
   type ChatsPageResolveInboxHumanQuestionMutation,
+  type ChatsPageSelectedSessionArtifactsQuery,
   type ChatsPageSearch,
   type ChatsPageSessionEnvironmentQuery,
+  type ChatsPageSessionArtifactsUpdatedSubscription,
   type ChatsPageSessionInboxHumanQuestionsUpdatedSubscription,
   type ChatsPageSessionQueuedMessagesUpdatedSubscription,
   type ChatsPageSessionUpdatedSubscription,
@@ -55,9 +59,11 @@ import {
   type InboxHumanQuestionRecord,
   type ProviderOptionRecord,
   type QueuedMessageRecord,
+  type SessionArtifactRecord,
   type SessionEnvironmentInfoRecord,
   type SessionMessageRecord,
   type SessionRecord,
+  chatsPageArchiveArtifactMutationNode,
   chatsPageArchiveSessionMutationNode,
   chatsPageComposerSetupQueryNode,
   chatsPageCreateSessionMutationNode,
@@ -74,7 +80,9 @@ import {
   chatsPageQueuedMessagesQueryNode,
   chatsPageQueryNode,
   chatsPageResolveInboxHumanQuestionMutationNode,
+  chatsPageSelectedSessionArtifactsQueryNode,
   chatsPageSessionEnvironmentQueryNode,
+  chatsPageSessionArtifactsUpdatedSubscriptionNode,
   chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode,
   chatsPageSessionQueuedMessagesUpdatedSubscriptionNode,
   chatsPageSessionUpdatedSubscriptionNode,
@@ -109,6 +117,7 @@ import {
 } from "./chats_page_helpers";
 import { ChatListPanel } from "./chat_list_panel";
 import { ChatTranscriptPane } from "./chat_transcript_pane";
+import { usePageVisibility } from "./use_page_visibility";
 import { useChatTranscript } from "./use_chat_transcript";
 
 function ChatsReconnectBanner({ visible }: { visible: boolean }) {
@@ -141,6 +150,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const environment = useRelayEnvironment();
+  const isPageVisible = usePageVisibility();
   const subscriptionConnectionStatus = useGraphqlSubscriptionConnectionStatus();
   const sessionTranscriptRetentionStore = useSessionTranscriptRetentionStore();
   const search = useSearch({ strict: false }) as ChatsPageSearch;
@@ -156,6 +166,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [draftImages, setDraftImages] = useState<DraftComposerImageRecord[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
+  const [dismissingArtifactId, setDismissingArtifactId] = useState<string | null>(null);
   const [isForkingLatestSession, setIsForkingLatestSession] = useState(false);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionTranscriptReloadId, setPendingCreatedSessionTranscriptReloadId] = useState<string | null>(
@@ -180,6 +191,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [liveSessionHumanQuestionsBySessionId, setLiveSessionHumanQuestionsBySessionId] = useState<
     Record<string, InboxHumanQuestionRecord[]>
   >({});
+  const [selectedSessionArtifacts, setSelectedSessionArtifacts] = useState<SessionArtifactRecord[]>([]);
+  const [selectedArtifactDetailId, setSelectedArtifactDetailId] = useState<string | null>(null);
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
   const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
@@ -202,6 +215,8 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const composerSetupLoadedRef = useRef(false);
   const composerSetupRequestIdRef = useRef(0);
   const queuedMessagesRequestIdRef = useRef(0);
+  const selectedSessionArtifactsRequestIdRef = useRef(0);
+  const previousPageVisibilityRef = useRef(isPageVisible);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
   const [composerSetupData, setComposerSetupData] = useState<ChatsPageComposerSetupQuery["response"] | null>(null);
   const [isComposerSetupLoading, setIsComposerSetupLoading] = useState(false);
@@ -223,6 +238,9 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   );
   const [commitArchiveSession, isArchiveSessionInFlight] = useMutation<ChatsPageArchiveSessionMutation>(
     chatsPageArchiveSessionMutationNode,
+  );
+  const [commitArchiveArtifact] = useMutation<ChatsPageArchiveArtifactMutation>(
+    chatsPageArchiveArtifactMutationNode,
   );
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<ChatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
@@ -450,6 +468,30 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
+  const currentSessionArtifacts = useMemo(() => {
+    if (!selectedSession) {
+      return [];
+    }
+
+    return selectedSessionArtifacts.filter((artifact) => artifact.sessionId === selectedSession.id);
+  }, [selectedSession, selectedSessionArtifacts]);
+  const visibleSelectedSessionArtifacts = useMemo(() => {
+    return currentSessionArtifacts
+      .filter((artifact) => artifact.state !== "archived")
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+  }, [currentSessionArtifacts]);
+  const selectedMarkdownArtifact = useMemo(() => {
+    if (!selectedArtifactDetailId) {
+      return null;
+    }
+
+    const artifact = currentSessionArtifacts.find((record) => record.id === selectedArtifactDetailId) ?? null;
+    if (!artifact || artifact.type !== "markdown_document" || artifact.state === "archived") {
+      return null;
+    }
+
+    return artifact;
+  }, [currentSessionArtifacts, selectedArtifactDetailId]);
 
   const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
     const nextTitle = messages.length > 0 ? resolveSessionTitle({ inferredTitle: null, userSetTitle: null }, messages) : "Untitled chat";
@@ -997,6 +1039,39 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     }
   }, [environment]);
 
+  const loadSelectedSessionArtifacts = useCallback(async (sessionId: string) => {
+    const requestId = selectedSessionArtifactsRequestIdRef.current + 1;
+    selectedSessionArtifactsRequestIdRef.current = requestId;
+
+    try {
+      const response = await fetchQuery<ChatsPageSelectedSessionArtifactsQuery>(
+        environment,
+        chatsPageSelectedSessionArtifactsQueryNode,
+        {
+          sessionId,
+        },
+        {
+          fetchPolicy: "network-only",
+        },
+      ).toPromise();
+
+      if (selectedSessionArtifactsRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setSelectedSessionArtifacts([...(response?.Artifacts ?? [])]);
+    } catch (error) {
+      if (selectedSessionArtifactsRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setSelectedSessionArtifacts([]);
+      setErrorMessage((currentMessage) => {
+        return currentMessage ?? (error instanceof Error ? error.message : "Failed to load session artifacts.");
+      });
+    }
+  }, [environment]);
+
   useEffect(() => {
     const currentSelectedSessionId = selectedSession?.id ?? null;
 
@@ -1085,6 +1160,29 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
 
     void loadQueuedMessages(selectedSession.id);
   }, [loadQueuedMessages, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      selectedSessionArtifactsRequestIdRef.current += 1;
+      setSelectedSessionArtifacts([]);
+      setSelectedArtifactDetailId(null);
+      return;
+    }
+
+    setSelectedSessionArtifacts([]);
+    setSelectedArtifactDetailId(null);
+    void loadSelectedSessionArtifacts(selectedSession.id);
+  }, [loadSelectedSessionArtifacts, selectedSession?.id]);
+
+  useEffect(() => {
+    const wasVisible = previousPageVisibilityRef.current;
+    previousPageVisibilityRef.current = isPageVisible;
+    if (!selectedSession || !isPageVisible || wasVisible === isPageVisible) {
+      return;
+    }
+
+    void loadSelectedSessionArtifacts(selectedSession.id);
+  }, [isPageVisible, loadSelectedSessionArtifacts, selectedSession?.id]);
 
   useEffect(() => {
     const nextComposerSelectionTargetKey = selectedAgent
@@ -1281,6 +1379,36 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       disposable.dispose();
     };
   }, [environment]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    if (!isPageVisible) {
+      return;
+    }
+
+    const disposable = requestSubscription<ChatsPageSessionArtifactsUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionArtifactsUpdatedSubscriptionNode,
+      variables: { sessionId: selectedSession.id },
+      onNext: (response) => {
+        const nextArtifacts = response?.SessionArtifactsUpdated;
+        if (!nextArtifacts) {
+          return;
+        }
+
+        setSelectedSessionArtifacts([...nextArtifacts]);
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment, isPageVisible, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedSession) {
@@ -1660,6 +1788,19 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     selectedSession,
   ]);
 
+  const openSelectedSessionArtifact = useCallback((artifact: SessionArtifactRecord) => {
+    if (artifact.type === "markdown_document") {
+      setSelectedArtifactDetailId(artifact.id);
+      return;
+    }
+
+    if (!artifact.url) {
+      return;
+    }
+
+    window.open(artifact.url, "_blank", "noopener,noreferrer");
+  }, []);
+
   const archiveSession = useCallback(async (session: SessionRecord) => {
     setErrorMessage(null);
     setArchivingSessionId(session.id);
@@ -1688,6 +1829,53 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       setArchivingSessionId(null);
     });
   }, [commitArchiveSession]);
+
+  const dismissSelectedSessionArtifact = useCallback(async (artifact: SessionArtifactRecord) => {
+    if (dismissingArtifactId === artifact.id) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setDismissingArtifactId(artifact.id);
+
+    await new Promise<void>((resolve, reject) => {
+      commitArchiveArtifact({
+        variables: {
+          input: {
+            id: artifact.id,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const archivedArtifact = response?.ArchiveArtifact ?? null;
+          if (!archivedArtifact) {
+            reject(new Error("Failed to dismiss artifact."));
+            return;
+          }
+
+          setSelectedSessionArtifacts((currentArtifacts) => {
+            return currentArtifacts.map((currentArtifact) => {
+              return currentArtifact.id === archivedArtifact.id ? archivedArtifact : currentArtifact;
+            });
+          });
+          setSelectedArtifactDetailId((currentArtifactId) => {
+            return currentArtifactId === archivedArtifact.id ? null : currentArtifactId;
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to dismiss artifact.");
+    }).finally(() => {
+      setDismissingArtifactId((currentArtifactId) => currentArtifactId === artifact.id ? null : currentArtifactId);
+    });
+  }, [commitArchiveArtifact, dismissingArtifactId]);
 
   const promptSession = useCallback(async (shouldSteer: boolean) => {
     if (!selectedSession || !selectedComposerModelOption) {
@@ -2180,9 +2368,13 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             archivingSessionId={archivingSessionId}
             chatListAgents={chatListAgents}
             collapsedChatListAgentIds={collapsedChatListAgentIds}
+            dismissingArtifactId={dismissingArtifactId}
             isArchiveSessionInFlight={isArchiveSessionInFlight}
             onArchiveSession={(session) => {
               void archiveSession(session);
+            }}
+            onDismissArtifact={(artifact) => {
+              void dismissSelectedSessionArtifact(artifact);
             }}
             onExpandAgent={expandChatListAgent}
             onHideChatList={hideChatList}
@@ -2195,10 +2387,12 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             onOpenSession={(agentId, sessionId) => {
               void openSession(agentId, sessionId);
             }}
+            onOpenArtifact={openSelectedSessionArtifact}
             onToggleAgentExpanded={toggleChatListAgentExpanded}
             organizationSlug={organizationSlug}
             panelMode="mobile"
             selectedAgent={selectedAgent}
+            selectedSessionArtifacts={visibleSelectedSessionArtifacts}
             selectedSession={selectedSession}
             sessionIdsWithOpenHumanQuestions={sessionIdsWithOpenHumanQuestions}
             sessionTitleOverridesById={sessionTitleOverridesById}
@@ -2309,6 +2503,15 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       {mobileChatListOverlay}
       {newChatDialog}
       {alternateModelDialog}
+      <ChatArtifactDetailDialog
+        artifact={selectedMarkdownArtifact}
+        isOpen={selectedMarkdownArtifact !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedArtifactDetailId(null);
+          }
+        }}
+      />
       <ChatEnvironmentPanel
         actingSessionEnvironmentId={actingSessionEnvironmentId}
         composerModelOptionId={composerModelOptionId}
@@ -2465,9 +2668,13 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             archivingSessionId={archivingSessionId}
             chatListAgents={chatListAgents}
             collapsedChatListAgentIds={collapsedChatListAgentIds}
+            dismissingArtifactId={dismissingArtifactId}
             isArchiveSessionInFlight={isArchiveSessionInFlight}
             onArchiveSession={(session) => {
               void archiveSession(session);
+            }}
+            onDismissArtifact={(artifact) => {
+              void dismissSelectedSessionArtifact(artifact);
             }}
             onExpandAgent={expandChatListAgent}
             onHideChatList={hideChatList}
@@ -2480,10 +2687,12 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             onOpenSession={(agentId, sessionId) => {
               void openSession(agentId, sessionId);
             }}
+            onOpenArtifact={openSelectedSessionArtifact}
             onToggleAgentExpanded={toggleChatListAgentExpanded}
             organizationSlug={organizationSlug}
             panelMode="desktop"
             selectedAgent={selectedAgent}
+            selectedSessionArtifacts={visibleSelectedSessionArtifacts}
             selectedSession={selectedSession}
             sessionIdsWithOpenHumanQuestions={sessionIdsWithOpenHumanQuestions}
             sessionTitleOverridesById={sessionTitleOverridesById}

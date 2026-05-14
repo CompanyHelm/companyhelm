@@ -1,5 +1,6 @@
 import { graphql } from "react-relay";
 import type { ChatComposerImageDraft } from "./chat_composer_image";
+import type { chatsPageDataArchiveArtifactMutation } from "./__generated__/chatsPageDataArchiveArtifactMutation.graphql";
 import type { chatsPageDataArchiveSessionMutation } from "./__generated__/chatsPageDataArchiveSessionMutation.graphql";
 import type { chatsPageDataComposerSetupQuery } from "./__generated__/chatsPageDataComposerSetupQuery.graphql";
 import type { chatsPageDataCreateSessionMutation } from "./__generated__/chatsPageDataCreateSessionMutation.graphql";
@@ -16,7 +17,9 @@ import type { chatsPageDataPromptSessionMutation } from "./__generated__/chatsPa
 import type { chatsPageDataQuery } from "./__generated__/chatsPageDataQuery.graphql";
 import type { chatsPageDataQueuedMessagesQuery } from "./__generated__/chatsPageDataQueuedMessagesQuery.graphql";
 import type { chatsPageDataResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageDataResolveInboxHumanQuestionMutation.graphql";
+import type { chatsPageDataSelectedSessionArtifactsQuery } from "./__generated__/chatsPageDataSelectedSessionArtifactsQuery.graphql";
 import type { chatsPageDataSessionEnvironmentQuery } from "./__generated__/chatsPageDataSessionEnvironmentQuery.graphql";
+import type { chatsPageDataSessionArtifactsUpdatedSubscription } from "./__generated__/chatsPageDataSessionArtifactsUpdatedSubscription.graphql";
 import type { chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription.graphql";
 import type { chatsPageDataSessionMessageUpdatedSubscription } from "./__generated__/chatsPageDataSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageDataSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageDataSessionQueuedMessagesUpdatedSubscription.graphql";
@@ -247,6 +250,28 @@ export const chatsPageQueuedMessagesQueryNode = graphql`
   }
 `;
 
+export const chatsPageSelectedSessionArtifactsQueryNode = graphql`
+  query chatsPageDataSelectedSessionArtifactsQuery($sessionId: ID!) {
+    Artifacts(input: { scopeType: "session", sessionId: $sessionId }) {
+      id
+      sessionId
+      taskId
+      scopeType
+      type
+      state
+      name
+      description
+      markdownContent
+      url
+      pullRequestProvider
+      pullRequestRepository
+      pullRequestNumber
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const chatsPageSessionEnvironmentQueryNode = graphql`
   query chatsPageDataSessionEnvironmentQuery($sessionId: ID!) {
     SessionEnvironment(sessionId: $sessionId) {
@@ -279,6 +304,28 @@ export const chatsPageSessionEnvironmentQueryNode = graphql`
         name
         provider
       }
+    }
+  }
+`;
+
+export const chatsPageArchiveArtifactMutationNode = graphql`
+  mutation chatsPageDataArchiveArtifactMutation($input: ArchiveArtifactInput!) {
+    ArchiveArtifact(input: $input) {
+      id
+      sessionId
+      taskId
+      scopeType
+      type
+      state
+      name
+      description
+      markdownContent
+      url
+      pullRequestProvider
+      pullRequestRepository
+      pullRequestNumber
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -609,6 +656,28 @@ export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
   }
 `;
 
+export const chatsPageSessionArtifactsUpdatedSubscriptionNode = graphql`
+  subscription chatsPageDataSessionArtifactsUpdatedSubscription($sessionId: ID!) {
+    SessionArtifactsUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      taskId
+      scopeType
+      type
+      state
+      name
+      description
+      markdownContent
+      url
+      pullRequestProvider
+      pullRequestRepository
+      pullRequestNumber
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   subscription chatsPageDataSessionMessageUpdatedSubscription($sessionId: ID!) {
     SessionMessageUpdated(sessionId: $sessionId) {
@@ -617,6 +686,7 @@ export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   }
 `;
 
+export type ChatsPageArchiveArtifactMutation = chatsPageDataArchiveArtifactMutation;
 export type ChatsPageArchiveSessionMutation = chatsPageDataArchiveSessionMutation;
 export type ChatsPageComposerSetupQuery = chatsPageDataComposerSetupQuery;
 export type ChatsPageCreateSessionMutation = chatsPageDataCreateSessionMutation;
@@ -633,7 +703,9 @@ export type ChatsPagePromptSessionMutation = chatsPageDataPromptSessionMutation;
 export type ChatsPageQueuedMessagesQuery = chatsPageDataQueuedMessagesQuery;
 export type ChatsPageQuery = chatsPageDataQuery;
 export type ChatsPageResolveInboxHumanQuestionMutation = chatsPageDataResolveInboxHumanQuestionMutation;
+export type ChatsPageSelectedSessionArtifactsQuery = chatsPageDataSelectedSessionArtifactsQuery;
 export type ChatsPageSessionEnvironmentQuery = chatsPageDataSessionEnvironmentQuery;
+export type ChatsPageSessionArtifactsUpdatedSubscription = chatsPageDataSessionArtifactsUpdatedSubscription;
 export type ChatsPageSessionInboxHumanQuestionsUpdatedSubscription = chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription;
 export type ChatsPageSessionMessageUpdatedSubscription = chatsPageDataSessionMessageUpdatedSubscription;
 export type ChatsPageSessionQueuedMessagesUpdatedSubscription = chatsPageDataSessionQueuedMessagesUpdatedSubscription;
@@ -654,6 +726,7 @@ export type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][n
 export type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
 export type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
 export type SessionEnvironmentInfoRecord = chatsPageDataSessionEnvironmentQuery["response"]["SessionEnvironment"];
+export type SessionArtifactRecord = chatsPageDataSelectedSessionArtifactsQuery["response"]["Artifacts"][number];
 export type SessionEnvironmentActiveSkillRecord = SessionEnvironmentInfoRecord["activeSkills"][number];
 export type DraftComposerImageRecord = ChatComposerImageDraft;
 export type ChatsPageSearch = {

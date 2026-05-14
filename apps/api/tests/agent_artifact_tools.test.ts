@@ -151,6 +151,7 @@ test("AgentArchiveArtifactTool archives one artifact and reports the updated sta
 
 test("AgentArtifactToolService records creating and scoped sessions on pull request artifacts", async () => {
   const creationInputs: Array<{ createdBySessionId?: string | null; sessionId?: string | null }> = [];
+  const publishedUpdates: Array<{ companyId: string; sessionId: string | null }> = [];
   const service = new AgentArtifactToolService(
     {} as never,
     "company-1",
@@ -182,6 +183,11 @@ test("AgentArtifactToolService records creating and scoped sessions on pull requ
         };
       },
     } as never,
+    {
+      async publish(companyId: string, sessionId: string | null) {
+        publishedUpdates.push({ companyId, sessionId });
+      },
+    } as never,
   );
 
   await service.createPullRequestArtifact({
@@ -194,4 +200,5 @@ test("AgentArtifactToolService records creating and scoped sessions on pull requ
 
   assert.equal(creationInputs[0]?.createdBySessionId, "session-1");
   assert.equal(creationInputs[0]?.sessionId, "session-1");
+  assert.deepEqual(publishedUpdates, [{ companyId: "company-1", sessionId: "session-1" }]);
 });

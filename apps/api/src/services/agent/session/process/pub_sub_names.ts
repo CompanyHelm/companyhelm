@@ -19,6 +19,14 @@ export class SessionProcessPubSubNames {
     return `session:${sessionId}:update`;
   }
 
+  getSessionArtifactsUpdateChannel(sessionId: string): string {
+    return `session:${sessionId}:artifacts:update`;
+  }
+
+  getSessionArtifactsUpdatePattern(sessionId: string): string {
+    return this.getSessionArtifactsUpdateChannel(sessionId);
+  }
+
   getSessionUpdatePattern(): string {
     return "session:*:update";
   }
