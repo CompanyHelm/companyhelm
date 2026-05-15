@@ -43,6 +43,7 @@ function buildTranscriptPaneProps() {
   } as MutableRefObject<HTMLDivElement | null>;
   const onJumpToLatest = () => {};
   const onScroll = () => {};
+  const onWheelCapture = () => {};
 
   return {
     isLoadingOlderMessages: false,
@@ -50,6 +51,7 @@ function buildTranscriptPaneProps() {
     isTranscriptStuckToBottom: true,
     onJumpToLatest,
     onScroll,
+    onWheelCapture,
     organizationSlug: "test-org",
     session,
     sessionMessages,

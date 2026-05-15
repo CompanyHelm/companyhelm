@@ -156,6 +156,7 @@ function ChatPerformanceHarness() {
               isTranscriptStuckToBottom={true}
               onJumpToLatest={onJumpToLatest}
               onScroll={noop}
+              onWheelCapture={noop}
               organizationSlug="test-org"
               session={session}
               sessionMessages={sessionMessages}
