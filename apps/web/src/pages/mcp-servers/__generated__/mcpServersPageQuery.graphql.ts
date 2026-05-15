@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03655c3221148f03db31c3de09aeca06>>
+ * @generated SignedSource<<afa72118a10bb523e442c57cfe9ed357>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,10 @@ export type McpServerAuthType = "authorization_header" | "none" | "oauth_authori
 export type McpServerValidationStatus = "auth_error" | "network_error" | "ok" | "protocol_error" | "server_error" | "unknown" | "%future added value";
 export type mcpServersPageQuery$variables = Record<PropertyKey, never>;
 export type mcpServersPageQuery$data = {
+  readonly Agents: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+  }>;
   readonly McpServers: ReadonlyArray<{
     readonly authType: McpServerAuthType;
     readonly callTimeoutMs: number;
@@ -42,7 +46,34 @@ export type mcpServersPageQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v2 = [
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Agent",
+    "kind": "LinkedField",
+    "name": "Agents",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -51,48 +82,8 @@ var v0 = [
     "name": "McpServers",
     "plural": true,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidatedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationError",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationStatus",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationToolCount",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "name",
-        "storageKey": null
-      },
+      (v0/*: any*/),
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -174,6 +165,34 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "lastValidationStatus",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationError",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationToolCount",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidatedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -194,7 +213,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "mcpServersPageQuery",
-    "selections": (v0/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -203,19 +222,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "mcpServersPageQuery",
-    "selections": (v0/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "788f06fa711d400e03196ed356a37ac4",
+    "cacheID": "c3abf8b18ce92239320aa0eff574b8d3",
     "id": null,
     "metadata": {},
     "name": "mcpServersPageQuery",
     "operationKind": "query",
-    "text": "query mcpServersPageQuery {\n  McpServers {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    lastValidationStatus\n    lastValidationError\n    lastValidationToolCount\n    lastValidatedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query mcpServersPageQuery {\n  Agents {\n    id\n    name\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    lastValidationStatus\n    lastValidationError\n    lastValidationToolCount\n    lastValidatedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2a89cbffd4da774afdf5d05edd3b8091";
+(node as any).hash = "4428a714fe40d1b9e9d12730d5449324";
 
 export default node;

@@ -1,9 +1,11 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { FileUpIcon, PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { AgentAssignmentDialog, type AgentAssignmentResource } from "@/components/agent_assignment_dialog";
+import { useToast } from "@/components/toast_provider";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
@@ -28,6 +30,7 @@ import type { secretsPageCreateSecretMutation } from "./__generated__/secretsPag
 import type { secretsPageCreateSecretGroupMutation } from "./__generated__/secretsPageCreateSecretGroupMutation.graphql";
 import type { secretsPageDeleteSecretMutation } from "./__generated__/secretsPageDeleteSecretMutation.graphql";
 import type { secretsPageQuery } from "./__generated__/secretsPageQuery.graphql";
+import type { secretsPageAttachSecretToAgentMutation } from "./__generated__/secretsPageAttachSecretToAgentMutation.graphql";
 import type { secretsPageUpdateSecretMutation } from "./__generated__/secretsPageUpdateSecretMutation.graphql";
 
 type RelayLinkedRecord = {
@@ -37,6 +40,10 @@ type RelayLinkedRecord = {
 
 const secretsPageQueryNode = graphql`
   query secretsPageQuery {
+    Agents {
+      id
+      name
+    }
     SecretGroups {
       id
       name
@@ -61,6 +68,19 @@ const secretsPageCreateSecretMutationNode = graphql`
       description
       envVarName
       secretGroupId
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const secretsPageAttachSecretToAgentMutationNode = graphql`
+  mutation secretsPageAttachSecretToAgentMutation($input: AttachSecretToAgentInput!) {
+    AttachSecretToAgent(input: $input) {
+      id
+      name
+      description
+      envVarName
       createdAt
       updatedAt
     }
@@ -160,8 +180,14 @@ function SecretsPageFallback() {
 
 function SecretsPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
+  const toast = useToast();
+  const [assignmentErrorMessage, setAssignmentErrorMessage] = useState<string | null>(null);
+  const [assignmentResources, setAssignmentResources] = useState<AgentAssignmentResource[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingSecretId, setDeletingSecretId] = useState<string | null>(null);
+  const [isAssigningSecrets, setAssigningSecrets] = useState(false);
+  const [isAssignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const assignmentDialogCanCloseRef = useRef(true);
   const [movingSecretId, setMovingSecretId] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
@@ -177,6 +203,9 @@ function SecretsPageContent() {
   const [commitCreateSecret, isCreateSecretInFlight] = useMutation<secretsPageCreateSecretMutation>(
     secretsPageCreateSecretMutationNode,
   );
+  const [commitAttachSecretToAgent] = useMutation<secretsPageAttachSecretToAgentMutation>(
+    secretsPageAttachSecretToAgentMutationNode,
+  );
   const [commitCreateSecretGroup, isCreateSecretGroupInFlight] =
     useMutation<secretsPageCreateSecretGroupMutation>(secretsPageCreateSecretGroupMutationNode);
   const [commitDeleteSecret, isDeleteSecretInFlight] = useMutation<secretsPageDeleteSecretMutation>(
@@ -185,6 +214,14 @@ function SecretsPageContent() {
   const [commitUpdateSecret, isUpdateSecretInFlight] = useMutation<secretsPageUpdateSecretMutation>(
     secretsPageUpdateSecretMutationNode,
   );
+  const agents = useMemo(() => {
+    return [...data.Agents]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+      }));
+  }, [data.Agents]);
   const groupOptions = useMemo<CreateSecretDialogGroupOption[]>(() => {
     return [...data.SecretGroups]
       .sort((left, right) => left.name.localeCompare(right.name))
@@ -251,6 +288,28 @@ function SecretsPageContent() {
       return left.name.localeCompare(right.name);
     });
   }, [data.SecretGroups, secrets]);
+
+  const openAssignmentResources = (resources: AgentAssignmentResource[]) => {
+    assignmentDialogCanCloseRef.current = false;
+    setAssignmentResources(resources);
+    setAssignmentDialogOpen(true);
+    window.setTimeout(() => {
+      assignmentDialogCanCloseRef.current = true;
+    }, 200);
+  };
+
+  const closeAssignmentDialog = () => {
+    setAssignmentDialogOpen(false);
+    setAssignmentResources([]);
+    setAssignmentErrorMessage(null);
+  };
+
+  const scheduleAssignmentResources = (resources: AgentAssignmentResource[]) => {
+    window.setTimeout(() => {
+      openAssignmentResources(resources);
+    }, 0);
+  };
+
   const editableSecrets: EditableSecretRecord[] = data.Secrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
@@ -267,14 +326,14 @@ function SecretsPageContent() {
     name: string;
     secretGroupId?: string | null;
     value: string;
-  }) => {
+  }): Promise<AgentAssignmentResource | null> => {
     if (isCreateSecretInFlight) {
-      return;
+      return null;
     }
 
     setErrorMessage(null);
 
-    await new Promise<void>((resolve, reject) => {
+    return await new Promise<AgentAssignmentResource>((resolve, reject) => {
       commitCreateSecret({
         variables: {
           input,
@@ -291,14 +350,17 @@ function SecretsPageContent() {
           });
           rootRecord.setLinkedRecords([newSecret, ...currentSecrets], "Secrets");
         },
-        onCompleted: (_response, errors) => {
+        onCompleted: (response, errors) => {
           const nextErrorMessage = errors?.[0]?.message;
           if (nextErrorMessage) {
             reject(new Error(nextErrorMessage));
             return;
           }
 
-          resolve();
+          resolve({
+            id: response.CreateSecret.id,
+            name: response.CreateSecret.name,
+          });
         },
         onError: reject,
       });
@@ -484,6 +546,53 @@ function SecretsPageContent() {
     }
   };
 
+  async function assignSecretsToAgents(agentIds: string[]) {
+    if (isAssigningSecrets) {
+      return;
+    }
+
+    setAssignmentErrorMessage(null);
+    setAssigningSecrets(true);
+
+    try {
+      for (const secret of assignmentResources) {
+        for (const agentId of agentIds) {
+          await new Promise<void>((resolve, reject) => {
+            commitAttachSecretToAgent({
+              variables: {
+                input: {
+                  agentId,
+                  secretId: secret.id,
+                },
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          });
+        }
+      }
+
+      const secretCount = assignmentResources.length;
+      setAssignmentDialogOpen(false);
+      setAssignmentResources([]);
+      toast.showSavedToast(
+        `Added ${secretCount} secret${secretCount === 1 ? "" : "s"} to ${agentIds.length} agent${agentIds.length === 1 ? "" : "s"}`,
+      );
+    } catch (error: unknown) {
+      setAssignmentErrorMessage(error instanceof Error ? error.message : "Failed to add secrets to agents.");
+    } finally {
+      setAssigningSecrets(false);
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6 md:-mx-2 lg:-mx-3">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
@@ -546,8 +655,12 @@ function SecretsPageContent() {
         isOpen={isCreateDialogOpen}
         isSaving={isCreateSecretInFlight || isCreateSecretGroupInFlight}
         onCreate={async (input) => {
-          await createSecret(input);
+          const createdSecret = await createSecret(input);
           setCreateDialogOpen(false);
+          if (createdSecret) {
+            setAssignmentErrorMessage(null);
+            scheduleAssignmentResources([createdSecret]);
+          }
         }}
         onCreateGroup={createSecretGroup}
         onOpenChange={setCreateDialogOpen}
@@ -576,17 +689,21 @@ function SecretsPageContent() {
             secrets.map((secret) => [secret.envVarName.toLowerCase(), secret]),
           );
           let importedSecretCount = 0;
+          const createdSecrets: AgentAssignmentResource[] = [];
 
           try {
             for (const secretDraft of input.secretDrafts) {
               const existingSecret = existingSecretsByEnvVarName.get(secretDraft.envVarName.toLowerCase()) ?? null;
               if (!existingSecret) {
-                await createSecret({
+                const createdSecret = await createSecret({
                   envVarName: secretDraft.envVarName,
                   name: secretDraft.name,
                   secretGroupId: input.secretGroupId,
                   value: secretDraft.value,
                 });
+                if (createdSecret) {
+                  createdSecrets.push(createdSecret);
+                }
                 importedSecretCount += 1;
                 continue;
               }
@@ -604,6 +721,8 @@ function SecretsPageContent() {
             }
 
             setImportDialogOpen(false);
+            setAssignmentErrorMessage(null);
+            scheduleAssignmentResources(createdSecrets);
           } catch (error) {
             const nextErrorMessage = error instanceof Error ? error.message : "Failed to import secrets.";
             if (importedSecretCount > 0) {
@@ -654,6 +773,27 @@ function SecretsPageContent() {
           });
         }}
         secret={selectedSecret}
+      />
+      <AgentAssignmentDialog
+        agents={agents}
+        errorMessage={assignmentErrorMessage}
+        isAssigning={isAssigningSecrets}
+        isOpen={isAssignmentDialogOpen}
+        onAssign={assignSecretsToAgents}
+        onOpenChange={(open) => {
+          if (open) {
+            setAssignmentDialogOpen(true);
+            return;
+          }
+
+          if (!assignmentDialogCanCloseRef.current) {
+            return;
+          }
+
+          closeAssignmentDialog();
+        }}
+        resourceKind="secret"
+        resources={assignmentResources}
       />
     </main>
   );
