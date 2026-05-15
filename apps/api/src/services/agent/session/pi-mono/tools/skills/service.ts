@@ -24,6 +24,8 @@ export type AgentSkillActivationResult = {
   skill: AgentSkillSummary;
 };
 
+export type AgentSkillSearchResult = AgentSkillSummary;
+
 /**
  * Adapts the broader company skill catalog and session-active skill state into the narrow reads
  * and writes needed by the PI Mono skill tools.
@@ -99,6 +101,37 @@ export class AgentSkillToolService {
     return availableSkills.map((skill) => this.toSkillSummary(skill, this.isActiveSkill(skill, activeSkillIds, activeSystemKeys)));
   }
 
+  async searchSkills(query: string, limit: number): Promise<AgentSkillSearchResult[]> {
+    const searchQuery = query.trim();
+    if (searchQuery.length === 0) {
+      return [];
+    }
+
+    const normalizedLimit = Math.max(1, Math.min(10, limit));
+    const [availableSkills, activeSkills] = await Promise.all([
+      this.skillService.listAgentAvailableSkills(this.transactionProvider, this.companyId, this.agentId),
+      this.sessionSkillService.listActiveSkills(this.transactionProvider, this.companyId, this.sessionId),
+    ]);
+    const activeSkillIds = new Set(activeSkills.map((skill) => skill.id));
+    const activeSystemKeys = new Set(activeSkills.flatMap((skill) => skill.systemKey ? [skill.systemKey] : []));
+
+    return availableSkills
+      .map((skill) => ({
+        score: this.calculateSearchScore(searchQuery, skill),
+        summary: this.toSkillSummary(skill, this.isActiveSkill(skill, activeSkillIds, activeSystemKeys)),
+      }))
+      .filter((match) => match.score > 0)
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+
+        return left.summary.name.localeCompare(right.summary.name);
+      })
+      .slice(0, normalizedLimit)
+      .map((match) => match.summary);
+  }
+
   private async requireAvailableSkill(skillName: string): Promise<void> {
     const availableSkills = await this.skillService.listAgentAvailableSkills(
       this.transactionProvider,
@@ -154,5 +187,45 @@ export class AgentSkillToolService {
     }
 
     return skill.fileList.map((repositoryPath) => this.skillPathService.toSkillRelativePath(fileBackedSkill, repositoryPath));
+  }
+
+  /**
+   * Mirrors the cloud tool's ranking shape with OSS-safe string matching so the agent can find
+   * the right skill name without relying on database-only search extensions.
+   */
+  private calculateSearchScore(
+    query: string,
+    skill: Awaited<ReturnType<SkillService["getSkill"]>>,
+  ): number {
+    const normalizedQuery = query.toLowerCase();
+    const normalizedName = skill.name.toLowerCase();
+    const normalizedDescription = skill.description.toLowerCase();
+    const descriptionTerms = this.buildDescriptionTerms(query);
+    const exactNameBoost = normalizedName === normalizedQuery ? 100 : 0;
+    const prefixNameBoost = normalizedName.startsWith(normalizedQuery) ? 20 : 0;
+    const substringNameBoost = exactNameBoost === 0 && prefixNameBoost === 0 && normalizedName.includes(normalizedQuery)
+      ? 10
+      : 0;
+    const descriptionBoost = descriptionTerms.reduce((score, term) => {
+      if (normalizedDescription.includes(term)) {
+        return score + 12;
+      }
+
+      return score;
+    }, 0);
+
+    return exactNameBoost + prefixNameBoost + substringNameBoost + descriptionBoost;
+  }
+
+  /**
+   * Drops short connector words so description matching prefers the meaningful capability words
+   * the agent is usually searching for.
+   */
+  private buildDescriptionTerms(query: string): string[] {
+    const stopWords = new Set(["a", "an", "and", "for", "i", "in", "me", "my", "of", "or", "so", "the", "them", "to"]);
+
+    return [...new Set(
+      query.match(/[A-Za-z0-9_]+/g)?.map((term) => term.toLowerCase()).filter((term) => !stopWords.has(term)) ?? [],
+    )];
   }
 }

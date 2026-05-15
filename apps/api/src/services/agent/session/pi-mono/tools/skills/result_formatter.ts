@@ -55,7 +55,34 @@ export class AgentSkillResultFormatter {
     }).join("\n\n");
   }
 
+  static formatSkillSearchResults(query: string, skills: AgentSkillSummary[]): string {
+    if (skills.length === 0) {
+      return [
+        `query: ${query}`,
+        "matches: none",
+      ].join("\n");
+    }
+
+    return [
+      `query: ${query}`,
+      `matchCount: ${skills.length}`,
+      "matches:",
+      skills.map((skill) => {
+        return AgentSkillResultFormatter.indentBlock([
+          `name: ${skill.name}`,
+          `active: ${skill.active ? "yes" : "no"}`,
+          `skillType: ${skill.skillType}`,
+          `description: ${skill.description}`,
+        ].join("\n"));
+      }).join("\n\n"),
+    ].join("\n");
+  }
+
   private static formatFiles(files: string[]): string {
     return JSON.stringify(files);
+  }
+
+  private static indentBlock(block: string): string {
+    return block.split("\n").map((line) => `  ${line}`).join("\n");
   }
 }

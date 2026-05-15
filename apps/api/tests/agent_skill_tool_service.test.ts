@@ -133,6 +133,80 @@ test("AgentSkillToolService lists agent-visible skills with active flags", async
   }]);
 });
 
+test("AgentSkillToolService ranks skill search matches and marks active skills", async () => {
+  const apiSkillRecord = {
+    ...browserSkillRecord,
+    description: "API and SDK guidance.",
+    id: "skill-2",
+    name: "API helper",
+  };
+  const service = new AgentSkillToolService(
+    {} as never,
+    "company-123",
+    "session-1",
+    "agent-1",
+    {
+      async syncSkillIfEnvironmentLeased() {
+        return false;
+      },
+    } as never,
+    {
+      async listAgentAvailableSkills() {
+        return [browserSkillRecord, apiSkillRecord];
+      },
+    } as never,
+    {
+      async listActiveSkills() {
+        return [browserSkillRecord];
+      },
+    } as never,
+  );
+
+  const skills = await service.searchSkills("browser automation", 5);
+
+  assert.deepEqual(skills, [{
+    active: true,
+    description: "Browser automation guidance.",
+    files: ["scripts/open.sh", "references/FOO.md"],
+    trackedCommitSha: "commit-sha-1",
+    instructions: "Use the browser skill when working on websites.",
+    name: "Browser skill",
+    repository: "companyhelm/skills",
+    skillDirectory: "skills/browser",
+    skillType: "custom",
+    systemCommands: [],
+    systemKey: null,
+  }]);
+});
+
+test("AgentSkillToolService returns no matches for an empty skill search query", async () => {
+  const service = new AgentSkillToolService(
+    {} as never,
+    "company-123",
+    "session-1",
+    "agent-1",
+    {
+      async syncSkillIfEnvironmentLeased() {
+        return false;
+      },
+    } as never,
+    {
+      async listAgentAvailableSkills() {
+        throw new Error("empty searches should not load the catalog");
+      },
+    } as never,
+    {
+      async listActiveSkills() {
+        throw new Error("empty searches should not load active skills");
+      },
+    } as never,
+  );
+
+  const skills = await service.searchSkills("   ", 5);
+
+  assert.deepEqual(skills, []);
+});
+
 test("AgentSkillToolService refuses activation outside the agent-visible skill set", async () => {
   const activateSkill = vi.fn(async () => ({
     inserted: true,

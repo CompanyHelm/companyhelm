@@ -12,6 +12,8 @@ Agents must not claim access they have not proven with tool output. If a task ne
 
 Useful system-skill capabilities include managing company skills, workflows, tasks, artifacts, agents, GitHub installations, and reading the company directory. These are session-scoped: activate the relevant system skill before using its commands.
 
+When the skill catalog is large, agents can search the session-visible skill catalog by name or description to find the exact skill name before activating it.
+
 Before assigning work to an existing agent session, agents with Manage tasks should call `task_run.list` with that `sessionId` and `finished: false`. If the session already has an unfinished task run, avoid overloading it: send the work to another suitable session or create a fresh agent handoff.
 
 ## What company users can do in the UI

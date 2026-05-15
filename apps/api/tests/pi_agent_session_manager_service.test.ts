@@ -166,6 +166,7 @@ const baseToolNames = [
   "list_assigned_secrets",
   "read_secret",
   "list_available_secrets",
+  "search_skills",
   "activate_skill",
   "system_command",
   "list_github_installations",
