@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { UIEvent } from "react";
+import type { UIEvent, WheelEvent } from "react";
 import { fetchQuery, requestSubscription } from "react-relay";
 import type { GraphQLTaggedNode, IEnvironment } from "relay-runtime";
 import type {
@@ -17,11 +17,13 @@ import {
   CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX,
   CHAT_TRANSCRIPT_PAGE_SIZE,
   mergeTranscriptMessages,
+  resolveRetainedTranscriptHydrationMode,
   resolveTranscriptTopLoadThresholdPx,
   restoreTranscriptScrollPosition,
   toTranscriptMessagesFromConnection,
   type TranscriptScrollRestoreRecord,
 } from "./chats_page_helpers";
+import { TranscriptAutoScrollState } from "./transcript_auto_scroll_state";
 
 type TranscriptRetentionStore = {
   read<TResponse>(sessionId: string): {
@@ -56,9 +58,10 @@ export function useChatTranscript({
 }) {
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptScrollRestoreAnimationFrameRef = useRef<number | null>(null);
+  const transcriptProgrammaticScrollAnimationFrameRef = useRef<number | null>(null);
   const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(null);
   const isLoadingOlderTranscriptRef = useRef(false);
-  const shouldStickTranscriptToBottomRef = useRef(true);
+  const transcriptAutoScrollStateRef = useRef(new TranscriptAutoScrollState());
   const transcriptRequestIdRef = useRef(0);
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
   const selectedSessionUpdatedAtRef = useRef<string | null>(null);
@@ -77,6 +80,17 @@ export function useChatTranscript({
   useEffect(() => {
     selectedSessionUpdatedAtRef.current = selectedSession?.updatedAt ?? null;
   }, [selectedSession?.id, selectedSession?.updatedAt]);
+
+  useEffect(() => {
+    return () => {
+      if (transcriptProgrammaticScrollAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(transcriptProgrammaticScrollAnimationFrameRef.current);
+      }
+      if (transcriptScrollRestoreAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
+      }
+    };
+  }, []);
 
   const clearTranscriptState = useCallback(() => {
     bufferedTranscriptMessagesRef.current = [];
@@ -106,17 +120,47 @@ export function useChatTranscript({
     updateSessionTitleOverride(sessionId, nextState.messages);
   }, [updateSessionTitleOverride]);
 
-  const syncTranscriptBottomStickiness = useCallback((transcriptNode: HTMLDivElement): boolean => {
-    const distanceFromBottom = transcriptNode.scrollHeight - transcriptNode.scrollTop - transcriptNode.clientHeight;
-    const isStickyToBottom = distanceFromBottom <= CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX;
-    shouldStickTranscriptToBottomRef.current = isStickyToBottom;
-    setIsTranscriptStuckToBottom(isStickyToBottom);
-    return isStickyToBottom;
+  const setTranscriptBottomStickiness = useCallback((shouldStickToBottom: boolean) => {
+    transcriptAutoScrollStateRef.current.setShouldStickToBottom(shouldStickToBottom);
+    setIsTranscriptStuckToBottom((currentValue) => {
+      return currentValue === shouldStickToBottom ? currentValue : shouldStickToBottom;
+    });
   }, []);
+
+  const scheduleTranscriptProgrammaticScrollCompletion = useCallback((transcriptNode: HTMLDivElement) => {
+    if (transcriptProgrammaticScrollAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(transcriptProgrammaticScrollAnimationFrameRef.current);
+    }
+
+    transcriptProgrammaticScrollAnimationFrameRef.current = requestAnimationFrame(() => {
+      transcriptAutoScrollStateRef.current.completeProgrammaticScroll(transcriptNode.scrollTop);
+      transcriptProgrammaticScrollAnimationFrameRef.current = null;
+    });
+  }, []);
+
+  const runProgrammaticTranscriptScroll = useCallback((
+    transcriptNode: HTMLDivElement,
+    operation: () => void,
+  ) => {
+    transcriptAutoScrollStateRef.current.beginProgrammaticScroll();
+    operation();
+    scheduleTranscriptProgrammaticScrollCompletion(transcriptNode);
+  }, [scheduleTranscriptProgrammaticScrollCompletion]);
+
+  const syncTranscriptBottomStickiness = useCallback((transcriptNode: HTMLDivElement): boolean => {
+    const shouldStickToBottom = transcriptAutoScrollStateRef.current.syncFromScroll({
+      bottomThresholdPx: CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX,
+      clientHeight: transcriptNode.clientHeight,
+      scrollHeight: transcriptNode.scrollHeight,
+      scrollTop: transcriptNode.scrollTop,
+    });
+    setTranscriptBottomStickiness(shouldStickToBottom);
+    return shouldStickToBottom;
+  }, [setTranscriptBottomStickiness]);
 
   const captureViewportAnchorForTranscriptUpdate = useCallback(() => {
     const transcriptNode = transcriptScrollRef.current;
-    if (!transcriptNode || shouldStickTranscriptToBottomRef.current) {
+    if (!transcriptNode || transcriptAutoScrollStateRef.current.getShouldStickToBottom()) {
       pendingTranscriptScrollRestoreRef.current = null;
       return;
     }
@@ -161,8 +205,8 @@ export function useChatTranscript({
 
       if (mode === "replace") {
         pendingTranscriptScrollRestoreRef.current = null;
-        shouldStickTranscriptToBottomRef.current = true;
-        setIsTranscriptStuckToBottom(true);
+        transcriptAutoScrollStateRef.current.reset();
+        setTranscriptBottomStickiness(true);
         clearTranscriptState();
         isLoadingOlderTranscriptRef.current = false;
         setIsLoadingOlderTranscript(false);
@@ -232,8 +276,6 @@ export function useChatTranscript({
 
     setErrorMessage(null);
     const transcriptNode = transcriptScrollRef.current;
-    shouldStickTranscriptToBottomRef.current = false;
-    setIsTranscriptStuckToBottom(false);
     if (transcriptNode) {
       pendingTranscriptScrollRestoreRef.current = captureTranscriptScrollRestoreRecord(transcriptNode);
     }
@@ -313,13 +355,14 @@ export function useChatTranscript({
     }
 
     pendingTranscriptScrollRestoreRef.current = null;
-    shouldStickTranscriptToBottomRef.current = true;
-    setIsTranscriptStuckToBottom(true);
+    setTranscriptBottomStickiness(true);
     if (selectedSession) {
       reconcileLiveTailState(selectedSession.id);
     }
-    transcriptNode.scrollTop = transcriptNode.scrollHeight;
-  }, [reconcileLiveTailState, selectedSession]);
+    runProgrammaticTranscriptScroll(transcriptNode, () => {
+      transcriptNode.scrollTop = transcriptNode.scrollHeight;
+    });
+  }, [reconcileLiveTailState, runProgrammaticTranscriptScroll, selectedSession, setTranscriptBottomStickiness]);
 
   useEffect(() => {
     if (!selectedSession) {
@@ -327,11 +370,15 @@ export function useChatTranscript({
         cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
         transcriptScrollRestoreAnimationFrameRef.current = null;
       }
+      if (transcriptProgrammaticScrollAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(transcriptProgrammaticScrollAnimationFrameRef.current);
+        transcriptProgrammaticScrollAnimationFrameRef.current = null;
+      }
       transcriptRequestIdRef.current += 1;
       activeTranscriptSessionIdRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
-      shouldStickTranscriptToBottomRef.current = true;
-      setIsTranscriptStuckToBottom(true);
+      transcriptAutoScrollStateRef.current.reset();
+      setTranscriptBottomStickiness(true);
       clearTranscriptState();
       setIsLoadingTranscript(false);
       isLoadingOlderTranscriptRef.current = false;
@@ -345,16 +392,27 @@ export function useChatTranscript({
       bufferedTranscriptMessagesRef.current = [];
       deferredTranscriptRefreshUpdatedAtRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
-      shouldStickTranscriptToBottomRef.current = true;
-      setIsTranscriptStuckToBottom(true);
+      transcriptAutoScrollStateRef.current.reset();
+      setTranscriptBottomStickiness(true);
       if (transcriptScrollRestoreAnimationFrameRef.current !== null) {
         cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
         transcriptScrollRestoreAnimationFrameRef.current = null;
       }
+      if (transcriptProgrammaticScrollAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(transcriptProgrammaticScrollAnimationFrameRef.current);
+        transcriptProgrammaticScrollAnimationFrameRef.current = null;
+      }
     }
 
     const retainedTranscript = sessionTranscriptRetentionStore.read<ChatsPageTranscriptQuery["response"]>(selectedSession.id);
-    if (retainedTranscript && isSessionSelectionChanged) {
+    const retainedTranscriptHydrationMode = resolveRetainedTranscriptHydrationMode({
+      isSessionSelectionChanged,
+      retainedSessionUpdatedAt: retainedTranscript?.sessionUpdatedAt ?? null,
+      selectedSessionUpdatedAt: selectedSession.updatedAt,
+      shouldStickTranscriptToBottom: transcriptAutoScrollStateRef.current.getShouldStickToBottom(),
+    });
+
+    if (retainedTranscriptHydrationMode === "reuse" && retainedTranscript) {
       const retainedMessages = retainedTranscript.pageResponses.reduce<SessionMessageRecord[]>((currentMessages, pageResponse) => {
         return mergeTranscriptMessages(
           currentMessages,
@@ -370,22 +428,23 @@ export function useChatTranscript({
       setIsLoadingTranscript(false);
       isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
+      return;
     }
 
-    if (retainedTranscript) {
-      if (retainedTranscript.sessionUpdatedAt === selectedSession.updatedAt) {
-        return;
-      }
+    if (retainedTranscriptHydrationMode === "skip") {
+      return;
+    }
 
-      if (shouldStickTranscriptToBottomRef.current) {
-        void loadTranscriptPage({
-          mode: "refresh",
-          sessionId: selectedSession.id,
-          sessionUpdatedAt: selectedSession.updatedAt,
-        });
-        return;
-      }
+    if (retainedTranscriptHydrationMode === "refresh") {
+      void loadTranscriptPage({
+        mode: "refresh",
+        sessionId: selectedSession.id,
+        sessionUpdatedAt: selectedSession.updatedAt,
+      });
+      return;
+    }
 
+    if (retainedTranscriptHydrationMode === "defer") {
       deferredTranscriptRefreshUpdatedAtRef.current = selectedSession.updatedAt;
       return;
     }
@@ -411,8 +470,9 @@ export function useChatTranscript({
     if (pendingTranscriptScrollRestoreRef.current) {
       const restoreRecord = pendingTranscriptScrollRestoreRef.current;
       pendingTranscriptScrollRestoreRef.current = null;
-      shouldStickTranscriptToBottomRef.current = false;
-      restoreTranscriptScrollPosition(transcriptNode, restoreRecord);
+      runProgrammaticTranscriptScroll(transcriptNode, () => {
+        restoreTranscriptScrollPosition(transcriptNode, restoreRecord);
+      });
       syncTranscriptBottomStickiness(transcriptNode);
       transcriptScrollRestoreAnimationFrameRef.current = requestAnimationFrame(() => {
         const currentTranscriptNode = transcriptScrollRef.current;
@@ -421,20 +481,24 @@ export function useChatTranscript({
           return;
         }
 
-        restoreTranscriptScrollPosition(currentTranscriptNode, restoreRecord);
+        runProgrammaticTranscriptScroll(currentTranscriptNode, () => {
+          restoreTranscriptScrollPosition(currentTranscriptNode, restoreRecord);
+        });
         syncTranscriptBottomStickiness(currentTranscriptNode);
         transcriptScrollRestoreAnimationFrameRef.current = null;
       });
       return;
     }
 
-    if (!shouldStickTranscriptToBottomRef.current) {
+    if (!transcriptAutoScrollStateRef.current.getShouldStickToBottom()) {
       return;
     }
 
-    transcriptNode.scrollTop = transcriptNode.scrollHeight;
-    setIsTranscriptStuckToBottom(true);
-  }, [syncTranscriptBottomStickiness, transcriptMessages]);
+    runProgrammaticTranscriptScroll(transcriptNode, () => {
+      transcriptNode.scrollTop = transcriptNode.scrollHeight;
+    });
+    setTranscriptBottomStickiness(true);
+  }, [runProgrammaticTranscriptScroll, setTranscriptBottomStickiness, syncTranscriptBottomStickiness, transcriptMessages]);
 
   useLayoutEffect(() => {
     const transcriptNode = transcriptScrollRef.current;
@@ -447,7 +511,6 @@ export function useChatTranscript({
       return;
     }
 
-    shouldStickTranscriptToBottomRef.current = false;
     void loadTranscriptPage({
       after: transcriptEndCursor,
       mode: "prepend",
@@ -479,7 +542,7 @@ export function useChatTranscript({
           return;
         }
 
-        if (!shouldStickTranscriptToBottomRef.current) {
+        if (!transcriptAutoScrollStateRef.current.getShouldStickToBottom()) {
           bufferedTranscriptMessagesRef.current = mergeTranscriptMessages(
             bufferedTranscriptMessagesRef.current,
             [nextMessage],
@@ -504,6 +567,48 @@ export function useChatTranscript({
       disposable.dispose();
     };
   }, [applyTranscriptState, captureViewportAnchorForTranscriptUpdate, environment, selectedSession, setErrorMessage]);
+
+  const handleTranscriptWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
+    if (event.deltaY >= 0) {
+      return;
+    }
+
+    const shouldStickToBottom = transcriptAutoScrollStateRef.current.noteUpwardScrollIntent({
+      clientHeight: event.currentTarget.clientHeight,
+      scrollHeight: event.currentTarget.scrollHeight,
+      scrollTop: event.currentTarget.scrollTop,
+    });
+    setTranscriptBottomStickiness(shouldStickToBottom);
+  }, [setTranscriptBottomStickiness]);
+
+  useLayoutEffect(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (!transcriptNode || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    transcriptAutoScrollStateRef.current.shouldMaintainBottomOnViewportResize(transcriptNode.clientHeight);
+    const resizeObserver = new ResizeObserver(() => {
+      const currentTranscriptNode = transcriptScrollRef.current;
+      if (!currentTranscriptNode) {
+        return;
+      }
+
+      if (!transcriptAutoScrollStateRef.current.shouldMaintainBottomOnViewportResize(currentTranscriptNode.clientHeight)) {
+        return;
+      }
+
+      runProgrammaticTranscriptScroll(currentTranscriptNode, () => {
+        currentTranscriptNode.scrollTop = currentTranscriptNode.scrollHeight;
+      });
+      setTranscriptBottomStickiness(true);
+    });
+    resizeObserver.observe(transcriptNode);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [runProgrammaticTranscriptScroll, selectedSession?.id, setTranscriptBottomStickiness]);
 
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
@@ -536,6 +641,7 @@ export function useChatTranscript({
 
   return {
     handleTranscriptScroll,
+    handleTranscriptWheel,
     isTranscriptStuckToBottom,
     isLoadingOlderTranscript,
     isLoadingTranscript,

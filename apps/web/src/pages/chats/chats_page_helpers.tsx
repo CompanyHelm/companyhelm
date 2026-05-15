@@ -25,7 +25,7 @@ export const CHAT_IMAGE_INPUT_ACCEPT = "image/jpeg,image/png";
 export const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
 export const CHAT_TRANSCRIPT_TOP_LOAD_MIN_THRESHOLD_PX = 240;
 export const CHAT_TRANSCRIPT_TOP_LOAD_MAX_THRESHOLD_PX = 480;
-export const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
+export const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 24;
 export const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 export const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "md:pl-6";
 export const CHATS_THINKING_GRADIENT_KEYFRAMES = `
@@ -616,6 +616,27 @@ export function shouldHydrateComposerSelection(
   }
 
   return !modelOptionById.has(currentModelOptionId);
+}
+
+export function resolveRetainedTranscriptHydrationMode(options: {
+  isSessionSelectionChanged: boolean;
+  retainedSessionUpdatedAt: string | null;
+  selectedSessionUpdatedAt: string;
+  shouldStickTranscriptToBottom: boolean;
+}): "reuse" | "replace" | "refresh" | "defer" | "skip" {
+  if (options.retainedSessionUpdatedAt === null) {
+    return "replace";
+  }
+
+  if (options.retainedSessionUpdatedAt === options.selectedSessionUpdatedAt) {
+    return options.isSessionSelectionChanged ? "reuse" : "skip";
+  }
+
+  if (options.isSessionSelectionChanged) {
+    return "replace";
+  }
+
+  return options.shouldStickTranscriptToBottom ? "refresh" : "defer";
 }
 
 export function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "role" | "text">>): string {

@@ -10,6 +10,7 @@ import {
   resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
   resolvePrincipalExecutionMessageDisplay,
+  resolveRetainedTranscriptHydrationMode,
   resolveSessionTitleOverride,
   shouldEnableDraftTextareaManualResize,
   shouldHydrateComposerSelection,
@@ -111,6 +112,33 @@ test("shouldHydrateComposerSelection returns true when the current model is no l
     ),
     true,
   );
+});
+
+test("resolveRetainedTranscriptHydrationMode reuses matching retained transcripts after session switches", () => {
+  assert.equal(resolveRetainedTranscriptHydrationMode({
+    isSessionSelectionChanged: true,
+    retainedSessionUpdatedAt: "2026-05-01T00:00:00.000Z",
+    selectedSessionUpdatedAt: "2026-05-01T00:00:00.000Z",
+    shouldStickTranscriptToBottom: true,
+  }), "reuse");
+});
+
+test("resolveRetainedTranscriptHydrationMode refreshes stale retained transcripts while following the live tail", () => {
+  assert.equal(resolveRetainedTranscriptHydrationMode({
+    isSessionSelectionChanged: false,
+    retainedSessionUpdatedAt: "2026-05-01T00:00:00.000Z",
+    selectedSessionUpdatedAt: "2026-05-01T00:05:00.000Z",
+    shouldStickTranscriptToBottom: true,
+  }), "refresh");
+});
+
+test("resolveRetainedTranscriptHydrationMode defers stale transcript refreshes while the operator is reading history", () => {
+  assert.equal(resolveRetainedTranscriptHydrationMode({
+    isSessionSelectionChanged: false,
+    retainedSessionUpdatedAt: "2026-05-01T00:00:00.000Z",
+    selectedSessionUpdatedAt: "2026-05-01T00:05:00.000Z",
+    shouldStickTranscriptToBottom: false,
+  }), "defer");
 });
 
 test("resolveSessionTitleOverride prefers the associated task name for task chats", () => {

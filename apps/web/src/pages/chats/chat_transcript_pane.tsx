@@ -3,6 +3,7 @@ import type {
   MutableRefObject,
   TouchEvent as ReactTouchEvent,
   UIEvent,
+  WheelEvent as ReactWheelEvent,
 } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -1357,6 +1358,7 @@ type ChatTranscriptPaneProps = {
   organizationSlug: string;
   onJumpToLatest: () => void;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
+  onWheelCapture: (event: ReactWheelEvent<HTMLDivElement>) => void;
   onSwitchCybersecurityRiskModel?: (() => void) | null;
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
@@ -1374,6 +1376,7 @@ export function areChatTranscriptPanePropsEqual(previousProps: ChatTranscriptPan
     && previousProps.organizationSlug === nextProps.organizationSlug
     && previousProps.onJumpToLatest === nextProps.onJumpToLatest
     && previousProps.onScroll === nextProps.onScroll
+    && previousProps.onWheelCapture === nextProps.onWheelCapture
     && previousProps.onSwitchCybersecurityRiskModel === nextProps.onSwitchCybersecurityRiskModel
     && previousProps.session === nextProps.session
     && previousProps.sessionMessages === nextProps.sessionMessages
@@ -1387,6 +1390,7 @@ function ChatTranscriptPaneComponent({
   organizationSlug,
   onJumpToLatest,
   onScroll,
+  onWheelCapture,
   onSwitchCybersecurityRiskModel,
   session,
   sessionMessages,
@@ -1477,6 +1481,7 @@ function ChatTranscriptPaneComponent({
         ref={setTranscriptScrollElement}
         className={transcriptViewportClassName}
         onScroll={handleTranscriptScroll}
+        onWheelCapture={onWheelCapture}
       >
         <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">

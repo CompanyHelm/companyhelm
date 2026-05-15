@@ -24,8 +24,10 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { ChatComposerImage } from "./chat_composer_image";
 import type { ChatComposerModelOption } from "./chat_composer_model_picker";
+import { ChatComposerLoadingSkeleton } from "./chat_composer_loading_skeleton";
 import { ChatArtifactDetailDialog } from "./chat_artifact_detail_dialog";
 import { ChatComposerPane } from "./chat_composer_pane";
+import { ChatTranscriptLoadingSkeleton } from "./chat_transcript_loading_skeleton";
 import {
   type ChatsPageArchiveArtifactMutation,
   type ChatsPageArchiveSessionMutation,
@@ -389,6 +391,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       && !pendingCreatedSessionId
       && !isCreateSessionInFlight,
   );
+  const shouldShowSelectedChatLoadingState = !selectedSession && !shouldUseCenteredNewChatLayout;
   const draftTextareaMinimumLines = resolveDraftTextareaMinimumLines({
     isMobile,
     shouldUseCenteredNewChatLayout,
@@ -513,6 +516,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
 
   const {
     handleTranscriptScroll,
+    handleTranscriptWheel,
     isTranscriptStuckToBottom,
     isLoadingOlderTranscript,
     isLoadingTranscript,
@@ -2616,11 +2620,13 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
               </CardContent>
             ) : null}
 
-            {!selectedSession && !shouldUseCenteredNewChatLayout ? (
-              <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
-                <div className="flex max-w-sm items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Loader2Icon className="size-4 animate-spin" />
-                  <span>Opening chat</span>
+            {shouldShowSelectedChatLoadingState ? (
+              <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-1 pr-0 pt-0 pb-0 md:pl-4 md:pt-0 md:pb-0">
+                <div aria-busy="true" aria-label="Loading selected chat" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                  <ChatTranscriptLoadingSkeleton />
+                  <div className="shrink-0 px-2 pb-3 md:px-3">
+                    <ChatComposerLoadingSkeleton />
+                  </div>
                 </div>
               </CardContent>
             ) : null}
@@ -2633,6 +2639,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
                   isLoadingTranscript={isLoadingTranscript}
                   onJumpToLatest={jumpToLatestMessage}
                   onScroll={handleTranscriptScroll}
+                  onWheelCapture={handleTranscriptWheel}
                   onSwitchCybersecurityRiskModel={
                     canSwitchCybersecurityFallbackModel ? switchToCybersecurityFallbackModel : null
                   }
@@ -2644,7 +2651,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
               </CardContent>
             ) : null}
 
-            {!shouldUseCenteredNewChatLayout ? chatComposer : null}
+            {!shouldUseCenteredNewChatLayout && !shouldShowSelectedChatLoadingState ? chatComposer : null}
           </div>
         )}
       </Card>
