@@ -1,11 +1,17 @@
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { AgentAssignmentDialog, type AgentAssignmentResource } from "@/components/agent_assignment_dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { useToast } from "@/components/toast_provider";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { McpServerDialog, type EditableMcpServerRecord } from "./mcp_server_dialog";
 import { McpServersTable, type McpServersTableRecord } from "./mcp_servers_table";
+import type { mcpServersPageAttachMcpServerToAgentMutation } from "./__generated__/mcpServersPageAttachMcpServerToAgentMutation.graphql";
 import type { mcpServersPageConnectClientCredentialsMutation } from "./__generated__/mcpServersPageConnectClientCredentialsMutation.graphql";
 import type {
   CreateMcpServerInput,
@@ -22,6 +28,10 @@ import type {
 
 const mcpServersPageQueryNode = graphql`
   query mcpServersPageQuery {
+    Agents {
+      id
+      name
+    }
     McpServers {
       id
       name
@@ -40,6 +50,21 @@ const mcpServersPageQueryNode = graphql`
       lastValidationError
       lastValidationToolCount
       lastValidatedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const mcpServersPageAttachMcpServerToAgentMutationNode = graphql`
+  mutation mcpServersPageAttachMcpServerToAgentMutation($input: AttachMcpServerToAgentInput!) {
+    AttachMcpServerToAgent(input: $input) {
+      id
+      name
+      description
+      url
+      enabled
+      callTimeoutMs
       createdAt
       updatedAt
     }
@@ -290,9 +315,19 @@ function McpServersPageFallback() {
 }
 
 function McpServersPageContent() {
+  const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
+  const search = useSearch({ strict: false }) as { assignMcpServerId?: string };
+  const toast = useToast();
+  const [assignmentErrorMessage, setAssignmentErrorMessage] = useState<string | null>(null);
+  const [assignmentResources, setAssignmentResources] = useState<AgentAssignmentResource[]>([]);
+  const [dismissedAssignmentServerId, setDismissedAssignmentServerId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isAssigningMcpServers, setAssigningMcpServers] = useState(false);
+  const [isAssignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const assignmentDialogCanCloseRef = useRef(true);
   const [deletingServerId, setDeletingServerId] = useState<string | null>(null);
   const data = useLazyLoadQuery<mcpServersPageQuery>(
     mcpServersPageQueryNode,
@@ -303,6 +338,9 @@ function McpServersPageContent() {
   );
   const [commitCreateServer, isCreateServerInFlight] = useMutation<mcpServersPageCreateMutation>(
     mcpServersPageCreateMutationNode,
+  );
+  const [commitAttachMcpServerToAgent] = useMutation<mcpServersPageAttachMcpServerToAgentMutation>(
+    mcpServersPageAttachMcpServerToAgentMutationNode,
   );
   const [commitUpdateServer, isUpdateServerInFlight] = useMutation<mcpServersPageUpdateMutation>(
     mcpServersPageUpdateMutationNode,
@@ -317,6 +355,14 @@ function McpServersPageContent() {
     useMutation<mcpServersPageConnectClientCredentialsMutation>(mcpServersPageConnectClientCredentialsMutationNode);
   const [commitDisconnectOauth, isDisconnectOauthInFlight] =
     useMutation<mcpServersPageDisconnectOauthMutation>(mcpServersPageDisconnectOauthMutationNode);
+  const agents = useMemo(() => {
+    return [...data.Agents]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+      }));
+  }, [data.Agents]);
   const mcpServers: McpServersTableRecord[] = data.McpServers.map((server) => ({
     authType: normalizeAuthType(server.authType),
     callTimeoutMs: server.callTimeoutMs,
@@ -357,7 +403,48 @@ function McpServersPageContent() {
         url: selectedServerRecord.url,
       }
     : null;
+
+  const openAssignmentResources = (resources: AgentAssignmentResource[]) => {
+    assignmentDialogCanCloseRef.current = false;
+    setAssignmentResources(resources);
+    setAssignmentDialogOpen(true);
+    window.setTimeout(() => {
+      assignmentDialogCanCloseRef.current = true;
+    }, 200);
+  };
+
+  const closeAssignmentDialog = () => {
+    setAssignmentDialogOpen(false);
+    setAssignmentResources([]);
+    setAssignmentErrorMessage(null);
+  };
+
   const isSaving = isCreateServerInFlight || isUpdateServerInFlight;
+
+  useEffect(() => {
+    const serverId = search.assignMcpServerId;
+    if (!serverId) {
+      setDismissedAssignmentServerId(null);
+      return;
+    }
+    if (serverId === dismissedAssignmentServerId) {
+      return;
+    }
+    if (assignmentResources.some((resource) => resource.id === serverId)) {
+      return;
+    }
+
+    const server = mcpServers.find((candidateServer) => candidateServer.id === serverId) ?? null;
+    if (!server) {
+      return;
+    }
+
+    openAssignmentResources([{
+      id: server.id,
+      name: server.name,
+    }]);
+    setAssignmentErrorMessage(null);
+  }, [assignmentResources, dismissedAssignmentServerId, mcpServers, search.assignMcpServerId]);
 
   const toCreateMcpServerInput = (input: CreateMcpServerInput): CreateMcpServerInput => {
     return {
@@ -441,6 +528,63 @@ function McpServersPageContent() {
     });
   };
 
+  async function assignMcpServersToAgents(agentIds: string[]) {
+    if (isAssigningMcpServers) {
+      return;
+    }
+
+    setAssignmentErrorMessage(null);
+    setAssigningMcpServers(true);
+
+    try {
+      for (const server of assignmentResources) {
+        for (const agentId of agentIds) {
+          await new Promise<void>((resolve, reject) => {
+            commitAttachMcpServerToAgent({
+              variables: {
+                input: {
+                  agentId,
+                  mcpServerId: server.id,
+                },
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = getRelayErrorMessage(errors);
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          });
+        }
+      }
+
+      const serverCount = assignmentResources.length;
+      setAssignmentDialogOpen(false);
+      setAssignmentResources([]);
+      if (search.assignMcpServerId) {
+        setDismissedAssignmentServerId(search.assignMcpServerId);
+        void navigate({
+          params: {
+            organizationSlug,
+          },
+          search: {},
+          to: OrganizationPath.route("/mcp-servers"),
+        });
+      }
+      toast.showSavedToast(
+        `Added ${serverCount} MCP server${serverCount === 1 ? "" : "s"} to ${agentIds.length} agent${agentIds.length === 1 ? "" : "s"}`,
+      );
+    } catch (error: unknown) {
+      setAssignmentErrorMessage(error instanceof Error ? error.message : "Failed to add MCP servers to agents.");
+    } finally {
+      setAssigningMcpServers(false);
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
@@ -465,12 +609,6 @@ function McpServersPageContent() {
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {errorMessage && !isDialogOpen ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
-            </div>
-          ) : null}
-
           <McpServersTable
             isLoading={false}
             mcpServers={mcpServers}
@@ -590,6 +728,7 @@ function McpServersPageContent() {
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
+            setErrorMessage(null);
             setSelectedServerId(null);
           }
         }}
@@ -623,9 +762,14 @@ function McpServersPageContent() {
             }
 
             createServer(input)
-              .then(() => {
+              .then((createdServerId) => {
                 setDialogOpen(false);
                 setSelectedServerId(null);
+                setAssignmentErrorMessage(null);
+                openAssignmentResources([{
+                  id: createdServerId,
+                  name: input.name,
+                }]);
                 resolve();
               })
               .catch(reject);
@@ -661,6 +805,37 @@ function McpServersPageContent() {
           });
         }}
         server={selectedServer}
+      />
+      <AgentAssignmentDialog
+        agents={agents}
+        errorMessage={assignmentErrorMessage}
+        isAssigning={isAssigningMcpServers}
+        isOpen={isAssignmentDialogOpen}
+        onAssign={assignMcpServersToAgents}
+        onOpenChange={(open) => {
+          if (open) {
+            setAssignmentDialogOpen(true);
+            return;
+          }
+
+          if (!assignmentDialogCanCloseRef.current) {
+            return;
+          }
+
+          closeAssignmentDialog();
+          if (search.assignMcpServerId) {
+            setDismissedAssignmentServerId(search.assignMcpServerId);
+            void navigate({
+              params: {
+                organizationSlug,
+              },
+              search: {},
+              to: OrganizationPath.route("/mcp-servers"),
+            });
+          }
+        }}
+        resourceKind="MCP server"
+        resources={assignmentResources}
       />
     </main>
   );

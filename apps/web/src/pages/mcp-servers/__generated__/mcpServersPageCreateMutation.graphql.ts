@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<76ac68e273abee0d3a36467eac7be60f>>
+ * @generated SignedSource<<f01f75ae9fd44587ae3b3c1c571849e4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -80,34 +80,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidatedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationError",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationStatus",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "lastValidationToolCount",
         "storageKey": null
       },
       {
@@ -198,6 +170,34 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "lastValidationStatus",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationError",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidationToolCount",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastValidatedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -230,7 +230,7 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "fe269b5825c67d970261e6f2a9ec44d2",
+    "cacheID": "ad0bacc57a1a03b1ba27d2e1e07bab3c",
     "id": null,
     "metadata": {},
     "name": "mcpServersPageCreateMutation",
@@ -240,6 +240,6 @@ return {
 };
 })();
 
-(node as any).hash = "0670c7a0b88563d0f77e941429488bf6";
+(node as any).hash = "2f3a6653feba608cd16e478c28eb4eee";
 
 export default node;

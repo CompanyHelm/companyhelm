@@ -1,9 +1,11 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { AgentAssignmentDialog, type AgentAssignmentResource } from "@/components/agent_assignment_dialog";
+import { useToast } from "@/components/toast_provider";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
@@ -18,6 +20,7 @@ import type { skillsPageCreateSkillGroupMutation } from "./__generated__/skillsP
 import type { skillsPageDeleteSkillMutation } from "./__generated__/skillsPageDeleteSkillMutation.graphql";
 import type { skillsPageImportGithubSkillsMutation } from "./__generated__/skillsPageImportGithubSkillsMutation.graphql";
 import type { skillsPageQuery } from "./__generated__/skillsPageQuery.graphql";
+import type { skillsPageAttachSkillToAgentMutation } from "./__generated__/skillsPageAttachSkillToAgentMutation.graphql";
 import type { skillsPageUpdateSkillMutation } from "./__generated__/skillsPageUpdateSkillMutation.graphql";
 
 type RelayLinkedRecord = {
@@ -30,6 +33,10 @@ const SYSTEM_SKILL_GROUP_ID = "system";
 
 const skillsPageQueryNode = graphql`
   query skillsPageQuery {
+    Agents {
+      id
+      name
+    }
     SkillGroups {
       id
       name
@@ -64,6 +71,18 @@ const skillsPageCreateSkillMutationNode = graphql`
       repository
       skillDirectory
       fileList
+    }
+  }
+`;
+
+const skillsPageAttachSkillToAgentMutationNode = graphql`
+  mutation skillsPageAttachSkillToAgentMutation($input: AttachSkillToAgentInput!) {
+    AttachSkillToAgent(input: $input) {
+      id
+      name
+      description
+      skillGroupId
+      skillType
     }
   }
 `;
@@ -179,9 +198,15 @@ function SkillsPageFallback() {
 function SkillsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
+  const toast = useToast();
+  const [assignmentErrorMessage, setAssignmentErrorMessage] = useState<string | null>(null);
+  const [assignmentResources, setAssignmentResources] = useState<AgentAssignmentResource[]>([]);
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isAssigningSkills, setAssigningSkills] = useState(false);
+  const [isAssignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const assignmentDialogCanCloseRef = useRef(true);
   const [movingSkillId, setMovingSkillId] = useState<string | null>(null);
   const data = useLazyLoadQuery<skillsPageQuery>(
     skillsPageQueryNode,
@@ -193,6 +218,9 @@ function SkillsPageContent() {
   const [commitCreateSkill, isCreateSkillInFlight] = useMutation<skillsPageCreateSkillMutation>(
     skillsPageCreateSkillMutationNode,
   );
+  const [commitAttachSkillToAgent] = useMutation<skillsPageAttachSkillToAgentMutation>(
+    skillsPageAttachSkillToAgentMutationNode,
+  );
   const [commitCreateSkillGroup, isCreateSkillGroupInFlight] =
     useMutation<skillsPageCreateSkillGroupMutation>(skillsPageCreateSkillGroupMutationNode);
   const [commitImportGithubSkills, isImportGithubSkillsInFlight] =
@@ -203,6 +231,14 @@ function SkillsPageContent() {
   const [commitUpdateSkill] = useMutation<skillsPageUpdateSkillMutation>(
     skillsPageUpdateSkillMutationNode,
   );
+  const agents = useMemo(() => {
+    return [...data.Agents]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((agent) => ({
+        id: agent.id,
+        name: agent.name,
+      }));
+  }, [data.Agents]);
   const groupOptions: CreateSkillDialogGroupOption[] = useMemo(() => {
     return [...data.SkillGroups]
       .filter((group) => group.id !== SYSTEM_SKILL_GROUP_ID)
@@ -223,6 +259,22 @@ function SkillsPageContent() {
         name: repository.name,
       }));
   }, [data.GithubRepositories]);
+
+  const openAssignmentResources = (resources: AgentAssignmentResource[]) => {
+    assignmentDialogCanCloseRef.current = false;
+    setAssignmentResources(resources);
+    setAssignmentDialogOpen(true);
+    window.setTimeout(() => {
+      assignmentDialogCanCloseRef.current = true;
+    }, 200);
+  };
+
+  const closeAssignmentDialog = () => {
+    setAssignmentDialogOpen(false);
+    setAssignmentResources([]);
+    setAssignmentErrorMessage(null);
+  };
+
   const groupedSkills = useMemo<SkillsTreeGroupRecord[]>(() => {
     const skillsByGroupId = new Map<string | null, SkillsTreeSkillRecord[]>();
     const sortedSkills = [...data.Skills].sort((left, right) => left.name.localeCompare(right.name));
@@ -353,6 +405,53 @@ function SkillsPageContent() {
     }
   }
 
+  async function assignSkillsToAgents(agentIds: string[]) {
+    if (isAssigningSkills) {
+      return;
+    }
+
+    setAssignmentErrorMessage(null);
+    setAssigningSkills(true);
+
+    try {
+      for (const skill of assignmentResources) {
+        for (const agentId of agentIds) {
+          await new Promise<void>((resolve, reject) => {
+            commitAttachSkillToAgent({
+              variables: {
+                input: {
+                  agentId,
+                  skillId: skill.id,
+                },
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          });
+        }
+      }
+
+      const skillCount = assignmentResources.length;
+      setAssignmentDialogOpen(false);
+      setAssignmentResources([]);
+      toast.showSavedToast(
+        `Added ${skillCount} skill${skillCount === 1 ? "" : "s"} to ${agentIds.length} agent${agentIds.length === 1 ? "" : "s"}`,
+      );
+    } catch (error: unknown) {
+      setAssignmentErrorMessage(error instanceof Error ? error.message : "Failed to add skills to agents.");
+    } finally {
+      setAssigningSkills(false);
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6 md:-mx-2 lg:-mx-3">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
@@ -432,7 +531,7 @@ function SkillsPageContent() {
                   .filter((record): record is NonNullable<typeof record> => record !== null);
                 rootRecord.setLinkedRecords([newSkill, ...currentSkills], "Skills");
               },
-              onCompleted: (_response, errors) => {
+              onCompleted: (response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;
                 if (nextErrorMessage) {
                   reject(new Error(nextErrorMessage));
@@ -440,6 +539,11 @@ function SkillsPageContent() {
                 }
 
                 setCreateDialogOpen(false);
+                setAssignmentErrorMessage(null);
+                openAssignmentResources([{
+                  id: response.CreateSkill.id,
+                  name: response.CreateSkill.name,
+                }]);
                 resolve();
               },
               onError: reject,
@@ -508,7 +612,7 @@ function SkillsPageContent() {
               updater: (store) => {
                 githubSkillImportRelayUpdater.apply(store);
               },
-              onCompleted: (_response, errors) => {
+              onCompleted: (response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;
                 if (nextErrorMessage) {
                   reject(new Error(nextErrorMessage));
@@ -516,6 +620,11 @@ function SkillsPageContent() {
                 }
 
                 setCreateDialogOpen(false);
+                setAssignmentErrorMessage(null);
+                openAssignmentResources(response.ImportGithubSkills.map((skill) => ({
+                  id: skill.id,
+                  name: skill.name,
+                })));
                 resolve();
               },
               onError: reject,
@@ -526,6 +635,27 @@ function SkillsPageContent() {
           });
         }}
         onOpenChange={setCreateDialogOpen}
+      />
+      <AgentAssignmentDialog
+        agents={agents}
+        errorMessage={assignmentErrorMessage}
+        isAssigning={isAssigningSkills}
+        isOpen={isAssignmentDialogOpen}
+        onAssign={assignSkillsToAgents}
+        onOpenChange={(open) => {
+          if (open) {
+            setAssignmentDialogOpen(true);
+            return;
+          }
+
+          if (!assignmentDialogCanCloseRef.current) {
+            return;
+          }
+
+          closeAssignmentDialog();
+        }}
+        resourceKind="skill"
+        resources={assignmentResources}
       />
     </main>
   );
