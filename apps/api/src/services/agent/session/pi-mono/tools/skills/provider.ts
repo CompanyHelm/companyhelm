@@ -1,5 +1,6 @@
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentActivateSkillTool } from "./activate.ts";
+import { AgentSearchSkillsTool } from "./search.ts";
 import { AgentSkillToolService } from "./service.ts";
 
 /**
@@ -16,6 +17,7 @@ export class AgentSkillToolProvider extends AgentToolProviderInterface {
 
   createToolDefinitions(): unknown[] {
     return [
+      new AgentSearchSkillsTool(this.skillToolService).createDefinition(),
       new AgentActivateSkillTool(this.skillToolService).createDefinition(),
     ];
   }

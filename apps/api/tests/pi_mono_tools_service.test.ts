@@ -62,6 +62,9 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       async listAvailableSkills() {
         throw new Error("available skills should not be loaded during initialization");
       },
+      async searchSkills() {
+        throw new Error("skill search should not be loaded during initialization");
+      },
     } as never),
     new AgentCompanyDirectoryToolProvider({
       async listCompanyAgents() {
@@ -169,6 +172,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_assigned_secrets",
       "read_secret",
       "list_available_secrets",
+      "search_skills",
       "activate_skill",
       "list_company_members",
       "list_company_agents",
@@ -233,6 +237,9 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       },
       async listAvailableSkills() {
         throw new Error("available skills should not be loaded during cleanup");
+      },
+      async searchSkills() {
+        throw new Error("skill search should not be loaded during cleanup");
       },
     } as never),
     new AgentCompanyDirectoryToolProvider({
@@ -575,6 +582,9 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       async listAvailableSkills() {
         throw new Error("available skills should not be loaded during session creation");
       },
+      async searchSkills() {
+        throw new Error("skill search should not be loaded during session creation");
+      },
     } as never),
     new AgentCompanyDirectoryToolProvider({
       async listCompanyAgents() {
@@ -696,6 +706,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_assigned_secrets",
       "read_secret",
       "list_available_secrets",
+      "search_skills",
       "activate_skill",
       "list_company_members",
       "list_company_agents",
