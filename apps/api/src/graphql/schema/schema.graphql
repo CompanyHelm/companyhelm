@@ -545,6 +545,7 @@ type Me {
 }
 
 type Agent {
+  autoCompactPercent: Int!
   title: String
   defaultComputeProvider: String
   defaultComputeProviderDefinitionId: ID
@@ -1212,6 +1213,7 @@ input CreateGithubRepositoryProvisioningInput {
 input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
+  autoCompactPercent: Int
   name: String!
   title: String
   llmModelId: ID!
@@ -1227,6 +1229,7 @@ input AddAgentInput {
 input UpdateAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
+  autoCompactPercent: Int
   id: ID!
   name: String!
   title: String

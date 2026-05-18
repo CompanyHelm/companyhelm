@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f466ecf39734b31c3caf745c3ffe0449>>
+ * @generated SignedSource<<47ab55273dfffc809d80961c21e5a324>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AddAgentInput = {
+  autoCompactPercent?: number | null | undefined;
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
   llmModelId: string;

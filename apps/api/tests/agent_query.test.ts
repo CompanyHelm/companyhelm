@@ -47,6 +47,7 @@ class AgentQueryTestHarness {
                       return [{
                         id: "agent-1",
                         name: "Research Agent",
+                        defaultAutoCompactPercent: 83,
                         defaultModelCredentialSource: "user_provided",
                         defaultPlatformModelId: null,
                         defaultModelProviderCredentialModelId: "model-row-1",
@@ -174,6 +175,7 @@ test("GraphQL Agent query returns one agent detail record", async () => {
           Agent(id: $id) {
             id
             name
+            autoCompactPercent
             defaultEnvironmentTemplateId
             modelProviderCredentialId
             modelProviderCredentialModelId
@@ -205,6 +207,7 @@ test("GraphQL Agent query returns one agent detail record", async () => {
   assert.deepEqual(document.data.Agent, {
     id: "agent-1",
     name: "Research Agent",
+    autoCompactPercent: 83,
     defaultEnvironmentTemplateId: "e2b/desktop",
     modelProviderCredentialId: "credential-1",
     modelProviderCredentialModelId: "model-row-1",

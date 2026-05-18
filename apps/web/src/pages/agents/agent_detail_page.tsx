@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { CheckIcon, XIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
@@ -14,6 +14,7 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
+import { AgentAutoCompactPercentControl } from "./agent_auto_compact_percent_control";
 import { AgentArchivedChatsTab } from "./agent_archived_chats_tab";
 import { AgentDetailProviderSelection } from "./agent_detail_provider_selection";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
@@ -37,6 +38,7 @@ const agentDetailPageQueryNode = graphql`
       id
       name
       title
+      autoCompactPercent
       llmModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -233,6 +235,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       id
       name
       title
+      autoCompactPercent
       llmModelId
       modelProviderCredentialId
       modelProviderCredentialModelId
@@ -392,7 +395,7 @@ function AgentDetailPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
-  const [commitUpdateAgent] = useMutation<agentDetailPageUpdateAgentMutation>(
+  const [commitUpdateAgent, isUpdateAgentInFlight] = useMutation<agentDetailPageUpdateAgentMutation>(
     agentDetailPageUpdateAgentMutationNode,
   );
   const [commitUpdateCompanySettings] = useMutation<agentDetailPageUpdateCompanySettingsMutation>(
@@ -545,6 +548,7 @@ function AgentDetailPageContent() {
         option.llmModelId === agent.llmModelId,
     ) ?? null
     : null;
+  const [autoCompactPercentInput, setAutoCompactPercentInput] = useState(agent.autoCompactPercent);
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
   const agentUsageAggregates = useMemo(() => {
     return UsageMetrics.fromGraphqlAggregates([
@@ -554,7 +558,12 @@ function AgentDetailPageContent() {
     ]);
   }, [data.agentDaily, data.agentMonthly, data.agentTotal]);
 
+  useEffect(() => {
+    setAutoCompactPercentInput(agent.autoCompactPercent);
+  }, [agent.autoCompactPercent]);
+
   const saveAgent = async (patch: {
+    autoCompactPercent?: number;
     defaultComputeProviderDefinitionId?: string;
     defaultEnvironmentTemplateId?: string;
     providerOptionId?: string;
@@ -611,6 +620,7 @@ function AgentDetailPageContent() {
             id: agent.id,
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
+            autoCompactPercent: patch.autoCompactPercent ?? agent.autoCompactPercent,
             name: patch.name ?? agent.name,
             title: patch.title === undefined ? agent.title : (patch.title === "" ? null : patch.title),
             llmModelId: nextModelOption.llmModelId,
@@ -800,6 +810,23 @@ function AgentDetailPageContent() {
                     value={agent.reasoningLevel ?? null}
                     variant="plain"
                   />
+
+                  <div className="md:col-span-2">
+                    <AgentAutoCompactPercentControl
+                      autoCompactPercent={autoCompactPercentInput}
+                      disabled={isUpdateAgentInFlight}
+                      onChange={setAutoCompactPercentInput}
+                      onCommit={async (value) => {
+                        if (value === agent.autoCompactPercent) {
+                          return;
+                        }
+
+                        await saveAgent({
+                          autoCompactPercent: value,
+                        });
+                      }}
+                    />
+                  </div>
                 </div>
               </AgentOverviewSection>
 

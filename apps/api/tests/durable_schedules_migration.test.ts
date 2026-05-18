@@ -5,7 +5,7 @@ import { test } from "vitest";
 
 test("durable schedules migration creates schedule tables and queue-message subtype wiring", () => {
   const migration = readFileSync(
-    resolve(import.meta.dirname, "../drizzle/0167_durable_schedules.sql"),
+    resolve(import.meta.dirname, "../drizzle/0168_durable_schedules.sql"),
     "utf8",
   );
 
@@ -18,7 +18,7 @@ test("durable schedules migration creates schedule tables and queue-message subt
 
 test("durable schedules migration protects new company-scoped tables with RLS", () => {
   const migration = readFileSync(
-    resolve(import.meta.dirname, "../drizzle/0167_durable_schedules.sql"),
+    resolve(import.meta.dirname, "../drizzle/0168_durable_schedules.sql"),
     "utf8",
   );
 

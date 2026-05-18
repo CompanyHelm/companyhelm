@@ -18,6 +18,7 @@ import { Mutation } from "./mutation.ts";
 
 type AddAgentMutationArguments = {
   input: {
+    autoCompactPercent?: number | null;
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     llmModelId: string;
@@ -34,6 +35,7 @@ type AddAgentMutationArguments = {
 };
 
 type AgentRecord = {
+  defaultAutoCompactPercent: number;
   id: string;
   name: string;
   title: string | null;
@@ -65,6 +67,7 @@ type ComputeProviderDefinitionRecord = {
 };
 
 type GraphqlAgentRecord = {
+  autoCompactPercent: number;
   defaultComputeProvider: "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
@@ -225,6 +228,9 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
+      const autoCompactPercent = AddAgentMutation.resolveAutoCompactPercent(
+        arguments_.input.autoCompactPercent,
+      );
       const now = new Date();
       const insertedAgentRecords = await databaseTransaction
         .insert(agents)
@@ -235,6 +241,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
+          defaultAutoCompactPercent: autoCompactPercent,
           default_reasoning_level: reasoningLevel,
           system_prompt: AddAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           created_at: now,
@@ -247,6 +254,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
+          defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -407,6 +415,23 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     return systemPrompt;
   }
 
+  private static resolveAutoCompactPercent(autoCompactPercent: number | null | undefined): number {
+    if (autoCompactPercent === undefined || autoCompactPercent === null) {
+      return 80;
+    }
+
+    if (!Number.isFinite(autoCompactPercent)) {
+      throw new Error("autoCompactPercent must be a finite integer between 1 and 100.");
+    }
+
+    const normalizedAutoCompactPercent = Math.trunc(autoCompactPercent);
+    if (normalizedAutoCompactPercent < 1 || normalizedAutoCompactPercent > 100) {
+      throw new Error("autoCompactPercent must be between 1 and 100.");
+    }
+
+    return normalizedAutoCompactPercent;
+  }
+
   private static resolveSecretIds(secretIds: string[] | null | undefined): string[] {
     return AddAgentMutation.resolveDistinctIds(secretIds);
   }
@@ -427,6 +452,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
+      autoCompactPercent: agentRecord.defaultAutoCompactPercent,
       defaultComputeProvider: computeProviderDefinitionRecord.provider,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord.name,

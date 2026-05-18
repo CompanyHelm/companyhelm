@@ -11,6 +11,7 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
 type AgentRecord = {
+  defaultAutoCompactPercent: number;
   id: string;
   name: string;
   title: string | null;
@@ -41,6 +42,7 @@ type ComputeProviderDefinitionRecord = {
 };
 
 type GraphqlAgentRecord = {
+  autoCompactPercent: number;
   defaultComputeProvider: "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
@@ -92,6 +94,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
+          defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -172,6 +175,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
   ): GraphqlAgentRecord {
     return {
+      autoCompactPercent: agentRecord.defaultAutoCompactPercent,
       defaultComputeProvider: computeProviderDefinitionRecord?.provider ?? null,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,

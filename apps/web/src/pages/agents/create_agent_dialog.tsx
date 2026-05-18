@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AgentAutoCompactPercentControl } from "./agent_auto_compact_percent_control";
 import { DefaultAttachmentSection } from "./default_attachment_section";
 import { EnvironmentTemplateDefaultSelector } from "./environment_template_default_selector";
 import { SecretDefaultOptions } from "./secret_default_options";
@@ -107,6 +108,7 @@ interface CreateAgentDialogProps {
     title: string;
   };
   onCreate(input: {
+    autoCompactPercent?: number;
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     llmModelId: string;
@@ -138,6 +140,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [providerOptionId, setProviderOptionId] = useState("");
   const [selectedModelRecordId, setSelectedModelRecordId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
+  const [autoCompactPercent, setAutoCompactPercent] = useState(80);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedSecretGroupIds, setSelectedSecretGroupIds] = useState<string[]>([]);
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
@@ -267,6 +270,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setProviderOptionId("");
       setSelectedModelRecordId("");
       setReasoningLevel("");
+      setAutoCompactPercent(80);
       setSystemPrompt("");
       setSelectedSecretGroupIds([]);
       setSelectedSecretIds([]);
@@ -657,6 +661,12 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             </div>
           ) : null}
 
+          <AgentAutoCompactPercentControl
+            autoCompactPercent={autoCompactPercent}
+            disabled={props.isSaving}
+            onChange={setAutoCompactPercent}
+          />
+
           <div className="grid gap-2">
             <p className="text-xs font-medium text-foreground" id="agent-environment-template-label">
               Environment template
@@ -887,6 +897,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               }
 
               await props.onCreate({
+                autoCompactPercent,
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
                 llmModelId: selectedModelOption.llmModelId,

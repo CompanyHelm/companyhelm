@@ -1167,8 +1167,15 @@
     {
       "idx": 167,
       "version": "7",
+      "when": 1778522000000,
+      "tag": "0167_agent_auto_compact_percent",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
       "when": 1778523000000,
-      "tag": "0167_durable_schedules",
+      "tag": "0168_durable_schedules",
       "breakpoints": true
     }
   ]
