@@ -175,8 +175,8 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   const sessionStop = vi.fn(async () => {});
   const sessionTurnUsageQueueClose = vi.fn(async () => {});
   const sessionTurnUsageWorkerStop = vi.fn(async () => {});
-  const workflowQueueClose = vi.fn(async () => {});
-  const workflowStop = vi.fn(async () => {});
+  const scheduleQueueClose = vi.fn(async () => {});
+  const scheduleStop = vi.fn(async () => {});
   const server = new ApiServer({
     host: "127.0.0.1",
     port: 0,
@@ -205,10 +205,12 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   } as never, {
     syncEnabledCronTriggers: async () => {},
   } as never, {
-    close: workflowQueueClose,
+    syncEnabledSchedules: async () => {},
+  } as never, {
+    close: scheduleQueueClose,
   } as never, {
     start: () => {},
-    stop: workflowStop,
+    stop: scheduleStop,
   } as never, {
     register: () => {},
   } as never, {
@@ -253,11 +255,11 @@ test("ApiServer stop is idempotent and closes runtime dependencies once", async 
   assert.equal(llmOauthStop.mock.calls.length, 1);
   assert.equal(githubWorkerStop.mock.calls.length, 1);
   assert.equal(sessionStop.mock.calls.length, 1);
-  assert.equal(workflowStop.mock.calls.length, 1);
+  assert.equal(scheduleStop.mock.calls.length, 1);
   assert.equal(environmentMetricsStop.mock.calls.length, 1);
   assert.equal(sessionTurnUsageWorkerStop.mock.calls.length, 1);
   assert.equal(sessionTurnUsageQueueClose.mock.calls.length, 1);
-  assert.equal(workflowQueueClose.mock.calls.length, 1);
+  assert.equal(scheduleQueueClose.mock.calls.length, 1);
   assert.equal(githubQueueClose.mock.calls.length, 1);
   assert.equal(databaseClose.mock.calls.length, 1);
   assert.equal(adminClose.mock.calls.length, 1);

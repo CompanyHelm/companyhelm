@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import type { Config } from "../src/config/schema.ts";
-import { WorkflowQueueNames } from "../src/services/workflows/queue_names.ts";
-import { WorkflowTriggerQueueService } from "../src/services/workflows/queue.ts";
+import { ScheduleQueueNames } from "../src/services/schedules/queue_names.ts";
+import { ScheduleQueueService } from "../src/services/schedules/queue.ts";
 
 const bullMqMocks = vi.hoisted(() => ({
   closeMock: vi.fn(async () => undefined),
@@ -16,7 +16,7 @@ const bullMqMocks = vi.hoisted(() => ({
 }));
 
 const ioRedisMocks = vi.hoisted(() => ({
-  instances: [] as Array<{ quit: ReturnType<typeof vi.fn> }>,
+  instances: [] as Array<{ quit: ReturnType<typeof vi.fn> }> ,
   quitMock: vi.fn(async () => undefined),
 }));
 
@@ -56,27 +56,26 @@ afterEach(() => {
   ioRedisMocks.quitMock.mockReset();
 });
 
-test("WorkflowTriggerQueueService upserts cron triggers as BullMQ job schedulers", async () => {
-  const service = new WorkflowTriggerQueueService({
+test("ScheduleQueueService upserts cron schedules as BullMQ job schedulers", async () => {
+  const service = new ScheduleQueueService({
     redis: {
       host: "127.0.0.1",
       password: "redis-password",
       port: 6379,
       username: "redis-user",
     },
-  } as Config, new WorkflowQueueNames());
+  } as Config, new ScheduleQueueNames());
 
-  await service.upsertCronTrigger({
-    agentId: "agent-1",
+  await service.upsertCronSchedule({
     companyId: "company-1",
     cronPattern: "0 9 * * 1-5",
-    id: "trigger-1",
+    scheduleId: "schedule-1",
+    scheduleType: "workflow",
     timezone: "America/Los_Angeles",
-    workflowDefinitionId: "workflow-1",
   });
 
   assert.deepEqual(bullMqMocks.upsertJobSchedulerMock.mock.calls[0], [
-    "trigger-1",
+    "schedule-1",
     {
       immediately: false,
       pattern: "0 9 * * 1-5",
@@ -85,10 +84,10 @@ test("WorkflowTriggerQueueService upserts cron triggers as BullMQ job schedulers
     {
       data: {
         companyId: "company-1",
-        triggerId: "trigger-1",
-        workflowDefinitionId: "workflow-1",
+        scheduleId: "schedule-1",
+        scheduleType: "workflow",
       },
-      name: "run-workflow",
+      name: "run-schedule",
       opts: {
         attempts: 3,
         backoff: {
@@ -101,8 +100,8 @@ test("WorkflowTriggerQueueService upserts cron triggers as BullMQ job schedulers
     },
   ]);
 
-  await service.removeTrigger("trigger-1");
-  assert.deepEqual(bullMqMocks.removeJobSchedulerMock.mock.calls[0], ["trigger-1"]);
+  await service.removeSchedule("schedule-1");
+  assert.deepEqual(bullMqMocks.removeJobSchedulerMock.mock.calls[0], ["schedule-1"]);
 
   await service.close();
   assert.equal(bullMqMocks.closeMock.mock.calls.length, 1);

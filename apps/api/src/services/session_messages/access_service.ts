@@ -175,7 +175,7 @@ export class PastMessageAccessService {
     if (input.principalTypes && input.principalTypes.length > 0) {
       filters.push(inArray(
         sessionMessages.principalType,
-        input.principalTypes as Array<"agent_message" | "github_webhook" | "task" | "user" | "workflow">,
+        input.principalTypes as Array<"agent_message" | "github_webhook" | "schedule" | "task" | "user" | "workflow">,
       ));
     }
     if (extraFilter) {

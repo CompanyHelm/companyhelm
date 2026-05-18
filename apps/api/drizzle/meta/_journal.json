@@ -1163,6 +1163,13 @@
       "when": 1777857200000,
       "tag": "0166_mcp_server_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1778523000000,
+      "tag": "0167_durable_schedules",
+      "breakpoints": true
     }
   ]
 }
