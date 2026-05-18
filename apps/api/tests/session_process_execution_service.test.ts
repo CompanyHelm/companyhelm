@@ -282,6 +282,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
                   return {
                     async where() {
                       return [{
+                        autoCompactPercent: 72,
                         name: "Support Agent",
                       }];
                     },
@@ -523,6 +524,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
+                        autoCompactPercent: 72,
                         name: "Support Agent",
                       }];
                     },
@@ -706,6 +708,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       agentName: "Support Agent",
       agentSystemPrompt: undefined,
       apiKey: "sk-openai",
+      autoCompactPercent: 72,
       companyBaseSystemPrompt: null,
       companyId: "company-1",
       companyName: "My Organization",
@@ -784,6 +787,7 @@ test("SessionProcessExecutionService maps company credentials to the runtime pro
                   return {
                     async where() {
                       return [{
+                        autoCompactPercent: 68,
                         name: "Support Agent",
                       }];
                     },
@@ -943,6 +947,7 @@ test("SessionProcessExecutionService maps company credentials to the runtime pro
       agentName: "Support Agent",
       agentSystemPrompt: undefined,
       apiKey: "sk-openai",
+      autoCompactPercent: 68,
       companyBaseSystemPrompt: null,
       companyId: "company-1",
       companyName: "My Organization",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<36b8ae6aef22cec16409fd16c3f8002a>>
+ * @generated SignedSource<<3f330b34b89a360616df422ec2cb6a55>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type UpdateAgentInput = {
+  autoCompactPercent?: number | null | undefined;
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
   id: string;
@@ -24,6 +25,7 @@ export type agentDetailPageUpdateAgentMutation$variables = {
 };
 export type agentDetailPageUpdateAgentMutation$data = {
   readonly UpdateAgent: {
+    readonly autoCompactPercent: number;
     readonly createdAt: string;
     readonly defaultComputeProvider: string | null | undefined;
     readonly defaultComputeProviderDefinitionId: string | null | undefined;
@@ -98,6 +100,13 @@ v2 = [
         "args": null,
         "kind": "ScalarField",
         "name": "title",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "autoCompactPercent",
         "storageKey": null
       },
       {
@@ -260,16 +269,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "8f84688b8433fbed0caa2052c5d8d28f",
+    "cacheID": "c7a01749d205b5c1e971df73fd67fb27",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageUpdateAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    title\n    llmModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    title\n    autoCompactPercent\n    llmModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4d11f48f79e5249c4b1eaa734a931e2c";
+(node as any).hash = "d60eb5bfa1c2646db919376e786ee388";
 
 export default node;

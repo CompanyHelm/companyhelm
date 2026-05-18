@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   boolean,
+  integer,
   index,
   pgTable,
   primaryKey,
@@ -41,6 +42,7 @@ export const agents = pgTable("agents", {
   defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
     .references(() => computeProviderDefinitions.id, { onDelete: "restrict" }),
   defaultEnvironmentTemplateId: text("default_environment_template_id").notNull(),
+  defaultAutoCompactPercent: integer("default_auto_compact_percent").notNull().default(80),
   default_reasoning_level: text("default_reasoning_level"),
   system_prompt: text("system_prompt"),
 }, (table) => ({

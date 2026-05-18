@@ -14,6 +14,7 @@ import { Mutation } from "./mutation.ts";
 
 type UpdateAgentMutationArguments = {
   input: {
+    autoCompactPercent?: number | null;
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     id: string;
@@ -26,6 +27,7 @@ type UpdateAgentMutationArguments = {
 };
 
 type AgentRecord = {
+  defaultAutoCompactPercent: number;
   id: string;
   name: string;
   title: string | null;
@@ -51,6 +53,7 @@ type CredentialRecord = {
 };
 
 type ExistingAgentRecord = {
+  defaultAutoCompactPercent: number;
   id: string;
 };
 
@@ -61,6 +64,7 @@ type ComputeProviderDefinitionRecord = {
 };
 
 type GraphqlAgentRecord = {
+  autoCompactPercent: number;
   defaultComputeProvider: "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
@@ -161,6 +165,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       };
       const [existingAgent] = await databaseTransaction
         .select({
+          defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           id: agents.id,
         })
         .from(agents)
@@ -204,6 +209,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
+      const autoCompactPercent = UpdateAgentMutation.resolveAutoCompactPercent(
+        arguments_.input.autoCompactPercent,
+        existingAgent.defaultAutoCompactPercent,
+      );
       const updatedAgentRecords = await databaseTransaction
         .update(agents)
         .set({
@@ -212,6 +221,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
+          defaultAutoCompactPercent: autoCompactPercent,
           default_reasoning_level: reasoningLevel,
           system_prompt: UpdateAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           updated_at: new Date(),
@@ -227,6 +237,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
+          defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -283,6 +294,26 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     }
 
     return systemPrompt;
+  }
+
+  private static resolveAutoCompactPercent(
+    autoCompactPercent: number | null | undefined,
+    fallbackAutoCompactPercent: number,
+  ): number {
+    if (autoCompactPercent === undefined || autoCompactPercent === null) {
+      return fallbackAutoCompactPercent;
+    }
+
+    if (!Number.isFinite(autoCompactPercent)) {
+      throw new Error("autoCompactPercent must be a finite integer between 1 and 100.");
+    }
+
+    const normalizedAutoCompactPercent = Math.trunc(autoCompactPercent);
+    if (normalizedAutoCompactPercent < 1 || normalizedAutoCompactPercent > 100) {
+      throw new Error("autoCompactPercent must be between 1 and 100.");
+    }
+
+    return normalizedAutoCompactPercent;
   }
 
   private async loadModelSelection(
@@ -354,6 +385,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
+      autoCompactPercent: agentRecord.defaultAutoCompactPercent,
       defaultComputeProvider: computeProviderDefinitionRecord.provider,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord.name,
