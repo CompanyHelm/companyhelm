@@ -7,6 +7,7 @@ import {
   AuthStorage,
   createAgentSession,
   ModelRegistry as PiMonoModelRegistry,
+  SettingsManager,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
@@ -39,12 +40,14 @@ import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service
 import { type SessionPipelineLogContext, SessionPipelineLogger } from "../../../../log/session_pipeline_logger.ts";
 import { SessionTurnUsageQueueService } from "../session_turn_usage_queue.ts";
 import { SessionTurnUsageService } from "../session_turn_usage_service.ts";
+import { PiMonoCompactionSettingsManagerFactory } from "./compaction_settings_manager_factory.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
   agentName: string;
   agentSystemPrompt?: string | null;
   apiKey: string;
+  autoCompactPercent?: number | null;
   baseUrl?: string | null;
   companyBaseSystemPrompt?: string | null;
   companyId: string;
@@ -105,6 +108,7 @@ export class PiMonoSessionManagerService {
   private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly workflowService: WorkflowService;
   private readonly enhancedLoggingService: EnhancedLoggingService;
+  private readonly compactionSettingsManagerFactory: PiMonoCompactionSettingsManagerFactory;
 
   constructor(
     @inject(Config) config: Config,
@@ -142,6 +146,9 @@ export class PiMonoSessionManagerService {
     enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
     @inject(SessionTurnUsageQueueService)
     sessionTurnUsageQueueService: SessionTurnUsageQueueService = null as never,
+    @inject(PiMonoCompactionSettingsManagerFactory)
+    compactionSettingsManagerFactory: PiMonoCompactionSettingsManagerFactory =
+      new PiMonoCompactionSettingsManagerFactory(),
   ) {
     this.config = config;
     this.logger = new SessionPipelineLogger(logger.child({
@@ -167,6 +174,7 @@ export class PiMonoSessionManagerService {
     );
     this.workflowService = workflowService;
     this.enhancedLoggingService = enhancedLoggingService;
+    this.compactionSettingsManagerFactory = compactionSettingsManagerFactory;
   }
 
   async createRuntime(
@@ -237,10 +245,12 @@ export class PiMonoSessionManagerService {
     await resourceLoader.reload();
 
     const initializedTools = agentToolsService.initializeTools();
+    const settingsManager = this.createSettingsManager(runtimeConfig, model);
     const { session } = await createAgentSession({
       authStorage,
       modelRegistry,
       sessionManager,
+      settingsManager,
       cwd: DEFAULT_PI_WORKING_DIRECTORY,
       model,
       resourceLoader,
@@ -478,6 +488,16 @@ export class PiMonoSessionManagerService {
     }
 
     return reasoningLevel as ThinkingLevel;
+  }
+
+  private createSettingsManager(
+    runtimeConfig: SessionRuntimeConfig,
+    model: { contextWindow?: number | null },
+  ): SettingsManager {
+    return this.compactionSettingsManagerFactory.create(
+      model.contextWindow,
+      runtimeConfig.autoCompactPercent ?? null,
+    );
   }
 
   private async configureOpenRouterProvider(

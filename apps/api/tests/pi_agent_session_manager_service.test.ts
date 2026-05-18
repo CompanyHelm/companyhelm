@@ -14,6 +14,7 @@ const piAgentMocks = vi.hoisted(() => {
     newSessionMock: vi.fn<(options: { id?: string }) => void>(),
     promptMock: vi.fn(async () => undefined),
     registerProviderMock: vi.fn<(providerId: string, config: unknown) => void>(),
+    settingsManagerInMemoryMock: vi.fn<(input?: unknown) => unknown>(),
     setActiveToolsByNameMock: vi.fn<(toolNames: string[]) => void>(),
     setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
     steerMock: vi.fn(async () => undefined),
@@ -24,6 +25,7 @@ const piAgentMocks = vi.hoisted(() => {
       find: ReturnType<typeof vi.fn>;
       registerProvider: ReturnType<typeof vi.fn>;
     }>,
+    settingsManagerInstances: [] as Array<{ input: unknown }>,
     sessionManagerInstances: [] as Array<{
       appendMessage: ReturnType<typeof vi.fn>;
       newSession: ReturnType<typeof vi.fn>;
@@ -75,9 +77,21 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
     }
   }
 
+  class MockSettingsManager {
+    static inMemory(input?: unknown) {
+      piAgentMocks.settingsManagerInMemoryMock(input);
+      const instance = {
+        input: input ?? null,
+      };
+      piAgentMocks.settingsManagerInstances.push(instance);
+      return instance;
+    }
+  }
+
   return {
     AuthStorage: MockAuthStorage,
     ModelRegistry: MockModelRegistry,
+    SettingsManager: MockSettingsManager,
     SessionManager: MockSessionManager,
     createExtensionRuntime: piAgentMocks.createExtensionRuntimeMock,
     createAgentSession: piAgentMocks.createAgentSessionMock,
@@ -106,12 +120,14 @@ beforeEach(() => {
   piAgentMocks.newSessionMock.mockReset();
   piAgentMocks.promptMock.mockReset();
   piAgentMocks.registerProviderMock.mockReset();
+  piAgentMocks.settingsManagerInMemoryMock.mockReset();
   piAgentMocks.setActiveToolsByNameMock.mockReset();
   piAgentMocks.setRuntimeApiKeyMock.mockReset();
   piAgentMocks.steerMock.mockReset();
   piAgentMocks.subscribeMock.mockReset();
   piAgentMocks.authStorageInstances.length = 0;
   piAgentMocks.modelRegistryInstances.length = 0;
+  piAgentMocks.settingsManagerInstances.length = 0;
   piAgentMocks.sessionManagerInstances.length = 0;
   mcpRuntimeClientMocks.callToolMock.mockReset();
   mcpRuntimeClientMocks.listToolsMock.mockReset();
@@ -240,6 +256,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   }];
   const persistedContextUpdates: Array<Record<string, unknown>> = [];
   const model = {
+    contextWindow: 200000,
     id: "gpt-5.4",
     provider: "openai",
   };
@@ -407,6 +424,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       agentId: "agent-1",
       agentName: "Support Agent",
       apiKey: "sk-test",
+      autoCompactPercent: 75,
       companyId: "company-1",
       companyName: "My Organization",
       modelId: "gpt-5.4",
@@ -500,6 +518,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
     cwd?: string;
     noTools?: string;
+    settingsManager?: {
+      input: unknown;
+    };
     tools?: string[];
     customTools?: Array<{ name: string }>;
     resourceLoader?: {
@@ -516,6 +537,13 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.equal(createAgentSessionOptions.cwd, "~/workspace");
   assert.equal(createAgentSessionOptions.noTools, "builtin");
   assert.equal(createAgentSessionOptions.tools, undefined);
+  assert.deepEqual(createAgentSessionOptions.settingsManager?.input, {
+    compaction: {
+      enabled: true,
+      keepRecentTokens: 20000,
+      reserveTokens: 50000,
+    },
+  });
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
     [...baseToolNames.slice(0, 11), ...computerUseToolNames, ...baseToolNames.slice(11)],

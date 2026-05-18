@@ -209,6 +209,7 @@ class AddAgentMutationTestHarness {
                       id: "agent-1",
                       name: String(value.name),
                       title: value.title ?? null,
+                      defaultAutoCompactPercent: Number(value.defaultAutoCompactPercent),
                       defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
                       defaultModelProviderCredentialModelId: String(value.defaultModelProviderCredentialModelId),
                       defaultReasoningLevel: value.default_reasoning_level ?? null,
@@ -284,6 +285,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
             id
             name
             title
+            autoCompactPercent
             modelProvider
             modelName
             reasoningLevel
@@ -297,6 +299,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
           defaultEnvironmentTemplateId: "e2b/desktop",
           llmModelId: "model-row-1",
           name: "Research Agent",
+          autoCompactPercent: 67,
           title: "Software Engineer",
           reasoningLevel: "high",
           secretIds: ["secret-1"],
@@ -312,6 +315,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     id: "agent-1",
     name: "Research Agent",
     title: "Software Engineer",
+    autoCompactPercent: 67,
     modelProvider: "openai",
     modelName: "GPT-5.4",
     reasoningLevel: "high",
@@ -320,6 +324,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
   assert.equal(database.insertedValues.length, 2);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
+  assert.equal(database.insertedValues[0]?.defaultAutoCompactPercent, 67);
   assert.equal(database.insertedValues[0]?.title, "Software Engineer");
   assert.equal(database.insertedValues[0]?.defaultEnvironmentTemplateId, "e2b/desktop");
   assert.equal(database.insertedValues[0]?.default_reasoning_level, "high");

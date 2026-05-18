@@ -58,6 +58,7 @@ class UpdateAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
+                        defaultAutoCompactPercent: 80,
                         id: "agent-1",
                       }];
                     },
@@ -163,6 +164,7 @@ class UpdateAgentMutationTestHarness {
                     return {
                       async returning() {
                         return [{
+                          defaultAutoCompactPercent: Number(value.defaultAutoCompactPercent),
                           id: "agent-1",
                           name: String(value.name),
                           title: value.title ?? null,
@@ -244,6 +246,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
           UpdateAgent(input: $input) {
             id
             name
+            autoCompactPercent
             modelProviderCredentialId
             modelProviderCredentialModelId
             modelProvider
@@ -261,6 +264,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
           defaultEnvironmentTemplateId: "e2b/desktop",
           llmModelId: "model-row-2",
           name: "Executive Agent",
+          autoCompactPercent: 55,
           systemPrompt: "Handle complex work.",
         },
       },
@@ -272,6 +276,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
   assert.deepEqual(document.data.UpdateAgent, {
     id: "agent-1",
     name: "Executive Agent",
+    autoCompactPercent: 55,
     modelProviderCredentialId: "credential-2",
     modelProviderCredentialModelId: "model-row-2",
     modelProvider: "anthropic",
@@ -283,6 +288,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
   assert.equal(database.updatedValues.length, 1);
   assert.equal(database.updatedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
   assert.equal(database.updatedValues[0]?.defaultEnvironmentTemplateId, "e2b/desktop");
+  assert.equal(database.updatedValues[0]?.defaultAutoCompactPercent, 55);
   assert.equal(database.updatedValues[0]?.name, "Executive Agent");
   assert.equal(database.updatedValues[0]?.defaultModelProviderCredentialModelId, "model-row-2");
   assert.equal(database.updatedValues[0]?.default_reasoning_level, null);

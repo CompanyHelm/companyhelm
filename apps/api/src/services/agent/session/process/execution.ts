@@ -36,6 +36,7 @@ type SessionRuntimeRow = {
 };
 
 type AgentRow = {
+  autoCompactPercent: number;
   name: string;
   systemPrompt: string | null;
 };
@@ -536,6 +537,7 @@ export class SessionProcessExecutionService {
     agentName: string;
     agentSystemPrompt: string | null;
     apiKey: string;
+    autoCompactPercent: number;
     baseUrl?: string | null;
     companyId: string;
     companyName: string;
@@ -573,6 +575,7 @@ export class SessionProcessExecutionService {
 
       const [agentRow] = await selectableDatabase
         .select({
+          autoCompactPercent: agents.defaultAutoCompactPercent,
           name: agents.name,
           systemPrompt: agents.system_prompt,
         })
@@ -604,6 +607,7 @@ export class SessionProcessExecutionService {
         agentName: agentRow.name,
         agentSystemPrompt: agentRow.systemPrompt,
         apiKey: runtimeModel.apiKey,
+        autoCompactPercent: agentRow.autoCompactPercent,
         ...(runtimeModel.baseUrl ? { baseUrl: runtimeModel.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
