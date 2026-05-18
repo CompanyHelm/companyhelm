@@ -5,6 +5,7 @@ import { inject, injectable } from "inversify";
 import nunjucks from "nunjucks";
 import {
   agents,
+  schedules,
   workflowCronTriggers,
   workflowDefinitionInputs,
   workflowDefinitions,
@@ -17,6 +18,7 @@ import {
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { WorkflowRunTemplate } from "../../prompts/workflow_run_template.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
+import { ScheduleRunService } from "../schedules/run_service.ts";
 import { SessionSkillService } from "../skills/session_service.ts";
 import type {
   WorkflowCreateInput,
@@ -123,6 +125,8 @@ export class WorkflowService {
     private readonly sessionManagerService: SessionManagerService,
     @inject(SessionSkillService)
     private readonly sessionSkillService: SessionSkillService = new SessionSkillService(),
+    @inject(ScheduleRunService)
+    private readonly scheduleRunService: ScheduleRunService = new ScheduleRunService(),
     private readonly workflowRunTemplate: WorkflowRunTemplate = new WorkflowRunTemplate(),
   ) {}
 
@@ -347,6 +351,16 @@ export class WorkflowService {
       const triggerId = randomUUID();
 
       await tx
+        .insert(schedules)
+        .values({
+          companyId: input.companyId,
+          createdAt: now,
+          enabled: input.enabled ?? true,
+          id: triggerId,
+          type: "workflow",
+          updatedAt: now,
+        });
+      await tx
         .insert(workflowTriggers)
         .values({
           agentId: input.agentId,
@@ -389,13 +403,25 @@ export class WorkflowService {
       const triggerValues: Record<string, unknown> = {
         updatedAt: now,
       };
+      const scheduleValues: Record<string, unknown> = {
+        updatedAt: now,
+      };
       if (input.agentId !== undefined && input.agentId !== null) {
         await this.requireAgent(tx, input.companyId, input.agentId);
         triggerValues.agentId = input.agentId;
       }
       if (input.enabled !== undefined && input.enabled !== null) {
         triggerValues.enabled = input.enabled;
+        scheduleValues.enabled = input.enabled;
       }
+
+      await tx
+        .update(schedules)
+        .set(scheduleValues)
+        .where(and(
+          eq(schedules.companyId, input.companyId),
+          eq(schedules.id, input.triggerId),
+        ));
 
       await tx
         .update(workflowTriggers)
@@ -447,6 +473,12 @@ export class WorkflowService {
   ): Promise<WorkflowCronTriggerRecord> {
     return transactionProvider.transaction(async (tx) => {
       const triggerRecord = await this.requireCronTriggerRow(tx, companyId, triggerId);
+      await tx
+        .delete(schedules)
+        .where(and(
+          eq(schedules.companyId, companyId),
+          eq(schedules.id, triggerId),
+        ));
       await tx
         .delete(workflowTriggers)
         .where(and(
@@ -599,11 +631,16 @@ export class WorkflowService {
       triggerId: string;
     },
   ): Promise<WorkflowRunRecord | null> {
-    void input.bullmqJobId;
-    const trigger = await transactionProvider.transaction(async (tx) => {
-      const triggerRecord = await this.requireCronTriggerRow(tx, input.companyId, input.triggerId);
-      if (!triggerRecord.enabled) {
+    const scheduleState = await transactionProvider.transaction(async (tx) => {
+      const [triggerRecord] = await this.loadCronTriggerRows(tx, input.companyId, [input.triggerId]);
+      if (!triggerRecord) {
         return null;
+      }
+      if (!triggerRecord.enabled) {
+        return {
+          skipReason: "schedule is disabled",
+          trigger: triggerRecord,
+        };
       }
       const workflowRow = await this.requireWorkflowDefinitionRow(
         tx,
@@ -611,28 +648,70 @@ export class WorkflowService {
         triggerRecord.workflowDefinitionId,
       );
       if (!workflowRow.isEnabled) {
-        return null;
+        return {
+          skipReason: "workflow is disabled",
+          trigger: triggerRecord,
+        };
       }
       if (await this.hasRunningRunForTrigger(tx, input.companyId, input.triggerId)) {
-        return null;
+        return {
+          skipReason: "workflow already has a running scheduled run",
+          trigger: triggerRecord,
+        };
       }
-      return triggerRecord;
+      return {
+        skipReason: null,
+        trigger: triggerRecord,
+      };
     });
-    if (!trigger) {
+    if (!scheduleState) {
       return null;
     }
 
-    return this.startWorkflowRun(transactionProvider, {
-      agentId: trigger.agentId,
+    const scheduleRun = await this.scheduleRunService.startRun(transactionProvider, {
+      bullmqJobId: input.bullmqJobId,
       companyId: input.companyId,
-      inputValues: trigger.inputValues.map((inputValue) => ({
-        name: inputValue.name,
-        value: inputValue.value,
-      })),
-      source: "scheduled",
-      triggerId: trigger.id,
-      workflowDefinitionId: trigger.workflowDefinitionId,
+      scheduleId: input.triggerId,
     });
+    if (scheduleState.skipReason) {
+      await this.scheduleRunService.markSkipped(transactionProvider, {
+        companyId: input.companyId,
+        reason: scheduleState.skipReason,
+        runId: scheduleRun.id,
+      });
+      return null;
+    }
+
+    const trigger = scheduleState.trigger;
+
+    try {
+      const workflowRun = await this.startWorkflowRun(transactionProvider, {
+        agentId: trigger.agentId,
+        companyId: input.companyId,
+        inputValues: trigger.inputValues.map((inputValue) => ({
+          name: inputValue.name,
+          value: inputValue.value,
+        })),
+        source: "scheduled",
+        triggerId: trigger.id,
+        workflowDefinitionId: trigger.workflowDefinitionId,
+      });
+      await this.scheduleRunService.markDone(transactionProvider, {
+        companyId: input.companyId,
+        runId: scheduleRun.id,
+        sessionId: workflowRun.sessionId,
+        workflowRunId: workflowRun.id,
+      });
+
+      return workflowRun;
+    } catch (error) {
+      await this.scheduleRunService.markFailed(transactionProvider, {
+        companyId: input.companyId,
+        errorMessage: error instanceof Error ? error.message : "Failed to start scheduled workflow run.",
+        runId: scheduleRun.id,
+      });
+      throw error;
+    }
   }
 
   private async prepareWorkflowRun(

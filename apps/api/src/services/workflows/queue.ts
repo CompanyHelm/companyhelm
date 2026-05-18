@@ -1,71 +1,36 @@
 import { inject, injectable } from "inversify";
-import { Redis as IORedis } from "ioredis";
-import { Queue } from "bullmq";
-import { Config } from "../../config/schema.ts";
-import { WorkflowQueueNames } from "./queue_names.ts";
-import type { WorkflowCronTriggerScheduleRecord, WorkflowTriggerJobPayload } from "./types.ts";
+import { ScheduleQueueService } from "../schedules/queue.ts";
+import type { WorkflowCronTriggerScheduleRecord } from "./types.ts";
 
 /**
- * Owns the BullMQ producer side for scheduled workflow runs. It stores only trigger identity in
- * the queued payload so workers always re-read the current workflow, agent, and input state.
+ * Preserves the workflow-facing scheduler API while delegating the shared BullMQ wiring to the
+ * schedule queue. Workflow callers stay focused on trigger records instead of generic queue types.
  */
 @injectable()
 export class WorkflowTriggerQueueService {
-  private readonly connection: IORedis;
-  private readonly names: WorkflowQueueNames;
-  private readonly queue: Queue<WorkflowTriggerJobPayload>;
+  private readonly scheduleQueueService: ScheduleQueueService;
 
   constructor(
-    @inject(Config) config: Config,
-    @inject(WorkflowQueueNames) names: WorkflowQueueNames = new WorkflowQueueNames(),
+    @inject(ScheduleQueueService) scheduleQueueService: ScheduleQueueService,
   ) {
-    this.names = names;
-    this.connection = new IORedis({
-      host: config.redis.host,
-      maxRetriesPerRequest: null,
-      password: config.redis.password || undefined,
-      port: config.redis.port,
-      username: config.redis.username || undefined,
-    });
-    this.queue = new Queue<WorkflowTriggerJobPayload>(this.names.getTriggerQueueName(), {
-      connection: this.connection,
-    });
+    this.scheduleQueueService = scheduleQueueService;
   }
 
   async upsertCronTrigger(trigger: WorkflowCronTriggerScheduleRecord): Promise<void> {
-    await this.queue.upsertJobScheduler(
-      trigger.id,
-      {
-        immediately: false,
-        pattern: trigger.cronPattern,
-        tz: trigger.timezone,
-      },
-      {
-        data: {
-          companyId: trigger.companyId,
-          triggerId: trigger.id,
-          workflowDefinitionId: trigger.workflowDefinitionId,
-        },
-        name: this.names.getTriggerJobName(),
-        opts: {
-          attempts: 3,
-          backoff: {
-            delay: 2_000,
-            type: "exponential",
-          },
-          removeOnComplete: true,
-          removeOnFail: true,
-        },
-      },
-    );
+    await this.scheduleQueueService.upsertCronSchedule({
+      companyId: trigger.companyId,
+      cronPattern: trigger.cronPattern,
+      scheduleId: trigger.id,
+      scheduleType: "workflow",
+      timezone: trigger.timezone,
+    });
   }
 
   async removeTrigger(triggerId: string): Promise<void> {
-    await this.queue.removeJobScheduler(triggerId);
+    await this.scheduleQueueService.removeSchedule(triggerId);
   }
 
   async close(): Promise<void> {
-    await this.queue.close();
-    await this.connection.quit();
+    await this.scheduleQueueService.close();
   }
 }

@@ -27,6 +27,7 @@ export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal
   "user",
   "task",
   "workflow",
+  "schedule",
   "agent_message",
   "github_webhook",
 ]);

@@ -140,7 +140,7 @@ type QueuedUserMessageDispatch = {
   queuedMessageId: string | null;
   principalAgentId: string | null;
   principalSessionId: string | null;
-  principalType: "agent_message" | "github_webhook" | "task" | "user" | "workflow";
+  principalType: "agent_message" | "github_webhook" | "schedule" | "task" | "user" | "workflow";
   taskRunId: string | null;
   timestamp: Date;
   workflowRunId: string | null;
@@ -265,7 +265,7 @@ export class PiMonoSessionEventHandler {
     principalMetadata?: {
       principalAgentId: string | null;
       principalSessionId: string | null;
-      principalType: "agent_message" | "github_webhook" | "task" | "user" | "workflow";
+      principalType: "agent_message" | "github_webhook" | "schedule" | "task" | "user" | "workflow";
       taskRunId: string | null;
       workflowRunId: string | null;
     },
