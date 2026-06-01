@@ -5,6 +5,7 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { EditableModelField } from "@/components/editable_model_field";
+import { ModelOptionsControl, normalizeModelOptionDefinitions, normalizeModelOptionValues, type ModelOptionValues } from "@/components/model_options_control";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,7 @@ const agentDetailPageQueryNode = graphql`
       defaultComputeProviderDefinitionName
       defaultEnvironmentTemplateId
       reasoningLevel
+      modelOptions
       systemPrompt
       environmentTemplate {
         computerUse
@@ -106,6 +108,7 @@ const agentDetailPageQueryNode = graphql`
         description
         reasoningSupported
         reasoningLevels
+        modelOptions
       }
     }
     Secrets {
@@ -254,6 +257,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
         templateId
       }
       reasoningLevel
+      modelOptions
       systemPrompt
       createdAt
       updatedAt
@@ -480,6 +484,7 @@ function AgentDetailPageContent() {
         description: modelOption.description,
         llmModelId: modelOption.llmModelId,
         name: modelOption.name,
+        modelOptions: modelOption.modelOptions,
         reasoningSupported: modelOption.reasoningSupported,
         reasoningLevels: [...modelOption.reasoningLevels],
       })),
@@ -549,6 +554,7 @@ function AgentDetailPageContent() {
     ) ?? null
     : null;
   const [autoCompactPercentInput, setAutoCompactPercentInput] = useState(agent.autoCompactPercent);
+  const [modelOptionValues, setModelOptionValues] = useState<ModelOptionValues>(() => normalizeModelOptionValues(agent.modelOptions));
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
   const agentUsageAggregates = useMemo(() => {
     return UsageMetrics.fromGraphqlAggregates([
@@ -562,6 +568,10 @@ function AgentDetailPageContent() {
     setAutoCompactPercentInput(agent.autoCompactPercent);
   }, [agent.autoCompactPercent]);
 
+  useEffect(() => {
+    setModelOptionValues(normalizeModelOptionValues(agent.modelOptions));
+  }, [agent.modelOptions]);
+
   const saveAgent = async (patch: {
     autoCompactPercent?: number;
     defaultComputeProviderDefinitionId?: string;
@@ -572,6 +582,7 @@ function AgentDetailPageContent() {
     title?: string | null;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
+    modelOptions?: ModelOptionValues;
   }) => {
     const nextProviderOptionId = patch.providerOptionId ?? selectedProviderOption?.id;
     if (!nextProviderOptionId) {
@@ -625,6 +636,7 @@ function AgentDetailPageContent() {
             title: patch.title === undefined ? agent.title : (patch.title === "" ? null : patch.title),
             llmModelId: nextModelOption.llmModelId,
             reasoningLevel: nextReasoningLevel,
+            modelOptions: patch.modelOptions ?? normalizeModelOptionValues(agent.modelOptions),
             systemPrompt: patch.systemPrompt === undefined
               ? agent.systemPrompt
               : (patch.systemPrompt === "" ? null : patch.systemPrompt),
@@ -778,8 +790,10 @@ function AgentDetailPageContent() {
                         throw new Error("Selected model is not available.");
                       }
 
+                      setModelOptionValues({});
                       await saveAgent({
                         llmModelId: nextModelOption.llmModelId,
+                        modelOptions: {},
                       });
                     }}
                     options={(selectedProviderOption?.models ?? []).map((modelOption) => ({
@@ -792,6 +806,19 @@ function AgentDetailPageContent() {
                     value={selectedModelOption?.id ?? null}
                     variant="plain"
                   />
+
+                  {selectedModelOption ? (
+                    <div className="md:col-span-2">
+                      <ModelOptionsControl
+                        definitions={normalizeModelOptionDefinitions(selectedModelOption.modelOptions)}
+                        onChange={(nextModelOptions) => {
+                          setModelOptionValues(nextModelOptions);
+                          void saveAgent({ modelOptions: nextModelOptions });
+                        }}
+                        values={modelOptionValues}
+                      />
+                    </div>
+                  ) : null}
 
                   <EditableField
                     displayValue={agent.reasoningLevel}

@@ -3,6 +3,7 @@ import {
   boolean,
   integer,
   index,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -44,6 +45,7 @@ export const agents = pgTable("agents", {
   defaultEnvironmentTemplateId: text("default_environment_template_id").notNull(),
   defaultAutoCompactPercent: integer("default_auto_compact_percent").notNull().default(80),
   default_reasoning_level: text("default_reasoning_level"),
+  defaultModelOptions: jsonb("default_model_options").notNull().default(sql`'{}'::jsonb`),
   system_prompt: text("system_prompt"),
 }, (table) => ({
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
@@ -103,6 +105,7 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
   reasoningSupported: boolean("reasoning_supported").notNull().default(false),
   // null if the model does not support reasoning levels
   reasoningLevels: text("reasoning_levels").array(),
+  modelOptions: jsonb("model_options").notNull().default(sql`'[]'::jsonb`),
   isDefault: boolean("is_default").notNull().default(false),
 }, (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),

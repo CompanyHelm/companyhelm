@@ -110,6 +110,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
       ...model,
       reasoningSupported: model.reasoningSupported,
       reasoningLevels: model.reasoningLevels ?? [],
+      modelOptions: model.modelOptions ?? [],
     }));
   };
 

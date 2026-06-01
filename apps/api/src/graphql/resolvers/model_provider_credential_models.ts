@@ -16,6 +16,7 @@ type ModelProviderCredentialModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
+  modelOptions: unknown;
 };
 
 type ModelProviderCredentialRecord = {
@@ -32,6 +33,7 @@ type GraphqlModelProviderCredentialModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];
+  modelOptions: unknown;
 };
 
 type SelectableDatabase = {
@@ -91,6 +93,7 @@ export class ModelProviderCredentialModelsQueryResolver {
           description: modelProviderCredentialModels.description,
           reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+          modelOptions: modelProviderCredentialModels.modelOptions,
         })
         .from(modelProviderCredentialModels)
         .where(and(
@@ -102,6 +105,7 @@ export class ModelProviderCredentialModelsQueryResolver {
         ...model,
         reasoningSupported: model.reasoningSupported,
         reasoningLevels: model.reasoningLevels ?? [],
+        modelOptions: model.modelOptions ?? [],
       }));
     });
   };

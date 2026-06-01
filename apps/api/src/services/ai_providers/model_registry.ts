@@ -1,5 +1,5 @@
 import { injectable } from "inversify";
-import { ModelProviderModel } from "./model_provider_model.js";
+import { ModelProviderModel, type ModelProviderOptionDefinition } from "./model_provider_model.js";
 
 /**
  * Owns the curated model catalog that CompanyHelm recognizes across providers. Its scope is
@@ -9,6 +9,32 @@ import { ModelProviderModel } from "./model_provider_model.js";
 @injectable()
 export class ModelRegistry {
   private static readonly OPENAI_REASONING_LEVELS = ["low", "medium", "high", "xhigh"];
+  private static readonly OPENAI_SERVICE_TIER_OPTION: ModelProviderOptionDefinition = {
+    key: "serviceTier",
+    name: "Service tier",
+    description: "Choose the provider routing speed and cost tier for this model.",
+    type: "select",
+    category: "routing",
+    defaultValue: null,
+    options: [
+      {
+        name: "Standard",
+        value: null,
+        description: "Use the provider default routing tier.",
+      },
+      {
+        name: "Fast",
+        value: "priority",
+        description: "Faster responses with higher usage cost when supported by the provider.",
+      },
+      {
+        name: "Flex",
+        value: "flex",
+        description: "Lower-cost, flexible routing when supported by the provider.",
+      },
+    ],
+  };
+  private static readonly OPENAI_MODEL_OPTIONS = [ModelRegistry.OPENAI_SERVICE_TIER_OPTION];
 
   private static defaultModels: Record<string, string> = {
     openai: "gpt-5.4",
@@ -32,6 +58,7 @@ export class ModelRegistry {
       name: "GPT-5.5",
       description: "Frontier agentic coding model with expanded context support.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -39,6 +66,7 @@ export class ModelRegistry {
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -46,6 +74,7 @@ export class ModelRegistry {
       name: "GPT-5.4 Mini",
       description: "Smaller frontier agentic coding model.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -53,6 +82,7 @@ export class ModelRegistry {
       name: "GPT-5.3 Codex",
       description: "Frontier Codex-optimized agentic coding model.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -60,6 +90,7 @@ export class ModelRegistry {
       name: "GPT-5.3 Codex Spark",
       description: "Ultra-fast coding model.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -67,6 +98,7 @@ export class ModelRegistry {
       name: "GPT-5.2 Codex",
       description: "Frontier agentic coding model.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -74,6 +106,7 @@ export class ModelRegistry {
       name: "GPT-5.2",
       description: "Optimized for professional work and long-running agents",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -81,6 +114,7 @@ export class ModelRegistry {
       name: "GPT-5.1 Codex Max",
       description: "Codex-optimized model for deep and fast reasoning.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "openai",
@@ -88,6 +122,7 @@ export class ModelRegistry {
       name: "GPT-5.1 Codex Mini",
       description: "Optimized for codex. Cheaper, faster, but less capable.",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
+      modelOptions: ModelRegistry.OPENAI_MODEL_OPTIONS,
     }),
     new ModelProviderModel({
       provider: "anthropic",

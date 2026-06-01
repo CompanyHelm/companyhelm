@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4e40b684dd274a8ab045630d7f7e2c89>>
+ * @generated SignedSource<<38e41bc17bc46de610e19af3f62b9390>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type chatsPageDataQuery$data = {
   readonly Agents: ReadonlyArray<{
     readonly id: string;
     readonly modelName: string | null | undefined;
+    readonly modelOptions: any;
     readonly modelProvider: string | null | undefined;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly name: string;
@@ -67,6 +68,7 @@ export type chatsPageDataQuery$data = {
     readonly lastUserMessageAt: string | null | undefined;
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
+    readonly modelOptions: any;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
@@ -112,17 +114,24 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "modelOptions",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v6 = [
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -148,7 +157,8 @@ v6 = [
         "name": "modelName",
         "storageKey": null
       },
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "storageKey": null
   },
@@ -189,7 +199,7 @@ v6 = [
         "name": "allowCustomAnswer",
         "storageKey": null
       },
-      (v4/*: any*/),
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -245,7 +255,7 @@ v6 = [
         "selections": [
           (v0/*: any*/),
           (v1/*: any*/),
-          (v5/*: any*/)
+          (v6/*: any*/)
         ],
         "storageKey": null
       },
@@ -266,7 +276,7 @@ v6 = [
             "storageKey": null
           },
           (v1/*: any*/),
-          (v5/*: any*/),
+          (v6/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -291,7 +301,7 @@ v6 = [
                 "name": "ordinal",
                 "storageKey": null
               },
-              (v5/*: any*/)
+              (v6/*: any*/)
             ],
             "storageKey": null
           }
@@ -312,8 +322,8 @@ v6 = [
         "name": "inferredTitle",
         "storageKey": null
       },
+      (v6/*: any*/),
       (v5/*: any*/),
-      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -399,6 +409,7 @@ v6 = [
         "name": "modelId",
         "storageKey": null
       },
+      (v4/*: any*/),
       (v3/*: any*/),
       {
         "alias": null,
@@ -417,7 +428,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -426,19 +437,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageDataQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "7f6364ae2831a7231d2c86216bbf361c",
+    "cacheID": "f3d56b712cd2694424323bafb01981cd",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    inferredTitle\n    status\n    createdAt\n    lastUserMessageAt\n    userSetTitle\n    currentContextTokens\n    isCompacting\n    isThinking\n    maxContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    canForkLatestSession\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n    modelOptions\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    inferredTitle\n    status\n    createdAt\n    lastUserMessageAt\n    userSetTitle\n    currentContextTokens\n    isCompacting\n    isThinking\n    maxContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    canForkLatestSession\n    modelProviderCredentialModelId\n    modelId\n    modelOptions\n    reasoningLevel\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "dc3e6fd33fc8c4081e8d7186b012a823";
+(node as any).hash = "ac50251b94d5d456177cdba0bfd8f2ec";
 
 export default node;

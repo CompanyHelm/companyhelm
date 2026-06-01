@@ -16,7 +16,9 @@ type GraphqlSessionRecord = {
   hasUnread: boolean;
   isCompacting: boolean;
   lastUserMessageAt: string | null;
+  modelProviderCredentialModelId: string | null;
   modelId: string;
+  modelOptions: unknown;
   maxContextTokens: number | null;
   reasoningLevel: string;
   isThinking: boolean;
@@ -32,6 +34,7 @@ type ServiceSessionRecord = {
   currentContextTokens: number | null;
   currentModelId: string;
   currentModelProviderCredentialModelId: string | null;
+  currentModelOptions: unknown;
   currentReasoningLevel: string;
   isCompacting: boolean;
   isThinking: boolean;
@@ -84,7 +87,9 @@ export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArgum
       hasUnread: false,
       isCompacting: sessionRecord.isCompacting,
       lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
+      modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
+      modelOptions: sessionRecord.currentModelOptions,
       maxContextTokens: sessionRecord.maxContextTokens,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       isThinking: sessionRecord.isThinking,

@@ -22,6 +22,7 @@ type SessionRow = {
   currentContextTokens: number | null;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
+  currentModelOptions: unknown;
   forkedFromTurnId: string | null;
   inferredTitle: string | null;
   isCompacting: boolean;
@@ -195,6 +196,7 @@ export type SessionGraphqlRecord = {
   lastUserMessageAt: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
+  modelOptions: unknown;
   reasoningLevel: string;
   inferredTitle: string | null;
   isCompacting: boolean;
@@ -362,6 +364,7 @@ export class SessionReadService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
@@ -411,6 +414,7 @@ export class SessionReadService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
@@ -492,6 +496,7 @@ export class SessionReadService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           forkedFromTurnId: agentSessions.forkedFromTurnId,
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
@@ -1463,6 +1468,7 @@ export class SessionReadService {
       lastUserMessageAt: sessionRow.lastUserMessageAt?.toISOString() ?? null,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
+      modelOptions: sessionRow.currentModelOptions,
       reasoningLevel: sessionRow.currentReasoningLevel,
       inferredTitle: sessionRow.inferredTitle,
       isCompacting: sessionRow.isCompacting,

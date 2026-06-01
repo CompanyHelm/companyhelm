@@ -29,6 +29,7 @@ const agentsPageQueryNode = graphql`
       modelProvider
       modelName
       reasoningLevel
+      modelOptions
       systemPrompt
       createdAt
       updatedAt
@@ -51,6 +52,7 @@ const agentsPageQueryNode = graphql`
         name
         reasoningSupported
         reasoningLevels
+        modelOptions
       }
     }
     Secrets {
@@ -118,6 +120,7 @@ const agentsPageAddAgentMutationNode = graphql`
       modelProvider
       modelName
       reasoningLevel
+      modelOptions
       systemPrompt
       createdAt
       updatedAt
@@ -208,6 +211,7 @@ function AgentsPageContent() {
       description: modelOption.description,
       llmModelId: modelOption.llmModelId,
       name: modelOption.name,
+      modelOptions: modelOption.modelOptions,
       reasoningSupported: modelOption.reasoningSupported,
       reasoningLevels: [...modelOption.reasoningLevels],
     })),

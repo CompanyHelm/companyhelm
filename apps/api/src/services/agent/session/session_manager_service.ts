@@ -51,6 +51,7 @@ export class SessionManagerService {
     sessionId?: string | null,
     userId?: string | null,
     images?: SessionPromptImageInput[],
+    modelOptions?: unknown,
   ): Promise<SessionRecord> {
     const sessionRecord = await this.sessionLifecycleService.createSession(
       transactionProvider,
@@ -62,6 +63,7 @@ export class SessionManagerService {
       sessionId,
       userId,
       images,
+      modelOptions,
     );
 
     this.logger.info({
@@ -207,6 +209,7 @@ export class SessionManagerService {
     shouldSteer = false,
     images?: SessionPromptImageInput[],
     userId?: string | null,
+    modelOptions?: unknown,
   ): Promise<SessionRecord> {
     const sessionRecord = await this.sessionPromptService.prompt(
       transactionProvider,
@@ -218,6 +221,7 @@ export class SessionManagerService {
       shouldSteer,
       images,
       userId,
+      modelOptions,
     );
 
     this.logger.info({

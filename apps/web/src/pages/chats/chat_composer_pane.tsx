@@ -10,6 +10,7 @@ import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
+import type { ModelOptionValues } from "@/components/model_options_control";
 import type {
   DraftComposerImageRecord,
   InboxHumanQuestionRecord,
@@ -352,6 +353,8 @@ export function ChatComposerPane({
   onSteerQueuedMessage,
   onDeleteQueuedMessage,
   onModelChange,
+  onModelOptionsChange,
+  composerModelOptionValues,
   onReasoningLevelChange,
   onSubmitDraft,
   onQueueDraft,
@@ -372,6 +375,7 @@ export function ChatComposerPane({
   composerModelOptions: ReadonlyArray<ChatComposerModelOption>;
   composerModelOptionId: string;
   composerReasoningLevel: string;
+  composerModelOptionValues: ModelOptionValues;
   draftSubmitAriaLabel: string;
   queueDraftAriaLabel: string;
   canSubmitDraft: boolean;
@@ -396,6 +400,7 @@ export function ChatComposerPane({
   onSteerQueuedMessage: (queuedMessageId: string) => void;
   onDeleteQueuedMessage: (queuedMessageId: string) => void;
   onModelChange: (modelOptionId: string) => void;
+  onModelOptionsChange: (modelOptions: ModelOptionValues) => void;
   onReasoningLevelChange: (reasoningLevel: string) => void;
   onSubmitDraft: () => void;
   onQueueDraft: () => void;
@@ -504,9 +509,11 @@ export function ChatComposerPane({
                 <ChatComposerModelPicker
                   modelOptions={[...composerModelOptions]}
                   onModelChange={onModelChange}
+                  onModelOptionsChange={onModelOptionsChange}
                   onReasoningLevelChange={onReasoningLevelChange}
                   reasoningLevel={composerReasoningLevel}
                   selectedModelOptionId={composerModelOptionId}
+                  selectedModelOptions={composerModelOptionValues}
                 />
               ) : null}
               {selectedSession ? (

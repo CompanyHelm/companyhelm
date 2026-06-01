@@ -93,6 +93,7 @@ export class SessionLifecycleService {
     sessionId?: string | null,
     userId?: string | null,
     images?: SessionPromptImageInput[],
+    modelOptions?: unknown,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.createSessionInTransaction(
@@ -105,6 +106,7 @@ export class SessionLifecycleService {
           images,
           modelProviderCredentialModelId,
           reasoningLevel,
+          modelOptions,
           sessionId,
           userId,
         },
@@ -129,6 +131,7 @@ export class SessionLifecycleService {
         id: agents.id,
         defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
         defaultReasoningLevel: agents.default_reasoning_level,
+        defaultModelOptions: agents.defaultModelOptions,
       })
       .from(agents)
       .where(and(
@@ -153,6 +156,11 @@ export class SessionLifecycleService {
       options.reasoningLevel,
       agentRecord.defaultReasoningLevel,
     );
+    const resolvedModelOptions = this.sessionModelSelectionService.resolveModelOptions(
+      selectedModelRecord.modelOptions,
+      options.modelOptions,
+      agentRecord.defaultModelOptions,
+    );
     const preparedPrompt = this.sessionPromptService.prepareQueuedPrompt(userMessage, options.images);
     const resolvedSessionId = String(options.sessionId || "").trim();
     const now = new Date();
@@ -165,6 +173,7 @@ export class SessionLifecycleService {
         agentId,
         currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,
+        currentModelOptions: resolvedModelOptions,
         inferredTitle: preparedPrompt.inferredTitle,
         isCompacting: false,
         isThinking: false,
@@ -221,6 +230,7 @@ export class SessionLifecycleService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -308,6 +318,7 @@ export class SessionLifecycleService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -375,6 +386,7 @@ export class SessionLifecycleService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -420,6 +432,7 @@ export class SessionLifecycleService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           inferredTitle: agentSessions.inferredTitle,
           maxContextTokens: agentSessions.maxContextTokens,
@@ -473,6 +486,7 @@ export class SessionLifecycleService {
           agentId: sourceSession.agentId,
           currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,
           currentReasoningLevel: sourceSession.currentReasoningLevel,
+          currentModelOptions: sourceSession.currentModelOptions,
           forkedFromTurnId: latestCompletedTurn.id,
           inferredTitle: this.inferForkTitle(sourceSession.userSetTitle ?? sourceSession.inferredTitle ?? null),
           isCompacting: false,
@@ -537,6 +551,7 @@ export class SessionLifecycleService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -680,6 +695,7 @@ export class SessionLifecycleService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           id: agentSessions.id,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,

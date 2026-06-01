@@ -38,6 +38,7 @@ export const chatsPageDataChatListPanelAgentFragmentNode = graphql`
     modelProvider
     modelName
     reasoningLevel
+    modelOptions
   }
 `;
 
@@ -186,6 +187,7 @@ export const chatsPageQueryNode = graphql`
       forkedFromTurnId
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       updatedAt
     }
@@ -208,6 +210,7 @@ export const chatsPageComposerSetupQueryNode = graphql`
         description
         reasoningSupported
         reasoningLevels
+        modelOptions
       }
     }
   }
@@ -411,6 +414,7 @@ export const chatsPageCreateSessionMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -438,6 +442,7 @@ export const chatsPageForkSessionMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -465,6 +470,7 @@ export const chatsPageArchiveSessionMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -492,6 +498,7 @@ export const chatsPagePromptSessionMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -519,6 +526,7 @@ export const chatsPageInterruptSessionMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -562,6 +570,7 @@ export const chatsPageMarkSessionReadMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -589,6 +598,7 @@ export const chatsPageUpdateSessionTitleMutationNode = graphql`
       maxContextTokens
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       inferredTitle
       isThinking
@@ -614,6 +624,7 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
       forkedFromTurnId
       modelProviderCredentialModelId
       modelId
+      modelOptions
       reasoningLevel
       updatedAt
     }

@@ -1,6 +1,7 @@
 import { ChevronRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { EditableField } from "@/components/editable_field";
 import { EditableModelField } from "@/components/editable_model_field";
+import { ModelOptionsControl, type ModelOptionValues } from "@/components/model_options_control";
 import { EnvironmentActions } from "@/components/environment_actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,9 @@ export function ChatEnvironmentPanel({
   selectedComposerModelOption,
   composerModelOptionId,
   composerReasoningLevel,
+  composerModelOptionValues,
   onComposerModelOptionChange,
+  onComposerModelOptionsChange,
   onComposerReasoningLevelChange,
   selectedSessionTitle,
   onUpdateSessionTitle,
@@ -79,7 +82,9 @@ export function ChatEnvironmentPanel({
   selectedComposerModelOption: ChatComposerModelOption | null;
   composerModelOptionId: string;
   composerReasoningLevel: string;
+  composerModelOptionValues: ModelOptionValues;
   onComposerModelOptionChange: (modelOptionId: string) => void;
+  onComposerModelOptionsChange: (modelOptions: ModelOptionValues) => void;
   onComposerReasoningLevelChange: (reasoningLevel: string) => void;
   selectedSessionTitle: string;
   onUpdateSessionTitle: (title: string) => Promise<void>;
@@ -183,6 +188,14 @@ export function ChatEnvironmentPanel({
                 options={composerModelOptions}
                 value={composerModelOptionId}
               />
+
+              {selectedComposerModelOption?.modelOptions.length ? (
+                <ModelOptionsControl
+                  definitions={selectedComposerModelOption.modelOptions}
+                  onChange={onComposerModelOptionsChange}
+                  values={composerModelOptionValues}
+                />
+              ) : null}
 
               {environmentReasoningOptions.length > 0 ? (
                 <EditableField

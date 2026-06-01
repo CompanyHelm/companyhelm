@@ -31,6 +31,7 @@ type SessionRuntimeRow = {
   agentId: string;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
+  currentModelOptions: unknown;
   ownerUserId: string | null;
   status: string;
 };
@@ -556,6 +557,7 @@ export class SessionProcessExecutionService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          currentModelOptions: agentSessions.currentModelOptions,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
         })
@@ -600,6 +602,7 @@ export class SessionProcessExecutionService {
 
       const runtimeModel = await this.runtimeModelResolver.resolve(selectableDatabase, companyId, {
         currentModelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
+        currentModelOptions: sessionRow.currentModelOptions,
       });
 
       return {

@@ -1177,6 +1177,20 @@
       "when": 1778523000000,
       "tag": "0168_durable_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1778524000000,
+      "tag": "0169_model_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1778525000000,
+      "tag": "0170_session_turn_model_snapshot",
+      "breakpoints": true
     }
   ]
 }

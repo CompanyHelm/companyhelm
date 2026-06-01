@@ -8,6 +8,7 @@ type CreateSessionMutationArguments = {
     agentId: string;
     images?: SessionPromptImageInput[] | null;
     modelProviderCredentialModelId?: string | null;
+    modelOptions?: unknown;
     reasoningLevel?: string | null;
     sessionId?: string | null;
     userMessage: string;
@@ -22,6 +23,7 @@ type GraphqlSessionRecord = {
   lastUserMessageAt: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
+  modelOptions: unknown;
   reasoningLevel: string;
   inferredTitle: string | null;
   isCompacting: boolean;
@@ -39,6 +41,7 @@ type ServiceSessionRecord = {
   agentId: string;
   currentContextTokens: number | null;
   currentModelId: string;
+  currentModelOptions: unknown;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   inferredTitle: string | null;
@@ -95,6 +98,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       arguments_.input.sessionId,
       context.authSession.user.id,
       images,
+      arguments_.input.modelOptions,
     );
 
     return CreateSessionMutation.serializeRecord(sessionRecord);
@@ -109,6 +113,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
+      modelOptions: sessionRecord.currentModelOptions,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,
       isCompacting: sessionRecord.isCompacting,

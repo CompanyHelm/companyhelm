@@ -152,7 +152,10 @@ type SessionAttribution = {
   baseUrl: string | null;
   companyId: string;
   modelProviderCredentialId: string;
+  modelProviderCredentialModelId: string | null;
   modelProvider: string | null;
+  reasoningLevel: string | null;
+  modelOptions: unknown;
 };
 
 type PersistedSessionMessageReference = {
@@ -211,7 +214,10 @@ export class PiMonoSessionEventHandler {
   private modelProviderCredentialApiKey?: string;
   private modelProviderCredentialBaseUrl?: string | null;
   private modelProviderCredentialId?: string;
+  private modelProviderCredentialModelId?: string | null;
   private modelProviderCredentialProvider?: string;
+  private reasoningLevel?: string | null;
+  private modelOptions: unknown = {};
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -287,7 +293,8 @@ export class PiMonoSessionEventHandler {
       return this.currentTurnId;
     }
 
-    const companyId = await this.resolveCompanyId();
+    const attribution = await this.resolveSessionAttribution();
+    const companyId = attribution.companyId;
     const turnId = randomUUID();
     await this.transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as unknown as InsertableDatabase;
@@ -295,6 +302,9 @@ export class PiMonoSessionEventHandler {
         companyId,
         endedAt: null,
         id: turnId,
+        modelOptions: attribution.modelOptions ?? {},
+        modelProviderCredentialModelId: attribution.modelProviderCredentialModelId,
+        reasoningLevel: attribution.reasoningLevel,
         sessionId: this.sessionId,
         startedAt,
       });
@@ -1630,8 +1640,11 @@ export class PiMonoSessionEventHandler {
         apiKey: this.modelProviderCredentialApiKey ?? null,
         baseUrl: this.modelProviderCredentialBaseUrl ?? null,
         companyId: this.companyId,
+        modelOptions: this.modelOptions,
         modelProviderCredentialId: this.modelProviderCredentialId,
+        modelProviderCredentialModelId: this.modelProviderCredentialModelId ?? null,
         modelProvider: this.modelProviderCredentialProvider ?? null,
+        reasoningLevel: this.reasoningLevel ?? null,
       };
     }
 
@@ -1648,7 +1661,9 @@ export class PiMonoSessionEventHandler {
         .select({
           agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
+          currentModelOptions: agentSessions.currentModelOptions,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, this.sessionId));
@@ -1662,8 +1677,11 @@ export class PiMonoSessionEventHandler {
           apiKey: null,
           baseUrl: null,
           companyId,
+          modelOptions: sessionRecord?.currentModelOptions ?? {},
           modelProviderCredentialId: undefined,
+          modelProviderCredentialModelId: null,
           modelProvider: null,
+          reasoningLevel: typeof sessionRecord?.currentReasoningLevel === "string" ? sessionRecord.currentReasoningLevel : null,
         };
       }
 
@@ -1683,8 +1701,11 @@ export class PiMonoSessionEventHandler {
           apiKey: null,
           baseUrl: null,
           companyId,
+          modelOptions: sessionRecord?.currentModelOptions ?? {},
           modelProviderCredentialId: undefined,
+          modelProviderCredentialModelId: null,
           modelProvider: null,
+          reasoningLevel: typeof sessionRecord?.currentReasoningLevel === "string" ? sessionRecord.currentReasoningLevel : null,
         };
       }
 
@@ -1705,8 +1726,11 @@ export class PiMonoSessionEventHandler {
         apiKey: typeof credentialRecord?.encryptedApiKey === "string" ? credentialRecord.encryptedApiKey : null,
         baseUrl: typeof credentialRecord?.baseUrl === "string" ? credentialRecord.baseUrl : null,
         companyId,
+        modelOptions: sessionRecord?.currentModelOptions ?? {},
         modelProviderCredentialId,
+        modelProviderCredentialModelId: currentModelProviderCredentialModelId || null,
         modelProvider: typeof credentialRecord?.modelProvider === "string" ? credentialRecord.modelProvider : null,
+        reasoningLevel: typeof sessionRecord?.currentReasoningLevel === "string" ? sessionRecord.currentReasoningLevel : null,
       };
     });
 
@@ -1716,6 +1740,9 @@ export class PiMonoSessionEventHandler {
     const baseUrl = attribution.baseUrl;
     const modelProviderCredentialId = attribution.modelProviderCredentialId;
     const modelProvider = attribution.modelProvider;
+    const modelProviderCredentialModelId = attribution.modelProviderCredentialModelId;
+    const reasoningLevel = attribution.reasoningLevel;
+    const modelOptions = attribution.modelOptions;
     if (
       typeof companyId !== "string"
       || typeof agentId !== "string"
@@ -1729,14 +1756,20 @@ export class PiMonoSessionEventHandler {
     this.modelProviderCredentialApiKey = apiKey ?? undefined;
     this.modelProviderCredentialBaseUrl = typeof baseUrl === "string" ? baseUrl : null;
     this.modelProviderCredentialId = modelProviderCredentialId;
+    this.modelProviderCredentialModelId = modelProviderCredentialModelId;
     this.modelProviderCredentialProvider = modelProvider ?? undefined;
+    this.reasoningLevel = reasoningLevel;
+    this.modelOptions = modelOptions ?? {};
     return {
       agentId,
       apiKey,
       baseUrl: this.modelProviderCredentialBaseUrl,
       companyId,
+      modelOptions: modelOptions ?? {},
       modelProviderCredentialId,
+      modelProviderCredentialModelId,
       modelProvider,
+      reasoningLevel,
     };
   }
 

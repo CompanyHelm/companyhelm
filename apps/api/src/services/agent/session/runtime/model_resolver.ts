@@ -5,6 +5,7 @@ import {
   modelProviderCredentials,
 } from "../../../../db/schema.ts";
 import type { SelectableDatabase } from "../session_manager_service_types.ts";
+import { ModelOptionSelection } from "../../../ai_providers/model_option_selection.ts";
 import { RuntimeProviderAdapterRegistry } from "./provider_adapter_registry.ts";
 import type {
   RuntimeModelResolution,
@@ -17,6 +18,7 @@ type ModelRow = {
   modelProviderCredentialId: string;
   name?: string;
   reasoningSupported?: boolean;
+  modelOptions: unknown;
 };
 
 type CredentialRow = {
@@ -76,6 +78,10 @@ export class RuntimeModelResolver implements RuntimeModelResolverInterface {
       modelId: modelRow.modelId,
       ...(modelRow.name ? { modelName: modelRow.name } : {}),
       modelProviderCredentialId: modelRow.modelProviderCredentialId,
+      providerOptions: ModelOptionSelection.normalizeSelectedValues(
+        ModelOptionSelection.normalizeDefinitions(modelRow.modelOptions),
+        input.currentModelOptions,
+      ),
       providerId: runtimeProvider.providerId,
       ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
     };
@@ -92,6 +98,7 @@ export class RuntimeModelResolver implements RuntimeModelResolverInterface {
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
         name: modelProviderCredentialModels.name,
         reasoningSupported: modelProviderCredentialModels.reasoningSupported,
+        modelOptions: modelProviderCredentialModels.modelOptions,
       })
       .from(modelProviderCredentialModels)
       .where(and(

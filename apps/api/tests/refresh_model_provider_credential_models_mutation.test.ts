@@ -104,6 +104,7 @@ test("RefreshModelProviderCredentialModelsMutation refreshes models with the sto
   assert.deepEqual(models, [{
     description: "Latest frontier agentic coding model.",
     modelId: "gpt-5.4",
+    modelOptions: [],
     name: "GPT-5.4",
     provider: "openai",
     reasoningLevels: ["high"],
