@@ -11,6 +11,7 @@ import { CompaniesRoute } from "./pages/auth/companies_route";
 import { SignedUpPage } from "./pages/auth/signed_up_page";
 import { CompanyCreationPage } from "./pages/company_creation_page";
 import { AuthenticationRoute } from "./pages/auth/route";
+import { ArchivedChatPage } from "./pages/chats/archived_chat_page";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
 import { ConversationsPage } from "./pages/conversations/conversations_page";
@@ -318,6 +319,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const archivedChatDetailRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/archived-chats/$sessionId"),
+  component: ArchivedChatPage,
+});
+
 const onboardingRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/onboarding"),
@@ -537,6 +544,7 @@ const routeTree = rootRoute.addChildren([
         environmentDetailRoute,
         computeProvidersRoute,
         chatsRoute,
+        archivedChatDetailRoute,
         onboardingRoute,
         onboardingMissionRoute,
         onboardingGithubRoute,

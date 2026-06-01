@@ -360,6 +360,8 @@ export class GraphqlApplication {
       sessionSecretsQueryResolver,
       sessionTranscriptMessagesQueryResolver,
       undefined,
+      undefined,
+      undefined,
       sessionsQueryResolver,
       sessionUpdatedSubscriptionResolver,
       steerSessionQueuedMessageMutation,
