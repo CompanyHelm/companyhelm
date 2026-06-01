@@ -9,6 +9,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ListTodoIcon, Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
 import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { ModelSelectionDialog, type ModelSelectionOption } from "@/components/model_selection_dialog";
+import { normalizeModelOptionDefinitions, normalizeModelOptionValues, type ModelOptionValues } from "@/components/model_options_control";
 import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -189,6 +190,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
   const [composerModelOptionId, setComposerModelOptionId] = useState("");
   const [composerReasoningLevel, setComposerReasoningLevel] = useState("");
+  const [composerModelOptionValues, setComposerModelOptionValues] = useState<ModelOptionValues>({});
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
   const [liveSessionHumanQuestionsBySessionId, setLiveSessionHumanQuestionsBySessionId] = useState<
     Record<string, InboxHumanQuestionRecord[]>
@@ -302,6 +304,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           providerOptionId: providerOption.id,
           providerId: providerOption.modelProvider,
           providerLabel: providerOption.label,
+          modelOptions: normalizeModelOptionDefinitions(modelOption.modelOptions),
           reasoningSupported: modelOption.reasoningSupported,
           reasoningLevels: [...modelOption.reasoningLevels],
         }));
@@ -433,6 +436,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       cybersecurityFallbackModelOption,
       composerReasoningLevel,
     ));
+    setComposerModelOptionValues({});
     setErrorMessage(null);
   }, [canSwitchCybersecurityFallbackModel, composerReasoningLevel, cybersecurityFallbackModelOption]);
   const shouldUseCompactComposerSettings = isMobile;
@@ -1225,6 +1229,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
 
     setComposerModelOptionId(nextModelOptionId);
     setComposerReasoningLevel(nextReasoningLevel);
+    setComposerModelOptionValues(normalizeModelOptionValues(selectedSession?.modelOptions ?? selectedAgent.modelOptions));
   }, [
     composerModelOptionById,
     composerModelOptionId,
@@ -1634,6 +1639,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             agentId: selectedAgent.id,
             images: promptImages.length > 0 ? promptImages : undefined,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
+            modelOptions: composerModelOptionValues,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
             userMessage,
@@ -1902,6 +1908,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
             id: selectedSession.id,
             images: promptImages.length > 0 ? promptImages : undefined,
             modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
+            modelOptions: composerModelOptionValues,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer,
             userMessage,
@@ -2448,6 +2455,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       composerModelOptionId={composerModelOptionId}
       composerModelOptions={composerModelOptions}
       composerReasoningLevel={composerReasoningLevel}
+      composerModelOptionValues={composerModelOptionValues}
       canManuallyResizeDraftTextarea={
         !shouldUseCenteredNewChatLayout && shouldEnableDraftTextareaManualResize(isMobile)
       }
@@ -2470,7 +2478,10 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       }}
       onDraftImageInputChange={handleDraftImageInputChange}
       onDraftMessageChange={setDraftMessage}
-      onModelChange={setComposerModelOptionId}
+      onModelChange={(modelOptionId) => {
+        setComposerModelOptionId(modelOptionId);
+        setComposerModelOptionValues({});
+      }}
       onOpenDraftImagePicker={openDraftImagePicker}
       onQueueDraft={() => {
         void queueDraftMessage();
@@ -2478,6 +2489,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       onForkLatestSession={() => {
         void forkLatestSessionContext();
       }}
+      onModelOptionsChange={setComposerModelOptionValues}
       onReasoningLevelChange={setComposerReasoningLevel}
       onRemoveDraftImage={removeDraftImage}
       onResolveHumanQuestion={(input) => {
@@ -2525,7 +2537,12 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         isLoadingSessionEnvironment={isLoadingSessionEnvironment}
         isMobile={isMobile}
         isOpen={isEnvironmentPanelOpen}
-        onComposerModelOptionChange={setComposerModelOptionId}
+        onComposerModelOptionChange={(modelOptionId) => {
+          setComposerModelOptionId(modelOptionId);
+          setComposerModelOptionValues({});
+        }}
+        onComposerModelOptionsChange={setComposerModelOptionValues}
+        composerModelOptionValues={composerModelOptionValues}
         onComposerReasoningLevelChange={setComposerReasoningLevel}
         onDeleteEnvironment={deleteSessionEnvironment}
         onManageEnvironments={() => {

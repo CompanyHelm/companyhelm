@@ -26,6 +26,7 @@ type StoredModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
+  modelOptions: unknown;
 };
 
 type SelectableDatabase = {
@@ -138,6 +139,7 @@ export class ModelService {
           description: modelProviderCredentialModels.description,
           reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+          modelOptions: modelProviderCredentialModels.modelOptions,
         })
         .from(modelProviderCredentialModels)
         .where(and(
@@ -170,6 +172,7 @@ export class ModelService {
               description: fetchedModel.description,
               reasoningSupported: fetchedModel.reasoningSupported,
               reasoningLevels: fetchedModel.reasoningLevels,
+              modelOptions: fetchedModel.modelOptions,
               isDefault: false,
             });
           continue;
@@ -182,6 +185,7 @@ export class ModelService {
             description: fetchedModel.description,
             reasoningSupported: fetchedModel.reasoningSupported,
             reasoningLevels: fetchedModel.reasoningLevels,
+            modelOptions: fetchedModel.modelOptions,
           })
           .where(and(
             eq(modelProviderCredentialModels.companyId, input.companyId),
@@ -234,6 +238,7 @@ export class ModelService {
           description: modelProviderCredentialModels.description,
           reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+          modelOptions: modelProviderCredentialModels.modelOptions,
         })
         .from(modelProviderCredentialModels)
         .where(and(

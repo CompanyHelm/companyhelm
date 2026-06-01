@@ -7,6 +7,7 @@ import {
   modelProviderCredentials,
 } from "../../db/schema.ts";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
+import { ModelOptionSelection } from "../../services/ai_providers/model_option_selection.ts";
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
 import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -20,6 +21,7 @@ type UpdateAgentMutationArguments = {
     id: string;
     llmModelId: string;
     name: string;
+    modelOptions?: unknown;
     title?: string | null;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
@@ -35,6 +37,7 @@ type AgentRecord = {
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
+  defaultModelOptions: unknown;
   systemPrompt: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +47,7 @@ type ModelRecord = {
   id: string;
   modelProviderCredentialId: string;
   name: string;
+  modelOptions: unknown;
   reasoningLevels: string[] | null;
 };
 
@@ -78,6 +82,7 @@ type GraphqlAgentRecord = {
   modelProviderCredentialModelId: string | null;
   modelProvider: ModelProviderId | null;
   modelName: string | null;
+  modelOptions: unknown;
   reasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: string;
@@ -209,6 +214,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
+      const modelOptions = ModelOptionSelection.mergeWithDefaults(
+        ModelOptionSelection.normalizeDefinitions(modelRecord.modelOptions),
+        arguments_.input.modelOptions,
+      );
       const autoCompactPercent = UpdateAgentMutation.resolveAutoCompactPercent(
         arguments_.input.autoCompactPercent,
         existingAgent.defaultAutoCompactPercent,
@@ -222,6 +231,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
           defaultAutoCompactPercent: autoCompactPercent,
+          defaultModelOptions: modelOptions,
           default_reasoning_level: reasoningLevel,
           system_prompt: UpdateAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           updated_at: new Date(),
@@ -239,6 +249,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           defaultReasoningLevel: agents.default_reasoning_level,
+          defaultModelOptions: agents.defaultModelOptions,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
           updatedAt: agents.updated_at,
@@ -347,6 +358,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         id: modelProviderCredentialModels.id,
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
         name: modelProviderCredentialModels.name,
+        modelOptions: modelProviderCredentialModels.modelOptions,
         reasoningLevels: modelProviderCredentialModels.reasoningLevels,
       })
       .from(modelProviderCredentialModels)
@@ -399,6 +411,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord.modelProvider,
       modelName: modelRecord.name,
+      modelOptions: agentRecord.defaultModelOptions,
       reasoningLevel: agentRecord.defaultReasoningLevel,
       systemPrompt: agentRecord.systemPrompt,
       createdAt: agentRecord.createdAt.toISOString(),

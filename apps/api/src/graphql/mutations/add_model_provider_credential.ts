@@ -288,6 +288,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
       description: input.model.description,
       reasoningSupported: input.model.reasoningSupported,
       reasoningLevels: input.model.reasoningLevels,
+      modelOptions: input.model.modelOptions,
       isDefault: false,
     };
   }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<763788dc281913748761a1f6f4ebbf36>>
+ * @generated SignedSource<<bec1632d7319f67341b2264928a47026>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type agentsPageQuery$data = {
       readonly description: string;
       readonly id: string;
       readonly llmModelId: string;
+      readonly modelOptions: any;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
       readonly reasoningSupported: boolean;
@@ -32,6 +33,7 @@ export type agentsPageQuery$data = {
     readonly createdAt: string;
     readonly id: string;
     readonly modelName: string | null | undefined;
+    readonly modelOptions: any;
     readonly modelProvider: string | null | undefined;
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
@@ -125,21 +127,28 @@ v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "isDefault",
+  "name": "modelOptions",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "isDefault",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v6 = [
+v7 = [
   (v0/*: any*/),
   (v1/*: any*/)
 ],
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -166,6 +175,7 @@ v7 = [
         "name": "reasoningLevel",
         "storageKey": null
       },
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -212,7 +222,7 @@ v7 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
-      (v4/*: any*/),
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -251,7 +261,7 @@ v7 = [
             "name": "llmModelId",
             "storageKey": null
           },
-          (v5/*: any*/),
+          (v6/*: any*/),
           (v1/*: any*/),
           {
             "alias": null,
@@ -266,7 +276,8 @@ v7 = [
             "kind": "ScalarField",
             "name": "reasoningLevels",
             "storageKey": null
-          }
+          },
+          (v4/*: any*/)
         ],
         "storageKey": null
       }
@@ -283,7 +294,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -308,7 +319,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "SecretGroups",
     "plural": true,
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   },
   {
@@ -318,7 +329,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "SkillGroups",
     "plural": true,
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   },
   {
@@ -331,7 +342,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -359,7 +370,7 @@ v7 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -386,7 +397,7 @@ v7 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
-      (v4/*: any*/),
+      (v5/*: any*/),
       (v1/*: any*/),
       {
         "alias": null,
@@ -452,7 +463,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentsPageQuery",
-    "selections": (v7/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -461,19 +472,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "agentsPageQuery",
-    "selections": (v7/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "1359dd29a1fa6334f94763ac78fc625b",
+    "cacheID": "aabc63be8ca99d9d7bdbab778b12b74c",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    title\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  suggestAgentName {\n    name\n    title\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultLlmModelId\n    defaultReasoningLevel\n    models {\n      id\n      llmModelId\n      description\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    title\n    modelProvider\n    modelName\n    reasoningLevel\n    modelOptions\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  suggestAgentName {\n    name\n    title\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultLlmModelId\n    defaultReasoningLevel\n    models {\n      id\n      llmModelId\n      description\n      name\n      reasoningSupported\n      reasoningLevels\n      modelOptions\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "074a429c998ddd6dbd827d0075010d4c";
+(node as any).hash = "609c152d92a079be57f6718f46fdc106";
 
 export default node;

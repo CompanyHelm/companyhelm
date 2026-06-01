@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
 import { modelProviderCredentialModels } from "../../../db/schema.ts";
+import { ModelOptionSelection } from "../../ai_providers/model_option_selection.ts";
 import type {
   AgentRecord,
   ExistingSessionRow,
@@ -55,6 +56,7 @@ export class SessionModelSelectionService {
         modelId: modelProviderCredentialModels.modelId,
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
         reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+        modelOptions: modelProviderCredentialModels.modelOptions,
       })
       .from(modelProviderCredentialModels)
       .where(and(
@@ -65,6 +67,7 @@ export class SessionModelSelectionService {
         modelId: string;
         modelProviderCredentialId: string;
         reasoningLevels: string[] | null;
+        modelOptions: unknown;
       }>;
     if (!modelRecord) {
       throw new Error("Selected model not found.");
@@ -76,6 +79,7 @@ export class SessionModelSelectionService {
       modelProviderCredentialId: modelRecord.modelProviderCredentialId,
       modelProviderCredentialModelId: modelRecord.id,
       reasoningLevels: modelRecord.reasoningLevels,
+      modelOptions: modelRecord.modelOptions,
     };
   }
 
@@ -93,6 +97,19 @@ export class SessionModelSelectionService {
       companyId,
       existingSession.currentModelProviderCredentialModelId,
     );
+  }
+
+  resolveModelOptions(
+    modelOptions: unknown,
+    requestedModelOptions?: unknown,
+    fallbackModelOptions?: unknown,
+  ): Record<string, unknown> {
+    const definitions = ModelOptionSelection.normalizeDefinitions(modelOptions);
+    if (requestedModelOptions !== undefined) {
+      return ModelOptionSelection.mergeWithDefaults(definitions, requestedModelOptions);
+    }
+
+    return ModelOptionSelection.mergeWithDefaults(definitions, fallbackModelOptions);
   }
 
   resolveReasoningLevel(

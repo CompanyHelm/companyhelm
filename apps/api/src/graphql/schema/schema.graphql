@@ -558,6 +558,7 @@ type Agent {
   modelProviderCredentialModelId: ID
   modelProvider: String
   modelName: String
+  modelOptions: JSON!
   reasoningLevel: String
   systemPrompt: String
   environmentTemplate: AgentEnvironmentTemplate!
@@ -661,6 +662,7 @@ type AgentCreateModelOption {
   description: String!
   reasoningSupported: Boolean!
   reasoningLevels: [String!]!
+  modelOptions: JSON!
 }
 
 type Session {
@@ -678,6 +680,7 @@ type Session {
   lastUserMessageAt: String
   modelProviderCredentialModelId: ID
   modelId: String!
+  modelOptions: JSON!
   reasoningLevel: String!
   inferredTitle: String
   isCompacting: Boolean!
@@ -1030,6 +1033,7 @@ type ModelProviderCredentialModel {
   description: String!
   reasoningSupported: Boolean!
   reasoningLevels: [String!]!
+  modelOptions: JSON!
 }
 
 type ModelProvider {
@@ -1217,6 +1221,7 @@ input AddAgentInput {
   name: String!
   title: String
   llmModelId: ID!
+  modelOptions: JSON
   reasoningLevel: String
   secretGroupIds: [ID!]
   systemPrompt: String
@@ -1234,6 +1239,7 @@ input UpdateAgentInput {
   name: String!
   title: String
   llmModelId: ID!
+  modelOptions: JSON
   reasoningLevel: String
   systemPrompt: String
 }
@@ -1354,6 +1360,7 @@ input CreateSessionInput {
   agentId: ID!
   images: [SessionPromptImageInput!]
   modelProviderCredentialModelId: ID
+  modelOptions: JSON
   reasoningLevel: String
   sessionId: ID
   userMessage: String!
@@ -1363,6 +1370,7 @@ input PromptSessionInput {
   id: ID!
   images: [SessionPromptImageInput!]
   modelProviderCredentialModelId: ID
+  modelOptions: JSON
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!

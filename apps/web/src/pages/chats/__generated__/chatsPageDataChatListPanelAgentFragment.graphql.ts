@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<eb425e7e15907703c0097c3989fec08e>>
+ * @generated SignedSource<<e2c14b975d248c311f6e57482911a139>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ import { FragmentRefs } from "relay-runtime";
 export type chatsPageDataChatListPanelAgentFragment$data = {
   readonly id: string;
   readonly modelName: string | null | undefined;
+  readonly modelOptions: any;
   readonly modelProvider: string | null | undefined;
   readonly modelProviderCredentialModelId: string | null | undefined;
   readonly name: string;
@@ -71,12 +72,19 @@ const node: ReaderFragment = {
       "kind": "ScalarField",
       "name": "reasoningLevel",
       "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "modelOptions",
+      "storageKey": null
     }
   ],
   "type": "Agent",
   "abstractKey": null
 };
 
-(node as any).hash = "89fdddd695d93e02aa78788a58fd01bf";
+(node as any).hash = "ee91e7b13db8badd99f886d342a446c0";
 
 export default node;

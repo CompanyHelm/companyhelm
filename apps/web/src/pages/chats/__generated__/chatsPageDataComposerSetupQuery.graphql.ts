@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<60f2da90f196f89f7535b591e752ff0a>>
+ * @generated SignedSource<<1941393356398a850bead0af9f59edee>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type chatsPageDataComposerSetupQuery$data = {
       readonly description: string;
       readonly id: string;
       readonly modelId: string;
+      readonly modelOptions: any;
       readonly modelProviderCredentialModelId: string | null | undefined;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
@@ -129,6 +130,13 @@ v1 = [
             "kind": "ScalarField",
             "name": "reasoningLevels",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "modelOptions",
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -155,16 +163,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d0087b183f1d7229bccf36b18950c7f5",
+    "cacheID": "21f7d16377d03115e4f57d4baea6e382",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataComposerSetupQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataComposerSetupQuery {\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n}\n"
+    "text": "query chatsPageDataComposerSetupQuery {\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n      modelOptions\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5aa8c8dbc054a2178c1875a23e062c11";
+(node as any).hash = "67213615bb40c2018853033524c540f9";
 
 export default node;

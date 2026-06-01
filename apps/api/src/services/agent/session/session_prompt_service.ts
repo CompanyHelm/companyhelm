@@ -74,6 +74,7 @@ export class SessionPromptService {
     shouldSteer = false,
     images?: SessionPromptImageInput[],
     userId?: string | null,
+    modelOptions?: unknown,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.queuePromptInTransaction(
@@ -87,6 +88,7 @@ export class SessionPromptService {
           images,
           modelProviderCredentialModelId,
           reasoningLevel,
+          modelOptions,
           shouldSteer,
           userId,
         },
@@ -112,6 +114,7 @@ export class SessionPromptService {
         agentId: agentSessions.agentId,
         currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         currentReasoningLevel: agentSessions.currentReasoningLevel,
+        currentModelOptions: agentSessions.currentModelOptions,
         id: agentSessions.id,
         ownerUserId: agentSessions.ownerUserId,
         status: agentSessions.status,
@@ -143,6 +146,11 @@ export class SessionPromptService {
       options.reasoningLevel,
       existingSession.currentReasoningLevel,
     );
+    const resolvedModelOptions = this.sessionModelSelectionService.resolveModelOptions(
+      selectedModelRecord.modelOptions,
+      options.modelOptions,
+      existingSession.currentModelOptions,
+    );
     const preparedPrompt = this.prepareQueuedPrompt(userMessage, options.images);
     const now = new Date();
     const [updatedSessionRecord] = await updatableDatabase
@@ -150,6 +158,7 @@ export class SessionPromptService {
       .set({
         currentModelProviderCredentialModelId: selectedModelRecord.modelProviderCredentialModelId,
         currentReasoningLevel: resolvedReasoningLevel,
+        currentModelOptions: resolvedModelOptions,
         lastUserMessageAt: now,
         status: existingSession.status === "running" ? "running" : "queued",
         updated_at: now,

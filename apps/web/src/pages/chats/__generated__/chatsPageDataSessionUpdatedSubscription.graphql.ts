@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3a0c76f1567b289a8782d7dab18e7977>>
+ * @generated SignedSource<<8312f04cbcf14fa221db01dc37bf538d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -46,6 +46,7 @@ export type chatsPageDataSessionUpdatedSubscription$data = {
     readonly lastUserMessageAt: string | null | undefined;
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
+    readonly modelOptions: any;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
@@ -277,6 +278,13 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "modelOptions",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevel",
         "storageKey": null
       },
@@ -309,16 +317,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "115c682ebf7de0323b6f266cfdd27a27",
+    "cacheID": "738b0e6ca598e4b1a49cca0071c205e5",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    inferredTitle\n    status\n    createdAt\n    lastUserMessageAt\n    userSetTitle\n    currentContextTokens\n    isCompacting\n    isThinking\n    maxContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    canForkLatestSession\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    inferredTitle\n    status\n    createdAt\n    lastUserMessageAt\n    userSetTitle\n    currentContextTokens\n    isCompacting\n    isThinking\n    maxContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    canForkLatestSession\n    modelProviderCredentialModelId\n    modelId\n    modelOptions\n    reasoningLevel\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "af97df5093b1fe509df23774c5378a40";
+(node as any).hash = "43515ab3a7643f1c53d0ea3f4efa04b0";
 
 export default node;

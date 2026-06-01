@@ -22,6 +22,7 @@ type AgentRecord = {
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
+  defaultModelOptions: unknown;
   systemPrompt: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +59,7 @@ type GraphqlAgentRecord = {
   modelProviderCredentialModelId: string | null;
   modelProvider: ModelProviderId | null;
   modelName: string | null;
+  modelOptions: unknown;
   reasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: string;
@@ -106,6 +108,7 @@ export class AgentQueryResolver {
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultAutoCompactPercent: agents.defaultAutoCompactPercent,
           defaultReasoningLevel: agents.default_reasoning_level,
+          defaultModelOptions: agents.defaultModelOptions,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
           updatedAt: agents.updated_at,
@@ -178,6 +181,7 @@ export class AgentQueryResolver {
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,
       modelProvider: credentialRecord?.modelProvider ?? null,
       modelName: modelRecord?.name ?? null,
+      modelOptions: agentRecord.defaultModelOptions,
       reasoningLevel: agentRecord.defaultReasoningLevel,
       systemPrompt: agentRecord.systemPrompt,
       createdAt: agentRecord.createdAt.toISOString(),

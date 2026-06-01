@@ -2,6 +2,7 @@ import type { SelectableDatabase } from "../session_manager_service_types.ts";
 
 export type RuntimeModelResolverInput = {
   currentModelProviderCredentialModelId: string | null;
+  currentModelOptions?: unknown;
 };
 
 export type RuntimeModelResolution = {
@@ -11,6 +12,7 @@ export type RuntimeModelResolution = {
   modelId: string;
   modelName?: string | null;
   modelProviderCredentialId: string;
+  providerOptions: Record<string, unknown>;
   providerId: string;
   reasoningSupported?: boolean | null;
 };

@@ -62,6 +62,7 @@ export const agentSessions = pgTable("agent_sessions", {
   // user explicitly set title, it should take precedence over the inferred title
   userSetTitle: text("user_set_title"),
   currentReasoningLevel: text("current_reasoning_level").notNull(),
+  currentModelOptions: jsonb("current_model_options").notNull().default(sql`'{}'::jsonb`),
   status: agentSessionStatusEnum("status").notNull(),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
@@ -105,6 +106,10 @@ export const sessionTurns = pgTable("session_turns", {
   sessionId: uuid("session_id")
     .references((): AnyPgColumn => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
+  modelProviderCredentialModelId: uuid("model_provider_credential_model_id")
+    .references((): AnyPgColumn => modelProviderCredentialModels.id, { onDelete: "set null" }),
+  reasoningLevel: text("reasoning_level"),
+  modelOptions: jsonb("model_options").notNull().default(sql`'{}'::jsonb`),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   usageInputTokens: integer("usage_input_tokens").default(0).notNull(),

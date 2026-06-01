@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dc2aa115ac599df4ca6f32dfc53d4c28>>
+ * @generated SignedSource<<4429f5cbcc656135e4c8a375d8d78238>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type PromptSessionInput = {
   id: string;
   images?: ReadonlyArray<SessionPromptImageInput> | null | undefined;
+  modelOptions?: any | null | undefined;
   modelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   shouldSteer?: boolean | null | undefined;
@@ -41,6 +42,7 @@ export type chatsPageDataPromptSessionMutation$data = {
     readonly lastUserMessageAt: string | null | undefined;
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
+    readonly modelOptions: any;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
@@ -164,6 +166,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "modelOptions",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevel",
         "storageKey": null
       },
@@ -238,16 +247,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "4d5e2feca384b8b34de6f1fb29194975",
+    "cacheID": "838026d1911b5c5039e40e0c29879351",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataPromptSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageDataPromptSessionMutation(\n  $input: PromptSessionInput!\n) {\n  PromptSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageDataPromptSessionMutation(\n  $input: PromptSessionInput!\n) {\n  PromptSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    modelOptions\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "71e105d19db19ad1458d65da667e8657";
+(node as any).hash = "d20faec50b9166e63fcb5aff3aaff1b1";
 
 export default node;

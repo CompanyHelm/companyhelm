@@ -3,6 +3,7 @@ import { agentSessions } from "../../../db/schema.ts";
 export type AgentRecord = {
   defaultModelProviderCredentialModelId: string | null;
   defaultReasoningLevel: string | null;
+  defaultModelOptions: unknown;
   id: string;
 };
 
@@ -10,6 +11,7 @@ export type ExistingSessionRow = {
   agentId: string;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
+  currentModelOptions: unknown;
   id: string;
   inferredTitle?: string | null;
   ownerUserId?: string | null;
@@ -23,6 +25,7 @@ export type ModelRecord = {
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string | null;
   reasoningLevels: string[] | null;
+  modelOptions: unknown;
 };
 
 export type AgentDefaultSecretRecord = {
@@ -42,6 +45,7 @@ export type SessionRecord = {
   currentModelId: string;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
+  currentModelOptions: unknown;
   id: string;
   inferredTitle: string | null;
   isCompacting: boolean;
@@ -72,6 +76,7 @@ export type SessionManagerCreateSessionOptions = {
   modelProviderCredentialModelId?: string | null;
   principalMetadata?: SessionMessagePrincipalMetadata;
   reasoningLevel?: string | null;
+  modelOptions?: unknown;
   sessionId?: string | null;
   shouldSteer?: boolean;
   userId?: string | null;
@@ -82,6 +87,7 @@ export type SessionManagerQueuePromptOptions = {
   modelProviderCredentialModelId?: string | null;
   principalMetadata?: SessionMessagePrincipalMetadata;
   reasoningLevel?: string | null;
+  modelOptions?: unknown;
   shouldSteer?: boolean;
   userId?: string | null;
 };
@@ -124,6 +130,7 @@ export const agentSessionSelection = {
   agentId: agentSessions.agentId,
   currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
   currentReasoningLevel: agentSessions.currentReasoningLevel,
+  currentModelOptions: agentSessions.currentModelOptions,
   currentContextTokens: agentSessions.currentContextTokens,
   inferredTitle: agentSessions.inferredTitle,
   isCompacting: agentSessions.isCompacting,

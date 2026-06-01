@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47ab55273dfffc809d80961c21e5a324>>
+ * @generated SignedSource<<e16dab8180c4b13e487d1538f7ae61fb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type AddAgentInput = {
   defaultEnvironmentTemplateId: string;
   llmModelId: string;
   mcpServerIds?: ReadonlyArray<string> | null | undefined;
+  modelOptions?: any | null | undefined;
   name: string;
   reasoningLevel?: string | null | undefined;
   secretGroupIds?: ReadonlyArray<string> | null | undefined;
@@ -32,6 +33,7 @@ export type agentsPageAddAgentMutation$data = {
     readonly createdAt: string;
     readonly id: string;
     readonly modelName: string | null | undefined;
+    readonly modelOptions: any;
     readonly modelProvider: string | null | undefined;
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
@@ -114,6 +116,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "modelOptions",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "systemPrompt",
         "storageKey": null
       },
@@ -153,16 +162,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "f3f3caeb261de3d61cbaba1ecbf9e855",
+    "cacheID": "25a635f675468de896edf8cd22c7d69d",
     "id": null,
     "metadata": {},
     "name": "agentsPageAddAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentsPageAddAgentMutation(\n  $input: AddAgentInput!\n) {\n  AddAgent(input: $input) {\n    id\n    name\n    title\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentsPageAddAgentMutation(\n  $input: AddAgentInput!\n) {\n  AddAgent(input: $input) {\n    id\n    name\n    title\n    modelProvider\n    modelName\n    reasoningLevel\n    modelOptions\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cd3381bd5736268dcc8e83cfb77f77ef";
+(node as any).hash = "b4543e526faab40d82a633ff577d41ef";
 
 export default node;

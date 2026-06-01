@@ -80,6 +80,7 @@ function buildModelOptions() {
     providerOptionId: "provider-option-1",
     providerId: "openai",
     providerLabel: "Perf Harness",
+    modelOptions: [],
     reasoningLevels: ["low", "medium", "high"],
     reasoningSupported: true,
   }] satisfies ChatComposerModelOption[];
@@ -191,6 +192,7 @@ function ChatPerformanceHarness() {
                 composerModelOptionId={modelOptions[0].id}
                 composerModelOptions={modelOptions}
                 composerReasoningLevel="high"
+                composerModelOptionValues={{}}
                 canManuallyResizeDraftTextarea={true}
                 deletingQueuedMessageId={null}
                 draftImageFileInputRef={draftImageFileInputRef}
@@ -208,6 +210,7 @@ function ChatPerformanceHarness() {
                 onDraftMessageChange={setDraftMessage}
                 onForkLatestSession={noop}
                 onModelChange={noop}
+                onModelOptionsChange={noop}
                 onOpenDraftImagePicker={noop}
                 onQueueDraft={noop}
                 onReasoningLevelChange={noop}

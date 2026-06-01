@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { ModelSelectionDialog } from "@/components/model_selection_dialog";
+import { ModelOptionsControl, normalizeModelOptionDefinitions, type ModelOptionValues } from "@/components/model_options_control";
 import { Button } from "@/components/ui/button";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import {
@@ -37,6 +38,7 @@ export type AgentCreateProviderOption = {
     description: string | null | undefined;
     llmModelId: string;
     name: string;
+    modelOptions: unknown;
     reasoningSupported: boolean;
     reasoningLevels: string[];
   }>;
@@ -114,6 +116,7 @@ interface CreateAgentDialogProps {
     llmModelId: string;
     name: string;
     title?: string;
+    modelOptions?: ModelOptionValues;
     reasoningLevel?: string;
     secretGroupIds?: string[];
     secretIds?: string[];
@@ -140,6 +143,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [providerOptionId, setProviderOptionId] = useState("");
   const [selectedModelRecordId, setSelectedModelRecordId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
+  const [modelOptionValues, setModelOptionValues] = useState<ModelOptionValues>({});
   const [autoCompactPercent, setAutoCompactPercent] = useState(80);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedSecretGroupIds, setSelectedSecretGroupIds] = useState<string[]>([]);
@@ -270,6 +274,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setProviderOptionId("");
       setSelectedModelRecordId("");
       setReasoningLevel("");
+      setModelOptionValues({});
       setAutoCompactPercent(80);
       setSystemPrompt("");
       setSelectedSecretGroupIds([]);
@@ -350,6 +355,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     );
     setSelectedModelRecordId(defaultModelOption?.id ?? selectedProviderOption.models[0]?.id ?? "");
     setReasoningLevel("");
+    setModelOptionValues({});
   }, [selectedModelRecordId, selectedProviderOption]);
 
   useEffect(() => {
@@ -618,6 +624,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               onOpenChange={setIsModelDialogOpen}
               onSelect={(selectedModelOptionId) => {
                 setSelectedModelRecordId(selectedModelOptionId);
+                setModelOptionValues({});
                 setIsModelDialogOpen(false);
               }}
               open={isModelDialogOpen}
@@ -631,6 +638,14 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               selectedOptionId={selectedModelRecordId}
             />
           </div>
+
+          {selectedModelOption ? (
+            <ModelOptionsControl
+              definitions={normalizeModelOptionDefinitions(selectedModelOption.modelOptions)}
+              onChange={setModelOptionValues}
+              values={modelOptionValues}
+            />
+          ) : null}
 
           {isReasoningLevelRequired ? (
             <div className="grid gap-2">

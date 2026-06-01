@@ -25,6 +25,7 @@ type ModelRecord = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[] | null;
+  modelOptions: unknown;
 };
 
 type DefaultProviderSelectionRecord = {
@@ -40,6 +41,7 @@ type GraphqlAgentCreateModelOption = {
   description: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];
+  modelOptions: unknown;
 };
 
 type GraphqlAgentCreateProviderOption = {
@@ -115,6 +117,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           description: modelProviderCredentialModels.description,
           reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+          modelOptions: modelProviderCredentialModels.modelOptions,
         })
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
@@ -168,6 +171,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         description: modelRecord.description,
         reasoningSupported: modelRecord.reasoningSupported,
         reasoningLevels: modelRecord.reasoningLevels ?? [],
+        modelOptions: modelRecord.modelOptions ?? [],
       })),
     };
   }

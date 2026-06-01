@@ -8,6 +8,7 @@ type PromptSessionMutationArguments = {
     id: string;
     images?: SessionPromptImageInput[] | null;
     modelProviderCredentialModelId?: string | null;
+    modelOptions?: unknown;
     reasoningLevel?: string | null;
     shouldSteer?: boolean | null;
     userMessage: string;
@@ -27,6 +28,7 @@ type GraphqlSessionRecord = {
   maxContextTokens: number | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
+  modelOptions: unknown;
   reasoningLevel: string;
   status: string;
   thinkingText: string | null;
@@ -39,6 +41,7 @@ type ServiceSessionRecord = {
   createdAt: Date;
   currentContextTokens: number | null;
   currentModelId: string;
+  currentModelOptions: unknown;
   currentModelProviderCredentialModelId: string | null;
   currentReasoningLevel: string;
   id: string;
@@ -95,6 +98,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       arguments_.input.shouldSteer === true,
       images,
       context.authSession.user.id,
+      arguments_.input.modelOptions,
     );
 
     return PromptSessionMutation.serializeRecord(sessionRecord);
@@ -109,6 +113,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
+      modelOptions: sessionRecord.currentModelOptions,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,
       isCompacting: sessionRecord.isCompacting,

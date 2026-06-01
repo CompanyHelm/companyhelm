@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0039ed97d5256d94dbe6cd2b25a3502f>>
+ * @generated SignedSource<<534933f302187f00ad60e478f89866d2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -36,6 +36,7 @@ export type agentDetailPageQuery$data = {
     readonly id: string;
     readonly llmModelId: string | null | undefined;
     readonly modelName: string | null | undefined;
+    readonly modelOptions: any;
     readonly modelProvider: string | null | undefined;
     readonly modelProviderCredentialId: string | null | undefined;
     readonly modelProviderCredentialModelId: string | null | undefined;
@@ -56,6 +57,7 @@ export type agentDetailPageQuery$data = {
       readonly description: string;
       readonly id: string;
       readonly llmModelId: string;
+      readonly modelOptions: any;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
       readonly reasoningSupported: boolean;
@@ -269,7 +271,14 @@ v5 = {
   "name": "modelProvider",
   "storageKey": null
 },
-v6 = [
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelOptions",
+  "storageKey": null
+},
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -307,7 +316,7 @@ v6 = [
     "storageKey": null
   }
 ],
-v7 = {
+v8 = {
   "alias": null,
   "args": [
     {
@@ -389,6 +398,7 @@ v7 = {
       "name": "reasoningLevel",
       "storageKey": null
     },
+    (v6/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -403,7 +413,7 @@ v7 = {
       "kind": "LinkedField",
       "name": "environmentTemplate",
       "plural": false,
-      "selections": (v6/*: any*/),
+      "selections": (v7/*: any*/),
       "storageKey": null
     },
     {
@@ -423,14 +433,14 @@ v7 = {
   ],
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "companyId",
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "CompanySettings",
@@ -438,7 +448,7 @@ v9 = {
   "name": "CompanySettings",
   "plural": false,
   "selections": [
-    (v8/*: any*/),
+    (v9/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -449,31 +459,31 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = {
+v11 = {
   "kind": "Variable",
   "name": "agentId",
   "variableName": "agentId"
 },
-v11 = [
-  (v10/*: any*/)
+v12 = [
+  (v11/*: any*/)
 ],
-v12 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v13 = {
+v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "envVarName",
   "storageKey": null
 },
-v14 = {
+v15 = {
   "alias": null,
-  "args": (v11/*: any*/),
+  "args": (v12/*: any*/),
   "concreteType": "Secret",
   "kind": "LinkedField",
   "name": "AgentSecrets",
@@ -481,35 +491,35 @@ v14 = {
   "selections": [
     (v1/*: any*/),
     (v2/*: any*/),
-    (v12/*: any*/),
-    (v13/*: any*/)
+    (v13/*: any*/),
+    (v14/*: any*/)
   ],
   "storageKey": null
 },
-v15 = [
+v16 = [
   (v1/*: any*/),
   (v2/*: any*/)
 ],
-v16 = {
+v17 = {
   "alias": null,
-  "args": (v11/*: any*/),
+  "args": (v12/*: any*/),
   "concreteType": "SecretGroup",
   "kind": "LinkedField",
   "name": "AgentSecretGroups",
   "plural": true,
-  "selections": (v15/*: any*/),
+  "selections": (v16/*: any*/),
   "storageKey": null
 },
-v17 = {
+v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "url",
   "storageKey": null
 },
-v18 = {
+v19 = {
   "alias": null,
-  "args": (v11/*: any*/),
+  "args": (v12/*: any*/),
   "concreteType": "McpServer",
   "kind": "LinkedField",
   "name": "AgentMcpServers",
@@ -517,25 +527,25 @@ v18 = {
   "selections": [
     (v1/*: any*/),
     (v2/*: any*/),
-    (v12/*: any*/),
-    (v17/*: any*/)
+    (v13/*: any*/),
+    (v18/*: any*/)
   ],
   "storageKey": null
 },
-v19 = {
+v20 = {
   "alias": null,
-  "args": (v11/*: any*/),
+  "args": (v12/*: any*/),
   "concreteType": "SkillGroup",
   "kind": "LinkedField",
   "name": "AgentSkillGroups",
   "plural": true,
-  "selections": (v15/*: any*/),
+  "selections": (v16/*: any*/),
   "storageKey": null
 },
-v20 = [
+v21 = [
   (v1/*: any*/),
   (v2/*: any*/),
-  (v12/*: any*/),
+  (v13/*: any*/),
   {
     "alias": null,
     "args": null,
@@ -551,24 +561,24 @@ v20 = [
     "storageKey": null
   }
 ],
-v21 = {
+v22 = {
   "alias": null,
-  "args": (v11/*: any*/),
+  "args": (v12/*: any*/),
   "concreteType": "Skill",
   "kind": "LinkedField",
   "name": "AgentSkills",
   "plural": true,
-  "selections": (v20/*: any*/),
+  "selections": (v21/*: any*/),
   "storageKey": null
 },
-v22 = {
+v23 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "isDefault",
   "storageKey": null
 },
-v23 = {
+v24 = {
   "alias": null,
   "args": null,
   "concreteType": "AgentCreateProviderOption",
@@ -577,7 +587,7 @@ v23 = {
   "plural": true,
   "selections": [
     (v1/*: any*/),
-    (v22/*: any*/),
+    (v23/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -611,7 +621,7 @@ v23 = {
         (v1/*: any*/),
         (v3/*: any*/),
         (v2/*: any*/),
-        (v12/*: any*/),
+        (v13/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -625,14 +635,15 @@ v23 = {
           "kind": "ScalarField",
           "name": "reasoningLevels",
           "storageKey": null
-        }
+        },
+        (v6/*: any*/)
       ],
       "storageKey": null
     }
   ],
   "storageKey": null
 },
-v24 = {
+v25 = {
   "alias": null,
   "args": null,
   "concreteType": "Secret",
@@ -642,8 +653,8 @@ v24 = {
   "selections": [
     (v1/*: any*/),
     (v2/*: any*/),
-    (v12/*: any*/),
     (v13/*: any*/),
+    (v14/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -654,17 +665,17 @@ v24 = {
   ],
   "storageKey": null
 },
-v25 = {
+v26 = {
   "alias": null,
   "args": null,
   "concreteType": "SecretGroup",
   "kind": "LinkedField",
   "name": "SecretGroups",
   "plural": true,
-  "selections": (v15/*: any*/),
+  "selections": (v16/*: any*/),
   "storageKey": null
 },
-v26 = {
+v27 = {
   "alias": null,
   "args": null,
   "concreteType": "McpServer",
@@ -674,8 +685,8 @@ v26 = {
   "selections": [
     (v1/*: any*/),
     (v2/*: any*/),
-    (v12/*: any*/),
-    (v17/*: any*/),
+    (v13/*: any*/),
+    (v18/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -686,27 +697,27 @@ v26 = {
   ],
   "storageKey": null
 },
-v27 = {
+v28 = {
   "alias": null,
   "args": null,
   "concreteType": "SkillGroup",
   "kind": "LinkedField",
   "name": "SkillGroups",
   "plural": true,
-  "selections": (v15/*: any*/),
+  "selections": (v16/*: any*/),
   "storageKey": null
 },
-v28 = {
+v29 = {
   "alias": null,
   "args": null,
   "concreteType": "Skill",
   "kind": "LinkedField",
   "name": "Skills",
   "plural": true,
-  "selections": (v20/*: any*/),
+  "selections": (v21/*: any*/),
   "storageKey": null
 },
-v29 = {
+v30 = {
   "alias": null,
   "args": null,
   "concreteType": "ComputeProviderDefinition",
@@ -715,7 +726,7 @@ v29 = {
   "plural": true,
   "selections": [
     (v1/*: any*/),
-    (v22/*: any*/),
+    (v23/*: any*/),
     (v2/*: any*/),
     {
       "alias": null,
@@ -731,181 +742,180 @@ v29 = {
       "kind": "LinkedField",
       "name": "templates",
       "plural": true,
-      "selections": (v6/*: any*/),
+      "selections": (v7/*: any*/),
       "storageKey": null
     }
   ],
   "storageKey": null
 },
-v30 = {
+v31 = {
   "kind": "Literal",
   "name": "scopeType",
   "value": "agent"
 },
-v31 = [
+v32 = [
   {
     "fields": [
-      (v10/*: any*/),
+      (v11/*: any*/),
       {
         "kind": "Literal",
         "name": "period",
         "value": "total"
       },
-      (v30/*: any*/)
+      (v31/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v32 = {
+v33 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheReadCostNanoUsd",
   "storageKey": null
 },
-v33 = {
+v34 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheReadCostNanoVirtualUsd",
   "storageKey": null
 },
-v34 = {
+v35 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheReadTokens",
   "storageKey": null
 },
-v35 = {
+v36 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheWriteCostNanoUsd",
   "storageKey": null
 },
-v36 = {
+v37 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheWriteCostNanoVirtualUsd",
   "storageKey": null
 },
-v37 = {
+v38 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "cacheWriteTokens",
   "storageKey": null
 },
-v38 = {
+v39 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "inputCostNanoUsd",
   "storageKey": null
 },
-v39 = {
+v40 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "inputCostNanoVirtualUsd",
   "storageKey": null
 },
-v40 = {
+v41 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "inputTokens",
   "storageKey": null
 },
-v41 = {
+v42 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "outputCostNanoUsd",
   "storageKey": null
 },
-v42 = {
+v43 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "outputCostNanoVirtualUsd",
   "storageKey": null
 },
-v43 = {
+v44 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "outputTokens",
   "storageKey": null
 },
-v44 = {
+v45 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "period",
   "storageKey": null
 },
-v45 = {
+v46 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "periodStart",
   "storageKey": null
 },
-v46 = {
+v47 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "requestCount",
   "storageKey": null
 },
-v47 = {
+v48 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "agentId",
   "storageKey": null
 },
-v48 = {
+v49 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sessionId",
   "storageKey": null
 },
-v49 = {
+v50 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "scopeType",
   "storageKey": null
 },
-v50 = {
+v51 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalCostNanoUsd",
   "storageKey": null
 },
-v51 = {
+v52 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalCostNanoVirtualUsd",
   "storageKey": null
 },
-v52 = {
+v53 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "totalTokens",
   "storageKey": null
 },
-v53 = [
-  (v32/*: any*/),
+v54 = [
   (v33/*: any*/),
   (v34/*: any*/),
   (v35/*: any*/),
@@ -920,19 +930,20 @@ v53 = [
   (v44/*: any*/),
   (v45/*: any*/),
   (v46/*: any*/),
-  (v8/*: any*/),
   (v47/*: any*/),
-  (v4/*: any*/),
+  (v9/*: any*/),
   (v48/*: any*/),
+  (v4/*: any*/),
   (v49/*: any*/),
   (v50/*: any*/),
   (v51/*: any*/),
-  (v52/*: any*/)
+  (v52/*: any*/),
+  (v53/*: any*/)
 ],
-v54 = [
+v55 = [
   {
     "fields": [
-      (v10/*: any*/),
+      (v11/*: any*/),
       {
         "kind": "Literal",
         "name": "period",
@@ -943,16 +954,16 @@ v54 = [
         "name": "periodStartAfter",
         "variableName": "dailyStart"
       },
-      (v30/*: any*/)
+      (v31/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v55 = [
+v56 = [
   {
     "fields": [
-      (v10/*: any*/),
+      (v11/*: any*/),
       {
         "kind": "Literal",
         "name": "period",
@@ -963,14 +974,13 @@ v55 = [
         "name": "periodStartAfter",
         "variableName": "monthlyStart"
       },
-      (v30/*: any*/)
+      (v31/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v56 = [
-  (v32/*: any*/),
+v57 = [
   (v33/*: any*/),
   (v34/*: any*/),
   (v35/*: any*/),
@@ -985,14 +995,15 @@ v56 = [
   (v44/*: any*/),
   (v45/*: any*/),
   (v46/*: any*/),
-  (v8/*: any*/),
   (v47/*: any*/),
-  (v4/*: any*/),
+  (v9/*: any*/),
   (v48/*: any*/),
+  (v4/*: any*/),
   (v49/*: any*/),
   (v50/*: any*/),
   (v51/*: any*/),
   (v52/*: any*/),
+  (v53/*: any*/),
   (v1/*: any*/)
 ];
 return {
@@ -1002,48 +1013,48 @@ return {
     "metadata": null,
     "name": "agentDetailPageQuery",
     "selections": [
-      (v7/*: any*/),
-      (v9/*: any*/),
-      (v14/*: any*/),
-      (v16/*: any*/),
-      (v18/*: any*/),
+      (v8/*: any*/),
+      (v10/*: any*/),
+      (v15/*: any*/),
+      (v17/*: any*/),
       (v19/*: any*/),
-      (v21/*: any*/),
-      (v23/*: any*/),
+      (v20/*: any*/),
+      (v22/*: any*/),
       (v24/*: any*/),
       (v25/*: any*/),
       (v26/*: any*/),
       (v27/*: any*/),
       (v28/*: any*/),
       (v29/*: any*/),
+      (v30/*: any*/),
       {
         "alias": "agentTotal",
-        "args": (v31/*: any*/),
+        "args": (v32/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v53/*: any*/),
+        "selections": (v54/*: any*/),
         "storageKey": null
       },
       {
         "alias": "agentDaily",
-        "args": (v54/*: any*/),
-        "concreteType": "LlmUsageAggregate",
-        "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
-        "plural": true,
-        "selections": (v53/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": "agentMonthly",
         "args": (v55/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v53/*: any*/),
+        "selections": (v54/*: any*/),
+        "storageKey": null
+      },
+      {
+        "alias": "agentMonthly",
+        "args": (v56/*: any*/),
+        "concreteType": "LlmUsageAggregate",
+        "kind": "LinkedField",
+        "name": "LlmUsageAggregates",
+        "plural": true,
+        "selections": (v54/*: any*/),
         "storageKey": null
       }
     ],
@@ -1056,63 +1067,63 @@ return {
     "kind": "Operation",
     "name": "agentDetailPageQuery",
     "selections": [
-      (v7/*: any*/),
-      (v9/*: any*/),
-      (v14/*: any*/),
-      (v16/*: any*/),
-      (v18/*: any*/),
+      (v8/*: any*/),
+      (v10/*: any*/),
+      (v15/*: any*/),
+      (v17/*: any*/),
       (v19/*: any*/),
-      (v21/*: any*/),
-      (v23/*: any*/),
+      (v20/*: any*/),
+      (v22/*: any*/),
       (v24/*: any*/),
       (v25/*: any*/),
       (v26/*: any*/),
       (v27/*: any*/),
       (v28/*: any*/),
       (v29/*: any*/),
+      (v30/*: any*/),
       {
         "alias": "agentTotal",
-        "args": (v31/*: any*/),
+        "args": (v32/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v56/*: any*/),
+        "selections": (v57/*: any*/),
         "storageKey": null
       },
       {
         "alias": "agentDaily",
-        "args": (v54/*: any*/),
-        "concreteType": "LlmUsageAggregate",
-        "kind": "LinkedField",
-        "name": "LlmUsageAggregates",
-        "plural": true,
-        "selections": (v56/*: any*/),
-        "storageKey": null
-      },
-      {
-        "alias": "agentMonthly",
         "args": (v55/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v56/*: any*/),
+        "selections": (v57/*: any*/),
+        "storageKey": null
+      },
+      {
+        "alias": "agentMonthly",
+        "args": (v56/*: any*/),
+        "concreteType": "LlmUsageAggregate",
+        "kind": "LinkedField",
+        "name": "LlmUsageAggregates",
+        "plural": true,
+        "selections": (v57/*: any*/),
         "storageKey": null
       }
     ]
   },
   "params": {
-    "cacheID": "2e383a16b7521520802dfbd852bbc0f7",
+    "cacheID": "cf00d3f6e35f5c0a1a49ed397e515b0f",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    title\n    autoCompactPercent\n    llmModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    reasoningLevel\n    systemPrompt\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentSecretGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentMcpServers(agentId: $agentId) {\n    id\n    name\n    description\n    url\n  }\n  AgentSkillGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentSkills(agentId: $agentId) {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultLlmModelId\n    defaultReasoningLevel\n    models {\n      id\n      llmModelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n  agentTotal: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  agentDaily: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  agentMonthly: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    title\n    autoCompactPercent\n    llmModelId\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    reasoningLevel\n    modelOptions\n    systemPrompt\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentSecretGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentMcpServers(agentId: $agentId) {\n    id\n    name\n    description\n    url\n  }\n  AgentSkillGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentSkills(agentId: $agentId) {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultLlmModelId\n    defaultReasoningLevel\n    models {\n      id\n      llmModelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n      modelOptions\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n  }\n  SecretGroups {\n    id\n    name\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n  agentTotal: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  agentDaily: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  agentMonthly: LlmUsageAggregates(input: {scopeType: agent, agentId: $agentId, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    companyId\n    agentId\n    modelProviderCredentialId\n    sessionId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e5a0194f4be5079a9a67392161ec0e58";
+(node as any).hash = "df3eda15a12e27981f17ea0cfc78e71d";
 
 export default node;
