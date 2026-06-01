@@ -18,7 +18,7 @@ Before assigning work to an existing agent session, agents with Manage tasks sho
 
 ## What company users can do in the UI
 
-- Chat with agents from Chats, pick an agent/model for a session, review live transcript updates, inspect session artifacts such as docs/links/PRs from the chat sidebar, and answer human handoff questions in Inbox.
+- Chat with agents from Chats, pick an agent/model for a session, review live transcript updates, inspect session artifacts such as docs/links/PRs from the chat sidebar, open archived chats from an agent's Archived tab as read-only transcripts, and answer human handoff questions in Inbox.
 - Create and configure agents from Agents. Agent configuration includes name/title, model credential and model, reasoning level when supported, auto-compaction threshold, default compute/template, custom instructions, default skills, skill groups, MCP servers, secrets, and secret groups.
 - Add model credentials from LLM Credentials. Users can add provider keys, pick defaults for new agents, refresh models, inspect available models, set a default model, review usage, and delete or replace credentials when no longer needed.
 - Manage Skills and Skill Groups. Skills teach agents reusable instructions. Git-backed skills can include supporting files; manual skills store instructions directly in CompanyHelm. Skill groups let users attach multiple skills to agents together.

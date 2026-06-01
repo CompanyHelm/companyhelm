@@ -23,6 +23,8 @@ import { UpdateSessionTitleMutation } from "../mutations/update_session_title.ts
 import { AgentConversationMessagesQueryResolver } from "../resolvers/agent_conversation_messages.ts";
 import { AgentConversationsQueryResolver } from "../resolvers/agent_conversations.ts";
 import { ArchivedAgentSessionsQueryResolver } from "../resolvers/archived_agent_sessions.ts";
+import { ArchivedSessionQueryResolver } from "../resolvers/archived_session.ts";
+import { ArchivedSessionTranscriptMessagesQueryResolver } from "../resolvers/archived_session_transcript_messages.ts";
 import { InboxHumanQuestionsQueryResolver } from "../resolvers/inbox_human_questions.ts";
 import { InboxHumanQuestionsUpdatedSubscriptionResolver } from "../resolvers/inbox_human_questions_updated.ts";
 import { SessionArtifactsUpdatedSubscriptionResolver } from "../resolvers/session_artifacts_updated.ts";
@@ -54,6 +56,8 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly agentConversationMessagesQueryResolver: AgentConversationMessagesQueryResolver;
   private readonly agentConversationsQueryResolver: AgentConversationsQueryResolver;
   private readonly archivedAgentSessionsQueryResolver: ArchivedAgentSessionsQueryResolver;
+  private readonly archivedSessionQueryResolver: ArchivedSessionQueryResolver;
+  private readonly archivedSessionTranscriptMessagesQueryResolver: ArchivedSessionTranscriptMessagesQueryResolver;
   private archiveSessionMutation: ArchiveSessionMutationLike;
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly createSessionMutation: CreateSessionMutation;
@@ -207,6 +211,11 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(ArchivedAgentSessionsQueryResolver)
     archivedAgentSessionsQueryResolver: ArchivedAgentSessionsQueryResolver =
       new ArchivedAgentSessionsQueryResolver(),
+    @inject(ArchivedSessionQueryResolver)
+    archivedSessionQueryResolver: ArchivedSessionQueryResolver = new ArchivedSessionQueryResolver(),
+    @inject(ArchivedSessionTranscriptMessagesQueryResolver)
+    archivedSessionTranscriptMessagesQueryResolver: ArchivedSessionTranscriptMessagesQueryResolver =
+      new ArchivedSessionTranscriptMessagesQueryResolver(),
     @inject(SessionsQueryResolver) sessionsQueryResolver: SessionsQueryResolver = new SessionsQueryResolver(),
     @inject(SessionUpdatedSubscriptionResolver)
     sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
@@ -236,6 +245,8 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     this.agentConversationMessagesQueryResolver = agentConversationMessagesQueryResolver;
     this.agentConversationsQueryResolver = agentConversationsQueryResolver;
     this.archivedAgentSessionsQueryResolver = archivedAgentSessionsQueryResolver;
+    this.archivedSessionQueryResolver = archivedSessionQueryResolver;
+    this.archivedSessionTranscriptMessagesQueryResolver = archivedSessionTranscriptMessagesQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
       ?? new AttachSecretToSessionMutation(defaultSecretService);
@@ -297,6 +308,8 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
         AgentConversationMessages: this.agentConversationMessagesQueryResolver.execute,
         AgentConversations: this.agentConversationsQueryResolver.execute,
         ArchivedAgentSessions: this.archivedAgentSessionsQueryResolver.execute,
+        ArchivedSession: this.archivedSessionQueryResolver.execute,
+        ArchivedSessionTranscriptMessages: this.archivedSessionTranscriptMessagesQueryResolver.execute,
         InboxHumanQuestions: this.inboxHumanQuestionsQueryResolver.execute,
         SessionMessages: this.sessionMessagesQueryResolver.execute,
         SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,

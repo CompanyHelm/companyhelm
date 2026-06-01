@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Trash2Icon } from "lucide-react";
 import {
@@ -527,7 +527,7 @@ export function AgentArchivedChatsTab(props: AgentArchivedChatsTabProps) {
                   <TableHead>Task</TableHead>
                   <TableHead>Last activity</TableHead>
                   <TableHead>Archived</TableHead>
-                  <TableHead className="w-40 text-right">Actions</TableHead>
+                  <TableHead className="w-56 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -574,6 +574,23 @@ export function AgentArchivedChatsTab(props: AgentArchivedChatsTabProps) {
                       <TableCell>{formatTimestamp(session.updatedAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button asChild disabled={isMutating} size="sm" variant="outline">
+                            <Link
+                              aria-disabled={isMutating}
+                              onClick={(event) => {
+                                if (isMutating) {
+                                  event.preventDefault();
+                                }
+                              }}
+                              params={{
+                                organizationSlug,
+                                sessionId: session.id,
+                              }}
+                              to={OrganizationPath.route("/archived-chats/$sessionId")}
+                            >
+                              View
+                            </Link>
+                          </Button>
                           <Button
                             disabled={isMutating}
                             onClick={() => {

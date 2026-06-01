@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   agentSessions,
@@ -625,6 +625,116 @@ export class SessionReadService {
         .from(sessionMessages)
         .where(transcriptFilter)
         .orderBy(desc(sessionMessages.createdAt), desc(sessionMessages.id))
+        .limit(pageSize + 1) as SessionMessageRow[];
+
+      const hasNextPage = persistedMessages.length > pageSize;
+      const pageMessages = hasNextPage ? persistedMessages.slice(0, pageSize) : persistedMessages;
+      if (pageMessages.length === 0) {
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            endCursor: null,
+          },
+        };
+      }
+
+      const contentsByMessageId = await this.loadContentsByMessageId(
+        selectableDatabase,
+        companyId,
+        pageMessages.map((message) => message.id),
+      );
+      const turnsById = await this.loadTurnsById(
+        selectableDatabase,
+        companyId,
+        pageMessages.map((message) => message.turnId),
+      );
+
+      const edges = pageMessages.map((message) => {
+        const node = this.serializeMessage(message, contentsByMessageId, turnsById);
+        return {
+          cursor: encodeSessionMessageCursor(node.createdAt, node.id),
+          node,
+        };
+      });
+
+      return {
+        edges,
+        pageInfo: {
+          hasNextPage,
+          endCursor: edges.at(-1)?.cursor ?? null,
+        },
+      };
+    });
+  }
+
+  async listArchivedTranscriptMessagesForward(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    userId: string,
+    first?: number | null,
+    after?: string | null,
+  ): Promise<SessionTranscriptMessageConnectionGraphqlRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const accessibleSessionIds = await this.loadAccessibleSessionIds(selectableDatabase, companyId, userId, [sessionId]);
+      if (accessibleSessionIds.length === 0) {
+        throw new Error("Archived chat not found.");
+      }
+
+      const sessionRows = await selectableDatabase
+        .select({ status: agentSessions.status })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as Array<{ status: string }>;
+      if (sessionRows[0]?.status !== "archived") {
+        throw new Error("Archived chat not found.");
+      }
+
+      const pageSize = normalizeTranscriptPageSize(first);
+      const cursor = decodeSessionMessageCursor(after);
+      const transcriptFilter = cursor
+        ? and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+          or(
+            gt(sessionMessages.createdAt, new Date(cursor.createdAt)),
+            and(
+              eq(sessionMessages.createdAt, new Date(cursor.createdAt)),
+              gt(sessionMessages.id, cursor.messageId),
+            ),
+          )!,
+        )
+        : and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+        );
+
+      const persistedMessages = await selectableDatabase
+        .select({
+          id: sessionMessages.id,
+          sessionId: sessionMessages.sessionId,
+          turnId: sessionMessages.turnId,
+          role: sessionMessages.role,
+          status: sessionMessages.status,
+          toolCallId: sessionMessages.toolCallId,
+          toolName: sessionMessages.toolName,
+          principalAgentId: sessionMessages.principalAgentId,
+          principalSessionId: sessionMessages.principalSessionId,
+          principalType: sessionMessages.principalType,
+          taskRunId: sessionMessages.taskRunId,
+          workflowRunId: sessionMessages.workflowRunId,
+          isError: sessionMessages.isError,
+          errorMessage: sessionMessages.errorMessage,
+          createdAt: sessionMessages.createdAt,
+          updatedAt: sessionMessages.updatedAt,
+        })
+        .from(sessionMessages)
+        .where(transcriptFilter)
+        .orderBy(asc(sessionMessages.createdAt), asc(sessionMessages.id))
         .limit(pageSize + 1) as SessionMessageRow[];
 
       const hasNextPage = persistedMessages.length > pageSize;

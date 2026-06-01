@@ -42,6 +42,12 @@ type Query {
     first: Int!
     after: String
   ): SessionConnection!
+  ArchivedSession(sessionId: ID!): Session!
+  ArchivedSessionTranscriptMessages(
+    sessionId: ID!
+    first: Int!
+    after: String
+  ): SessionTranscriptMessageConnection!
   Sessions: [Session!]!
   SessionEnvironment(sessionId: ID!): SessionEnvironmentInfo!
   SessionSecrets(sessionId: ID!): [Secret!]!
