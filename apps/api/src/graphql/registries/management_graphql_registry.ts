@@ -69,6 +69,8 @@ import { LlmUsageProviderCredentialsQueryResolver } from "../resolvers/llm_usage
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { McpServersQueryResolver } from "../resolvers/mcp_servers.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
+import { SecretGroupQueryResolver } from "../resolvers/secret_group.ts";
+import { SecretGroupAgentsQueryResolver } from "../resolvers/secret_group_agents.ts";
 import { SecretGroupsQueryResolver } from "../resolvers/secret_groups.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
 import { SkillGroupsQueryResolver } from "../resolvers/skill_groups.ts";
@@ -126,6 +128,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly removeCompanyMemberMutation: RemoveCompanyMemberMutation;
   private readonly revokeCompanyMemberInvitationMutation: RevokeCompanyMemberInvitationMutation;
+  private readonly secretGroupQueryResolver: SecretGroupQueryResolver;
+  private readonly secretGroupAgentsQueryResolver: SecretGroupAgentsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
@@ -282,6 +286,10 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(UpdateCompanyMemberRoleMutation)
     updateCompanyMemberRoleMutation: UpdateCompanyMemberRoleMutation =
       new UpdateCompanyMemberRoleMutation(new CompanyMemberInvitationService()),
+    @inject(SecretGroupQueryResolver)
+    secretGroupQueryResolver?: SecretGroupQueryResolver,
+    @inject(SecretGroupAgentsQueryResolver)
+    secretGroupAgentsQueryResolver?: SecretGroupAgentsQueryResolver,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -364,6 +372,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.removeCompanyMemberMutation = removeCompanyMemberMutation;
     this.revokeCompanyMemberInvitationMutation = revokeCompanyMemberInvitationMutation;
+    this.secretGroupQueryResolver = secretGroupQueryResolver ?? new SecretGroupQueryResolver(defaultSecretService);
+    this.secretGroupAgentsQueryResolver = secretGroupAgentsQueryResolver
+      ?? new SecretGroupAgentsQueryResolver(defaultSecretService);
     this.secretGroupsQueryResolver = secretGroupsQueryResolver ?? new SecretGroupsQueryResolver(defaultSecretService);
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
@@ -451,6 +462,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         McpServers: this.mcpServersQueryResolver.execute,
         Me: this.meQueryResolver.execute,
+        SecretGroup: this.secretGroupQueryResolver.execute,
+        SecretGroupAgents: this.secretGroupAgentsQueryResolver.execute,
         SecretGroups: this.secretGroupsQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,
         Skill: this.skillQueryResolver.execute,

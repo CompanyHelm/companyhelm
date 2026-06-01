@@ -30,6 +30,7 @@ import { OnboardingPage } from "./pages/onboarding/onboarding_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
+import { SecretGroupDetailPage } from "./pages/secret-groups/secret_group_detail_page";
 import { SecretGroupsPage } from "./pages/secret-groups/secret_groups_page";
 import { SkillGroupsPage } from "./pages/skill-groups/skill_groups_page";
 import { SkillDetailPage } from "./pages/skills/skill_detail_page";
@@ -74,6 +75,10 @@ type AgentDetailRouteSearch = {
 
 type ModelProviderCredentialDetailRouteSearch = {
   tab?: "limit" | "models" | "usage";
+};
+
+type SecretGroupDetailRouteSearch = {
+  tab?: "agents" | "overview" | "secrets";
 };
 
 type WorkflowDetailRouteSearch = {
@@ -154,6 +159,14 @@ function validateModelProviderCredentialDetailRouteSearch(
 ): ModelProviderCredentialDetailRouteSearch {
   return {
     tab: search.tab === "limit" || search.tab === "usage" || search.tab === "models"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateSecretGroupDetailRouteSearch(search: Record<string, unknown>): SecretGroupDetailRouteSearch {
+  return {
+    tab: search.tab === "agents" || search.tab === "overview" || search.tab === "secrets"
       ? search.tab
       : undefined,
   };
@@ -398,6 +411,13 @@ const secretGroupsRoute = createRoute({
   component: SecretGroupsPage,
 });
 
+const secretGroupDetailRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/secret-groups/$secretGroupId"),
+  validateSearch: validateSecretGroupDetailRouteSearch,
+  component: SecretGroupDetailPage,
+});
+
 const mcpServersRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/mcp-servers"),
@@ -550,6 +570,7 @@ const routeTree = rootRoute.addChildren([
         workflowRunRoute,
         secretsRoute,
         secretGroupsRoute,
+        secretGroupDetailRoute,
         mcpServersRoute,
         skillsRoute,
         skillGroupsRoute,
