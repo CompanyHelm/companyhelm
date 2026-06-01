@@ -243,6 +243,14 @@ function SecretGroupsPageContent() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button asChild disabled={deletingGroupId === group.id || isSavingGroup} size="sm" variant="outline">
+                    <Link
+                      params={{ organizationSlug, secretGroupId: group.id }}
+                      to={OrganizationPath.route("/secret-groups/$secretGroupId")}
+                    >
+                      Manage
+                    </Link>
+                  </Button>
                   <Button
                     aria-label={`Rename ${group.name}`}
                     className="text-muted-foreground hover:text-foreground"

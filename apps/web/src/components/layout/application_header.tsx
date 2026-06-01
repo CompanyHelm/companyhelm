@@ -30,6 +30,7 @@ export function ApplicationHeader(props: {
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(normalizedPathname);
   const isEnvironmentDetailPage = /^\/environments\/[^/]+$/.test(normalizedPathname);
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(normalizedPathname);
+  const isSecretGroupDetailPage = /^\/secret-groups\/[^/]+$/.test(normalizedPathname);
   const isSkillDetailPage = /^\/skills\/[^/]+$/.test(normalizedPathname);
   const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(normalizedPathname);
   const isWorkflowDetailPage = /^\/workflows\/[^/]+$/.test(normalizedPathname);
@@ -77,6 +78,8 @@ export function ApplicationHeader(props: {
         ? "Environment"
       : isKnowledgeBaseDetailPage
         ? "Artifact"
+        : isSecretGroupDetailPage
+          ? "Secret Group"
         : isSkillDetailPage
           ? "Skill"
         : isTaskDetailPage
@@ -92,6 +95,8 @@ export function ApplicationHeader(props: {
         ? OrganizationPath.route("/environments")
       : isKnowledgeBaseDetailPage
         ? OrganizationPath.route("/knowledge-base")
+        : isSecretGroupDetailPage
+          ? OrganizationPath.route("/secret-groups")
         : isSkillDetailPage
           ? OrganizationPath.route("/skills")
         : isTaskDetailPage
@@ -103,6 +108,7 @@ export function ApplicationHeader(props: {
     || isAgentDetailPage
     || isEnvironmentDetailPage
     || isKnowledgeBaseDetailPage
+    || isSecretGroupDetailPage
     || isSkillDetailPage
     || isTaskDetailPage
     || isWorkflowDetailPage;

@@ -31,6 +31,12 @@ type AgentSecretGroupAgentRecord = {
   createdByUserId: string | null;
 };
 
+export type SecretGroupAgentRecord = {
+  agentId: string;
+  id: string;
+  name: string;
+};
+
 export type SecretGroupRecord = {
   companyId: string;
   id: string;
@@ -249,6 +255,64 @@ export class SecretService {
         .where(eq(secret_groups.companyId, companyId)) as SecretGroupRecord[];
 
       return [...groups].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async getSecretGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      secretGroupId: string;
+    },
+  ): Promise<SecretGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      return this.requireSecretGroup(selectableDatabase, input.companyId, input.secretGroupId);
+    });
+  }
+
+  async listSecretGroupAgents(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      secretGroupId: string;
+    },
+  ): Promise<SecretGroupAgentRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireSecretGroup(selectableDatabase, input.companyId, input.secretGroupId);
+      const attachments = await selectableDatabase
+        .select({
+          agentId: agentDefaultSecretGroups.agentId,
+        })
+        .from(agentDefaultSecretGroups)
+        .where(and(
+          eq(agentDefaultSecretGroups.companyId, input.companyId),
+          eq(agentDefaultSecretGroups.secretGroupId, input.secretGroupId),
+        )) as Array<{ agentId: string }>;
+
+      if (attachments.length === 0) {
+        return [];
+      }
+
+      const records = await selectableDatabase
+        .select({
+          agentId: agents.id,
+          name: agents.name,
+        })
+        .from(agents)
+        .where(and(
+          eq(agents.companyId, input.companyId),
+          inArray(agents.id, attachments.map((attachment) => attachment.agentId)),
+        )) as Array<{ agentId: string; name: string }>;
+
+      return records
+        .map((agent) => ({
+          agentId: agent.agentId,
+          id: `${input.secretGroupId}:${agent.agentId}`,
+          name: agent.name,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name));
     });
   }
 

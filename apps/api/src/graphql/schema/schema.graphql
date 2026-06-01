@@ -28,12 +28,14 @@ type Query {
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
+  SecretGroup(id: ID!): SecretGroup!
   SecretGroups: [SecretGroup!]!
   Secrets: [Secret!]!
   McpServers: [McpServer!]!
   McpServerAuthType(url: String!): McpServerAuthTypeDetection!
   AgentSecrets(agentId: ID!): [Secret!]!
   AgentSecretGroups(agentId: ID!): [SecretGroup!]!
+  SecretGroupAgents(secretGroupId: ID!): [SecretGroupAgent!]!
   AgentMcpServers(agentId: ID!): [McpServer!]!
   AgentSkillGroups(agentId: ID!): [SkillGroup!]!
   AgentSkills(agentId: ID!): [Skill!]!
@@ -946,6 +948,12 @@ type Secret {
 type SecretGroup {
   id: ID!
   companyId: ID!
+  name: String!
+}
+
+type SecretGroupAgent {
+  agentId: ID!
+  id: ID!
   name: String!
 }
 
