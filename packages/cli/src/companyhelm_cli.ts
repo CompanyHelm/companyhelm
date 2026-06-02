@@ -76,7 +76,7 @@ export class CompanyHelmCli {
 
   private printRunnerCommand(command: string): void {
     this.io.writeLine(`Runner command requested: ${command}`);
-    this.io.writeLine("Use `npx @companyhelm/runner start` for the standalone runner package.");
+    this.io.writeLine("Use `npm run dev:runner -- start` in this repo, or install the published `@companyhelm/runner` package and run `companyhelm-runner start`.");
   }
 
   private readVersion(): string {

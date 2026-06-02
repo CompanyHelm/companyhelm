@@ -18,21 +18,29 @@ class CapturingRunnerIo implements RunnerIo {
 
 test("start command reports the configured runner connection target", async () => {
   const io = new CapturingRunnerIo();
-  await new RunnerCli(io).run([
-    "node",
-    "companyhelm-runner",
-    "start",
-    "--server-url",
-    "http://localhost:4000",
-    "--token",
-    "runner-token",
-  ]);
+  const originalToken = process.env.COMPANYHELM_RUNNER_TOKEN;
+  try {
+    process.env.COMPANYHELM_RUNNER_TOKEN = "runner-token";
+    await new RunnerCli(io).run([
+      "node",
+      "companyhelm-runner",
+      "start",
+      "--server-url",
+      "http://localhost:4000",
+    ]);
+  } finally {
+    if (originalToken === undefined) {
+      delete process.env.COMPANYHELM_RUNNER_TOKEN;
+    } else {
+      process.env.COMPANYHELM_RUNNER_TOKEN = originalToken;
+    }
+  }
 
   assert.equal(io.errors.length, 0);
   assert.deepEqual(io.lines, [
     "CompanyHelm runner package is installed.",
     "Server URL: http://localhost:4000",
-    "Token: provided",
+    "Token environment: configured",
   ]);
 });
 

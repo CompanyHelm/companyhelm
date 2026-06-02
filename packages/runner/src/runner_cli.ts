@@ -9,7 +9,6 @@ type PackageDocument = {
 
 type RunnerStartOptions = {
   serverUrl?: string;
-  token?: string;
 };
 
 /**
@@ -50,7 +49,6 @@ export class RunnerCli {
     return new Command("start")
       .description("Prepare a CompanyHelm runner process.")
       .option("--server-url <url>", "CompanyHelm server URL the runner should connect to.")
-      .option("--token <token>", "Runner registration or authentication token.")
       .action((options: RunnerStartOptions) => this.printStartPlan(options));
   }
 
@@ -63,7 +61,7 @@ export class RunnerCli {
   private printStartPlan(options: RunnerStartOptions): void {
     this.io.writeLine("CompanyHelm runner package is installed.");
     this.io.writeLine(`Server URL: ${options.serverUrl ?? "not configured"}`);
-    this.io.writeLine(`Token: ${options.token ? "provided" : "not configured"}`);
+    this.io.writeLine(`Token environment: ${process.env.COMPANYHELM_RUNNER_TOKEN ? "configured" : "not configured"}`);
   }
 
   private printStatus(): void {

@@ -34,5 +34,5 @@ test("runner command points users at the standalone runner package", async () =>
   await new CompanyHelmCli(io).run(["node", "companyhelm", "runner", "start"]);
 
   assert.equal(io.errors.length, 0);
-  assert.match(io.lines.join("\n"), /npx @companyhelm\/runner start/);
+  assert.match(io.lines.join("\n"), /companyhelm-runner start/);
 });
