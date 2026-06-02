@@ -1,0 +1,31 @@
+{
+  "name": "@companyhelm/runner",
+  "version": "0.1.0",
+  "description": "CompanyHelm runner command-line package.",
+  "type": "module",
+  "bin": {
+    "companyhelm-runner": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "lint": "eslint src tests",
+    "prepack": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "npm run lint && npm run typecheck",
+    "test": "npm run check && node --import tsx --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.20.0"
+  }
+}

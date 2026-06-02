@@ -21,8 +21,10 @@ A few things it can do today:
 
 Monorepo with:
 
-- `apps/api`: API
+- `apps/api`: API/server app published internally as the `@companyhelm/server` workspace package
 - `apps/web`: Web app
+- `packages/cli`: npm CLI package published as `companyhelm`
+- `packages/runner`: standalone runner CLI package published as `@companyhelm/runner`
 
 ## Toolchain
 
@@ -129,6 +131,18 @@ Start both apps with Turbo:
 npm run dev
 ```
 
+Run the main CLI during development:
+
+```bash
+npm run dev:cli -- status
+```
+
+Run the standalone runner CLI during development:
+
+```bash
+npm run dev:runner -- status
+```
+
 ### Databases
 
 Start local services:
@@ -170,3 +184,4 @@ npm run test:all
 ```
 
 That command runs the API and web checks, and it also runs the API test suite.
+It also runs the web tests plus the main CLI and runner CLI checks and tests.

@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY packages/cli/package.json packages/cli/package.json
+COPY packages/runner/package.json packages/runner/package.json
 
 RUN npm ci
 

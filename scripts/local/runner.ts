@@ -28,7 +28,7 @@ export class LocalRunner {
     await this.ensureDockerServices();
     await this.runCommand("npm", this.resolveSeedCommandArguments());
     const workspaceScriptName = this.input.mode === "dev" ? "dev:local" : "dev:e2b";
-    this.startPersistentCommand("npm", ["run", workspaceScriptName, "-w", "@companyhelm/api"], {
+    this.startPersistentCommand("npm", ["run", workspaceScriptName, "-w", "@companyhelm/server"], {
       COMPANYHELM_API_PUBLIC_URL: this.input.apiPublicUrl,
       COMPANYHELM_WEB_PUBLIC_URL: this.input.webPublicUrl,
     });
@@ -85,7 +85,7 @@ export class LocalRunner {
   }
 
   private resolveSeedCommandArguments(): string[] {
-    return ["run", "seed:local-dev", "-w", "@companyhelm/api"];
+    return ["run", "seed:local-dev", "-w", "@companyhelm/server"];
   }
 
   private async waitForPort(host: string, port: number, label: string): Promise<void> {

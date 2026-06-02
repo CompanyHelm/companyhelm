@@ -72,7 +72,7 @@ export class MeQueryResolver extends Resolver<MeQueryResult> {
     };
 
     if (typeof packageDocument.version !== "string" || packageDocument.version.length === 0) {
-      throw new Error("apps/api/package.json is missing a version.");
+      throw new Error("@companyhelm/server package.json is missing a version.");
     }
 
     return packageDocument.version;
