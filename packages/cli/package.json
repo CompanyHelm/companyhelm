@@ -21,7 +21,7 @@
     "prepack": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check": "npm run lint && npm run typecheck",
-    "test": "npm run check && node --import tsx --test tests/**/*.test.ts"
+    "test": "npm run check && node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "commander": "^14.0.3"
