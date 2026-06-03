@@ -23,7 +23,7 @@ test("status command describes the npm package layout", async () => {
   assert.equal(io.errors.length, 0);
   assert.deepEqual(io.lines, [
     "CompanyHelm CLI is installed.",
-    "Main CLI package: companyhelm",
+    "Main CLI package: @companyhelm/cli",
     "Runner package: @companyhelm/runner",
     "Server workspace package: @companyhelm/server",
   ]);

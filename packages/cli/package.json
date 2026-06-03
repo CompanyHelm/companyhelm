@@ -1,6 +1,6 @@
 {
-  "name": "companyhelm",
-  "version": "0.1.0",
+  "name": "@companyhelm/cli",
+  "version": "0.4.2",
   "description": "CompanyHelm self-hosting command-line interface.",
   "repository": {
     "type": "git",

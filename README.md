@@ -23,7 +23,7 @@ Monorepo with:
 
 - `apps/api`: API/server app published internally as the `@companyhelm/server` workspace package
 - `apps/web`: Web app
-- `packages/cli`: npm CLI package published as `companyhelm`
+- `packages/cli`: npm CLI package published as `@companyhelm/cli`
 - `packages/runner`: standalone runner CLI package published as `@companyhelm/runner`
 
 ## Toolchain
@@ -191,15 +191,15 @@ It also runs the web tests plus the main CLI and runner CLI checks and tests.
 The public npm packages are published by GitHub Actions from release tags or by manually running
 the `Publish npm packages` workflow:
 
-- `companyhelm` from `packages/cli`
+- `@companyhelm/cli` from `packages/cli`
 - `@companyhelm/runner` from `packages/runner`
 
 The workflow skips a package version when that exact version already exists in the npm registry.
 Publishing requires either npm trusted publishing for this repository or a repository Actions secret
 named `NPM_TOKEN` with permission to publish both packages. Because npm trusted publishers can only
-be configured for packages that already exist in npm, the first publish of a brand-new package such
-as `companyhelm` must use `NPM_TOKEN` or another manual bootstrap publish. After that first publish,
-trusted publishing can be configured in npm and used by this workflow.
+be configured for packages that already exist in npm, the first publish of any future brand-new
+package must use `NPM_TOKEN` or another manual bootstrap publish. After that first publish, trusted
+publishing can be configured in npm and used by this workflow.
 
 The workflow is split into a verification job and a protected `npm-publish` environment job. The
 publish job receives only the already-packed package tarballs and is the only job with npm OIDC

@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p npm-packages
-          npm pack --workspace companyhelm --pack-destination npm-packages
+          npm pack --workspace @companyhelm/cli --pack-destination npm-packages
           npm pack --workspace @companyhelm/runner --pack-destination npm-packages
 
       - name: Upload package tarballs
@@ -117,7 +117,7 @@ jobs:
             package_version="$(tar -xOf "${tarball}" package/package.json | node -e "let data = ''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => console.log(JSON.parse(data).version));")"
 
             case "${package_name}" in
-              companyhelm|@companyhelm/runner)
+              @companyhelm/cli|@companyhelm/runner)
                 ;;
               *)
                 echo "Unexpected package in publish artifact: ${package_name}" >&2
