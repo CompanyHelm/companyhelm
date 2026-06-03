@@ -2,6 +2,11 @@
   "name": "@companyhelm/runner",
   "version": "0.4.0",
   "description": "CompanyHelm runner command-line package.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CompanyHelm/companyhelm.git",
+    "directory": "packages/runner"
+  },
   "type": "module",
   "bin": {
     "companyhelm-runner": "dist/index.js"

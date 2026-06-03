@@ -196,4 +196,12 @@ the `Publish npm packages` workflow:
 
 The workflow skips a package version when that exact version already exists in the npm registry.
 Publishing requires either npm trusted publishing for this repository or a repository Actions secret
-named `NPM_TOKEN` with permission to publish both packages.
+named `NPM_TOKEN` with permission to publish both packages. Because npm trusted publishers can only
+be configured for packages that already exist in npm, the first publish of a brand-new package such
+as `companyhelm` must use `NPM_TOKEN` or another manual bootstrap publish. After that first publish,
+trusted publishing can be configured in npm and used by this workflow.
+
+The workflow is split into a verification job and a protected `npm-publish` environment job. The
+publish job receives only the already-packed package tarballs and is the only job with npm OIDC
+permission. Tag-triggered publishes must use `vMAJOR.MINOR.PATCH` tags whose commits are contained
+in `origin/main`; manual dispatch must run from `main`.

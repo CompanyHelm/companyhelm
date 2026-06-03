@@ -2,6 +2,11 @@
   "name": "companyhelm",
   "version": "0.1.0",
   "description": "CompanyHelm self-hosting command-line interface.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CompanyHelm/companyhelm.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "bin": {
     "companyhelm": "dist/index.js"
