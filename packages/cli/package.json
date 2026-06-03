@@ -4,7 +4,7 @@
   "description": "CompanyHelm self-hosting command-line interface.",
   "type": "module",
   "bin": {
-    "companyhelm": "./dist/index.js"
+    "companyhelm": "dist/index.js"
   },
   "files": [
     "dist"

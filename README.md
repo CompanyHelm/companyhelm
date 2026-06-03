@@ -185,3 +185,15 @@ npm run test:all
 
 That command runs the API and web checks, and it also runs the API test suite.
 It also runs the web tests plus the main CLI and runner CLI checks and tests.
+
+## Publishing npm packages
+
+The public npm packages are published by GitHub Actions from release tags or by manually running
+the `Publish npm packages` workflow:
+
+- `companyhelm` from `packages/cli`
+- `@companyhelm/runner` from `packages/runner`
+
+The workflow skips a package version when that exact version already exists in the npm registry.
+Publishing requires either npm trusted publishing for this repository or a repository Actions secret
+named `NPM_TOKEN` with permission to publish both packages.

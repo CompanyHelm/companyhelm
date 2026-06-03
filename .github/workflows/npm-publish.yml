@@ -1,0 +1,68 @@
+name: Publish npm packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish CLI packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+
+      - name: Use pinned npm
+        run: npm install -g npm@11.6.2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify publishable packages
+        run: |
+          npm run test:all
+          npm run build
+
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            npm config set //registry.npmjs.org/:_authToken "${NODE_AUTH_TOKEN}"
+          else
+            npm config delete //registry.npmjs.org/:_authToken || true
+            echo "NPM_TOKEN is not configured; attempting npm trusted publishing."
+          fi
+
+          publish_workspace() {
+            local workspace="$1"
+            local package_name
+            local package_version
+            package_name="$(node -p "require('./${workspace}/package.json').name")"
+            package_version="$(node -p "require('./${workspace}/package.json').version")"
+
+            if npm view "${package_name}@${package_version}" version >/dev/null 2>&1; then
+              echo "${package_name}@${package_version} is already published; skipping."
+              return
+            fi
+
+            echo "Publishing ${package_name}@${package_version} from ${workspace}."
+            npm publish --workspace "${package_name}" --access public --provenance
+          }
+
+          publish_workspace "packages/cli"
+          publish_workspace "packages/runner"

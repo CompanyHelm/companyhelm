@@ -4,7 +4,7 @@
   "description": "CompanyHelm runner command-line package.",
   "type": "module",
   "bin": {
-    "companyhelm-runner": "./dist/index.js"
+    "companyhelm-runner": "dist/index.js"
   },
   "files": [
     "dist"
