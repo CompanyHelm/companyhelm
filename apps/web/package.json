@@ -9,7 +9,7 @@
     "lint": "eslint src vite.config.ts --ext .ts,.tsx",
     "typecheck": "npm exec -- tsc -p tsconfig.json",
     "check": "npm run lint && npm run typecheck",
-    "test": "npm run check && node --import tsx --test tests/**/*.test.ts",
+    "test": "npm run check && node --import tsx --test tests/*.test.ts",
     "dev:local": "npm run relay && vite --mode local-dev --port 5173 --strictPort",
     "dev:e2b": "npm run relay && vite --host 0.0.0.0 --mode local-e2b --port 5173 --strictPort"
   },
