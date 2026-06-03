@@ -64,7 +64,7 @@ export class CompanyHelmCli {
 
   private printStatus(): void {
     this.io.writeLine("CompanyHelm CLI is installed.");
-    this.io.writeLine("Main CLI package: companyhelm");
+    this.io.writeLine("Main CLI package: @companyhelm/cli");
     this.io.writeLine("Runner package: @companyhelm/runner");
     this.io.writeLine("Server workspace package: @companyhelm/server");
   }
