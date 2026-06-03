@@ -1,5 +1,5 @@
 {
-  "name": "@companyhelm/api",
+  "name": "@companyhelm/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",

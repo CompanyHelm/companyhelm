@@ -10,7 +10,7 @@ type ApiCliDocument = {
 export class ApiCli {
   parse(argv: string[]): ApiCliDocument {
     const program = new Command()
-      .name("@companyhelm/api")
+      .name("@companyhelm/server")
       .allowExcessArguments(false)
       .configureOutput({
         writeErr() {},
