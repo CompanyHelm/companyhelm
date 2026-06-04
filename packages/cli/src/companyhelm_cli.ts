@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import type { CliIo } from "./cli_io_interface.js";
 import { ConsoleIo } from "./console_io.js";
+import { ProviderLoginCommand } from "./provider/login_command.js";
 
 type PackageDocument = {
   version?: string;
@@ -39,6 +40,7 @@ export class CompanyHelmCli {
     program.addCommand(this.createStatusCommand());
     program.addCommand(this.createServerCommand());
     program.addCommand(this.createRunnerCommand());
+    program.addCommand(this.createProviderCommand());
     return program;
   }
 
@@ -60,6 +62,25 @@ export class CompanyHelmCli {
       .description("Show how to work with the CompanyHelm runner package.")
       .argument("[command]", "Runner command to prepare for.", "start")
       .action((command: string) => this.printRunnerCommand(command));
+  }
+
+
+  private createProviderCommand(): Command {
+    const providerCommand = new Command("provider")
+      .description("Work with CompanyHelm model provider credentials.");
+
+    providerCommand.addCommand(new Command("login")
+      .description("Complete a provider subscription credential login request.")
+      .requiredOption("--code <code>", "Provider login code from CompanyHelm.")
+      .option("--api-url <url>", "CompanyHelm API URL.", ProviderLoginCommand.DEFAULT_API_URL)
+      .action(async (options: { apiUrl: string; code: string }) => {
+        await new ProviderLoginCommand(this.io).run({
+          apiUrl: options.apiUrl,
+          code: options.code,
+        });
+      }));
+
+    return providerCommand;
   }
 
   private printStatus(): void {
