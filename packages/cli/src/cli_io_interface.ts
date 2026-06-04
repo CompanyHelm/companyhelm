@@ -3,6 +3,9 @@
  * coupling business behavior to process globals or a specific terminal stream.
  */
 export interface CliIo {
+  /** Reads a single input line from the CLI user. */
+  readLine(prompt: string): Promise<string>;
+
   /** Writes a normal output line to the CLI user. */
   writeLine(message: string): void;
 
