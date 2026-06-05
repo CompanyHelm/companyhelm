@@ -1,4 +1,4 @@
-name: Publish npm packages
+name: Publish runner npm package
 
 on:
   push:
@@ -62,7 +62,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p npm-packages
-          npm pack --workspace @companyhelm/cli --pack-destination npm-packages
           npm pack --workspace @companyhelm/runner --pack-destination npm-packages
 
       - name: Upload package tarballs
@@ -73,7 +72,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish CLI packages
+    name: Publish runner package
     needs: verify
     runs-on: ubuntu-latest
     environment: npm-publish
@@ -117,7 +116,7 @@ jobs:
             package_version="$(tar -xOf "${tarball}" package/package.json | node -e "let data = ''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => console.log(JSON.parse(data).version));")"
 
             case "${package_name}" in
-              @companyhelm/cli|@companyhelm/runner)
+              @companyhelm/runner)
                 ;;
               *)
                 echo "Unexpected package in publish artifact: ${package_name}" >&2
@@ -136,8 +135,8 @@ jobs:
 
           shopt -s nullglob
           tarballs=(npm-packages/*.tgz)
-          if [ "${#tarballs[@]}" -ne 2 ]; then
-            echo "Expected exactly 2 npm package tarballs, found ${#tarballs[@]}." >&2
+          if [ "${#tarballs[@]}" -ne 1 ]; then
+            echo "Expected exactly 1 npm package tarball, found ${#tarballs[@]}." >&2
             exit 1
           fi
 
