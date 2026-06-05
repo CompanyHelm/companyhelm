@@ -73,6 +73,21 @@ class ProviderLoginFetchStub {
   }
 }
 
+class InvalidCodeFetchStub extends ProviderLoginFetchStub {
+  install(): void {
+    const originalFetch = globalThis.fetch;
+    super.install();
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input);
+      if (url === "https://api.companyhelm.com/model-provider-credential-login/resolve?code=chpl_expired") {
+        return Response.json({ error: "This login code is invalid or expired." }, { status: 410 });
+      }
+
+      return originalFetch(input, init);
+    }) as typeof fetch;
+  }
+}
+
 class CustomApiFetchStub extends ProviderLoginFetchStub {
   install(): void {
     const originalFetch = globalThis.fetch;
@@ -220,4 +235,33 @@ test("provider login accepts a custom API URL", async () => {
   assert.equal(io.errors.length, 0);
   assert.match(output, /✅.*Credential "Codex Local" added to CompanyHelm Local/);
   assert.doesNotMatch(output, /credential-2/);
+});
+
+
+test("provider login prints a friendly invalid code error", async () => {
+  const io = new CapturingCliIo();
+  const fetchStub = new InvalidCodeFetchStub();
+  fetchStub.install();
+
+  let exitCode: number | undefined;
+  try {
+    exitCode = await new CompanyHelmCli(io).run([
+      "node",
+      "companyhelm",
+      "provider",
+      "login",
+      "--code",
+      "chpl_expired",
+    ]);
+  } finally {
+    fetchStub.restore();
+  }
+
+  const errors = io.errors.join("\n");
+  assert.equal(exitCode, 1);
+  assert.deepEqual(io.lines, []);
+  assert.match(errors, /❌.*This login code is invalid or expired/);
+  assert.match(errors, /Create a new provider login command in CompanyHelm and run it again/);
+  assert.doesNotMatch(errors, /ProviderLoginClient\.parseResponse/);
+  assert.doesNotMatch(errors, /node:internal/);
 });

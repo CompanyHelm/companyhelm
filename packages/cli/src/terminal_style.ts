@@ -6,11 +6,16 @@ export class TerminalStyle {
   static readonly blue = "\u001B[34m";
   static readonly green = "\u001B[32m";
   static readonly gray = "\u001B[90m";
+  static readonly red = "\u001B[31m";
   static readonly reset = "\u001B[0m";
   static readonly yellow = "\u001B[33m";
 
   static detail(label: string, value: string): string {
     return `${TerminalStyle.gray}•${TerminalStyle.reset} ${label}: ${value}`;
+  }
+
+  static error(message: string): string {
+    return `${TerminalStyle.red}❌${TerminalStyle.reset} ${message}`;
   }
 
   static info(message: string): string {

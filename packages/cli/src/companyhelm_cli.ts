@@ -3,6 +3,7 @@ import { Command } from "commander";
 import type { CliIo } from "./cli_io_interface.js";
 import { ConsoleIo } from "./console_io.js";
 import { ProviderLoginCommand } from "./provider/login_command.js";
+import { TerminalStyle } from "./terminal_style.js";
 
 type PackageDocument = {
   version?: string;
@@ -20,10 +21,16 @@ export class CompanyHelmCli {
     this.io = io;
   }
 
-  async run(argv: string[]): Promise<void> {
-    await this.createProgram().parseAsync(argv, {
-      from: "node",
-    });
+  async run(argv: string[]): Promise<number> {
+    try {
+      await this.createProgram().parseAsync(argv, {
+        from: "node",
+      });
+      return 0;
+    } catch (error) {
+      this.io.writeError(TerminalStyle.error(CompanyHelmCli.errorMessage(error)));
+      return 1;
+    }
   }
 
   createProgram(): Command {
@@ -81,6 +88,18 @@ export class CompanyHelmCli {
       }));
 
     return providerCommand;
+  }
+
+  private static errorMessage(error: unknown): string {
+    if (error instanceof Error && error.message.length > 0) {
+      if (error.message === "This login code is invalid or expired.") {
+        return "This login code is invalid or expired. Create a new provider login command in CompanyHelm and run it again.";
+      }
+
+      return error.message;
+    }
+
+    return "CompanyHelm CLI failed. Try again, or contact support if the issue continues.";
   }
 
   private printStatus(): void {
