@@ -1,4 +1,5 @@
 import type { CliIo } from "../cli_io_interface.js";
+import { TerminalStyle } from "../terminal_style.js";
 import { ProviderLoginClient } from "./login_client.js";
 import { ProviderOauthLoginRunner } from "./oauth_login_runner.js";
 
@@ -31,10 +32,14 @@ export class ProviderLoginCommand {
   async run(options: ProviderLoginCommandOptions): Promise<void> {
     const client = this.clientFactory(options.apiUrl);
     const request = await client.resolve(options.code);
-    this.io.writeLine(`Adding ${request.providerName} credential "${request.credentialName}" to ${request.companyName}.`);
-    this.io.writeLine(`Requested by ${request.requestedBy}. Expires at ${request.expiresAt}.`);
+    this.io.writeLine(TerminalStyle.info(`Adding ${request.providerName} credential to CompanyHelm.`));
+    this.io.writeLine(TerminalStyle.detail("Credential", request.credentialName));
+    this.io.writeLine(TerminalStyle.detail("Company", request.companyName));
+    this.io.writeLine(TerminalStyle.detail("Requested by", request.requestedBy));
+    this.io.writeLine(TerminalStyle.detail("Expires", request.expiresAt));
     const credentials = await this.oauthLoginRunner.login(request.piOauthProviderId);
-    const result = await client.complete({
+    this.io.writeLine(TerminalStyle.progress("Saving credential in CompanyHelm..."));
+    await client.complete({
       code: options.code,
       credentials: {
         ...credentials,
@@ -43,6 +48,6 @@ export class ProviderLoginCommand {
         refresh: credentials.refresh,
       },
     });
-    this.io.writeLine(`Credential added successfully: ${result.credentialId}`);
+    this.io.writeLine(TerminalStyle.success(`Credential "${request.credentialName}" added to ${request.companyName}.`));
   }
 }
