@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { registerOAuthProvider, resetOAuthProviders, type OAuthCredentials } from "@mariozechner/pi-ai/oauth";
+import {
+  registerOAuthProvider,
+  resetOAuthProviders,
+  type OAuthCredentials,
+  type OAuthLoginCallbacks,
+} from "@mariozechner/pi-ai/oauth";
 import { CompanyHelmCli } from "../src/companyhelm_cli.js";
 import type { CliIo } from "../src/cli_io_interface.js";
 
@@ -68,6 +73,21 @@ class ProviderLoginFetchStub {
   }
 }
 
+class InvalidCodeFetchStub extends ProviderLoginFetchStub {
+  install(): void {
+    const originalFetch = globalThis.fetch;
+    super.install();
+    globalThis.fetch = (async (input, init) => {
+      const url = String(input);
+      if (url === "https://api.companyhelm.com/model-provider-credential-login/resolve?code=chpl_expired") {
+        return Response.json({ error: "This login code is invalid or expired." }, { status: 410 });
+      }
+
+      return originalFetch(input, init);
+    }) as typeof fetch;
+  }
+}
+
 class CustomApiFetchStub extends ProviderLoginFetchStub {
   install(): void {
     const originalFetch = globalThis.fetch;
@@ -100,15 +120,24 @@ class CustomApiFetchStub extends ProviderLoginFetchStub {
 }
 
 class TestOAuthProviderRegistry {
+  readonly callbackSnapshots: OAuthLoginCallbacks[] = [];
+
   install(credentials: OAuthCredentials = {
     access: "access-token",
     expires: 1775358352922,
     refresh: "refresh-token",
   }): void {
+    const callbackSnapshots = this.callbackSnapshots;
     registerOAuthProvider({
       id: "openai-codex",
       name: "OpenAI Codex",
-      async login() {
+      async login(callbacks) {
+        callbacks.onAuth({
+          instructions: "A browser window should open. Complete login to finish.",
+          url: "https://auth.example.test/oauth",
+        });
+        callbacks.onProgress?.("Exchanging authorization code for tokens...");
+        callbackSnapshots.push(callbacks);
         return credentials;
       },
       async refreshToken() {
@@ -160,9 +189,14 @@ test("provider login defaults to the production API URL and completes the reques
     oauthProviders.restore();
   }
 
+  const output = io.lines.join("\n");
   assert.equal(io.errors.length, 0);
-  assert.match(io.lines.join("\n"), /Adding OpenAI Codex credential "Codex Subscription" to CompanyHelm Local/);
-  assert.match(io.lines.join("\n"), /Credential added successfully: credential-1/);
+  assert.match(output, /ℹ.*Adding OpenAI Codex credential to CompanyHelm/);
+  assert.match(output, /•.*Credential: Codex Subscription/);
+  assert.match(output, /✅.*Credential "Codex Subscription" added to CompanyHelm Local/);
+  assert.doesNotMatch(output, /credential-1/);
+  assert.doesNotMatch(output, /Paste the authorization code or redirect URL/);
+  assert.equal(oauthProviders.callbackSnapshots[0]?.onManualCodeInput, undefined);
   assert.equal(fetchStub.requests[0]?.url, "https://api.companyhelm.com/model-provider-credential-login/resolve?code=chpl_test");
   assert.deepEqual(fetchStub.requests[1]?.body, {
     code: "chpl_test",
@@ -197,6 +231,37 @@ test("provider login accepts a custom API URL", async () => {
     oauthProviders.restore();
   }
 
+  const output = io.lines.join("\n");
   assert.equal(io.errors.length, 0);
-  assert.match(io.lines.join("\n"), /Credential added successfully: credential-2/);
+  assert.match(output, /✅.*Credential "Codex Local" added to CompanyHelm Local/);
+  assert.doesNotMatch(output, /credential-2/);
+});
+
+
+test("provider login prints a friendly invalid code error", async () => {
+  const io = new CapturingCliIo();
+  const fetchStub = new InvalidCodeFetchStub();
+  fetchStub.install();
+
+  let exitCode: number | undefined;
+  try {
+    exitCode = await new CompanyHelmCli(io).run([
+      "node",
+      "companyhelm",
+      "provider",
+      "login",
+      "--code",
+      "chpl_expired",
+    ]);
+  } finally {
+    fetchStub.restore();
+  }
+
+  const errors = io.errors.join("\n");
+  assert.equal(exitCode, 1);
+  assert.deepEqual(io.lines, []);
+  assert.match(errors, /❌.*This login code is invalid or expired/);
+  assert.match(errors, /Create a new provider login command in CompanyHelm and run it again/);
+  assert.doesNotMatch(errors, /ProviderLoginClient\.parseResponse/);
+  assert.doesNotMatch(errors, /node:internal/);
 });
