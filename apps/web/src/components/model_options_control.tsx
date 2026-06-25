@@ -49,17 +49,6 @@ export function normalizeModelOptionValues(rawValues: unknown): ModelOptionValue
   return rawValues as ModelOptionValues;
 }
 
-export function resolveModelOptionDisplayValue(
-  definition: ModelOptionDefinition,
-  values: ModelOptionValues,
-): string | null {
-  const selectedValue = Object.prototype.hasOwnProperty.call(values, definition.key)
-    ? values[definition.key]
-    : definition.defaultValue;
-  const selectedOption = (definition.options ?? []).find((option) => option.value === selectedValue);
-  return selectedOption?.name ?? null;
-}
-
 export function ModelOptionsControl(props: {
   className?: string;
   compact?: boolean;

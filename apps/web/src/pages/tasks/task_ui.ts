@@ -26,31 +26,6 @@ export type TaskStageRecord = {
   name: string;
 };
 
-export function formatTaskStatus(status: TaskStatus): string {
-  return status === "in_progress"
-    ? "In Progress"
-    : status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-export function formatTaskDateTime(value: string | null | undefined, emptyLabel: string): string {
-  if (!value) {
-    return emptyLabel;
-  }
-
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
-    return "Unknown";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(timestamp);
-}
-
 export function formatTaskAssigneeMeta(assignee: TaskRecord["assignee"]): string {
   if (!assignee) {
     return "Unassigned";
